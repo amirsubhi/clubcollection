@@ -183,10 +183,9 @@
                 <canvas id="jobLevelChart" height="180" style="max-width:220px"></canvas>
                 <div class="mt-3 w-100">
                     @foreach($jobLevelLabels as $key => $label)
-                    @php $count = $jobLevelDistribution[$key] ?? 0; @endphp
                     <div class="d-flex justify-content-between small mb-1">
                         <span>{{ $label }}</span>
-                        <strong>{{ $count }}</strong>
+                        <strong>{{ $jobLevelDistribution[$key] }}</strong>
                     </div>
                     @endforeach
                 </div>
@@ -356,8 +355,8 @@ new Chart(document.getElementById('clubRevenueChart'), {
 });
 
 // Job level distribution doughnut
-const jobLabels = @json(array_values($jobLevelLabels));
-const jobCounts = @json(array_map(fn($k) => $jobLevelDistribution[$k] ?? 0, array_keys($jobLevelLabels)));
+const jobLabels = @json($jobLevelChartLabels);
+const jobCounts = @json($jobLevelChartCounts);
 
 new Chart(document.getElementById('jobLevelChart'), {
     type: 'doughnut',
