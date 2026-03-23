@@ -95,7 +95,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 const feeRates = @json($feeRates);
 const multipliers = { monthly: 1, quarterly: 3, yearly: 12 };
 

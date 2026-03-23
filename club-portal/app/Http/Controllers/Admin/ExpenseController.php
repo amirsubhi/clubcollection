@@ -95,7 +95,15 @@ class ExpenseController extends Controller
     {
         $this->authorizeClubAdmin($expense->club);
         $data = $request->validate([
-            'expense_category_id' => 'required|exists:expense_categories,id',
+            'expense_category_id' => [
+                'required',
+                'exists:expense_categories,id',
+                function ($attribute, $value, $fail) use ($expense) {
+                    if (!$expense->club->expenseCategories()->where('id', $value)->exists()) {
+                        $fail('The selected category does not belong to this club.');
+                    }
+                },
+            ],
             'description'         => 'required|string|max:500',
             'amount'              => 'required|numeric|min:0.01',
             'expense_date'        => 'required|date',

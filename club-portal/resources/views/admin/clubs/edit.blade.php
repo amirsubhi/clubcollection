@@ -97,7 +97,7 @@
     </div>
 </div>
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 function toggleSecret() {
     const input = document.getElementById('secretKeyInput');
     const icon  = document.getElementById('eyeIcon');

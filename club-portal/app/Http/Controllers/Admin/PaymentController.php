@@ -24,7 +24,7 @@ class PaymentController extends Controller
             ->orderByDesc('due_date');
 
         if ($status) {
-            $query->where('status', $status);
+            $query->where('payments.status', $status);
         }
 
         if ($month) {
@@ -32,11 +32,13 @@ class PaymentController extends Controller
         }
 
         if ($jobLevel) {
-            $query->whereHas('user', function ($q) use ($club, $jobLevel) {
-                $q->whereHas('clubs', function ($q2) use ($club, $jobLevel) {
-                    $q2->where('clubs.id', $club->id)->where('club_user.job_level', $jobLevel);
-                });
-            });
+            // JOIN is more efficient than nested whereHas for filtering on a pivot column
+            $query->select('payments.*')
+                  ->join('club_user', function ($join) use ($club, $jobLevel) {
+                      $join->on('payments.user_id', '=', 'club_user.user_id')
+                           ->where('club_user.club_id', $club->id)
+                           ->where('club_user.job_level', $jobLevel);
+                  });
         }
 
         $payments = $query->paginate(20)->withQueryString();
@@ -74,7 +76,15 @@ class PaymentController extends Controller
     public function store(Request $request, Club $club)
     {
         $data = $request->validate([
-            'user_id'      => 'required|exists:users,id',
+            'user_id'      => [
+                'required',
+                'exists:users,id',
+                function ($attribute, $value, $fail) use ($club) {
+                    if (!$club->members()->where('users.id', $value)->exists()) {
+                        $fail('The selected member does not belong to this club.');
+                    }
+                },
+            ],
             'frequency'    => 'required|in:monthly,quarterly,yearly',
             'period_start' => 'required|date',
             'due_date'     => 'required|date',

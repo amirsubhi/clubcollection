@@ -42,9 +42,10 @@ class Club extends Model
 
     public function currentFeeRates()
     {
-        return $this->hasMany(FeeRate::class)
-            ->whereNull('effective_to')
-            ->orWhere('effective_to', '>=', now()->toDateString());
+        return $this->hasMany(FeeRate::class)->where(function ($q) {
+            $q->whereNull('effective_to')
+              ->orWhere('effective_to', '>=', now()->toDateString());
+        });
     }
 
     public function expenseCategories()

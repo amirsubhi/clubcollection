@@ -7,7 +7,7 @@
     <title>@yield('title', config('app.name', 'Club Portal'))</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
+    <style nonce="{{ $cspNonce }}">
         :root { --sidebar-w: 250px; }
         body { background: #f0f2f5; font-size: 0.9rem; }
 
@@ -252,7 +252,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
+<script nonce="{{ $cspNonce }}">
 const sidebar  = document.getElementById('sidebar');
 const overlay  = document.getElementById('sidebarOverlay');
 const toggle   = document.getElementById('sidebarToggle');

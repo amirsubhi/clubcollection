@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\FeeRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FeeRateController extends Controller
 {
@@ -32,20 +33,22 @@ class FeeRateController extends Controller
             'rates.*.effective_from'   => 'required|date',
         ]);
 
-        foreach ($request->rates as $rate) {
-            // Close previous active rate for this level
-            $club->feeRates()
-                ->where('job_level', $rate['job_level'])
-                ->whereNull('effective_to')
-                ->update(['effective_to' => now()->toDateString()]);
+        DB::transaction(function () use ($request, $club) {
+            foreach ($request->rates as $rate) {
+                // Close previous active rate for this level
+                $club->feeRates()
+                    ->where('job_level', $rate['job_level'])
+                    ->whereNull('effective_to')
+                    ->update(['effective_to' => now()->toDateString()]);
 
-            $club->feeRates()->create([
-                'job_level'      => $rate['job_level'],
-                'monthly_amount' => $rate['monthly_amount'],
-                'effective_from' => $rate['effective_from'],
-                'effective_to'   => null,
-            ]);
-        }
+                $club->feeRates()->create([
+                    'job_level'      => $rate['job_level'],
+                    'monthly_amount' => $rate['monthly_amount'],
+                    'effective_from' => $rate['effective_from'],
+                    'effective_to'   => null,
+                ]);
+            }
+        });
 
         return redirect()->route('admin.fee-rates.index', $club)
             ->with('success', 'Fee rates updated successfully.');

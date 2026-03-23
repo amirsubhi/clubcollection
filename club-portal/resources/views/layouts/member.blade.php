@@ -6,7 +6,7 @@
     <title>@yield('title', 'Member Portal')</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
+    <style nonce="{{ $cspNonce }}">
         body { background: #f0f2f5; font-size: 0.9rem; }
 
         /* ── Topnav ── */

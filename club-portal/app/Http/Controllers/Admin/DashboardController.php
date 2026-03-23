@@ -93,14 +93,14 @@ class DashboardController extends Controller
         $overdueCount = (int) ($statusStats->overdue_count ?? 0);
 
         // ── Members paid vs unpaid this month ─────────────────────────────────
-        $allMembers    = $club->members()->wherePivot('is_active', true)->get();
+        // Two targeted queries instead of loading all members then filtering in PHP
         $paidMemberIds = $club->payments()
             ->where('status', 'paid')
             ->whereRaw("strftime('%Y-%m', paid_date) = ?", [$periodKey])
-            ->pluck('user_id')->toArray();
+            ->pluck('user_id');
 
-        $paidMembers   = $allMembers->filter(fn($m) => in_array($m->id, $paidMemberIds));
-        $unpaidMembers = $allMembers->filter(fn($m) => !in_array($m->id, $paidMemberIds));
+        $paidMembers   = $club->members()->wherePivot('is_active', true)->whereIn('users.id', $paidMemberIds)->get();
+        $unpaidMembers = $club->members()->wherePivot('is_active', true)->whereNotIn('users.id', $paidMemberIds)->get();
 
         // ── Income by job level — 1 JOIN query instead of 5 whereHas queries ──
         $jobLevels          = FeeRate::jobLevelLabels();

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
@@ -15,6 +16,11 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Generate a per-request nonce for inline scripts/styles so we can
+        // drop 'unsafe-inline' from the CSP while keeping Bootstrap CDN scripts.
+        $nonce = base64_encode(random_bytes(16));
+        View::share('cspNonce', $nonce);
+
         $response = $next($request);
 
         // Prevent clickjacking
@@ -34,12 +40,12 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
         }
 
-        // Content Security Policy — restricts resource origins
-        // Allows Bootstrap CDN and Bootstrap Icons CDN used throughout the app.
+        // Content Security Policy — per-request nonce for inline scripts/styles.
+        // 'unsafe-inline' is intentionally absent; all inline blocks use the nonce attribute.
         $csp = implode('; ', [
             "default-src 'self'",
-            "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",   // unsafe-inline needed for inline JS in views
-            "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
+            "script-src 'self' https://cdn.jsdelivr.net 'nonce-{$nonce}'",
+            "style-src 'self' https://cdn.jsdelivr.net 'nonce-{$nonce}'",
             "font-src 'self' https://cdn.jsdelivr.net",
             "img-src 'self' data: https:",
             "connect-src 'self'",

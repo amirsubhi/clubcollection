@@ -68,7 +68,7 @@ Route::middleware('check_installed')->group(function () {
         Route::middleware(['club_admin'])->prefix('admin')->name('admin.')->group(function () {
             // Member import routes must come before the resource to avoid {member} wildcard collision
             Route::get('clubs/{club}/members/import', [MemberController::class, 'import'])->name('members.import');
-            Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->name('members.import.process');
+            Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->middleware('throttle:5,1')->name('members.import.process');
             Route::get('clubs/{club}/members/template', [MemberController::class, 'downloadTemplate'])->name('members.template');
 
             Route::resource('clubs.members', MemberController::class)->shallow();
