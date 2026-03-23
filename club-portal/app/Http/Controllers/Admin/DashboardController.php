@@ -11,8 +11,16 @@ class DashboardController extends Controller
 {
     public function index(Club $club)
     {
-        $year  = request('year', now()->year);
-        $month = request('month', now()->month);
+        $year  = (int) request('year', now()->year);
+        $month = (int) request('month', now()->month);
+
+        // Clamp to valid ranges
+        if ($year < 2000 || $year > now()->year + 1) {
+            $year = now()->year;
+        }
+        if ($month < 1 || $month > 12) {
+            $month = now()->month;
+        }
 
         // --- Income ---
         $incomeThisMonth = $club->payments()

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\ExpenseCategory;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class ExpenseCategoryController extends Controller
 {
+    use AuthorizesClubResource;
+
     public function index(Club $club)
     {
         $categories = $club->expenseCategories()->withCount('expenses')->orderBy('name')->get();
@@ -24,6 +27,7 @@ class ExpenseCategoryController extends Controller
 
     public function update(Request $request, ExpenseCategory $expenseCategory)
     {
+        $this->authorizeClubAdmin($expenseCategory->club);
         $request->validate(['name' => 'required|string|max:100']);
         $expenseCategory->update(['name' => $request->name]);
         return back()->with('success', 'Category updated.');
@@ -31,6 +35,7 @@ class ExpenseCategoryController extends Controller
 
     public function destroy(ExpenseCategory $expenseCategory)
     {
+        $this->authorizeClubAdmin($expenseCategory->club);
         $club = $expenseCategory->club;
         if ($expenseCategory->expenses()->exists()) {
             return back()->with('error', 'Cannot delete category with existing expenses.');

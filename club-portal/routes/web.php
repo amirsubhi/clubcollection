@@ -19,7 +19,7 @@ use App\Http\Controllers\Member\PaymentController as MemberPayment;
 // ── Installation wizard (only accessible when NOT installed) ────────────────
 Route::middleware('redirect_if_installed')->group(function () {
     Route::get('/install', [InstallController::class, 'index'])->name('install');
-    Route::post('/install', [InstallController::class, 'process'])->name('install.process');
+    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:5,1')->name('install.process');
 });
 
 // ── ToyyibPay webhook — external, no install check, no CSRF ────────────────

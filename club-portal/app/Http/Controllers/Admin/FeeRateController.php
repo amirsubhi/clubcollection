@@ -53,6 +53,10 @@ class FeeRateController extends Controller
 
     public function destroy(Club $club, FeeRate $feeRate)
     {
+        if ($feeRate->club_id !== $club->id) {
+            abort(403, 'This fee rate does not belong to this club.');
+        }
+
         $feeRate->delete();
         return redirect()->route('admin.fee-rates.index', $club)
             ->with('success', 'Fee rate deleted.');

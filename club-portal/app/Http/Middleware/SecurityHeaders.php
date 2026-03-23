@@ -31,7 +31,7 @@ class SecurityHeaders
 
         // Strict HTTPS (1 year, include subdomains)
         if ($request->secure()) {
-            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
         }
 
         // Content Security Policy — restricts resource origins

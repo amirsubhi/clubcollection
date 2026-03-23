@@ -80,8 +80,10 @@ class InstallController extends Controller
         $env = file_get_contents(base_path('.env'));
 
         foreach ($values as $key => $value) {
-            if (preg_match("/^{$key}=.*/m", $env)) {
-                $env = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $env);
+            $pattern = "/^{$key}=.*/m";
+            if (preg_match($pattern, $env)) {
+                // Use callback to avoid preg_replace treating $ in $value as a backreference
+                $env = preg_replace_callback($pattern, fn() => "{$key}={$value}", $env);
             } else {
                 $env .= "\n{$key}={$value}";
             }

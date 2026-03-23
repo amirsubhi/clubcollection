@@ -79,6 +79,37 @@ This project uses [ToyyibPay](https://toyyibpay.com) for online payments. Config
 - **Payment:** ToyyibPay
 - **Mail:** Configurable (SMTP, Mailgun, log, etc.)
 
+## Security
+
+This project follows standard Laravel security practices including CSRF protection, input validation, role-based access control, and security headers (CSP, HSTS, X-Frame-Options, etc.).
+
+**You are responsible for securing your own deployment.** Before going live:
+
+- Set `APP_ENV=production` and `APP_DEBUG=false` in `.env`
+- Generate a strong `APP_KEY` with `php artisan key:generate`
+- Serve over HTTPS only
+- Set a strong `TOYYIBPAY_WEBHOOK_SECRET`
+- Keep PHP, Composer packages, and the OS up to date
+- Restrict file system permissions (`storage/` and `bootstrap/cache/` writable by web server only)
+- Regularly back up your database
+
+To report a security vulnerability, open a private issue or contact the maintainer directly.
+
+## Disclaimer
+
+**This software is provided "as is", without warranty of any kind, express or implied.**
+
+The author(s) of this project accept **no liability** for:
+
+- Any data breaches, unauthorized access, or security incidents arising from your deployment or configuration of this software
+- Loss of data, financial loss, or any other damages resulting from the use or misuse of this software
+- Security vulnerabilities in third-party dependencies, hosting environments, or integrations (including ToyyibPay)
+- Any consequences of failing to follow the security guidelines above
+
+By deploying this software, you agree that you are solely responsible for securing your environment, protecting user data, and complying with applicable laws and regulations (including data protection and privacy laws such as PDPA, GDPR, etc.).
+
+This disclaimer does not override any rights you may have under the MIT License.
+
 ## License
 
 Licensed under the [MIT License](LICENSE).

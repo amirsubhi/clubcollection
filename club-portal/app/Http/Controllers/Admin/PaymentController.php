@@ -133,7 +133,15 @@ class PaymentController extends Controller
             'amount'      => 'required|numeric|min:0',
             'status'      => 'required|in:pending,paid,overdue',
             'paid_date'   => 'nullable|date',
-            'discount_id' => 'nullable|exists:discounts,id',
+            'discount_id' => [
+                'nullable',
+                'exists:discounts,id',
+                function ($attribute, $value, $fail) use ($payment) {
+                    if ($value && ! $payment->club->discounts()->where('id', $value)->exists()) {
+                        $fail('The selected discount does not belong to this club.');
+                    }
+                },
+            ],
             'notes'       => 'nullable|string|max:500',
             'reference'   => 'nullable|string|max:255',
         ]);
