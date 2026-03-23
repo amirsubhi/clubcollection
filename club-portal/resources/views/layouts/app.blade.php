@@ -50,6 +50,18 @@
         @endphp
         @foreach($adminClubs as $club)
         <div class="nav-section mt-2">{{ $club->name }}</div>
+        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.clubs.dashboard') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-graph-up me-2"></i>Dashboard
+        </a>
+        <a href="{{ route('admin.payments.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-wallet2 me-2"></i>Payments
+        </a>
+        <a href="{{ route('admin.expenses.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-receipt me-2"></i>Expenses
+        </a>
+        <a href="{{ route('admin.discounts.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-tag me-2"></i>Discounts
+        </a>
         <a href="{{ route('admin.members.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.members.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-people me-2"></i>Members
         </a>
