@@ -62,7 +62,7 @@
                     <td class="fw-semibold text-danger">RM {{ number_format($expense->amount, 2) }}</td>
                     <td>
                         @if($expense->receipt)
-                            <a href="{{ asset('storage/'.$expense->receipt) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <a href="{{ asset('storage/'.$expense->receipt) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
                                 <i class="bi bi-file-earmark me-1"></i>View
                             </a>
                         @else

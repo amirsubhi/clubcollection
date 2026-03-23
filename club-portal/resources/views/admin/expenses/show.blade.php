@@ -21,7 +21,7 @@
                     <dt class="col-5 text-muted">Receipt</dt>
                     <dd class="col-7">
                         @if($expense->receipt)
-                            <a href="{{ asset('storage/'.$expense->receipt) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ asset('storage/'.$expense->receipt) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Receipt
                             </a>
                         @else

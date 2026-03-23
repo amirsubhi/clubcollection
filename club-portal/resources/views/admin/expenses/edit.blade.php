@@ -44,7 +44,7 @@
                         <label class="form-label fw-semibold">Receipt</label>
                         @if($expense->receipt)
                             <div class="mb-2">
-                                <a href="{{ asset('storage/'.$expense->receipt) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <a href="{{ asset('storage/'.$expense->receipt) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-file-earmark me-1"></i>Current Receipt
                                 </a>
                             </div>
