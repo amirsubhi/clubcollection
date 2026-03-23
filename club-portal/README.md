@@ -146,6 +146,22 @@ This disclaimer does not override any rights you may have under the MIT License.
 
 Licensed under the [MIT License](LICENSE).
 
+## Third-Party Credits
+
+This project builds on open-source libraries. See [CREDITS.md](CREDITS.md) for the full list of packages, their licenses, and copyright notices.
+
+Notable licenses in use:
+
+| Package(s) | License |
+|---|---|
+| Laravel, laravel/ui, laravel/tinker, barryvdh/laravel-dompdf, pragmarx/google2fa, guzzlehttp/guzzle | MIT |
+| bacon/bacon-qr-code | BSD-2-Clause |
+| dompdf/dompdf, dompdf/php-font-lib | LGPL-2.1 |
+| dompdf/php-svg-lib | LGPL-3.0 |
+| Bootstrap, Bootstrap Icons, Chart.js (CDN) | MIT |
+
+The LGPL-licensed dompdf packages are used unmodified as separate Composer packages. Their complete source code is publicly available and linked in CREDITS.md.
+
 ---
 
 Built by [@amirsubhi](https://github.com/amirsubhi), assisted by [Claude Code](https://claude.ai/code).
