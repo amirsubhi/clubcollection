@@ -41,10 +41,19 @@ class PaymentController extends Controller
 
         $payments = $query->paginate(20)->withQueryString();
 
+        // 1 query instead of 3 separate status queries
+        $summaryStats = $club->payments()
+            ->selectRaw("
+                SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_paid,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending,
+                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as total_overdue
+            ")
+            ->first();
+
         $summary = [
-            'total_paid'    => $club->payments()->where('status', 'paid')->sum('amount'),
-            'total_pending' => $club->payments()->where('status', 'pending')->count(),
-            'total_overdue' => $club->payments()->where('status', 'overdue')->count(),
+            'total_paid'    => (float) ($summaryStats->total_paid    ?? 0),
+            'total_pending' => (int)   ($summaryStats->total_pending ?? 0),
+            'total_overdue' => (int)   ($summaryStats->total_overdue ?? 0),
         ];
 
         $jobLevels = FeeRate::jobLevelLabels();

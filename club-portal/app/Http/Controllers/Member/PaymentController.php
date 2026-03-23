@@ -10,7 +10,6 @@ use App\Models\Payment;
 use App\Services\ToyyibPayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
@@ -26,11 +25,9 @@ class PaymentController extends Controller
         // Year selection — default to current year
         $selectedYear = (int) $request->get('year', now()->year);
 
-        // Available years: from earliest payment or 2 years back, up to next year
-        $earliestYear = $club->payments()
-            ->where('user_id', $user->id)
-            ->min(\Illuminate\Support\Facades\DB::raw('strftime("%Y", period_start)'));
-        $minYear  = $earliestYear ? (int) $earliestYear : now()->year;
+        // Available years: from earliest payment or current year, up to next year
+        $earliestDate = $club->payments()->where('user_id', $user->id)->min('period_start');
+        $minYear      = $earliestDate ? (int) date('Y', strtotime($earliestDate)) : now()->year;
         $maxYear  = now()->year + 1;
         $years    = range($maxYear, $minYear);
 
@@ -40,13 +37,25 @@ class PaymentController extends Controller
             ->orderByDesc('due_date')
             ->paginate(15);
 
-        // Annual summary for the selected year
+        // Annual summary — 1 query instead of 5
+        $annualStats = $club->payments()
+            ->where('user_id', $user->id)
+            ->whereYear('due_date', $selectedYear)
+            ->selectRaw("
+                SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as paid,
+                SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending,
+                SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END) as overdue,
+                SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
+                SUM(amount) as total
+            ")
+            ->first();
+
         $annualSummary = [
-            'paid'       => $club->payments()->where('user_id', $user->id)->whereYear('due_date', $selectedYear)->where('status', 'paid')->sum('amount'),
-            'pending'    => $club->payments()->where('user_id', $user->id)->whereYear('due_date', $selectedYear)->where('status', 'pending')->sum('amount'),
-            'overdue'    => $club->payments()->where('user_id', $user->id)->whereYear('due_date', $selectedYear)->where('status', 'overdue')->sum('amount'),
-            'paid_count' => $club->payments()->where('user_id', $user->id)->whereYear('due_date', $selectedYear)->where('status', 'paid')->count(),
-            'total'      => $club->payments()->where('user_id', $user->id)->whereYear('due_date', $selectedYear)->sum('amount'),
+            'paid'       => (float) ($annualStats->paid       ?? 0),
+            'pending'    => (float) ($annualStats->pending    ?? 0),
+            'overdue'    => (float) ($annualStats->overdue    ?? 0),
+            'paid_count' => (int)   ($annualStats->paid_count ?? 0),
+            'total'      => (float) ($annualStats->total      ?? 0),
         ];
 
         return view('member.payments.index', compact('club', 'payments', 'selectedYear', 'years', 'annualSummary'));

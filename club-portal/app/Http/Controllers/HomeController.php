@@ -31,9 +31,16 @@ class HomeController extends Controller
         }
 
         if ($user->isSuperAdmin()) {
-            $totalClubs   = \App\Models\Club::count();
-            $totalMembers = \App\Models\User::where('role', 'member')->count();
-            $totalAdmins  = \App\Models\User::whereIn('role', ['admin', 'super_admin'])->count();
+            $totalClubs = \App\Models\Club::count();
+
+            // 1 query instead of 2 separate User counts
+            $userStats    = \App\Models\User::selectRaw("
+                SUM(CASE WHEN role = 'member' THEN 1 ELSE 0 END) as member_count,
+                SUM(CASE WHEN role IN ('admin','super_admin') THEN 1 ELSE 0 END) as admin_count
+            ")->first();
+            $totalMembers = (int) ($userStats->member_count ?? 0);
+            $totalAdmins  = (int) ($userStats->admin_count ?? 0);
+
             return view('home', compact('totalClubs', 'totalMembers', 'totalAdmins'));
         }
 
