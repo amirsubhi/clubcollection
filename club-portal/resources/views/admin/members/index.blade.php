@@ -9,7 +9,7 @@
         <a href="{{ route('admin.members.import', $club) }}" class="btn btn-outline-primary">
             <i class="bi bi-upload me-1"></i>Import CSV
         </a>
-        <a href="{{ route('admin.members.create', $club) }}" class="btn btn-primary">
+        <a href="{{ route('admin.clubs.members.create', $club) }}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-1"></i>Add Member
         </a>
     </div>
@@ -61,7 +61,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No members yet. <a href="{{ route('admin.members.create', $club) }}">Add one</a>.</td>
+                    <td colspan="7" class="text-center text-muted py-4">No members yet. <a href="{{ route('admin.clubs.members.create', $club) }}">Add one</a>.</td>
                 </tr>
                 @endforelse
             </tbody>

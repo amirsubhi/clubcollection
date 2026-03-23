@@ -181,14 +181,16 @@ class LedgerController extends Controller
         $payments = $club->payments()
             ->with('user')
             ->where('status', 'paid')
-            ->whereBetween('paid_date', [$from->toDateString(), $to->toDateString()])
+            ->whereDate('paid_date', '>=', $from->toDateString())
+            ->whereDate('paid_date', '<=', $to->toDateString())
             ->orderBy('paid_date')->orderBy('id')
             ->get();
 
         // ── Expenses within the date range ────────────────────────────────
         $expenses = $club->expenses()
             ->with('category')
-            ->whereBetween('expense_date', [$from->toDateString(), $to->toDateString()])
+            ->whereDate('expense_date', '>=', $from->toDateString())
+            ->whereDate('expense_date', '<=', $to->toDateString())
             ->orderBy('expense_date')->orderBy('id')
             ->get();
 

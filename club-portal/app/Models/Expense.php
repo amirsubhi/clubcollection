@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\ExpenseFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Expense extends Model
 {
+    /** @use HasFactory<ExpenseFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'club_id', 'expense_category_id', 'recorded_by',
         'description', 'amount', 'expense_date', 'receipt',

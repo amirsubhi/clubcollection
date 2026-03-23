@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\FeeRateFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class FeeRate extends Model
 {
+    /** @use HasFactory<FeeRateFactory> */
+    use HasFactory;
+
     protected $fillable = ['club_id', 'job_level', 'monthly_amount', 'effective_from', 'effective_to'];
 
     protected function casts(): array

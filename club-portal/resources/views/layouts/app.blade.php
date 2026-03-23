@@ -166,19 +166,19 @@
         <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.dashboard') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-graph-up"></i> Dashboard
         </a>
-        <a href="{{ route('admin.payments.index', $club) }}" class="nav-link {{ request()->routeIs('admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.payments.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.payments.*', 'admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-wallet2"></i> Payments
         </a>
-        <a href="{{ route('admin.expenses.index', $club) }}" class="nav-link {{ request()->routeIs('admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.expenses.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.expenses.*', 'admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-receipt"></i> Expenses
         </a>
-        <a href="{{ route('admin.discounts.index', $club) }}" class="nav-link {{ request()->routeIs('admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.discounts.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.discounts.*', 'admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-tag"></i> Discounts
         </a>
-        <a href="{{ route('admin.members.index', $club) }}" class="nav-link {{ request()->routeIs('admin.members.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.members.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.members.*', 'admin.members.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-people"></i> Members
         </a>
-        <a href="{{ route('admin.fee-rates.index', $club) }}" class="nav-link {{ request()->routeIs('admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.fee-rates.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.fee-rates.*', 'admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Fee Rates
         </a>
         <a href="{{ route('admin.clubs.ledger', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.ledger*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
