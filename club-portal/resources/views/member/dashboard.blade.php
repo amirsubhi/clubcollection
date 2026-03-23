@@ -1,8 +1,9 @@
 @extends('layouts.member')
 @section('title', 'My Dashboard')
+@section('page-heading', 'My Dashboard')
 
 @section('content')
-<h5 class="fw-bold mb-1">Welcome, {{ auth()->user()->name }}</h5>
+<p class="text-muted mb-4">Welcome back, <strong>{{ auth()->user()->name }}</strong>. Here are your club memberships.</p>
 <p class="text-muted mb-4">Manage your club membership fees below.</p>
 
 @forelse($clubs as $club)

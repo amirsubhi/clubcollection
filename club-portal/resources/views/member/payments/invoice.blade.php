@@ -1,11 +1,17 @@
 @extends('layouts.member')
 @section('title', 'Invoice #' . $payment->id)
+@section('page-heading', 'Invoice #' . str_pad($payment->id, 6, '0', STR_PAD_LEFT))
+@section('breadcrumb')
+<a href="{{ route('member.payments.index', $payment->club) }}" class="text-muted text-decoration-none small">
+    <i class="bi bi-arrow-left me-1"></i>Back to Payments
+</a>
+@endsection
 
 @push('styles')
 <style>
 @media print {
-    .topnav, .no-print { display: none !important; }
-    .main { max-width: 100%; margin: 0; padding: 0; }
+    .member-nav, .page-subtitle-bar, .no-print { display: none !important; }
+    .member-main { max-width: 100%; margin: 0; padding: 0; }
     body { background: #fff; }
 }
 .invoice-box { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 40px; max-width: 680px; margin: 0 auto; }

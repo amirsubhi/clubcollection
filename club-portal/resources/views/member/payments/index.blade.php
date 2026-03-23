@@ -1,15 +1,17 @@
 @extends('layouts.member')
-@section('title', $club->name . ' - My Payments')
+@section('title', $club->name . ' — My Payments')
+@section('page-heading', $club->name . ' — My Payments')
+@section('breadcrumb')
+<a href="{{ route('member.dashboard') }}" class="back-link text-muted text-decoration-none small">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+</a>
+@endsection
 
 @section('content')
-<div class="d-flex align-items-center gap-2 mb-4">
-    <a href="{{ route('member.dashboard') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
-    <div>
-        <h5 class="mb-0 fw-bold">{{ $club->name }} — My Payments</h5>
-    </div>
-    {{-- Year Filter --}}
-    <form method="GET" class="ms-auto d-flex align-items-center gap-2">
-        <label class="form-label mb-0 small text-muted">Year:</label>
+{{-- Year Filter --}}
+<div class="d-flex align-items-center justify-content-end mb-3">
+    <form method="GET" class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted fw-semibold">Year:</label>
         <select name="year" class="form-select form-select-sm" style="width:100px" onchange="this.form.submit()">
             @foreach($years as $yr)
                 <option value="{{ $yr }}" {{ $yr == $selectedYear ? 'selected' : '' }}>{{ $yr }}</option>

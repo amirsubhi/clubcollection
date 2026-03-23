@@ -8,40 +8,144 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { background-color: #f8f9fa; }
-        .sidebar { min-height: 100vh; background: #212529; width: 250px; position: fixed; top: 0; left: 0; z-index: 100; overflow-y: auto; }
-        .sidebar .nav-link { color: #adb5bd; padding: 0.55rem 1.25rem; font-size: 0.9rem; }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.08); border-radius: 4px; }
-        .sidebar .nav-section { color: #6c757d; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; padding: 1rem 1.25rem 0.25rem; }
-        .sidebar-brand { padding: 1.1rem 1.25rem; border-bottom: 1px solid #343a40; }
-        .main-content { margin-left: 250px; padding: 1.5rem 2rem; }
-        .topbar { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0.6rem 2rem; margin-left: 250px; position: sticky; top: 0; z-index: 99; }
-        .club-nav-item { font-size: 0.82rem; }
+        :root { --sidebar-w: 250px; }
+        body { background: #f0f2f5; font-size: 0.9rem; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-w); min-height: 100vh;
+            background: #16213e;
+            position: fixed; top: 0; left: 0; z-index: 1040;
+            display: flex; flex-direction: column;
+            overflow-y: auto; overflow-x: hidden;
+            transition: transform 0.25s ease;
+        }
+        .sidebar-brand {
+            padding: 1.1rem 1.25rem;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .sidebar-brand .brand-icon {
+            width: 36px; height: 36px;
+            background: #0d6efd;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #fff; flex-shrink: 0;
+        }
+        .sidebar-brand .brand-text { color: #fff; font-weight: 700; font-size: 1rem; }
+        .sidebar nav { flex-grow: 1; padding: 0.5rem 0.75rem; }
+        .sidebar .nav-section {
+            color: rgba(255,255,255,0.3);
+            font-size: 0.67rem; text-transform: uppercase;
+            letter-spacing: 1.2px; padding: 1rem 0.5rem 0.3rem;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.6);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: flex; align-items: center; gap: 8px;
+            transition: background 0.15s, color 0.15s;
+            margin-bottom: 2px;
+        }
+        .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.08); }
+        .sidebar .nav-link.active { color: #fff; background: #0d6efd; }
+        .sidebar .nav-link .bi { font-size: 15px; flex-shrink: 0; }
+        .sidebar-footer {
+            padding: 0.85rem 1rem;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+        .user-chip {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .user-avatar {
+            width: 34px; height: 34px;
+            background: #0d6efd;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 700; font-size: 13px;
+            flex-shrink: 0;
+        }
+        .user-chip .name { color: #fff; font-size: 0.82rem; font-weight: 600; line-height: 1.2; }
+        .user-chip .role { color: rgba(255,255,255,0.4); font-size: 0.72rem; }
+
+        /* ── Topbar ── */
+        .topbar {
+            margin-left: var(--sidebar-w);
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            padding: 0 1.75rem;
+            height: 56px;
+            position: sticky; top: 0; z-index: 1030;
+            display: flex; align-items: center; justify-content: space-between;
+            transition: margin-left 0.25s ease;
+        }
+        .topbar .page-title { font-weight: 600; font-size: 1rem; color: #212529; margin: 0; }
+        .topbar .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+        /* ── Main content ── */
+        .main-content {
+            margin-left: var(--sidebar-w);
+            padding: 1.5rem 1.75rem 2rem;
+            min-height: calc(100vh - 56px);
+            transition: margin-left 0.25s ease;
+        }
+
+        /* ── Mobile ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1039;
+        }
+        @media (max-width: 991.98px) {
+            .sidebar { transform: translateX(-100%); }
+            .topbar, .main-content { margin-left: 0 !important; }
+            .sidebar.show { transform: translateX(0); }
+            .sidebar-overlay.show { display: block; }
+            .sidebar-toggle { display: flex !important; }
+        }
+        .sidebar-toggle {
+            display: none;
+            align-items: center; justify-content: center;
+            width: 36px; height: 36px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            color: #495057;
+            font-size: 18px;
+        }
     </style>
     @stack('styles')
 </head>
 <body>
 
-<div class="sidebar d-flex flex-column">
+{{-- Mobile overlay --}}
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <span class="text-white fw-bold"><i class="bi bi-building-fill me-2 text-primary"></i>Club Portal</span>
+        <div class="brand-icon"><i class="bi bi-building-fill"></i></div>
+        <span class="brand-text">{{ config('app.name', 'Club Portal') }}</span>
     </div>
-    <nav class="flex-grow-1 py-2">
+
+    <nav>
         <div class="nav-section">General</div>
         <a href="{{ route('home') }}" class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
-            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+            <i class="bi bi-speedometer2"></i> Dashboard
         </a>
         <a href="{{ route('member.dashboard') }}" class="nav-link {{ request()->routeIs('member.*') ? 'active' : '' }}">
-            <i class="bi bi-person-badge me-2"></i>My Member Portal
+            <i class="bi bi-person-badge"></i> My Member Portal
         </a>
 
         @if(auth()->user()->isSuperAdmin())
-        <div class="nav-section mt-2">Super Admin</div>
-        <a href="{{ route('admin.clubs.index') }}" class="nav-link {{ request()->routeIs('admin.clubs.*') ? 'active' : '' }}">
-            <i class="bi bi-building me-2"></i>Clubs
+        <div class="nav-section">Super Admin</div>
+        <a href="{{ route('admin.clubs.index') }}" class="nav-link {{ request()->routeIs('admin.clubs.index') || request()->routeIs('admin.clubs.create') || request()->routeIs('admin.clubs.edit') ? 'active' : '' }}">
+            <i class="bi bi-building"></i> Clubs
         </a>
         <a href="{{ route('admin.admins.index') }}" class="nav-link {{ request()->routeIs('admin.admins.*') ? 'active' : '' }}">
-            <i class="bi bi-person-gear me-2"></i>Administrators
+            <i class="bi bi-person-gear"></i> Administrators
         </a>
         @endif
 
@@ -52,41 +156,53 @@
                 : auth()->user()->clubs()->wherePivot('role', 'admin')->where('clubs.is_active', true)->get();
         @endphp
         @foreach($adminClubs as $club)
-        <div class="nav-section mt-2">{{ $club->name }}</div>
-        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.clubs.dashboard') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-graph-up me-2"></i>Dashboard
+        <div class="nav-section">{{ $club->name }}</div>
+        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.dashboard') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-graph-up"></i> Dashboard
         </a>
-        <a href="{{ route('admin.payments.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-wallet2 me-2"></i>Payments
+        <a href="{{ route('admin.payments.index', $club) }}" class="nav-link {{ request()->routeIs('admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-wallet2"></i> Payments
         </a>
-        <a href="{{ route('admin.expenses.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-receipt me-2"></i>Expenses
+        <a href="{{ route('admin.expenses.index', $club) }}" class="nav-link {{ request()->routeIs('admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-receipt"></i> Expenses
         </a>
-        <a href="{{ route('admin.discounts.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-tag me-2"></i>Discounts
+        <a href="{{ route('admin.discounts.index', $club) }}" class="nav-link {{ request()->routeIs('admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-tag"></i> Discounts
         </a>
-        <a href="{{ route('admin.members.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.members.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-people me-2"></i>Members
+        <a href="{{ route('admin.members.index', $club) }}" class="nav-link {{ request()->routeIs('admin.members.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-people"></i> Members
         </a>
-        <a href="{{ route('admin.fee-rates.index', $club) }}" class="nav-link club-nav-item {{ request()->routeIs('admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-cash-stack me-2"></i>Fee Rates
+        <a href="{{ route('admin.fee-rates.index', $club) }}" class="nav-link {{ request()->routeIs('admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-cash-stack"></i> Fee Rates
         </a>
         @endforeach
         @endif
     </nav>
-    <div class="p-3 border-top border-secondary">
-        <small class="text-light d-block">{{ auth()->user()->name }}</small>
-        <small class="text-secondary">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</small>
+
+    <div class="sidebar-footer">
+        <div class="user-chip">
+            <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 2)) }}</div>
+            <div>
+                <div class="name">{{ auth()->user()->name }}</div>
+                <div class="role">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}</div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="topbar d-flex align-items-center justify-content-between">
-    <h6 class="mb-0 fw-semibold text-dark">@yield('page-title', 'Dashboard')</h6>
+<div class="topbar">
     <div class="d-flex align-items-center gap-3">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i class="bi bi-list"></i>
+        </button>
+        <h6 class="page-title">@yield('page-title', 'Dashboard')</h6>
+    </div>
+    <div class="topbar-right">
+        @stack('topbar-actions')
         <form action="{{ route('logout') }}" method="POST" class="m-0">
             @csrf
             <button type="submit" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-box-arrow-right me-1"></i>Logout
+                <i class="bi bi-box-arrow-right me-1"></i><span class="d-none d-sm-inline">Logout</span>
             </button>
         </form>
     </div>
@@ -94,22 +210,33 @@
 
 <div class="main-content">
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <div class="alert alert-success alert-dismissible fade show py-2" role="alert">
+        <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     @endif
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <div class="alert alert-danger alert-dismissible fade show py-2" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     @endif
 
     @yield('content')
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const sidebar  = document.getElementById('sidebar');
+const overlay  = document.getElementById('sidebarOverlay');
+const toggle   = document.getElementById('sidebarToggle');
+
+function openSidebar()  { sidebar.classList.add('show'); overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('show'); overlay.classList.remove('show'); }
+
+toggle?.addEventListener('click', () => sidebar.classList.contains('show') ? closeSidebar() : openSidebar());
+overlay.addEventListener('click', closeSidebar);
+</script>
 @stack('scripts')
 </body>
 </html>

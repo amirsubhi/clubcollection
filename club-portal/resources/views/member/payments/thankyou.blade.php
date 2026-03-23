@@ -1,5 +1,6 @@
 @extends('layouts.member')
 @section('title', 'Payment Successful')
+@section('page-heading', 'Payment Successful')
 
 @section('content')
 <div class="text-center py-5">
