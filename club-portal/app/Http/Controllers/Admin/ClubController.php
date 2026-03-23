@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Club;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
+class ClubController extends Controller
+{
+    public function index()
+    {
+        $clubs = Club::latest()->paginate(15);
+        return view('admin.clubs.index', compact('clubs'));
+    }
+
+    public function create()
+    {
+        return view('admin.clubs.create');
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name'  => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'logo'  => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+        ]);
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+        }
+
+        Club::create($data);
+
+        return redirect()->route('admin.clubs.index')->with('success', 'Club created successfully.');
+    }
+
+    public function show(Club $club)
+    {
+        $club->load(['members', 'feeRates']);
+        return view('admin.clubs.show', compact('club'));
+    }
+
+    public function edit(Club $club)
+    {
+        return view('admin.clubs.edit', compact('club'));
+    }
+
+    public function update(Request $request, Club $club)
+    {
+        $data = $request->validate([
+            'name'      => 'required|string|max:255',
+            'email'     => 'nullable|email|max:255',
+            'logo'      => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'is_active' => 'boolean',
+        ]);
+
+        if ($request->hasFile('logo')) {
+            if ($club->logo) {
+                Storage::disk('public')->delete($club->logo);
+            }
+            $data['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+        }
+
+        $data['is_active'] = $request->boolean('is_active');
+        $club->update($data);
+
+        return redirect()->route('admin.clubs.index')->with('success', 'Club updated successfully.');
+    }
+
+    public function destroy(Club $club)
+    {
+        if ($club->logo) {
+            Storage::disk('public')->delete($club->logo);
+        }
+        $club->delete();
+
+        return redirect()->route('admin.clubs.index')->with('success', 'Club deleted.');
+    }
+}
