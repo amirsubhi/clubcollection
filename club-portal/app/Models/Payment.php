@@ -10,6 +10,7 @@ class Payment extends Model
         'club_id', 'user_id', 'recorded_by', 'amount', 'frequency',
         'period_start', 'period_end', 'due_date', 'paid_date',
         'status', 'reference', 'discount_id', 'notes',
+        'bill_code', 'transaction_id',
     ];
 
     protected function casts(): array

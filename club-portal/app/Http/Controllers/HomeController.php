@@ -25,6 +25,11 @@ class HomeController extends Controller
     {
         $user = auth()->user();
 
+        // Pure members go straight to member portal
+        if ($user->role === 'member') {
+            return redirect()->route('member.dashboard');
+        }
+
         if ($user->isSuperAdmin()) {
             $totalClubs   = \App\Models\Club::count();
             $totalMembers = \App\Models\User::where('role', 'member')->count();

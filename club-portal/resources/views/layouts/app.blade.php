@@ -31,6 +31,9 @@
         <a href="{{ route('home') }}" class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}">
             <i class="bi bi-speedometer2 me-2"></i>Dashboard
         </a>
+        <a href="{{ route('member.dashboard') }}" class="nav-link {{ request()->routeIs('member.*') ? 'active' : '' }}">
+            <i class="bi bi-person-badge me-2"></i>My Member Portal
+        </a>
 
         @if(auth()->user()->isSuperAdmin())
         <div class="nav-section mt-2">Super Admin</div>
