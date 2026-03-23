@@ -7,6 +7,51 @@
     <div>
         <h5 class="mb-0 fw-bold">{{ $club->name }} — My Payments</h5>
     </div>
+    {{-- Year Filter --}}
+    <form method="GET" class="ms-auto d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Year:</label>
+        <select name="year" class="form-select form-select-sm" style="width:100px" onchange="this.form.submit()">
+            @foreach($years as $yr)
+                <option value="{{ $yr }}" {{ $yr == $selectedYear ? 'selected' : '' }}>{{ $yr }}</option>
+            @endforeach
+        </select>
+    </form>
+</div>
+
+{{-- Annual Summary Cards --}}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 bg-success bg-opacity-10">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-success fs-6">RM {{ number_format($annualSummary['paid'], 2) }}</div>
+                <div class="text-muted small">Paid ({{ $annualSummary['paid_count'] }}x)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 bg-warning bg-opacity-10">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-warning fs-6">RM {{ number_format($annualSummary['pending'], 2) }}</div>
+                <div class="text-muted small">Pending</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 bg-danger bg-opacity-10">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-danger fs-6">RM {{ number_format($annualSummary['overdue'], 2) }}</div>
+                <div class="text-muted small">Overdue</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 bg-primary bg-opacity-10">
+            <div class="card-body text-center py-3">
+                <div class="fw-bold text-primary fs-6">RM {{ number_format($annualSummary['total'], 2) }}</div>
+                <div class="text-muted small">Total {{ $selectedYear }}</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Pay Future Period --}}
@@ -39,9 +84,13 @@
     </div>
 </div>
 
-{{-- Payment History --}}
+{{-- Payment List --}}
 <div class="card shadow-sm">
-    <div class="card-header fw-semibold">Payment History</div>
+    <div class="card-header fw-semibold d-flex align-items-center gap-2">
+        <i class="bi bi-receipt me-1"></i>
+        Payments — {{ $selectedYear }}
+        <span class="badge bg-secondary ms-1">{{ $payments->total() }}</span>
+    </div>
     <div class="list-group list-group-flush">
         @forelse($payments as $payment)
         <div class="list-group-item py-3">
@@ -92,11 +141,11 @@
         </div>
         @empty
         <div class="list-group-item text-muted text-center py-5">
-            <i class="bi bi-wallet2 fs-2 d-block mb-2"></i>
-            No payment records yet.
+            <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+            No payments recorded for {{ $selectedYear }}.
         </div>
         @endforelse
     </div>
 </div>
-<div class="mt-3">{{ $payments->links() }}</div>
+<div class="mt-3">{{ $payments->appends(['year' => $selectedYear])->links() }}</div>
 @endsection
