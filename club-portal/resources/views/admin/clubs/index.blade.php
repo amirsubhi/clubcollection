@@ -20,6 +20,7 @@
                     <th>Club</th>
                     <th>Email</th>
                     <th>Members</th>
+                    <th>Payment Gateway</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -41,6 +42,18 @@
                     </td>
                     <td class="text-muted">{{ $club->email ?? '—' }}</td>
                     <td>{{ $club->members()->count() }}</td>
+                    <td>
+                        @if($club->hasToyyibPayCredentials())
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="bi bi-check-circle me-1"></i>Configured
+                            </span>
+                        @else
+                            <a href="{{ route('admin.clubs.edit', $club) }}"
+                               class="badge bg-warning-subtle text-warning border border-warning-subtle text-decoration-none">
+                                <i class="bi bi-exclamation-circle me-1"></i>Not Set
+                            </a>
+                        @endif
+                    </td>
                     <td>
                         @if($club->is_active)
                             <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
@@ -64,7 +77,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">No clubs yet. <a href="{{ route('admin.clubs.create') }}">Create one</a>.</td>
+                    <td colspan="6" class="text-center text-muted py-4">No clubs yet. <a href="{{ route('admin.clubs.create') }}">Create one</a>.</td>
                 </tr>
                 @endforelse
             </tbody>

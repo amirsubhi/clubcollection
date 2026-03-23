@@ -67,15 +67,17 @@ class PaymentController extends Controller
             return back()->with('error', 'This payment has already been paid.');
         }
 
-        if (!$this->toyyibPay->isConfigured()) {
-            return back()->with('error', 'Payment gateway is not configured yet. Please contact admin.');
+        $club = $payment->club;
+
+        if (!$this->toyyibPay->isConfiguredForClub($club)) {
+            return back()->with('error', 'Online payment is not available for this club yet. Please contact the club administrator.');
         }
 
-        $user    = auth()->user();
-        $club    = $payment->club;
-        $refNo   = 'PAY-' . $payment->id . '-' . time();
+        $user  = auth()->user();
+        $refNo = 'PAY-' . $payment->id . '-' . time();
 
         $billCode = $this->toyyibPay->createBill([
+            'club'         => $club,   // service picks up club's own credentials
             'bill_name'    => "Club Fee – {$club->name}",
             'description'  => "Payment for {$payment->period_start->format('M Y')} to {$payment->period_end->format('M Y')}",
             'amount'       => $payment->amount,

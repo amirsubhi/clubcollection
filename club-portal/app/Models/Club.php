@@ -6,7 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class Club extends Model
 {
-    protected $fillable = ['name', 'logo', 'email', 'is_active'];
+    protected $fillable = [
+        'name', 'logo', 'email', 'is_active',
+        'toyyibpay_secret_key', 'toyyibpay_category_code',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            // Secret key is encrypted at rest using the APP_KEY
+            'toyyibpay_secret_key' => 'encrypted',
+        ];
+    }
+
+    /**
+     * Check whether this club has its own ToyyibPay credentials configured.
+     */
+    public function hasToyyibPayCredentials(): bool
+    {
+        return !empty($this->toyyibpay_secret_key)
+            && !empty($this->toyyibpay_category_code);
+    }
 
     public function members()
     {

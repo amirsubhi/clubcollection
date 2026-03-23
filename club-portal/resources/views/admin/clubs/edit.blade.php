@@ -41,6 +41,50 @@
                             <label class="form-check-label" for="isActive">Active</label>
                         </div>
                     </div>
+
+                    {{-- ToyyibPay --}}
+                    <div class="border rounded p-3 mb-4 {{ $club->hasToyyibPayCredentials() ? 'border-success bg-success bg-opacity-10' : 'bg-light' }}">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-credit-card-2-front {{ $club->hasToyyibPayCredentials() ? 'text-success' : 'text-secondary' }}"></i>
+                            <span class="fw-semibold">ToyyibPay Payment Gateway</span>
+                            @if($club->hasToyyibPayCredentials())
+                                <span class="badge bg-success ms-auto">
+                                    <i class="bi bi-check-circle me-1"></i>Configured
+                                </span>
+                            @else
+                                <span class="badge bg-warning text-dark ms-auto">Not Configured</span>
+                            @endif
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Members can only pay online when this club has valid credentials.
+                            Leave the secret key blank to keep the existing one.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">User Secret Key</label>
+                            <div class="input-group input-group-sm">
+                                <input type="password" name="toyyibpay_secret_key" id="secretKeyInput"
+                                       class="form-control @error('toyyibpay_secret_key') is-invalid @enderror"
+                                       value="{{ old('toyyibpay_secret_key') }}"
+                                       placeholder="{{ $club->hasToyyibPayCredentials() ? '••••••••••••••••  (leave blank to keep current)' : 'Enter User Secret Key' }}"
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        onclick="toggleSecret()" title="Show/hide">
+                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                </button>
+                            </div>
+                            @error('toyyibpay_secret_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold small">Category Code</label>
+                            <input type="text" name="toyyibpay_category_code"
+                                   class="form-control form-control-sm @error('toyyibpay_category_code') is-invalid @enderror"
+                                   value="{{ old('toyyibpay_category_code', $club->toyyibpay_category_code) }}"
+                                   placeholder="e.g. abc123xyz">
+                            <div class="form-text">From ToyyibPay → My Category → Category Code.</div>
+                            @error('toyyibpay_category_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i>Update Club
@@ -52,4 +96,19 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+function toggleSecret() {
+    const input = document.getElementById('secretKeyInput');
+    const icon  = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+</script>
+@endpush
 @endsection

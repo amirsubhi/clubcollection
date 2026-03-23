@@ -23,14 +23,20 @@ class ClubController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'logo'  => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'name'                      => 'required|string|max:255',
+            'email'                     => 'nullable|email|max:255',
+            'logo'                      => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'toyyibpay_secret_key'      => 'nullable|string|max:255',
+            'toyyibpay_category_code'   => 'nullable|string|max:100',
         ]);
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('clubs/logos', 'public');
         }
+
+        // Store empty string as null so hasToyyibPayCredentials() works correctly
+        $data['toyyibpay_secret_key']    = $data['toyyibpay_secret_key'] ?: null;
+        $data['toyyibpay_category_code'] = $data['toyyibpay_category_code'] ?: null;
 
         Club::create($data);
 
@@ -51,10 +57,12 @@ class ClubController extends Controller
     public function update(Request $request, Club $club)
     {
         $data = $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'nullable|email|max:255',
-            'logo'      => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-            'is_active' => 'boolean',
+            'name'                      => 'required|string|max:255',
+            'email'                     => 'nullable|email|max:255',
+            'logo'                      => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'is_active'                 => 'boolean',
+            'toyyibpay_secret_key'      => 'nullable|string|max:255',
+            'toyyibpay_category_code'   => 'nullable|string|max:100',
         ]);
 
         if ($request->hasFile('logo')) {
@@ -65,6 +73,13 @@ class ClubController extends Controller
         }
 
         $data['is_active'] = $request->boolean('is_active');
+
+        // Preserve existing key if field was left blank (admin didn't intend to clear it)
+        if (empty($data['toyyibpay_secret_key'])) {
+            unset($data['toyyibpay_secret_key']);
+        }
+        $data['toyyibpay_category_code'] = $data['toyyibpay_category_code'] ?: null;
+
         $club->update($data);
 
         return redirect()->route('admin.clubs.index')->with('success', 'Club updated successfully.');
