@@ -11,6 +11,7 @@ A self-hosted club membership management system built with Laravel 11. Designed 
 - **ToyyibPay integration** — online payment with per-club credentials and webhook handling
 - **Expense management** — track club expenses by category
 - **Discount management** — apply discounts to member payments
+- **Financial ledger** — chronological ledger with running balance, monthly breakdown, outstanding payments panel; exportable as CSV (Excel-ready) or PDF (A4 landscape, suitable for AGM / treasurer reports)
 - **Member management** — add members individually or bulk-import via CSV
 - **Installation wizard** — guided setup on first run, no manual artisan commands needed
 - **Welcome emails** — temporary password sent to new members automatically
@@ -57,6 +58,29 @@ php artisan db:seed
 
 The seeder creates a super admin at `superadmin@clubportal.com` with password `Admin@123`. **Change this immediately after login.**
 
+## Financial Ledger & Exports
+
+Each club has a **Ledger** page (`/admin/clubs/{club}/ledger`) accessible from the sidebar and the dashboard.
+
+**Filters:**
+- Date range (defaults to current year)
+- Opening balance — enter the club's balance prior to this system to get an accurate running balance
+
+**On-screen sections:**
+- Summary cards (opening, total in, total out, closing balance)
+- Monthly breakdown table with running balance
+- Outstanding payments panel (overdue + pending, all-time)
+- Full chronological transaction table
+
+**Exports** (both formats respect the applied filters and opening balance):
+
+| Format | Best for |
+|--------|----------|
+| CSV (UTF-8 BOM) | Spreadsheets — opens natively in Excel and Google Sheets |
+| PDF (A4 landscape) | Formal reports — AGM, committee meetings, treasurer's archive |
+
+Export buttons appear on both the Ledger page and the club Dashboard header.
+
 ## CSV Member Import
 
 Admins can bulk-import members via CSV upload from the Members page.
@@ -77,11 +101,19 @@ This project uses [ToyyibPay](https://toyyibpay.com) for online payments. Config
 - **Database:** SQLite (default) — switchable to MySQL/PostgreSQL via `.env`
 - **Frontend:** Bootstrap 5.3 + Bootstrap Icons
 - **Payment:** ToyyibPay
+- **PDF generation:** [barryvdh/laravel-dompdf](https://github.com/barryvdh/laravel-dompdf) (ledger reports)
 - **Mail:** Configurable (SMTP, Mailgun, log, etc.)
 
 ## Security
 
 This project follows standard Laravel security practices including CSRF protection, input validation, role-based access control, and security headers (CSP, HSTS, X-Frame-Options, etc.).
+
+**Authentication layers** on every admin page:
+1. `auth` — session-based authentication
+2. `two_factor` — enforces 2FA completion before access
+3. `club_admin` — verifies the authenticated user holds an `admin` role for the requested club (super admins bypass this)
+
+All user-supplied inputs (dates, amounts, IDs) are validated before use. Queries use parameterised bindings only — no raw SQL with user input. Financial exports include `Cache-Control: no-store` headers and safe `Content-Disposition: attachment` to prevent browser caching and content-sniffing.
 
 **You are responsible for securing your own deployment.** Before going live:
 

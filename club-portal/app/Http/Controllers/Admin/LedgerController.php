@@ -149,19 +149,26 @@ class LedgerController extends Controller
 
     private function parseFilters(): array
     {
+        // Validate all three inputs before touching them
+        request()->validate([
+            'from'            => 'nullable|date_format:Y-m-d',
+            'to'              => 'nullable|date_format:Y-m-d',
+            'opening_balance' => 'nullable|numeric|min:0|max:999999999.99',
+        ]);
+
         $from = request('from')
-            ? Carbon::parse(request('from'))->startOfDay()
+            ? Carbon::createFromFormat('Y-m-d', request('from'))->startOfDay()
             : Carbon::now()->startOfYear();
 
         $to = request('to')
-            ? Carbon::parse(request('to'))->endOfDay()
+            ? Carbon::createFromFormat('Y-m-d', request('to'))->endOfDay()
             : Carbon::now()->endOfDay();
 
         if ($from->gt($to)) {
             $from = $to->copy()->startOfYear();
         }
 
-        $openingBalance = (float) preg_replace('/[^0-9.\-]/', '', request('opening_balance', '0'));
+        $openingBalance = (float) request('opening_balance', 0);
 
         return compact('from', 'to', 'openingBalance');
     }
