@@ -8,7 +8,7 @@
         <div class="card shadow-sm">
             <div class="card-header fw-semibold">Add Category</div>
             <div class="card-body p-4">
-                <form action="{{ route('admin.expense-categories.store', $club) }}" method="POST">
+                <form action="{{ route('admin.clubs.expense-categories.store', $club) }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>

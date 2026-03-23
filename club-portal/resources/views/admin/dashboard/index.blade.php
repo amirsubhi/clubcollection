@@ -206,7 +206,7 @@
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">Recent Payments</span>
-                <a href="{{ route('admin.payments.index', $club) }}" class="btn btn-sm btn-outline-secondary">View All</a>
+                <a href="{{ route('admin.clubs.payments.index', $club) }}" class="btn btn-sm btn-outline-secondary">View All</a>
             </div>
             <div class="list-group list-group-flush">
                 @forelse($recentPayments as $p)
@@ -228,7 +228,7 @@
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">Recent Expenses</span>
-                <a href="{{ route('admin.expenses.index', $club) }}" class="btn btn-sm btn-outline-secondary">View All</a>
+                <a href="{{ route('admin.clubs.expenses.index', $club) }}" class="btn btn-sm btn-outline-secondary">View All</a>
             </div>
             <div class="list-group list-group-flush">
                 @forelse($recentExpenses as $e)

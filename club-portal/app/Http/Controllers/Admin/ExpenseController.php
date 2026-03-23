@@ -82,7 +82,7 @@ class ExpenseController extends Controller
             ['amount' => $data['amount'], 'description' => $data['description'], 'expense_date' => $data['expense_date']]
         );
 
-        return redirect()->route('admin.expenses.index', $club)
+        return redirect()->route('admin.clubs.expenses.index', $club)
             ->with('success', 'Expense recorded successfully.');
     }
 
@@ -158,7 +158,7 @@ class ExpenseController extends Controller
 
         AuditService::log('expense.deleted', $summary, null, $clubId, $old);
 
-        return redirect()->route('admin.expenses.index', $club)
+        return redirect()->route('admin.clubs.expenses.index', $club)
             ->with('success', 'Expense deleted.');
     }
 }

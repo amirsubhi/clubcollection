@@ -7,7 +7,7 @@
     <div class="col-lg-5">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('admin.discounts.store', $club) }}" method="POST">
+                <form action="{{ route('admin.clubs.discounts.store', $club) }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
@@ -51,7 +51,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Create Discount</button>
-                        <a href="{{ route('admin.discounts.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('admin.clubs.discounts.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

@@ -5,7 +5,7 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Manage event or special discounts for this club.</p>
-    <a href="{{ route('admin.discounts.create', $club) }}" class="btn btn-primary btn-sm">
+    <a href="{{ route('admin.clubs.discounts.create', $club) }}" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-lg me-1"></i>New Discount
     </a>
 </div>

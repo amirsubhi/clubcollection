@@ -68,8 +68,8 @@
             </div>
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-                <a href="{{ route('admin.payments.index', $club) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
-                <a href="{{ route('admin.payments.create', $club) }}" class="btn btn-sm btn-success ms-auto">
+                <a href="{{ route('admin.clubs.payments.index', $club) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                <a href="{{ route('admin.clubs.payments.create', $club) }}" class="btn btn-sm btn-success ms-auto">
                     <i class="bi bi-plus-lg me-1"></i>Add
                 </a>
             </div>

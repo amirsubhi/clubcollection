@@ -132,7 +132,7 @@ class PaymentController extends Controller
             $club->id
         );
 
-        return redirect()->route('admin.payments.index', $club)
+        return redirect()->route('admin.clubs.payments.index', $club)
             ->with('success', 'Payment record created.');
     }
 
@@ -227,7 +227,7 @@ class PaymentController extends Controller
 
         AuditService::log('payment.deleted', $summary, null, $clubId, $old);
 
-        return redirect()->route('admin.payments.index', $club)
+        return redirect()->route('admin.clubs.payments.index', $club)
             ->with('success', 'Payment record deleted.');
     }
 }

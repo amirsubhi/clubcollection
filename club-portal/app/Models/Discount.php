@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Discount extends Model
 {
+    use HasFactory;
     protected $fillable = ['club_id', 'name', 'type', 'value', 'valid_from', 'valid_to', 'is_active'];
 
     protected function casts(): array

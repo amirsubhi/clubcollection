@@ -36,8 +36,8 @@ class ClubController extends Controller
         }
 
         // Store empty string as null so hasToyyibPayCredentials() works correctly
-        $data['toyyibpay_secret_key']    = $data['toyyibpay_secret_key'] ?: null;
-        $data['toyyibpay_category_code'] = $data['toyyibpay_category_code'] ?: null;
+        $data['toyyibpay_secret_key']    = ($data['toyyibpay_secret_key'] ?? null) ?: null;
+        $data['toyyibpay_category_code'] = ($data['toyyibpay_category_code'] ?? null) ?: null;
 
         $club = Club::create($data);
 
@@ -81,7 +81,7 @@ class ClubController extends Controller
         if (empty($data['toyyibpay_secret_key'])) {
             unset($data['toyyibpay_secret_key']);
         }
-        $data['toyyibpay_category_code'] = $data['toyyibpay_category_code'] ?: null;
+        $data['toyyibpay_category_code'] = ($data['toyyibpay_category_code'] ?? null) ?: null;
 
         $old = $club->only(['name', 'email', 'is_active']);
         $club->update($data);

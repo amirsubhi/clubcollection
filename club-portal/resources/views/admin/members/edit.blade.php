@@ -51,7 +51,7 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i>Update Member
                         </button>
-                        <a href="{{ route('admin.members.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('admin.clubs.members.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

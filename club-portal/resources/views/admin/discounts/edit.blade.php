@@ -49,7 +49,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Update</button>
-                        <a href="{{ route('admin.discounts.index', $discount->club) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('admin.clubs.discounts.index', $discount->club) }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

@@ -5,7 +5,7 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Current and historical fee rates for this club.</p>
-    <a href="{{ route('admin.fee-rates.create', $club) }}" class="btn btn-primary">
+    <a href="{{ route('admin.clubs.fee-rates.create', $club) }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i>Set New Rates
     </a>
 </div>

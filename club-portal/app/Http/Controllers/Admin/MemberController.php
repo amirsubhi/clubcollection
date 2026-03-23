@@ -75,7 +75,7 @@ class MemberController extends Controller
             ['role' => $data['role'], 'job_level' => $data['job_level'], 'joined_date' => $data['joined_date']]
         );
 
-        return redirect()->route('admin.members.index', $club)
+        return redirect()->route('admin.clubs.members.index', $club)
             ->with('success', "Member added. Login credentials have been sent to {$user->email}.");
     }
 
@@ -94,6 +94,14 @@ class MemberController extends Controller
             'joined_date' => 'required|date',
             'is_active'   => 'boolean',
         ]);
+
+        // On shallow routes {member}, $club is not bound from the URL; resolve it
+        if (! $club->id) {
+            $club = auth()->user()->clubs()
+                ->wherePivot('role', 'admin')
+                ->whereHas('members', fn ($q) => $q->where('users.id', $member->id))
+                ->first();
+        }
 
         $pivot  = $club->members()->where('users.id', $member->id)->first()?->pivot;
         $oldPivot = $pivot ? [
@@ -122,12 +130,20 @@ class MemberController extends Controller
             ['role' => $data['role'], 'job_level' => $data['job_level'], 'is_active' => $request->boolean('is_active')]
         );
 
-        return redirect()->route('admin.members.index', $club)
+        return redirect()->route('admin.clubs.members.index', $club)
             ->with('success', 'Member updated successfully.');
     }
 
     public function destroy(Club $club, User $member)
     {
+        // On shallow routes {member}, $club is not bound from the URL; resolve it
+        if (! $club->id) {
+            $club = auth()->user()->clubs()
+                ->wherePivot('role', 'admin')
+                ->whereHas('members', fn ($q) => $q->where('users.id', $member->id))
+                ->first();
+        }
+
         $club->members()->detach($member->id);
 
         AuditService::log(
@@ -137,7 +153,7 @@ class MemberController extends Controller
             $club->id
         );
 
-        return redirect()->route('admin.members.index', $club)
+        return redirect()->route('admin.clubs.members.index', $club)
             ->with('success', 'Member removed from club.');
     }
 

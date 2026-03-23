@@ -7,7 +7,7 @@
     <div class="col-lg-7">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('admin.payments.store', $club) }}" method="POST" id="paymentForm">
+                <form action="{{ route('admin.clubs.payments.store', $club) }}" method="POST" id="paymentForm">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
@@ -85,7 +85,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Create Payment</button>
-                        <a href="{{ route('admin.payments.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('admin.clubs.payments.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

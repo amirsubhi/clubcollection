@@ -36,7 +36,7 @@
             </div>
             <div class="card-footer d-flex gap-2">
                 <a href="{{ route('admin.expenses.edit', $expense) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil me-1"></i>Edit</a>
-                <a href="{{ route('admin.expenses.index', $expense->club) }}" class="btn btn-outline-secondary btn-sm ms-auto">Back</a>
+                <a href="{{ route('admin.clubs.expenses.index', $expense->club) }}" class="btn btn-outline-secondary btn-sm ms-auto">Back</a>
             </div>
         </div>
     </div>

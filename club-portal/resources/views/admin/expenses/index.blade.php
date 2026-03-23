@@ -7,7 +7,7 @@
     <div class="card border-0 bg-danger bg-opacity-10 px-3 py-2">
         <span class="small text-danger fw-semibold">This Month Total: RM {{ number_format($totalThisMonth, 2) }}</span>
     </div>
-    <a href="{{ route('admin.expenses.create', $club) }}" class="btn btn-primary btn-sm">
+    <a href="{{ route('admin.clubs.expenses.create', $club) }}" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-lg me-1"></i>Record Expense
     </a>
 </div>
@@ -30,8 +30,8 @@
             </div>
             <div class="col-md-4 d-flex gap-2">
                 <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-                <a href="{{ route('admin.expenses.index', $club) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
-                <a href="{{ route('admin.expense-categories.index', $club) }}" class="btn btn-sm btn-outline-secondary ms-auto">
+                <a href="{{ route('admin.clubs.expenses.index', $club) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                <a href="{{ route('admin.clubs.expense-categories.index', $club) }}" class="btn btn-sm btn-outline-secondary ms-auto">
                     <i class="bi bi-tags me-1"></i>Categories
                 </a>
             </div>

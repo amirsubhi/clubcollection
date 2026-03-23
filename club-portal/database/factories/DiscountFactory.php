@@ -20,7 +20,7 @@ class DiscountFactory extends Factory
             'name'       => fake()->words(2, true),
             'type'       => 'percentage',
             'value'      => 10.00,
-            'valid_from' => null,
+            'valid_from' => now()->toDateString(),
             'valid_to'   => null,
             'is_active'  => true,
         ];

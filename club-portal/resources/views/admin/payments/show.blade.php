@@ -72,7 +72,7 @@
                 <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-pencil me-1"></i>Edit
                 </a>
-                <a href="{{ route('admin.payments.index', $payment->club) }}" class="btn btn-outline-secondary btn-sm ms-auto">
+                <a href="{{ route('admin.clubs.payments.index', $payment->club) }}" class="btn btn-outline-secondary btn-sm ms-auto">
                     Back to List
                 </a>
             </div>

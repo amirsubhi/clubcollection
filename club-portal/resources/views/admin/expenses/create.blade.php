@@ -7,7 +7,7 @@
     <div class="col-lg-6">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('admin.expenses.store', $club) }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('admin.clubs.expenses.store', $club) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
@@ -56,7 +56,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Expense</button>
-                        <a href="{{ route('admin.expenses.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('admin.clubs.expenses.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

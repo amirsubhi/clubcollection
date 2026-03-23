@@ -78,7 +78,7 @@
                         <a href="{{ route('admin.members.template', $club) }}" class="btn btn-outline-secondary">
                             <i class="bi bi-download me-1"></i>Download Template
                         </a>
-                        <a href="{{ route('admin.members.index', $club) }}" class="btn btn-link text-secondary ms-auto">
+                        <a href="{{ route('admin.clubs.members.index', $club) }}" class="btn btn-link text-secondary ms-auto">
                             Cancel
                         </a>
                     </div>

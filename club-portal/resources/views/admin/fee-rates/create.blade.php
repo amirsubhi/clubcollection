@@ -11,7 +11,7 @@
         </div>
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('admin.fee-rates.store', $club) }}" method="POST">
+                <form action="{{ route('admin.clubs.fee-rates.store', $club) }}" method="POST">
                     @csrf
                     @foreach($jobLevels as $key => $label)
                     <div class="card mb-3 border-0 bg-light p-3 rounded">
@@ -45,7 +45,7 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i>Save Rates
                         </button>
-                        <a href="{{ route('admin.fee-rates.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('admin.clubs.fee-rates.index', $club) }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
