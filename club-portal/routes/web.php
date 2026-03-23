@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ExpenseCategoryController;
 use App\Http\Controllers\Admin\DiscountController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LedgerController;
 use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
@@ -99,6 +100,10 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow();
             Route::resource('clubs.discounts', DiscountController::class)->shallow();
             Route::get('clubs/{club}/audit-logs', [AuditLogController::class, 'clubLogs'])->name('clubs.audit-logs');
+
+            Route::get('clubs/{club}/ledger',            [LedgerController::class, 'index'])->name('clubs.ledger');
+            Route::get('clubs/{club}/ledger/export',     [LedgerController::class, 'export'])->name('clubs.ledger.export');
+            Route::get('clubs/{club}/ledger/export-pdf', [LedgerController::class, 'exportPdf'])->name('clubs.ledger.export-pdf');
         });
     });
 

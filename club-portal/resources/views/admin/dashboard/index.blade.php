@@ -7,8 +7,9 @@
 @endpush
 
 @section('content')
-{{-- Period Selector --}}
-<form method="GET" class="d-flex gap-2 align-items-center mb-4">
+{{-- Period Selector + Ledger shortcut --}}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+<form method="GET" class="d-flex gap-2 align-items-center">
     <select name="month" class="form-select form-select-sm" style="width:auto">
         @foreach(range(1,12) as $m)
             <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option>
@@ -21,6 +22,19 @@
     </select>
     <button type="submit" class="btn btn-sm btn-primary">View</button>
 </form>
+<div class="d-flex gap-2">
+    @php $ledgerParams = '?' . http_build_query(['from' => date('Y-01-01'), 'to' => date('Y-m-d')]); @endphp
+    <a href="{{ route('admin.clubs.ledger', $club) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-journal-bookmark me-1"></i>Ledger
+    </a>
+    <a href="{{ route('admin.clubs.ledger.export', $club) . $ledgerParams }}" class="btn btn-sm btn-success">
+        <i class="bi bi-filetype-csv me-1"></i>Export CSV
+    </a>
+    <a href="{{ route('admin.clubs.ledger.export-pdf', $club) . $ledgerParams }}" class="btn btn-sm btn-danger">
+        <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+    </a>
+</div>
+</div>
 
 {{-- Top KPI Cards --}}
 <div class="row g-3 mb-4">
