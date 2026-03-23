@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InstallController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Admin\ClubController;
 use App\Http\Controllers\Admin\MemberController;
@@ -15,55 +16,71 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboard;
 use App\Http\Controllers\Member\PaymentController as MemberPayment;
 
-Route::get('/', function () {
-    return redirect()->route('login');
+// ── Installation wizard (only accessible when NOT installed) ────────────────
+Route::middleware('redirect_if_installed')->group(function () {
+    Route::get('/install', [InstallController::class, 'index'])->name('install');
+    Route::post('/install', [InstallController::class, 'process'])->name('install.process');
 });
 
-// Register disabled; login throttled to 5 attempts / minute per IP+email
-Auth::routes(['register' => false]);
-
-// Override login POST with explicit rate limiting
-Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
-    ->middleware('throttle:5,1')
-    ->name('login');  // overrides the one from Auth::routes()
-
-// ToyyibPay webhook — no auth, exempt from CSRF
+// ── ToyyibPay webhook — external, no install check, no CSRF ────────────────
 Route::post('/webhook/toyyibpay', [WebhookController::class, 'toyyibpay'])
     ->name('webhook.toyyibpay')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+// ── All other routes — require app to be installed ─────────────────────────
+Route::middleware('check_installed')->group(function () {
 
-    // ── Member Portal ───────────────────────────────────────────
-    Route::middleware(['member'])->prefix('my')->name('member.')->group(function () {
-        Route::get('dashboard', [MemberDashboard::class, 'index'])->name('dashboard');
-
-        Route::get('clubs/{club}/payments', [MemberPayment::class, 'index'])->name('payments.index');
-        Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->name('payments.generate-future');
-        Route::get('payments/{payment}/invoice', [MemberPayment::class, 'invoice'])->name('payments.invoice');
-        Route::get('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
-        Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
+    Route::get('/', function () {
+        return redirect()->route('login');
     });
 
-    // ── Super Admin ──────────────────────────────────────────────
-    Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::resource('clubs', ClubController::class);
-        Route::resource('admins', AdminUserController::class);
+    // Register disabled; login throttled to 5 attempts / minute per IP+email
+    Auth::routes(['register' => false]);
+
+    // Override login POST with explicit rate limiting
+    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('login');  // overrides the one from Auth::routes()
+
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+        // ── Member Portal ────────────────────────────────────────────
+        Route::middleware(['member'])->prefix('my')->name('member.')->group(function () {
+            Route::get('dashboard', [MemberDashboard::class, 'index'])->name('dashboard');
+
+            Route::get('clubs/{club}/payments', [MemberPayment::class, 'index'])->name('payments.index');
+            Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->name('payments.generate-future');
+            Route::get('payments/{payment}/invoice', [MemberPayment::class, 'invoice'])->name('payments.invoice');
+            Route::get('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
+            Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
+        });
+
+        // ── Super Admin ──────────────────────────────────────────────
+        Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
+            Route::resource('clubs', ClubController::class);
+            Route::resource('admins', AdminUserController::class);
+        });
+
+        // ── Club Admin + Super Admin ─────────────────────────────────
+        Route::middleware(['club_admin'])->prefix('admin')->name('admin.')->group(function () {
+            // Member import routes must come before the resource to avoid {member} wildcard collision
+            Route::get('clubs/{club}/members/import', [MemberController::class, 'import'])->name('members.import');
+            Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->name('members.import.process');
+            Route::get('clubs/{club}/members/template', [MemberController::class, 'downloadTemplate'])->name('members.template');
+
+            Route::resource('clubs.members', MemberController::class)->shallow();
+            Route::resource('clubs.fee-rates', FeeRateController::class)->shallow();
+
+            Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
+
+            Route::resource('clubs.payments', PaymentController::class)->shallow();
+            Route::patch('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid'])->name('payments.mark-paid');
+
+            Route::resource('clubs.expenses', ExpenseController::class)->shallow();
+            Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow();
+            Route::resource('clubs.discounts', DiscountController::class)->shallow();
+        });
     });
 
-    // ── Club Admin + Super Admin ─────────────────────────────────
-    Route::middleware(['club_admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::resource('clubs.members', MemberController::class)->shallow();
-        Route::resource('clubs.fee-rates', FeeRateController::class)->shallow();
-
-        Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
-
-        Route::resource('clubs.payments', PaymentController::class)->shallow();
-        Route::patch('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid'])->name('payments.mark-paid');
-
-        Route::resource('clubs.expenses', ExpenseController::class)->shallow();
-        Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow();
-        Route::resource('clubs.discounts', DiscountController::class)->shallow();
-    });
 });

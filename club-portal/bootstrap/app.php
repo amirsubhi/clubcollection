@@ -17,9 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'super_admin' => \App\Http\Middleware\SuperAdmin::class,
-            'club_admin'  => \App\Http\Middleware\ClubAdmin::class,
-            'member'      => \App\Http\Middleware\MemberOnly::class,
+            'super_admin'           => \App\Http\Middleware\SuperAdmin::class,
+            'club_admin'            => \App\Http\Middleware\ClubAdmin::class,
+            'member'                => \App\Http\Middleware\MemberOnly::class,
+            'check_installed'       => \App\Http\Middleware\CheckInstalled::class,
+            'redirect_if_installed' => \App\Http\Middleware\RedirectIfInstalled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

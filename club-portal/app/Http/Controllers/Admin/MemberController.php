@@ -105,4 +105,123 @@ class MemberController extends Controller
         return redirect()->route('admin.members.index', $club)
             ->with('success', 'Member removed from club.');
     }
+
+    public function import(Club $club)
+    {
+        return view('admin.members.import', compact('club'));
+    }
+
+    public function importProcess(Request $request, Club $club)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
+        $handle   = fopen($request->file('file')->getRealPath(), 'r');
+        $imported = 0;
+        $errors   = [];
+        $row      = 0;
+
+        $validJobLevels = ['gm', 'agm', 'manager', 'executive', 'non_exec'];
+        $validRoles     = ['member', 'admin'];
+
+        while (($line = fgetcsv($handle)) !== false) {
+            $row++;
+
+            // Skip header row
+            if ($row === 1) {
+                continue;
+            }
+
+            // Expect: name, email, job_level, role, joined_date
+            if (count($line) < 5) {
+                $errors[] = ['row' => $row, 'email' => '—', 'reason' => 'Row has fewer than 5 columns.'];
+                continue;
+            }
+
+            [$name, $email, $jobLevel, $role, $joinedDate] = array_map('trim', array_slice($line, 0, 5));
+
+            // Validate fields
+            if (empty($name)) {
+                $errors[] = ['row' => $row, 'email' => $email ?: '—', 'reason' => 'Name is required.'];
+                continue;
+            }
+
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = ['row' => $row, 'email' => $email ?: '—', 'reason' => 'Invalid email address.'];
+                continue;
+            }
+
+            if (! in_array($jobLevel, $validJobLevels, true)) {
+                $errors[] = ['row' => $row, 'email' => $email, 'reason' => "Invalid job_level '{$jobLevel}'. Must be: " . implode(', ', $validJobLevels) . '.'];
+                continue;
+            }
+
+            if (! in_array($role, $validRoles, true)) {
+                $errors[] = ['row' => $row, 'email' => $email, 'reason' => "Invalid role '{$role}'. Must be: member or admin."];
+                continue;
+            }
+
+            if (! strtotime($joinedDate)) {
+                $errors[] = ['row' => $row, 'email' => $email, 'reason' => "Invalid joined_date '{$joinedDate}'. Use YYYY-MM-DD format."];
+                continue;
+            }
+
+            // Check for duplicate email
+            if (User::where('email', $email)->exists()) {
+                $errors[] = ['row' => $row, 'email' => $email, 'reason' => 'A user with this email already exists. Add them manually.'];
+                continue;
+            }
+
+            $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
+
+            $user = User::create([
+                'name'     => $name,
+                'email'    => $email,
+                'password' => Hash::make($temporaryPassword),
+                'role'     => $role === 'admin' ? 'admin' : 'member',
+            ]);
+
+            $club->members()->attach($user->id, [
+                'role'        => $role,
+                'job_level'   => $jobLevel,
+                'joined_date' => date('Y-m-d', strtotime($joinedDate)),
+                'is_active'   => true,
+            ]);
+
+            try {
+                Mail::to($user->email)->send(new MemberWelcome($user, $club, $temporaryPassword));
+            } catch (\Exception $e) {
+                Log::error('Failed to send welcome email during CSV import', [
+                    'user_id' => $user->id,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
+
+            $imported++;
+        }
+
+        fclose($handle);
+
+        return back()
+            ->with('import_imported', $imported)
+            ->with('import_errors', $errors);
+    }
+
+    public function downloadTemplate(Club $club)
+    {
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="members-import-template.csv"',
+        ];
+
+        $callback = function () {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['name', 'email', 'job_level', 'role', 'joined_date']);
+            fputcsv($handle, ['Ahmad Razif', 'razif@example.com', 'manager', 'member', date('Y-m-d')]);
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

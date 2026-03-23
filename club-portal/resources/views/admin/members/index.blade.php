@@ -5,9 +5,14 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">{{ $members->total() }} member(s) in this club.</p>
-    <a href="{{ route('admin.members.create', $club) }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i>Add Member
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.members.import', $club) }}" class="btn btn-outline-primary">
+            <i class="bi bi-upload me-1"></i>Import CSV
+        </a>
+        <a href="{{ route('admin.members.create', $club) }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Add Member
+        </a>
+    </div>
 </div>
 
 <div class="card shadow-sm">
