@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Discount;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 
 class DiscountController extends Controller
@@ -33,7 +34,14 @@ class DiscountController extends Controller
             'is_active'  => 'boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
-        $club->discounts()->create($data);
+        $discount = $club->discounts()->create($data);
+
+        AuditService::log(
+            'discount.created',
+            "Discount '{$data['name']}' ({$data['type']} {$data['value']}) created.",
+            $discount,
+            $club->id
+        );
 
         return redirect()->route('admin.discounts.index', $club)
             ->with('success', 'Discount created.');
@@ -57,7 +65,17 @@ class DiscountController extends Controller
             'is_active'  => 'boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active');
+        $old = $discount->only(['name', 'type', 'value', 'is_active']);
         $discount->update($data);
+
+        AuditService::log(
+            'discount.updated',
+            "Discount '{$discount->name}' updated.",
+            $discount,
+            $discount->club_id,
+            $old,
+            $discount->fresh()->only(['name', 'type', 'value', 'is_active'])
+        );
 
         return redirect()->route('admin.discounts.index', $discount->club)
             ->with('success', 'Discount updated.');
@@ -66,8 +84,13 @@ class DiscountController extends Controller
     public function destroy(Discount $discount)
     {
         $this->authorizeClubAdmin($discount->club);
-        $club = $discount->club;
+        $club    = $discount->club;
+        $clubId  = $club->id;
+        $old     = $discount->only(['name', 'type', 'value']);
         $discount->delete();
+
+        AuditService::log('discount.deleted', "Discount '{$old['name']}' deleted.", null, $clubId, $old);
+
         return redirect()->route('admin.discounts.index', $club)
             ->with('success', 'Discount deleted.');
     }

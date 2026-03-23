@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Expense;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -70,7 +71,16 @@ class ExpenseController extends Controller
         $data['club_id']     = $club->id;
         $data['recorded_by'] = auth()->id();
 
-        Expense::create($data);
+        $expense = Expense::create($data);
+
+        AuditService::log(
+            'expense.created',
+            "Expense of RM {$data['amount']} recorded ({$data['description']}) for {$data['expense_date']}.",
+            $expense,
+            $club->id,
+            [],
+            ['amount' => $data['amount'], 'description' => $data['description'], 'expense_date' => $data['expense_date']]
+        );
 
         return redirect()->route('admin.expenses.index', $club)
             ->with('success', 'Expense recorded successfully.');
@@ -117,7 +127,17 @@ class ExpenseController extends Controller
             $data['receipt'] = $request->file('receipt')->store('clubs/' . $expense->club_id . '/receipts', 'public');
         }
 
+        $old = $expense->only(['amount', 'description', 'expense_date', 'expense_category_id']);
         $expense->update($data);
+
+        AuditService::log(
+            'expense.updated',
+            "Expense #{$expense->id} updated (amount: {$old['amount']} → {$data['amount']}).",
+            $expense,
+            $expense->club_id,
+            $old,
+            $expense->fresh()->only(['amount', 'description', 'expense_date', 'expense_category_id'])
+        );
 
         return redirect()->route('admin.expenses.show', $expense)
             ->with('success', 'Expense updated.');
@@ -126,11 +146,17 @@ class ExpenseController extends Controller
     public function destroy(Expense $expense)
     {
         $this->authorizeClubAdmin($expense->club);
-        $club = $expense->club;
+        $club    = $expense->club;
+        $clubId  = $club->id;
+        $old     = $expense->only(['amount', 'description', 'expense_date']);
+        $summary = "Expense #{$expense->id} (RM {$expense->amount}) deleted.";
+
         if ($expense->receipt) {
             Storage::disk('public')->delete($expense->receipt);
         }
         $expense->delete();
+
+        AuditService::log('expense.deleted', $summary, null, $clubId, $old);
 
         return redirect()->route('admin.expenses.index', $club)
             ->with('success', 'Expense deleted.');

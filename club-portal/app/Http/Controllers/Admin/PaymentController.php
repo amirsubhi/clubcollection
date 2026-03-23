@@ -8,6 +8,7 @@ use App\Models\Club;
 use App\Models\Discount;
 use App\Models\FeeRate;
 use App\Models\Payment;
+use App\Services\AuditService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -109,7 +110,7 @@ class PaymentController extends Controller
             'yearly'    => $start->copy()->addYear()->subDay(),
         };
 
-        Payment::create([
+        $payment = Payment::create([
             'club_id'      => $club->id,
             'user_id'      => $data['user_id'],
             'recorded_by'  => auth()->id(),
@@ -123,6 +124,13 @@ class PaymentController extends Controller
             'discount_id'  => $data['discount_id'] ?? null,
             'notes'        => $data['notes'] ?? null,
         ]);
+
+        AuditService::log(
+            'payment.created',
+            "Payment of RM {$data['amount']} created for user ID {$data['user_id']} (period {$start->toDateString()}).",
+            $payment,
+            $club->id
+        );
 
         return redirect()->route('admin.payments.index', $club)
             ->with('success', 'Payment record created.');
@@ -169,7 +177,17 @@ class PaymentController extends Controller
             $data['paid_date'] = now()->toDateString();
         }
 
+        $old = $payment->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference']);
         $payment->update($data);
+
+        AuditService::log(
+            'payment.updated',
+            "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']}).",
+            $payment,
+            $payment->club_id,
+            $old,
+            $payment->fresh()->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference'])
+        );
 
         return redirect()->route('admin.payments.show', $payment)
             ->with('success', 'Payment updated.');
@@ -186,14 +204,29 @@ class PaymentController extends Controller
             'reference' => $request->reference,
         ]);
 
+        AuditService::log(
+            'payment.marked_paid',
+            "Payment #{$payment->id} marked as paid" . ($request->reference ? " (ref: {$request->reference})" : '') . '.',
+            $payment,
+            $payment->club_id,
+            ['status' => 'pending/overdue'],
+            ['status' => 'paid', 'paid_date' => now()->toDateString()]
+        );
+
         return back()->with('success', 'Payment marked as paid.');
     }
 
     public function destroy(Payment $payment)
     {
         $this->authorizeClubAdmin($payment->club);
-        $club = $payment->club;
+        $club    = $payment->club;
+        $clubId  = $club->id;
+        $summary = "Payment #{$payment->id} (RM {$payment->amount}, {$payment->status}) deleted.";
+        $old     = $payment->only(['status', 'amount', 'period_start', 'period_end', 'user_id']);
         $payment->delete();
+
+        AuditService::log('payment.deleted', $summary, null, $clubId, $old);
+
         return redirect()->route('admin.payments.index', $club)
             ->with('success', 'Payment record deleted.');
     }

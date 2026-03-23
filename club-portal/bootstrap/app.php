@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'member'                => \App\Http\Middleware\MemberOnly::class,
             'check_installed'       => \App\Http\Middleware\CheckInstalled::class,
             'redirect_if_installed' => \App\Http\Middleware\RedirectIfInstalled::class,
+            'two_factor'            => \App\Http\Middleware\RequiresTwoFactor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

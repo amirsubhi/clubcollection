@@ -150,6 +150,9 @@
         <a href="{{ route('admin.statistics') }}" class="nav-link {{ request()->routeIs('admin.statistics') ? 'active' : '' }}">
             <i class="bi bi-bar-chart-line"></i> Statistics
         </a>
+        <a href="{{ route('admin.audit-logs.index') }}" class="nav-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">
+            <i class="bi bi-journal-check"></i> Audit Log
+        </a>
         @endif
 
         @if(auth()->user()->isAdmin())
@@ -178,6 +181,9 @@
         <a href="{{ route('admin.fee-rates.index', $club) }}" class="nav-link {{ request()->routeIs('admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Fee Rates
         </a>
+        <a href="{{ route('admin.clubs.audit-logs', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.audit-logs') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-journal-check"></i> Audit Log
+        </a>
         @endforeach
         @endif
     </nav>
@@ -202,12 +208,30 @@
     </div>
     <div class="topbar-right">
         @stack('topbar-actions')
-        <form action="{{ route('logout') }}" method="POST" class="m-0">
-            @csrf
-            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-box-arrow-right me-1"></i><span class="d-none d-sm-inline">Logout</span>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle me-1"></i><span class="d-none d-sm-inline">{{ auth()->user()->name }}</span>
             </button>
-        </form>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <a class="dropdown-item small" href="{{ route('profile.security') }}">
+                        <i class="bi bi-shield-lock me-2"></i>Security &amp; 2FA
+                        @if(auth()->user()->hasEnabledTwoFactor())
+                        <span class="badge bg-success ms-1" style="font-size:0.65rem">ON</span>
+                        @endif
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <form action="{{ route('logout') }}" method="POST" class="m-0">
+                        @csrf
+                        <button type="submit" class="dropdown-item small text-danger">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
     </div>
 </div>
 

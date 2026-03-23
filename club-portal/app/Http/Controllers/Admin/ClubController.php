@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Club;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -38,7 +39,9 @@ class ClubController extends Controller
         $data['toyyibpay_secret_key']    = $data['toyyibpay_secret_key'] ?: null;
         $data['toyyibpay_category_code'] = $data['toyyibpay_category_code'] ?: null;
 
-        Club::create($data);
+        $club = Club::create($data);
+
+        AuditService::log('club.created', "Club '{$club->name}' created.", $club);
 
         return redirect()->route('admin.clubs.index')->with('success', 'Club created successfully.');
     }
@@ -80,17 +83,30 @@ class ClubController extends Controller
         }
         $data['toyyibpay_category_code'] = $data['toyyibpay_category_code'] ?: null;
 
+        $old = $club->only(['name', 'email', 'is_active']);
         $club->update($data);
+
+        AuditService::log(
+            'club.updated',
+            "Club '{$club->name}' updated.",
+            $club,
+            $club->id,
+            $old,
+            $club->fresh()->only(['name', 'email', 'is_active'])
+        );
 
         return redirect()->route('admin.clubs.index')->with('success', 'Club updated successfully.');
     }
 
     public function destroy(Club $club)
     {
+        $name = $club->name;
         if ($club->logo) {
             Storage::disk('public')->delete($club->logo);
         }
         $club->delete();
+
+        AuditService::log('club.deleted', "Club '{$name}' deleted.");
 
         return redirect()->route('admin.clubs.index')->with('success', 'Club deleted.');
     }

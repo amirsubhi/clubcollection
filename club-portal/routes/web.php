@@ -12,8 +12,11 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\ExpenseCategoryController;
 use App\Http\Controllers\Admin\DiscountController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboard;
 use App\Http\Controllers\Member\PaymentController as MemberPayment;
 
@@ -43,8 +46,20 @@ Route::middleware('check_installed')->group(function () {
         ->middleware('throttle:5,1')
         ->name('login');  // overrides the one from Auth::routes()
 
+    // ── Two-factor challenge — auth required, but 2FA not yet needed ──────────
     Route::middleware(['auth'])->group(function () {
+        Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
+        Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])->name('two-factor.verify');
+    });
+
+    Route::middleware(['auth', 'two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+        // ── Profile / 2FA setup ──────────────────────────────────────────────
+        Route::get('/profile/security', [ProfileController::class, 'security'])->name('profile.security');
+        Route::post('/profile/two-factor/enable', [ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
+        Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
+        Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
 
         // ── Member Portal ────────────────────────────────────────────
         Route::middleware(['member'])->prefix('my')->name('member.')->group(function () {
@@ -62,6 +77,7 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('clubs', ClubController::class);
             Route::resource('admins', AdminUserController::class);
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
+            Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         });
 
         // ── Club Admin + Super Admin ─────────────────────────────────
@@ -82,6 +98,7 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('clubs.expenses', ExpenseController::class)->shallow();
             Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow();
             Route::resource('clubs.discounts', DiscountController::class)->shallow();
+            Route::get('clubs/{club}/audit-logs', [AuditLogController::class, 'clubLogs'])->name('clubs.audit-logs');
         });
     });
 

@@ -7,6 +7,7 @@ use App\Mail\MemberWelcome;
 use App\Models\Club;
 use App\Models\FeeRate;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -65,6 +66,15 @@ class MemberController extends Controller
             ]);
         }
 
+        AuditService::log(
+            'member.added',
+            "Member '{$user->name}' ({$user->email}) added to club as {$data['role']} / {$data['job_level']}.",
+            $user,
+            $club->id,
+            [],
+            ['role' => $data['role'], 'job_level' => $data['job_level'], 'joined_date' => $data['joined_date']]
+        );
+
         return redirect()->route('admin.members.index', $club)
             ->with('success', "Member added. Login credentials have been sent to {$user->email}.");
     }
@@ -85,6 +95,13 @@ class MemberController extends Controller
             'is_active'   => 'boolean',
         ]);
 
+        $pivot  = $club->members()->where('users.id', $member->id)->first()?->pivot;
+        $oldPivot = $pivot ? [
+            'role'      => $pivot->role,
+            'job_level' => $pivot->job_level,
+            'is_active' => (bool) $pivot->is_active,
+        ] : [];
+
         $club->members()->updateExistingPivot($member->id, [
             'role'        => $data['role'],
             'job_level'   => $data['job_level'],
@@ -96,6 +113,15 @@ class MemberController extends Controller
             $member->update(['role' => 'admin']);
         }
 
+        AuditService::log(
+            'member.updated',
+            "Member '{$member->name}' updated in club.",
+            $member,
+            $club->id,
+            $oldPivot,
+            ['role' => $data['role'], 'job_level' => $data['job_level'], 'is_active' => $request->boolean('is_active')]
+        );
+
         return redirect()->route('admin.members.index', $club)
             ->with('success', 'Member updated successfully.');
     }
@@ -103,6 +129,14 @@ class MemberController extends Controller
     public function destroy(Club $club, User $member)
     {
         $club->members()->detach($member->id);
+
+        AuditService::log(
+            'member.removed',
+            "Member '{$member->name}' ({$member->email}) removed from club.",
+            $member,
+            $club->id
+        );
+
         return redirect()->route('admin.members.index', $club)
             ->with('success', 'Member removed from club.');
     }
@@ -203,6 +237,17 @@ class MemberController extends Controller
         }
 
         fclose($handle);
+
+        if ($imported > 0) {
+            AuditService::log(
+                'member.imported',
+                "{$imported} member(s) imported via CSV into club.",
+                null,
+                $club->id,
+                [],
+                ['imported_count' => $imported, 'error_count' => count($errors)]
+            );
+        }
 
         return back()
             ->with('import_imported', $imported)
