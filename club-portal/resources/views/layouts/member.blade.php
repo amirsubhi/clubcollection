@@ -116,6 +116,23 @@
     @endif
 
     @yield('content')
+
+    <footer class="mt-5 pt-4 border-top" style="font-size:0.75rem;color:#6c757d;line-height:1.7">
+        <p class="mb-1">
+            <i class="bi bi-shield-lock me-1"></i>
+            <strong>Disclaimer:</strong>
+            This member portal and all information displayed herein are confidential and intended
+            solely for the registered member named above. Payment records, fee structures, and
+            personal data must not be shared with any unauthorized party.
+        </p>
+        <p class="mb-0">
+            If you believe you have accessed this portal in error, please log out immediately
+            and notify your club administrator. All sessions and transactions are securely logged.
+        </p>
+        <p class="mt-2 mb-0 text-muted">
+            &copy; {{ date('Y') }} {{ config('app.name', 'Club Portal') }}. All rights reserved.
+        </p>
+    </footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

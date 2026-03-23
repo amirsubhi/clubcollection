@@ -64,6 +64,16 @@
             color: #adb5bd; font-size: 16px; pointer-events: none;
         }
         .input-icon-wrap .form-control { padding-left: 2.4rem; }
+        .auth-disclaimer {
+            max-width: 420px;
+            margin: 1.25rem auto 0;
+            text-align: center;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.72rem;
+            line-height: 1.6;
+            padding: 0 1rem;
+        }
+        .auth-disclaimer a { color: rgba(255,255,255,0.7); text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -77,6 +87,21 @@
             @yield('content')
         </div>
     </div>
+
+    <div class="auth-disclaimer">
+        <p>
+            <strong>Authorized Users Only.</strong>
+            This system is intended solely for registered members and authorized personnel of
+            {{ config('app.name', 'Club Portal') }}. Unauthorized access or misuse is strictly
+            prohibited and may be subject to legal action.
+        </p>
+        <p>
+            All login attempts and activities on this platform are logged and monitored.
+            By signing in, you agree to the terms of use and confidentiality obligations of your organization.
+        </p>
+        <p>&copy; {{ date('Y') }} {{ config('app.name', 'Club Portal') }}. All rights reserved.</p>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

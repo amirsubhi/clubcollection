@@ -223,6 +223,29 @@
     @endif
 
     @yield('content')
+
+    <footer class="mt-5 pt-4 border-top" style="font-size:0.75rem;color:#adb5bd;line-height:1.7">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+            <div style="max-width:520px">
+                <p class="mb-1">
+                    <i class="bi bi-shield-lock me-1"></i>
+                    <strong>Confidentiality Notice:</strong>
+                    The information contained in this system is confidential and intended solely for
+                    authorized personnel. Unauthorized access, disclosure, copying, or distribution
+                    of any data from this system is strictly prohibited and may be subject to
+                    disciplinary or legal action.
+                </p>
+                <p class="mb-0">
+                    All user actions, financial records, and system events are logged and may be
+                    audited. By using this system you acknowledge and accept these terms.
+                </p>
+            </div>
+            <div class="text-end" style="white-space:nowrap">
+                <div>&copy; {{ date('Y') }} {{ config('app.name', 'Club Portal') }}</div>
+                <div class="text-secondary">All rights reserved</div>
+            </div>
+        </div>
+    </footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
