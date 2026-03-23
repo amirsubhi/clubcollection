@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Discount;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
+    use AuthorizesClubResource;
     public function index(Club $club)
     {
         $status    = request('status');
@@ -68,7 +70,16 @@ class PaymentController extends Controller
             'period_start' => 'required|date',
             'due_date'     => 'required|date',
             'amount'       => 'required|numeric|min:0',
-            'discount_id'  => 'nullable|exists:discounts,id',
+            'discount_id'  => [
+                'nullable',
+                'exists:discounts,id',
+                // Ensure discount belongs to this club
+                function ($attribute, $value, $fail) use ($club) {
+                    if ($value && !$club->discounts()->where('id', $value)->exists()) {
+                        $fail('The selected discount does not belong to this club.');
+                    }
+                },
+            ],
             'notes'        => 'nullable|string|max:500',
         ]);
 
@@ -100,12 +111,14 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
+        $this->authorizeClubAdmin($payment->club);
         $payment->load(['user', 'club', 'discount', 'recordedBy']);
         return view('admin.payments.show', compact('payment'));
     }
 
     public function edit(Payment $payment)
     {
+        $this->authorizeClubAdmin($payment->club);
         $club      = $payment->club;
         $members   = $club->members()->wherePivot('is_active', true)->get();
         $discounts = $club->discounts()->where('is_active', true)->get();
@@ -114,6 +127,7 @@ class PaymentController extends Controller
 
     public function update(Request $request, Payment $payment)
     {
+        $this->authorizeClubAdmin($payment->club);
         $data = $request->validate([
             'due_date'    => 'required|date',
             'amount'      => 'required|numeric|min:0',
@@ -136,6 +150,7 @@ class PaymentController extends Controller
 
     public function markPaid(Request $request, Payment $payment)
     {
+        $this->authorizeClubAdmin($payment->club);
         $request->validate(['reference' => 'nullable|string|max:255']);
 
         $payment->update([
@@ -149,6 +164,7 @@ class PaymentController extends Controller
 
     public function destroy(Payment $payment)
     {
+        $this->authorizeClubAdmin($payment->club);
         $club = $payment->club;
         $payment->delete();
         return redirect()->route('admin.payments.index', $club)

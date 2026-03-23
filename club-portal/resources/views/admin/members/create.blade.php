@@ -46,8 +46,8 @@
                         @error('joined_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="alert alert-info small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        A default password <strong>Welcome@123</strong> will be set. Member should change it on first login.
+                        <i class="bi bi-envelope me-1"></i>
+                        A secure temporary password will be generated and sent to the member's email address.
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">

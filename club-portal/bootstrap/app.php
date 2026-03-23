@@ -11,6 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Apply security headers to every web response
+        $middleware->web(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
+
         $middleware->alias([
             'super_admin' => \App\Http\Middleware\SuperAdmin::class,
             'club_admin'  => \App\Http\Middleware\ClubAdmin::class,

@@ -19,7 +19,13 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Register disabled; login throttled to 5 attempts / minute per IP+email
 Auth::routes(['register' => false]);
+
+// Override login POST with explicit rate limiting
+Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
+    ->middleware('throttle:5,1')
+    ->name('login');  // overrides the one from Auth::routes()
 
 // ToyyibPay webhook — no auth, exempt from CSRF
 Route::post('/webhook/toyyibpay', [WebhookController::class, 'toyyibpay'])

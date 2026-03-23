@@ -10,12 +10,14 @@ class ToyyibPayService
     protected string $secretKey;
     protected string $categoryCode;
     protected string $baseUrl;
+    protected string $webhookSecret;
 
     public function __construct()
     {
-        $this->secretKey    = config('toyyibpay.secret_key');
-        $this->categoryCode = config('toyyibpay.category_code');
-        $this->baseUrl      = config('toyyibpay.base_url');
+        $this->secretKey     = config('toyyibpay.secret_key');
+        $this->categoryCode  = config('toyyibpay.category_code');
+        $this->baseUrl       = config('toyyibpay.base_url');
+        $this->webhookSecret = config('toyyibpay.webhook_secret');
     }
 
     /**
@@ -33,7 +35,7 @@ class ToyyibPayService
                 'billPayorInfo'     => 1,   // collect payer info
                 'billAmount'        => (int) round($params['amount'] * 100), // in cents
                 'billReturnUrl'     => $params['return_url'],
-                'billCallbackUrl'   => $params['callback_url'],
+                'billCallbackUrl'   => $this->signedCallbackUrl($params['callback_url']),
                 'billExternalReferenceNo' => $params['reference_no'],
                 'billTo'            => $params['payer_name'],
                 'billEmail'         => $params['payer_email'],
@@ -66,6 +68,30 @@ class ToyyibPayService
     public function paymentUrl(string $billCode): string
     {
         return "{$this->baseUrl}/{$billCode}";
+    }
+
+    /**
+     * Append a shared secret token to the callback URL.
+     * The webhook controller will verify this token using hash_equals().
+     */
+    public function signedCallbackUrl(string $url): string
+    {
+        if (empty($this->webhookSecret)) {
+            return $url;
+        }
+        $sep = str_contains($url, '?') ? '&' : '?';
+        return $url . $sep . 'webhook_token=' . urlencode($this->webhookSecret);
+    }
+
+    /**
+     * Verify the shared secret from the webhook request.
+     */
+    public function verifyWebhookSecret(string $token): bool
+    {
+        if (empty($this->webhookSecret)) {
+            return true; // Not configured — allow but log warning
+        }
+        return hash_equals($this->webhookSecret, $token);
     }
 
     /**

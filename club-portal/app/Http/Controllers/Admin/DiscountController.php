@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Discount;
@@ -9,6 +10,7 @@ use Illuminate\Http\Request;
 
 class DiscountController extends Controller
 {
+    use AuthorizesClubResource;
     public function index(Club $club)
     {
         $discounts = $club->discounts()->latest()->paginate(20);
@@ -39,11 +41,13 @@ class DiscountController extends Controller
 
     public function edit(Discount $discount)
     {
+        $this->authorizeClubAdmin($discount->club);
         return view('admin.discounts.edit', compact('discount'));
     }
 
     public function update(Request $request, Discount $discount)
     {
+        $this->authorizeClubAdmin($discount->club);
         $data = $request->validate([
             'name'       => 'required|string|max:255',
             'type'       => 'required|in:fixed,percentage',
@@ -61,6 +65,7 @@ class DiscountController extends Controller
 
     public function destroy(Discount $discount)
     {
+        $this->authorizeClubAdmin($discount->club);
         $club = $discount->club;
         $discount->delete();
         return redirect()->route('admin.discounts.index', $club)

@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\MemberWelcome;
 use App\Models\Club;
 use App\Models\FeeRate;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class MemberController extends Controller
 {
@@ -33,10 +37,13 @@ class MemberController extends Controller
             'joined_date' => 'required|date',
         ]);
 
+        // Generate a cryptographically random temporary password
+        $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
+
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
-            'password' => Hash::make('Welcome@123'),
+            'password' => Hash::make($temporaryPassword),
             'role'     => $data['role'] === 'admin' ? 'admin' : 'member',
         ]);
 
@@ -47,8 +54,18 @@ class MemberController extends Controller
             'is_active'   => true,
         ]);
 
+        // Send welcome email with credentials — never expose password in flash messages
+        try {
+            Mail::to($user->email)->send(new MemberWelcome($user, $club, $temporaryPassword));
+        } catch (\Exception $e) {
+            Log::error('Failed to send welcome email to member', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
         return redirect()->route('admin.members.index', $club)
-            ->with('success', 'Member added. Default password: Welcome@123');
+            ->with('success', "Member added. Login credentials have been sent to {$user->email}.");
     }
 
     public function edit(Club $club, User $member)

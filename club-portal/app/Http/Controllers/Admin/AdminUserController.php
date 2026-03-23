@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\MemberWelcome;
+use App\Models\Club;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AdminUserController extends Controller
 {
@@ -28,15 +33,28 @@ class AdminUserController extends Controller
             'role'  => 'required|in:admin,super_admin',
         ]);
 
-        User::create([
+        $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
+
+        $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
-            'password' => Hash::make('Admin@123'),
+            'password' => Hash::make($temporaryPassword),
             'role'     => $data['role'],
         ]);
 
+        // Use a placeholder club for the welcome email (admin isn't tied to a specific club)
+        try {
+            $dummyClub = new Club(['name' => config('app.name', 'Club Portal')]);
+            Mail::to($user->email)->send(new MemberWelcome($user, $dummyClub, $temporaryPassword));
+        } catch (\Exception $e) {
+            Log::error('Failed to send welcome email to admin', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
         return redirect()->route('admin.admins.index')
-            ->with('success', 'Administrator created. Default password: Admin@123');
+            ->with('success', "Administrator created. Login credentials have been sent to {$user->email}.");
     }
 
     public function edit(User $admin)

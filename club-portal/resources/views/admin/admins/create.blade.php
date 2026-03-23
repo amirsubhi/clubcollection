@@ -30,8 +30,8 @@
                         @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="alert alert-info small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Default password: <strong>Admin@123</strong>
+                        <i class="bi bi-envelope me-1"></i>
+                        A secure temporary password will be generated and sent to the administrator's email.
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Create Administrator</button>

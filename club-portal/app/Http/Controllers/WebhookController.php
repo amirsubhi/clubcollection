@@ -13,9 +13,18 @@ class WebhookController extends Controller
 {
     public function toyyibpay(Request $request, ToyyibPayService $toyyibPay)
     {
-        Log::info('ToyyibPay callback received', $request->all());
+        // Verify shared secret token — prevents unauthorized parties from
+        // triggering payment confirmations by posting to the webhook URL.
+        $token = $request->query('webhook_token', '');
+        if (!$toyyibPay->verifyWebhookSecret($token)) {
+            Log::warning('ToyyibPay webhook: invalid token', ['ip' => $request->ip()]);
+            abort(403, 'Invalid webhook token.');
+        }
 
-        $payload = $request->all();
+        // Log payload without sensitive query parameters
+        Log::info('ToyyibPay callback received', $request->except(['webhook_token']));
+
+        $payload = $request->except(['webhook_token']);
 
         if (!$toyyibPay->verifyCallback($payload)) {
             Log::warning('ToyyibPay: payment not successful', $payload);
