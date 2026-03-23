@@ -147,6 +147,9 @@
         <a href="{{ route('admin.admins.index') }}" class="nav-link {{ request()->routeIs('admin.admins.*') ? 'active' : '' }}">
             <i class="bi bi-person-gear"></i> Administrators
         </a>
+        <a href="{{ route('admin.statistics') }}" class="nav-link {{ request()->routeIs('admin.statistics') ? 'active' : '' }}">
+            <i class="bi bi-bar-chart-line"></i> Statistics
+        </a>
         @endif
 
         @if(auth()->user()->isAdmin())

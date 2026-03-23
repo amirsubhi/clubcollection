@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\ExpenseCategoryController;
 use App\Http\Controllers\Admin\DiscountController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboard;
 use App\Http\Controllers\Member\PaymentController as MemberPayment;
 
@@ -60,6 +61,7 @@ Route::middleware('check_installed')->group(function () {
         Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
             Route::resource('clubs', ClubController::class);
             Route::resource('admins', AdminUserController::class);
+            Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
         });
 
         // ── Club Admin + Super Admin ─────────────────────────────────
