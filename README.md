@@ -1,6 +1,6 @@
 # Club Portal
 
-A self-hosted club membership management system built with Laravel 11. Designed for organisations that manage multiple clubs, track member payments, and handle club expenses — with a clean admin interface and an integrated payment gateway.
+Club Portal is a self-hosted membership and collection management system built on Laravel 11. It's designed for organisations that oversee multiple clubs, track member payments, and manage club expenses all through a clean admin interface with an integrated payment gateway. I built this to replace the hassle of tracking club membership payments manually.
 
 ## Features
 
