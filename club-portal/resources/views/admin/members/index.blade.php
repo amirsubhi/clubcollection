@@ -34,7 +34,7 @@
                 <tr>
                     <td class="fw-semibold">{{ $member->name }}</td>
                     <td class="text-muted small">{{ $member->email }}</td>
-                    <td>{{ \App\Models\FeeRate::jobLevelLabels()[$member->pivot->job_level] ?? $member->pivot->job_level }}</td>
+                    <td>{{ $jobLevels[$member->pivot->job_level] ?? $member->pivot->job_level }}</td>
                     <td>
                         <span class="badge {{ $member->pivot->role === 'admin' ? 'bg-warning-subtle text-warning border border-warning-subtle' : 'bg-info-subtle text-info border border-info-subtle' }}">
                             {{ ucfirst($member->pivot->role) }}

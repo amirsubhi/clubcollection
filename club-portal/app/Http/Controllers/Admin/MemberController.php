@@ -18,7 +18,8 @@ class MemberController extends Controller
     public function index(Club $club)
     {
         $members = $club->members()->paginate(20);
-        return view('admin.members.index', compact('club', 'members'));
+        $jobLevels = FeeRate::jobLevelLabels();
+        return view('admin.members.index', compact('club', 'members', 'jobLevels'));
     }
 
     public function create(Club $club)

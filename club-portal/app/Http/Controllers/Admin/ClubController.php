@@ -11,7 +11,7 @@ class ClubController extends Controller
 {
     public function index()
     {
-        $clubs = Club::latest()->paginate(15);
+        $clubs = Club::withCount('members')->latest()->paginate(15);
         return view('admin.clubs.index', compact('clubs'));
     }
 

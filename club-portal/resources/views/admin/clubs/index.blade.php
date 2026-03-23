@@ -41,7 +41,7 @@
                         </div>
                     </td>
                     <td class="text-muted">{{ $club->email ?? '—' }}</td>
-                    <td>{{ $club->members()->count() }}</td>
+                    <td>{{ $club->members_count }}</td>
                     <td>
                         @if($club->hasToyyibPayCredentials())
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
