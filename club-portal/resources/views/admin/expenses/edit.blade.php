@@ -18,10 +18,12 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="form-text">Choose the expense category that best describes this spending.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
                         <textarea name="description" class="form-control" rows="2">{{ old('description', $expense->description) }}</textarea>
+                        <div class="form-text">Briefly describe what this expense was for.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Amount (RM) <span class="text-danger">*</span></label>
@@ -30,11 +32,13 @@
                             <input type="number" step="0.01" name="amount" class="form-control"
                                    value="{{ old('amount', $expense->amount) }}">
                         </div>
+                        <div class="form-text">Enter the actual amount paid in Ringgit Malaysia.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
                         <input type="date" name="expense_date" class="form-control"
                                value="{{ old('expense_date', $expense->expense_date->format('Y-m-d')) }}">
+                        <div class="form-text">The date the expense was incurred or payment was made.</div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Receipt</label>

@@ -17,11 +17,13 @@
                             <input type="number" step="0.01" name="amount" class="form-control"
                                    value="{{ old('amount', $payment->amount) }}">
                         </div>
+                        <div class="form-text">Adjust the payable amount if needed (e.g. for partial waivers or corrections).</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Due Date <span class="text-danger">*</span></label>
                         <input type="date" name="due_date" class="form-control"
                                value="{{ old('due_date', $payment->due_date->format('Y-m-d')) }}">
+                        <div class="form-text">Changing this resets when the payment becomes overdue.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
@@ -30,16 +32,19 @@
                             <option value="paid" {{ old('status', $payment->status) == 'paid' ? 'selected' : '' }}>Paid</option>
                             <option value="overdue" {{ old('status', $payment->status) == 'overdue' ? 'selected' : '' }}>Overdue</option>
                         </select>
+                        <div class="form-text">Pending = awaiting payment. Paid = received. Overdue = past due date without payment.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Paid Date</label>
                         <input type="date" name="paid_date" class="form-control"
                                value="{{ old('paid_date', $payment->paid_date?->format('Y-m-d')) }}">
+                        <div class="form-text">The actual date payment was received. Fill this in when marking status as Paid.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Reference</label>
                         <input type="text" name="reference" class="form-control"
                                value="{{ old('reference', $payment->reference) }}" placeholder="Receipt / transaction ref">
+                        <div class="form-text">Receipt number, bank transfer ID, or ToyyibPay transaction reference for audit trail.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Discount</label>
@@ -51,10 +56,12 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="form-text">Optional discount applied to reduce the payable amount.</div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Notes</label>
                         <textarea name="notes" class="form-control" rows="2">{{ old('notes', $payment->notes) }}</textarea>
+                        <div class="form-text">Internal notes for administrators. Not visible to the member.</div>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Update</button>

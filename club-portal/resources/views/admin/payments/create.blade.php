@@ -21,6 +21,7 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="form-text">The member this payment record belongs to. Job level shown in brackets.</div>
                         @error('user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
@@ -31,6 +32,7 @@
                             <option value="quarterly" {{ old('frequency') == 'quarterly' ? 'selected' : '' }}>Quarterly (3 months)</option>
                             <option value="yearly" {{ old('frequency') == 'yearly' ? 'selected' : '' }}>Yearly (12 months)</option>
                         </select>
+                        <div class="form-text">How many months this payment covers. The amount will be calculated accordingly.</div>
                         @error('frequency')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
@@ -38,6 +40,7 @@
                         <label class="form-label fw-semibold">Period Start <span class="text-danger">*</span></label>
                         <input type="date" name="period_start" id="periodStart" class="form-control @error('period_start') is-invalid @enderror"
                                value="{{ old('period_start', now()->startOfMonth()->format('Y-m-d')) }}">
+                        <div class="form-text">First day of the coverage period. Defaults to the 1st of the current month.</div>
                         @error('period_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
@@ -45,6 +48,7 @@
                         <label class="form-label fw-semibold">Due Date <span class="text-danger">*</span></label>
                         <input type="date" name="due_date" class="form-control @error('due_date') is-invalid @enderror"
                                value="{{ old('due_date', now()->endOfMonth()->format('Y-m-d')) }}">
+                        <div class="form-text">Deadline by which payment must be received. Payments past this date are marked overdue.</div>
                         @error('due_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
@@ -70,11 +74,13 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="form-text">Optional promotional or welfare discount to apply to this payment.</div>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Notes</label>
                         <textarea name="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
+                        <div class="form-text">Internal notes visible only to administrators. Not shown to the member.</div>
                     </div>
 
                     <div class="d-flex gap-2">

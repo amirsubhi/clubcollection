@@ -28,12 +28,14 @@
                                            value="{{ old('rates.'.$loop->index.'.monthly_amount') }}"
                                            placeholder="0.00">
                                 </div>
+                                <div class="form-text">Base fee per month. Quarterly/yearly payments multiply this amount.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">Effective From <span class="text-danger">*</span></label>
                                 <input type="date" name="rates[{{ $loop->index }}][effective_from]"
                                        class="form-control @error('rates.'.$loop->index.'.effective_from') is-invalid @enderror"
                                        value="{{ old('rates.'.$loop->index.'.effective_from', date('Y-m-d')) }}">
+                                <div class="form-text">Existing rate for this level will be closed on this date.</div>
                             </div>
                         </div>
                     </div>

@@ -20,6 +20,7 @@
                                 <option value="{{ $key }}" {{ old('job_level', $pivot?->job_level) == $key ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
+                        <div class="form-text">Changing this will apply the new fee rate to future payment records.</div>
                         @error('job_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-3">
@@ -28,12 +29,14 @@
                             <option value="member" {{ old('role', $pivot?->role) == 'member' ? 'selected' : '' }}>Member</option>
                             <option value="admin" {{ old('role', $pivot?->role) == 'admin' ? 'selected' : '' }}>Admin</option>
                         </select>
+                        <div class="form-text">Admin role grants ability to manage payments, expenses, and members for this club.</div>
                         @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date Joined <span class="text-danger">*</span></label>
                         <input type="date" name="joined_date" class="form-control @error('joined_date') is-invalid @enderror"
                                value="{{ old('joined_date', $pivot?->joined_date) }}">
+                        <div class="form-text">The official membership start date for this club.</div>
                         @error('joined_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-4">
@@ -42,6 +45,7 @@
                                    id="isActive" {{ old('is_active', $pivot?->is_active) ? 'checked' : '' }}>
                             <label class="form-check-label" for="isActive">Active in this club</label>
                         </div>
+                        <div class="form-text mt-1">Inactive members cannot log in to the member portal.</div>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
