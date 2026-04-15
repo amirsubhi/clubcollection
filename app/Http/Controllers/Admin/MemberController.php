@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Mail\MemberWelcome;
 use App\Models\Club;
@@ -16,8 +17,11 @@ use Illuminate\Support\Str;
 
 class MemberController extends Controller
 {
+    use AuthorizesClubResource;
+
     public function index(Club $club)
     {
+        $this->authorizeClubAdmin($club);
         $members = $club->members()->paginate(20);
         $jobLevels = FeeRate::jobLevelLabels();
         return view('admin.members.index', compact('club', 'members', 'jobLevels'));
@@ -25,12 +29,14 @@ class MemberController extends Controller
 
     public function create(Club $club)
     {
+        $this->authorizeClubAdmin($club);
         $jobLevels = FeeRate::jobLevelLabels();
         return view('admin.members.create', compact('club', 'jobLevels'));
     }
 
     public function store(Request $request, Club $club)
     {
+        $this->authorizeClubAdmin($club);
         $data = $request->validate([
             'name'        => 'required|string|max:255',
             'email'       => 'required|email|max:255|unique:users,email',
@@ -81,27 +87,25 @@ class MemberController extends Controller
 
     public function edit(Club $club, User $member)
     {
+        $club  = $this->resolveClubForMember($club, $member);
+        $this->authorizeClubAdmin($club);
+
         $jobLevels = FeeRate::jobLevelLabels();
-        $pivot = $club->members()->where('users.id', $member->id)->first()?->pivot;
+        $pivot     = $club->members()->where('users.id', $member->id)->first()?->pivot;
         return view('admin.members.edit', compact('club', 'member', 'jobLevels', 'pivot'));
     }
 
     public function update(Request $request, Club $club, User $member)
     {
+        $club = $this->resolveClubForMember($club, $member);
+        $this->authorizeClubAdmin($club);
+
         $data = $request->validate([
             'job_level'   => 'required|in:gm,agm,manager,executive,non_exec',
             'role'        => 'required|in:admin,member',
             'joined_date' => 'required|date',
             'is_active'   => 'boolean',
         ]);
-
-        // On shallow routes {member}, $club is not bound from the URL; resolve it
-        if (! $club->id) {
-            $club = auth()->user()->clubs()
-                ->wherePivot('role', 'admin')
-                ->whereHas('members', fn ($q) => $q->where('users.id', $member->id))
-                ->first();
-        }
 
         $pivot  = $club->members()->where('users.id', $member->id)->first()?->pivot;
         $oldPivot = $pivot ? [
@@ -117,9 +121,10 @@ class MemberController extends Controller
             'is_active'   => $request->boolean('is_active'),
         ]);
 
-        if ($data['role'] === 'admin') {
-            $member->update(['role' => 'admin']);
-        }
+        // NOTE: do NOT promote $member->role on the global users table from a
+        // per-club pivot edit. The pivot 'role' is club-scoped (admin vs member
+        // OF this club); the users.role column is the system-wide role and
+        // must only be changed by a super admin via AdminUserController.
 
         AuditService::log(
             'member.updated',
@@ -136,13 +141,8 @@ class MemberController extends Controller
 
     public function destroy(Club $club, User $member)
     {
-        // On shallow routes {member}, $club is not bound from the URL; resolve it
-        if (! $club->id) {
-            $club = auth()->user()->clubs()
-                ->wherePivot('role', 'admin')
-                ->whereHas('members', fn ($q) => $q->where('users.id', $member->id))
-                ->first();
-        }
+        $club = $this->resolveClubForMember($club, $member);
+        $this->authorizeClubAdmin($club);
 
         $club->members()->detach($member->id);
 
@@ -159,11 +159,13 @@ class MemberController extends Controller
 
     public function import(Club $club)
     {
+        $this->authorizeClubAdmin($club);
         return view('admin.members.import', compact('club'));
     }
 
     public function importProcess(Request $request, Club $club)
     {
+        $this->authorizeClubAdmin($club);
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
@@ -272,6 +274,8 @@ class MemberController extends Controller
 
     public function downloadTemplate(Club $club)
     {
+        $this->authorizeClubAdmin($club);
+
         $headers = [
             'Content-Type'        => 'text/csv',
             'Content-Disposition' => 'attachment; filename="members-import-template.csv"',
@@ -285,5 +289,38 @@ class MemberController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * On shallow routes (`/admin/members/{member}`) the {club} URL segment is
+     * absent and Laravel binds an empty Club instance. Resolve the canonical
+     * club for the member: the single club the current user administers that
+     * also contains $member. Aborts 404 if none — never silently scope down to
+     * "any club admin happens to share with the target".
+     */
+    private function resolveClubForMember(Club $club, User $member): Club
+    {
+        if ($club->exists) {
+            return $club;
+        }
+
+        $user = auth()->user();
+
+        // Super admin: the member's first club. (Super admins always pass
+        // authorizeClubAdmin downstream.)
+        if ($user->isSuperAdmin()) {
+            $resolved = $member->clubs()->first();
+            abort_if(! $resolved, 404, 'Member is not attached to any club.');
+            return $resolved;
+        }
+
+        // Club admin: the member must belong to a club THIS user administers.
+        $resolved = $user->clubs()
+            ->wherePivot('role', 'admin')
+            ->whereHas('members', fn ($q) => $q->where('users.id', $member->id))
+            ->first();
+
+        abort_if(! $resolved, 404, 'Member not found in any of your clubs.');
+        return $resolved;
     }
 }
