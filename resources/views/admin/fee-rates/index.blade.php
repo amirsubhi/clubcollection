@@ -45,9 +45,9 @@
                     </td>
                     <td class="text-end">
                         <form action="{{ route('admin.fee-rates.destroy', [$club, $rate]) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Delete this rate record?')">
+                              data-confirm="Delete this rate record?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete rate"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>

@@ -44,9 +44,9 @@
                         </a>
                         @if($admin->id !== auth()->id())
                         <form action="{{ route('admin.admins.destroy', $admin) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Remove this administrator?')">
+                              data-confirm="Remove this administrator?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Remove administrator"><i class="bi bi-trash"></i></button>
                         </form>
                         @endif
                     </td>

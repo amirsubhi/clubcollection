@@ -2,10 +2,6 @@
 @section('title', $club->name . ' - Financial Dashboard')
 @section('page-title', $club->name . ' — Financial Dashboard')
 
-@push('styles')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-@endpush
-
 @section('content')
 {{-- Period Selector + Ledger shortcut --}}
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -249,7 +245,8 @@
 @endsection
 
 @push('scripts')
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script nonce="{{ $cspNonce }}">
 // Income vs Expense bar chart
 const labels = @json(array_keys($monthlyIncome));
 const incomeData = @json(array_values($monthlyIncome));

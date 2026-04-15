@@ -6,7 +6,7 @@
     <title>Install — {{ config('app.name', 'Club Portal') }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
+    <style nonce="{{ $cspNonce ?? '' }}">
         html, body { min-height: 100%; }
         body {
             background: linear-gradient(135deg, #1a1f36 0%, #0d6efd 100%);

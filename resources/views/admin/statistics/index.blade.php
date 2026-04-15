@@ -2,10 +2,6 @@
 @section('title', 'Platform Statistics')
 @section('page-title', 'Platform Statistics')
 
-@push('styles')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-@endpush
-
 @section('content')
 
 {{-- Row 1: Primary KPI Cards --}}
@@ -292,7 +288,8 @@
 @endsection
 
 @push('scripts')
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script nonce="{{ $cspNonce }}">
 // Revenue vs Expenses trend (last 12 months)
 const trendLabels   = @json(array_keys($monthlyRevenue));
 const revenueData   = @json(array_values($monthlyRevenue));
