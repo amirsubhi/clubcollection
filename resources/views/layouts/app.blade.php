@@ -289,6 +289,22 @@ function closeSidebar() { sidebar.classList.remove('show'); overlay.classList.re
 
 toggle?.addEventListener('click', () => sidebar.classList.contains('show') ? closeSidebar() : openSidebar());
 overlay.addEventListener('click', closeSidebar);
+
+// CSP-safe replacements for inline event handlers.
+// Forms with data-confirm prompt before submission.
+document.querySelectorAll('form[data-confirm]').forEach(form => {
+    form.addEventListener('submit', (e) => {
+        if (!window.confirm(form.dataset.confirm)) e.preventDefault();
+    });
+});
+// Inputs / selects that submit their form on change.
+document.querySelectorAll('[data-submit-on-change]').forEach(el => {
+    el.addEventListener('change', () => el.form?.submit());
+});
+// Buttons that trigger window.print().
+document.querySelectorAll('[data-print]').forEach(btn => {
+    btn.addEventListener('click', () => window.print());
+});
 </script>
 @stack('scripts')
 </body>

@@ -36,9 +36,9 @@
                     </form>
                     @if($cat->expenses_count == 0)
                     <form action="{{ route('admin.expense-categories.destroy', $cat) }}" method="POST"
-                          onsubmit="return confirm('Delete this category?')">
+                          data-confirm="Delete this category?">
                         @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" aria-label="Delete category"><i class="bi bi-trash"></i></button>
                     </form>
                     @endif
                 </div>

@@ -8,7 +8,7 @@
 @endsection
 
 @push('styles')
-<style>
+<style nonce="{{ $cspNonce ?? '' }}">
 @media print {
     .member-nav, .page-subtitle-bar, .no-print { display: none !important; }
     .member-main { max-width: 100%; margin: 0; padding: 0; }
@@ -27,7 +27,7 @@
     <a href="{{ route('member.payments.index', $payment->club) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back
     </a>
-    <button onclick="window.print()" class="btn btn-sm btn-outline-secondary ms-auto">
+    <button type="button" data-print class="btn btn-sm btn-outline-secondary ms-auto" aria-label="Print invoice">
         <i class="bi bi-printer me-1"></i>Print
     </button>
     @if($payment->status !== 'paid')

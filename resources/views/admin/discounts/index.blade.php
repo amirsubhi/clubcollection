@@ -48,9 +48,9 @@
                     <td class="text-end">
                         <a href="{{ route('admin.discounts.edit', $discount) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         <form action="{{ route('admin.discounts.destroy', $discount) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Delete this discount?')">
+                              data-confirm="Delete this discount?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete discount"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>

@@ -74,9 +74,9 @@
                         <a href="{{ route('admin.expenses.show', $expense) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
                         <a href="{{ route('admin.expenses.edit', $expense) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         <form action="{{ route('admin.expenses.destroy', $expense) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Delete this expense?')">
+                              data-confirm="Delete this expense?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete expense"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>

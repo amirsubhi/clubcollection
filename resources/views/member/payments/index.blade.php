@@ -11,8 +11,8 @@
 {{-- Year Filter --}}
 <div class="d-flex align-items-center justify-content-end mb-3">
     <form method="GET" class="d-flex align-items-center gap-2">
-        <label class="form-label mb-0 small text-muted fw-semibold">Year:</label>
-        <select name="year" class="form-select form-select-sm" style="width:100px" onchange="this.form.submit()">
+        <label for="memberYearFilter" class="form-label mb-0 small text-muted fw-semibold">Year:</label>
+        <select id="memberYearFilter" name="year" class="form-select form-select-sm" style="width:100px" data-submit-on-change>
             @foreach($years as $yr)
                 <option value="{{ $yr }}" {{ $yr == $selectedYear ? 'selected' : '' }}>{{ $yr }}</option>
             @endforeach

@@ -123,9 +123,9 @@
                         @endif
                         <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         <form action="{{ route('admin.payments.destroy', $payment) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Delete this payment record?')">
+                              data-confirm="Delete this payment record?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete payment"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>

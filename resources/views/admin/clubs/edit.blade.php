@@ -67,8 +67,8 @@
                                        value="{{ old('toyyibpay_secret_key') }}"
                                        placeholder="{{ $club->hasToyyibPayCredentials() ? '••••••••••••••••  (leave blank to keep current)' : 'Enter User Secret Key' }}"
                                        autocomplete="off">
-                                <button type="button" class="btn btn-outline-secondary"
-                                        onclick="toggleSecret()" title="Show/hide">
+                                <button type="button" id="toggleSecretBtn" class="btn btn-outline-secondary"
+                                        title="Show/hide" aria-label="Show or hide secret key">
                                     <i class="bi bi-eye" id="eyeIcon"></i>
                                 </button>
                             </div>
@@ -98,7 +98,7 @@
 </div>
 @push('scripts')
 <script nonce="{{ $cspNonce }}">
-function toggleSecret() {
+document.getElementById('toggleSecretBtn')?.addEventListener('click', () => {
     const input = document.getElementById('secretKeyInput');
     const icon  = document.getElementById('eyeIcon');
     if (input.type === 'password') {
@@ -108,7 +108,7 @@ function toggleSecret() {
         input.type = 'password';
         icon.className = 'bi bi-eye';
     }
-}
+});
 </script>
 @endpush
 @endsection
