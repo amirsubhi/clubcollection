@@ -167,16 +167,20 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input type="password" name="admin_password" class="form-control @error('admin_password') is-invalid @enderror"
-                       placeholder="Minimum 8 characters" required>
+                <label for="adminPassword" class="form-label">Password</label>
+                <input type="password" id="adminPassword" name="admin_password"
+                       class="form-control @error('admin_password') is-invalid @enderror"
+                       autocomplete="new-password" required minlength="12">
+                <div class="form-text small">
+                    Must be at least 12 characters and contain upper-case, lower-case, a number and a symbol.
+                </div>
                 @error('admin_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             <div class="mb-4">
-                <label class="form-label">Confirm Password</label>
-                <input type="password" name="admin_password_confirmation" class="form-control"
-                       placeholder="Repeat your password" required>
+                <label for="adminPasswordConfirmation" class="form-label">Confirm Password</label>
+                <input type="password" id="adminPasswordConfirmation" name="admin_password_confirmation"
+                       class="form-control" autocomplete="new-password" required minlength="12">
             </div>
 
             <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"
