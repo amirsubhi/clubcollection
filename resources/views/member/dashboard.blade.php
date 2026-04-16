@@ -12,7 +12,7 @@
     <div class="card-body p-4">
         <div class="d-flex align-items-center gap-3 mb-3">
             @if($club->logo)
-                <img src="{{ asset('storage/'.$club->logo) }}" width="48" height="48" class="rounded-circle border" style="object-fit:cover">
+                <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->name }} logo" width="48" height="48" class="rounded-circle border" style="object-fit:cover">
             @else
                 <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:48px;height:48px">
                     <i class="bi bi-building text-white"></i>

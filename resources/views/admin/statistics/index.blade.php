@@ -200,14 +200,14 @@
         <table class="table table-hover align-middle mb-0 small">
             <thead class="table-light">
                 <tr>
-                    <th>Club</th>
-                    <th class="text-end">Members</th>
-                    <th class="text-end">Total Revenue</th>
-                    <th class="text-end">Total Expenses</th>
-                    <th class="text-end">Net</th>
-                    <th class="text-end">Paid</th>
-                    <th class="text-end">Pending</th>
-                    <th class="text-end">Overdue</th>
+                    <th scope="col">Club</th>
+                    <th scope="col" class="text-end">Members</th>
+                    <th scope="col" class="text-end">Total Revenue</th>
+                    <th scope="col" class="text-end">Total Expenses</th>
+                    <th scope="col" class="text-end">Net</th>
+                    <th scope="col" class="text-end">Paid</th>
+                    <th scope="col" class="text-end">Pending</th>
+                    <th scope="col" class="text-end">Overdue</th>
                 </tr>
             </thead>
             <tbody>

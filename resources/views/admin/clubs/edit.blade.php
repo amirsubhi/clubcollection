@@ -25,7 +25,7 @@
                         <label class="form-label fw-semibold">Club Logo</label>
                         @if($club->logo)
                             <div class="mb-2">
-                                <img src="{{ asset('storage/'.$club->logo) }}" height="60" class="rounded border">
+                                <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->name }} logo" height="60" class="rounded border">
                                 <small class="text-muted ms-2">Current logo</small>
                             </div>
                         @endif

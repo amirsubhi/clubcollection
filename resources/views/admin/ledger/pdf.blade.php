@@ -131,7 +131,7 @@
                 </td>
                 <td class="report-logo-cell">
                     @if($club->logo)
-                    <img src="{{ storage_path('app/public/' . $club->logo) }}" style="max-height:40px;max-width:120px">
+                    <img src="{{ storage_path('app/public/' . $club->logo) }}" alt="{{ $club->name }} logo" style="max-height:40px;max-width:120px">
                     @endif
                 </td>
             </tr>

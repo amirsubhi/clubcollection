@@ -20,13 +20,13 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Job Level</th>
-                    <th>Club Role</th>
-                    <th>Joined</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Job Level</th>
+                    <th scope="col">Club Role</th>
+                    <th scope="col">Joined</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -49,7 +49,7 @@
                         @endif
                     </td>
                     <td class="text-end">
-                        <a href="{{ route('admin.members.edit', [$club, $member]) }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('admin.members.edit', [$club, $member]) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit member">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form action="{{ route('admin.members.destroy', [$club, $member]) }}" method="POST" class="d-inline"

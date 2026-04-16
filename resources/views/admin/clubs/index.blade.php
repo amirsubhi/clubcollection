@@ -17,12 +17,12 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Club</th>
-                    <th>Email</th>
-                    <th>Members</th>
-                    <th>Payment Gateway</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Club</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Members</th>
+                    <th scope="col">Payment Gateway</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -31,7 +31,7 @@
                     <td>
                         <div class="d-flex align-items-center gap-3">
                             @if($club->logo)
-                                <img src="{{ asset('storage/'.$club->logo) }}" width="40" height="40" class="rounded-circle object-fit-cover border">
+                                <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->name }} logo" width="40" height="40" class="rounded-circle object-fit-cover border">
                             @else
                                 <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center" style="width:40px;height:40px">
                                     <i class="bi bi-building text-white"></i>
@@ -62,10 +62,10 @@
                         @endif
                     </td>
                     <td class="text-end">
-                        <a href="{{ route('admin.clubs.show', $club) }}" class="btn btn-sm btn-outline-secondary">
+                        <a href="{{ route('admin.clubs.show', $club) }}" class="btn btn-sm btn-outline-secondary" aria-label="View club">
                             <i class="bi bi-eye"></i>
                         </a>
-                        <a href="{{ route('admin.clubs.edit', $club) }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('admin.clubs.edit', $club) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit club">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form action="{{ route('admin.clubs.destroy', $club) }}" method="POST" class="d-inline"

@@ -101,10 +101,10 @@
                 <table class="table table-sm mb-0 small">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-3">Month</th>
-                            <th class="text-end text-success">In</th>
-                            <th class="text-end text-danger">Out</th>
-                            <th class="text-end pe-3">Balance</th>
+                            <th scope="col" class="ps-3">Month</th>
+                            <th scope="col" class="text-end text-success">In</th>
+                            <th scope="col" class="text-end text-danger">Out</th>
+                            <th scope="col" class="text-end pe-3">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -146,11 +146,11 @@
                 <table class="table table-sm mb-0 small">
                     <thead class="table-light sticky-top">
                         <tr>
-                            <th class="ps-3">Member</th>
-                            <th>Period</th>
-                            <th>Due</th>
-                            <th class="text-end">Amount</th>
-                            <th class="text-end pe-3">Status</th>
+                            <th scope="col" class="ps-3">Member</th>
+                            <th scope="col">Period</th>
+                            <th scope="col">Due</th>
+                            <th scope="col" class="text-end">Amount</th>
+                            <th scope="col" class="text-end pe-3">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -203,15 +203,15 @@
             <table class="table table-hover mb-0 small align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3" style="width:40px">#</th>
-                        <th style="width:100px">Date</th>
-                        <th style="width:90px">Type</th>
-                        <th>Description</th>
-                        <th>Member / Category</th>
-                        <th style="width:110px">Reference</th>
-                        <th class="text-end" style="width:120px">Amount In</th>
-                        <th class="text-end" style="width:120px">Amount Out</th>
-                        <th class="text-end pe-3" style="width:130px">Balance</th>
+                        <th scope="col" class="ps-3" style="width:40px">#</th>
+                        <th scope="col" style="width:100px">Date</th>
+                        <th scope="col" style="width:90px">Type</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Member / Category</th>
+                        <th scope="col" style="width:110px">Reference</th>
+                        <th scope="col" class="text-end" style="width:120px">Amount In</th>
+                        <th scope="col" class="text-end" style="width:120px">Amount Out</th>
+                        <th scope="col" class="text-end pe-3" style="width:130px">Balance</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -82,13 +82,13 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Member</th>
-                    <th>Period</th>
-                    <th>Frequency</th>
-                    <th>Amount</th>
-                    <th>Due Date</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Member</th>
+                    <th scope="col">Period</th>
+                    <th scope="col">Frequency</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Due Date</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -114,14 +114,14 @@
                         @endif
                     </td>
                     <td class="text-end">
-                        <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                        <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-secondary" aria-label="View payment"><i class="bi bi-eye"></i></a>
                         @if($payment->status !== 'paid')
                         <form action="{{ route('admin.payments.mark-paid', $payment) }}" method="POST" class="d-inline">
                             @csrf @method('PATCH')
-                            <button class="btn btn-sm btn-success" title="Mark Paid"><i class="bi bi-check-lg"></i></button>
+                            <button class="btn btn-sm btn-success" title="Mark Paid" aria-label="Mark payment as paid"><i class="bi bi-check-lg"></i></button>
                         </form>
                         @endif
-                        <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit payment"><i class="bi bi-pencil"></i></a>
                         <form action="{{ route('admin.payments.destroy', $payment) }}" method="POST" class="d-inline"
                               data-confirm="Delete this payment record?">
                             @csrf @method('DELETE')

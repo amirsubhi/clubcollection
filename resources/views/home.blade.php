@@ -71,7 +71,7 @@
         <div class="card shadow-sm h-100">
             <div class="card-body text-center p-4">
                 @if($club->logo)
-                    <img src="{{ asset('storage/'.$club->logo) }}" class="rounded-circle mb-3 border" width="70" height="70" style="object-fit:cover">
+                    <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->name }} logo" class="rounded-circle mb-3 border" width="70" height="70" style="object-fit:cover">
                 @else
                     <div class="bg-secondary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:70px;height:70px">
                         <i class="bi bi-building fs-3 text-white"></i>
