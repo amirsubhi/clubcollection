@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\OverdueReminder;
 use App\Models\Payment;
-use Carbon\Carbon;
+use App\Services\AuditService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -16,33 +16,43 @@ class SendOverdueReminders extends Command
 {
     public function handle(): void
     {
-        // Find payments that are pending and due date has passed
-        $overdue = Payment::with(['user', 'club'])
+        $sent = 0;
+        $marked = 0;
+
+        // Chunk to bound memory if the table grows large.
+        Payment::with(['user', 'club'])
             ->where('status', 'pending')
             ->where('due_date', '<', now()->toDateString())
-            ->get();
+            ->chunkById(200, function ($chunk) use (&$sent, &$marked) {
+                foreach ($chunk as $payment) {
+                    $payment->update(['status' => 'overdue']);
+                    $marked++;
 
-        if ($overdue->isEmpty()) {
+                    // Audit the state change so the schedule's writes are
+                    // attributable in the audit log (system actor).
+                    AuditService::log(
+                        'payment.marked_overdue',
+                        "Payment #{$payment->id} marked overdue by scheduled task.",
+                        $payment,
+                        $payment->club_id,
+                        ['status' => 'pending'],
+                        ['status' => 'overdue']
+                    );
+
+                    try {
+                        Mail::to($payment->user->email)
+                            ->send(new OverdueReminder($payment));
+                        $sent++;
+                    } catch (\Exception $e) {
+                        $this->warn("Failed to send reminder for payment #{$payment->id}: {$e->getMessage()}");
+                    }
+                }
+            });
+
+        if ($marked === 0) {
             $this->info('No overdue payments found.');
             return;
         }
-
-        // Mark them as overdue and send reminder emails
-        $sent = 0;
-        foreach ($overdue as $payment) {
-            // Update status to overdue
-            $payment->update(['status' => 'overdue']);
-
-            // Send reminder email
-            try {
-                Mail::to($payment->user->email)
-                    ->send(new OverdueReminder($payment));
-                $sent++;
-            } catch (\Exception $e) {
-                $this->warn("Failed to send reminder for payment #{$payment->id}: {$e->getMessage()}");
-            }
-        }
-
-        $this->info("Processed {$overdue->count()} overdue payment(s). Emails sent: {$sent}.");
+        $this->info("Processed {$marked} overdue payment(s). Emails sent: {$sent}.");
     }
 }

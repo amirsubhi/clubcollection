@@ -270,4 +270,51 @@ class MemberCsvImportTest extends TestCase
         $this->post(route('admin.members.import.process', $clubB), ['file' => $file])
             ->assertForbidden();
     }
+
+    public function test_import_caps_at_row_limit(): void
+    {
+        Mail::fake();
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+
+        // 1001 data rows — controller's limit is 1000.
+        $rows = [];
+        for ($i = 1; $i <= 1001; $i++) {
+            $rows[] = ["User {$i}", "user{$i}@example.com", 'executive', 'member', '2025-01-01'];
+        }
+        $csv = $this->makeCsv($rows);
+
+        $this->uploadCsv($club, $csv)
+            ->assertSessionHas('import_imported', 1000);
+
+        $errors = session('import_errors');
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('1000-row import limit', $errors[count($errors) - 1]['reason']);
+    }
+
+    public function test_import_strips_formula_prefix_from_name_and_email(): void
+    {
+        Mail::fake();
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+
+        // A hostile uploader plants formula characters at the start of the
+        // name. The email cannot start with `=` and still validate, but we
+        // strip it as defence in depth before the FILTER_VALIDATE_EMAIL check.
+        $csv = $this->makeCsv([
+            ['=cmd|"/c calc"!A1 Alice', 'safe1@example.com', 'manager', 'member', '2025-01-01'],
+            ['+SUM(A1:A2) Bob',         'safe2@example.com', 'manager', 'member', '2025-01-01'],
+            ['-Charlie',                'safe3@example.com', 'manager', 'member', '2025-01-01'],
+            ['@Dan',                    'safe4@example.com', 'manager', 'member', '2025-01-01'],
+        ]);
+
+        $this->uploadCsv($club, $csv)
+            ->assertSessionHas('import_imported', 4);
+
+        $names = User::whereIn('email', ['safe1@example.com','safe2@example.com','safe3@example.com','safe4@example.com'])
+            ->pluck('name')->all();
+        foreach ($names as $name) {
+            $this->assertDoesNotMatchRegularExpression('/^[=+@\-]/', $name);
+        }
+    }
 }

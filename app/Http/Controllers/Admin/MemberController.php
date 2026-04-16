@@ -163,6 +163,13 @@ class MemberController extends Controller
         return view('admin.members.import', compact('club'));
     }
 
+    /**
+     * Hard cap on rows we will process from a single CSV upload. Past this
+     * point we stop reading. The file size is also capped at 2 MB by the
+     * validator below, but a small CSV can still contain a lot of rows.
+     */
+    private const CSV_ROW_LIMIT = 1000;
+
     public function importProcess(Request $request, Club $club)
     {
         $this->authorizeClubAdmin($club);
@@ -186,6 +193,15 @@ class MemberController extends Controller
                 continue;
             }
 
+            if ($row > self::CSV_ROW_LIMIT + 1) {
+                $errors[] = [
+                    'row'    => $row,
+                    'email'  => '—',
+                    'reason' => 'CSV exceeds the '.self::CSV_ROW_LIMIT.'-row import limit. Split the file and retry.',
+                ];
+                break;
+            }
+
             // Expect: name, email, job_level, role, joined_date
             if (count($line) < 5) {
                 $errors[] = ['row' => $row, 'email' => '—', 'reason' => 'Row has fewer than 5 columns.'];
@@ -193,6 +209,13 @@ class MemberController extends Controller
             }
 
             [$name, $email, $jobLevel, $role, $joinedDate] = array_map('trim', array_slice($line, 0, 5));
+
+            // Strip leading characters that Excel / Sheets interpret as a
+            // formula. A hostile uploader could plant `=cmd|'...'!A1` in the
+            // name field; when an admin later exports the member list to
+            // CSV/XLSX this would execute on open. Defang at write time.
+            $name  = $this->stripFormulaPrefix($name);
+            $email = $this->stripFormulaPrefix($email);
 
             // Validate fields
             if (empty($name)) {
@@ -289,6 +312,17 @@ class MemberController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Strip leading characters that spreadsheets interpret as the start of a
+     * formula. Excel / Google Sheets evaluate cells beginning with `=`, `+`,
+     * `-`, `@` (and various tab/CR variants) — turning a CSV-injected name
+     * into code execution when an admin later exports the member list.
+     */
+    private function stripFormulaPrefix(string $value): string
+    {
+        return ltrim($value, "=+@-\t\r\x00");
     }
 
     /**
