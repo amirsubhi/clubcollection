@@ -2,10 +2,6 @@
 @section('title', 'Platform Statistics')
 @section('page-title', 'Platform Statistics')
 
-@push('styles')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-@endpush
-
 @section('content')
 
 {{-- Row 1: Primary KPI Cards --}}
@@ -204,14 +200,14 @@
         <table class="table table-hover align-middle mb-0 small">
             <thead class="table-light">
                 <tr>
-                    <th>Club</th>
-                    <th class="text-end">Members</th>
-                    <th class="text-end">Total Revenue</th>
-                    <th class="text-end">Total Expenses</th>
-                    <th class="text-end">Net</th>
-                    <th class="text-end">Paid</th>
-                    <th class="text-end">Pending</th>
-                    <th class="text-end">Overdue</th>
+                    <th scope="col">Club</th>
+                    <th scope="col" class="text-end">Members</th>
+                    <th scope="col" class="text-end">Total Revenue</th>
+                    <th scope="col" class="text-end">Total Expenses</th>
+                    <th scope="col" class="text-end">Net</th>
+                    <th scope="col" class="text-end">Paid</th>
+                    <th scope="col" class="text-end">Pending</th>
+                    <th scope="col" class="text-end">Overdue</th>
                 </tr>
             </thead>
             <tbody>
@@ -292,7 +288,8 @@
 @endsection
 
 @push('scripts')
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script nonce="{{ $cspNonce }}">
 // Revenue vs Expenses trend (last 12 months)
 const trendLabels   = @json(array_keys($monthlyRevenue));
 const revenueData   = @json(array_values($monthlyRevenue));

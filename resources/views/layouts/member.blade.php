@@ -136,6 +136,20 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}">
+// CSP-safe replacements for inline event handlers.
+document.querySelectorAll('form[data-confirm]').forEach(form => {
+    form.addEventListener('submit', (e) => {
+        if (!window.confirm(form.dataset.confirm)) e.preventDefault();
+    });
+});
+document.querySelectorAll('[data-submit-on-change]').forEach(el => {
+    el.addEventListener('change', () => el.form?.submit());
+});
+document.querySelectorAll('[data-print]').forEach(btn => {
+    btn.addEventListener('click', () => window.print());
+});
+</script>
 @stack('scripts')
 </body>
 </html>

@@ -114,11 +114,16 @@ class ToyyibPayService
 
     /**
      * Verify the shared secret from the webhook request.
+     *
+     * Fails CLOSED if TOYYIBPAY_WEBHOOK_SECRET is not configured. The
+     * previous behaviour ("not configured — allow") meant a missing
+     * secret on deploy let any caller mark arbitrary payments paid.
      */
     public function verifyWebhookSecret(string $token): bool
     {
         if (empty($this->webhookSecret)) {
-            return true; // Not configured — allow but log warning
+            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is not configured');
+            return false;
         }
         return hash_equals($this->webhookSecret, $token);
     }

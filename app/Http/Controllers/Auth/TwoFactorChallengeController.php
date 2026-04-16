@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use PragmaRX\Google2FA\Google2FA;
@@ -42,6 +43,8 @@ class TwoFactorChallengeController extends Controller
             return redirect()->route('login');
         }
 
+        $usedRecoveryCode = false;
+
         // Try TOTP code first
         if ($request->filled('code')) {
             $google2fa = new Google2FA();
@@ -49,6 +52,7 @@ class TwoFactorChallengeController extends Controller
             $valid     = $secret && $google2fa->verifyKey($secret, $request->code);
 
             if (! $valid) {
+                $this->writeAudit($request, $user, '2fa.failed', "Invalid TOTP code for '{$user->name}'.");
                 return back()->withErrors(['code' => 'Invalid authentication code.']);
             }
         } elseif ($request->filled('recovery_code')) {
@@ -56,6 +60,7 @@ class TwoFactorChallengeController extends Controller
             $index = array_search($request->recovery_code, $codes, true);
 
             if ($index === false) {
+                $this->writeAudit($request, $user, '2fa.failed', "Invalid recovery code for '{$user->name}'.");
                 return back()->withErrors(['recovery_code' => 'Invalid recovery code.']);
             }
 
@@ -64,6 +69,7 @@ class TwoFactorChallengeController extends Controller
             $user->forceFill([
                 'two_factor_recovery_codes' => encrypt(json_encode(array_values($codes))),
             ])->save();
+            $usedRecoveryCode = true;
         } else {
             return back()->withErrors(['code' => 'Please enter an authentication code or recovery code.']);
         }
@@ -74,6 +80,25 @@ class TwoFactorChallengeController extends Controller
         session(['two_factor_verified' => true]);
         $request->session()->regenerate();
 
+        if ($usedRecoveryCode) {
+            $this->writeAudit($request, $user, '2fa.recovery_code_used',
+                "Recovery code consumed for '{$user->name}' (".count($user->getTwoFactorRecoveryCodes())." remaining).");
+        }
+        $this->writeAudit($request, $user, 'auth.login', "User '{$user->name}' logged in (2FA verified).");
+
         return redirect()->intended('/home');
+    }
+
+    private function writeAudit(Request $request, User $user, string $action, string $description): void
+    {
+        AuditLog::create([
+            'user_id'     => $user->id,
+            'user_name'   => $user->name,
+            'user_role'   => $user->role,
+            'action'      => $action,
+            'description' => $description,
+            'ip_address'  => $request->ip(),
+            'user_agent'  => substr((string) $request->userAgent(), 0, 255),
+        ]);
     }
 }

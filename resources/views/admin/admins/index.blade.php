@@ -15,11 +15,11 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Created</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Created</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -39,14 +39,14 @@
                     </td>
                     <td class="text-muted small">{{ $admin->created_at->format('d M Y') }}</td>
                     <td class="text-end">
-                        <a href="{{ route('admin.admins.edit', $admin) }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('admin.admins.edit', $admin) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit administrator">
                             <i class="bi bi-pencil"></i>
                         </a>
                         @if($admin->id !== auth()->id())
                         <form action="{{ route('admin.admins.destroy', $admin) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Remove this administrator?')">
+                              data-confirm="Remove this administrator?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Remove administrator"><i class="bi bi-trash"></i></button>
                         </form>
                         @endif
                     </td>

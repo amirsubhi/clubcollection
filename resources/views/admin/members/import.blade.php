@@ -27,9 +27,9 @@
                     <table class="table table-sm align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th style="width:60px">Row</th>
-                                <th>Email</th>
-                                <th>Reason</th>
+                                <th scope="col" style="width:60px">Row</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Reason</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -100,10 +100,10 @@
                     <table class="table table-bordered table-sm small mb-3">
                         <thead class="table-light">
                             <tr>
-                                <th>Column</th>
-                                <th>Required</th>
-                                <th>Accepted Values</th>
-                                <th>Example</th>
+                                <th scope="col">Column</th>
+                                <th scope="col">Required</th>
+                                <th scope="col">Accepted Values</th>
+                                <th scope="col">Example</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -6,7 +6,7 @@
     <title>Install — {{ config('app.name', 'Club Portal') }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
+    <style nonce="{{ $cspNonce ?? '' }}">
         html, body { min-height: 100%; }
         body {
             background: linear-gradient(135deg, #1a1f36 0%, #0d6efd 100%);
@@ -167,16 +167,20 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input type="password" name="admin_password" class="form-control @error('admin_password') is-invalid @enderror"
-                       placeholder="Minimum 8 characters" required>
+                <label for="adminPassword" class="form-label">Password</label>
+                <input type="password" id="adminPassword" name="admin_password"
+                       class="form-control @error('admin_password') is-invalid @enderror"
+                       autocomplete="new-password" required minlength="12">
+                <div class="form-text small">
+                    Must be at least 12 characters and contain upper-case, lower-case, a number and a symbol.
+                </div>
                 @error('admin_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
             <div class="mb-4">
-                <label class="form-label">Confirm Password</label>
-                <input type="password" name="admin_password_confirmation" class="form-control"
-                       placeholder="Repeat your password" required>
+                <label for="adminPasswordConfirmation" class="form-label">Confirm Password</label>
+                <input type="password" id="adminPasswordConfirmation" name="admin_password_confirmation"
+                       class="form-control" autocomplete="new-password" required minlength="12">
             </div>
 
             <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"

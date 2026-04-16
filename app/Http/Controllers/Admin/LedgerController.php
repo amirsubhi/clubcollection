@@ -147,6 +147,14 @@ class LedgerController extends Controller
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
+    /**
+     * Hard cap on ledger date-range width. Caps the work LedgerController
+     * does in memory (one row per payment / expense) and the size of the
+     * monthly breakdown loop. 24 months (2 years) covers the realistic AGM
+     * / treasurer report window; longer ranges should be split.
+     */
+    private const MAX_RANGE_MONTHS = 24;
+
     private function parseFilters(): array
     {
         // Validate all three inputs before touching them
@@ -166,6 +174,12 @@ class LedgerController extends Controller
 
         if ($from->gt($to)) {
             $from = $to->copy()->startOfYear();
+        }
+
+        // Reject ranges that would force loading huge result sets into memory.
+        // diffInMonths is non-negative because we just enforced from <= to.
+        if ($from->diffInMonths($to) > self::MAX_RANGE_MONTHS) {
+            abort(422, 'Date range cannot exceed '.self::MAX_RANGE_MONTHS.' months. Please narrow the range.');
         }
 
         $openingBalance = (float) request('opening_balance', 0);

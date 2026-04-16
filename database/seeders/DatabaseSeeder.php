@@ -13,6 +13,18 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Production guard — the demo super-admin password 'Admin@123' is well
+        // known. Refuse to create it in a production environment to prevent an
+        // accidental `php artisan db:seed` from silently provisioning a public
+        // admin account. Use the install wizard or seed manually instead.
+        if (app()->environment('production')) {
+            $this->command?->warn(
+                'DatabaseSeeder skipped in production. Use the install wizard '.
+                'or create a super admin manually with a strong password.'
+            );
+            return;
+        }
+
         // Super Admin
         User::create([
             'name'     => 'Super Admin',

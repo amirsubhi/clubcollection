@@ -8,7 +8,7 @@
 @endsection
 
 @push('styles')
-<style>
+<style nonce="{{ $cspNonce ?? '' }}">
 @media print {
     .member-nav, .page-subtitle-bar, .no-print { display: none !important; }
     .member-main { max-width: 100%; margin: 0; padding: 0; }
@@ -27,7 +27,7 @@
     <a href="{{ route('member.payments.index', $payment->club) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back
     </a>
-    <button onclick="window.print()" class="btn btn-sm btn-outline-secondary ms-auto">
+    <button type="button" data-print class="btn btn-sm btn-outline-secondary ms-auto" aria-label="Print invoice">
         <i class="bi bi-printer me-1"></i>Print
     </button>
     @if($payment->status !== 'paid')
@@ -41,7 +41,7 @@
     <div class="invoice-header d-flex justify-content-between align-items-start">
         <div>
             @if($payment->club->logo)
-                <img src="{{ asset('storage/'.$payment->club->logo) }}" height="50" class="mb-2">
+                <img src="{{ asset('storage/'.$payment->club->logo) }}" alt="{{ $payment->club->name }} logo" height="50" class="mb-2">
             @endif
             <h5 class="mb-0 fw-bold">{{ $payment->club->name }}</h5>
             @if($payment->club->email)
@@ -53,11 +53,11 @@
             <div class="text-muted small">#{{ str_pad($payment->id, 6, '0', STR_PAD_LEFT) }}</div>
             <div class="mt-2">
                 @if($payment->status === 'paid')
-                    <span class="badge bg-success fs-6">PAID</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle fs-6">PAID</span>
                 @elseif($payment->status === 'overdue')
-                    <span class="badge bg-danger fs-6">OVERDUE</span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-6">OVERDUE</span>
                 @else
-                    <span class="badge bg-warning text-dark fs-6">PENDING</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fs-6">PENDING</span>
                 @endif
             </div>
         </div>
@@ -82,9 +82,9 @@
     <table class="table table-bordered mb-4">
         <thead class="table-light">
             <tr>
-                <th>Description</th>
-                <th class="text-center" style="width:120px">Frequency</th>
-                <th class="text-end" style="width:130px">Amount</th>
+                <th scope="col">Description</th>
+                <th scope="col" class="text-center" style="width:120px">Frequency</th>
+                <th scope="col" class="text-end" style="width:130px">Amount</th>
             </tr>
         </thead>
         <tbody>

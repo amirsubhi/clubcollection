@@ -38,7 +38,7 @@
             <i class="bi bi-shield-check me-1"></i>Verify
         </button>
         <div class="text-center">
-            <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="toggleRecovery()">
+            <button type="button" class="btn btn-link btn-sm p-0 text-muted" data-toggle-recovery>
                 Use a recovery code instead
             </button>
         </div>
@@ -58,7 +58,7 @@
             <i class="bi bi-key me-1"></i>Use Recovery Code
         </button>
         <div class="text-center">
-            <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="toggleRecovery()">
+            <button type="button" class="btn btn-link btn-sm p-0 text-muted" data-toggle-recovery>
                 Use authenticator code instead
             </button>
         </div>
@@ -86,5 +86,8 @@ function toggleRecovery() {
     document.getElementById('recovery_code').value = '';
     (isCode ? document.getElementById('recovery_code') : document.getElementById('code')).focus();
 }
+document.querySelectorAll('[data-toggle-recovery]').forEach(btn => {
+    btn.addEventListener('click', toggleRecovery);
+});
 </script>
 @endsection

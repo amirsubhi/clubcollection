@@ -15,13 +15,13 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Value</th>
-                    <th>Valid From</th>
-                    <th>Valid To</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Value</th>
+                    <th scope="col">Valid From</th>
+                    <th scope="col">Valid To</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -46,11 +46,11 @@
                         @endif
                     </td>
                     <td class="text-end">
-                        <a href="{{ route('admin.discounts.edit', $discount) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ route('admin.discounts.edit', $discount) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit discount"><i class="bi bi-pencil"></i></a>
                         <form action="{{ route('admin.discounts.destroy', $discount) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Delete this discount?')">
+                              data-confirm="Delete this discount?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete discount"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>

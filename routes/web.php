@@ -47,11 +47,18 @@ Route::middleware('check_installed')->group(function () {
         ->middleware('throttle:5,1')
         ->name('login');  // overrides the one from Auth::routes()
 
-    // ── Two-factor challenge — auth required, but 2FA not yet needed ──────────
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
-        Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])->name('two-factor.verify');
-    });
+    // ── Two-factor challenge — no `auth` middleware ───────────────────────────
+    // LoginController::authenticated() calls auth()->logout() and pins the
+    // user id in the session under 'two_factor_user_id'. If we required `auth`
+    // here, the redirect after login would bounce back to /login. The
+    // controller itself gates on session('two_factor_user_id') and redirects
+    // already-authenticated users home.
+    Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
+    // Throttle the verify POST to defend against brute-forcing TOTP codes
+    // (10**6 search space) and recovery codes (8 codes, alphanumeric).
+    Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.verify');
 
     Route::middleware(['auth', 'two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');

@@ -25,10 +25,10 @@
         <table class="table table-sm table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Monthly (RM)</th>
-                    <th>Effective From</th>
-                    <th>Effective To</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Monthly (RM)</th>
+                    <th scope="col">Effective From</th>
+                    <th scope="col">Effective To</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -45,9 +45,9 @@
                     </td>
                     <td class="text-end">
                         <form action="{{ route('admin.fee-rates.destroy', [$club, $rate]) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Delete this rate record?')">
+                              data-confirm="Delete this rate record?">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete rate"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>

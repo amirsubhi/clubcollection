@@ -46,19 +46,20 @@
                     <i class="bi bi-check-circle me-1"></i>
                     2FA is active. Your account is protected by your authenticator app.
                 </div>
-                <form method="POST" action="{{ route('profile.2fa.disable') }}">
+                <form method="POST" action="{{ route('profile.2fa.disable') }}"
+                      data-confirm="Disable 2FA? Your account will only require email + password to sign in.">
                     @csrf
                     @method('DELETE')
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Confirm your password to disable 2FA</label>
-                        <input type="password" name="password" class="form-control form-control-sm @error('password') is-invalid @enderror"
+                        <label for="disable2faPassword" class="form-label small fw-semibold">Confirm your password to disable 2FA</label>
+                        <input type="password" id="disable2faPassword" name="password"
+                               class="form-control form-control-sm @error('password') is-invalid @enderror"
                                placeholder="Current password" autocomplete="current-password" required>
                         @error('password')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            onclick="return confirm('Disable 2FA? Your account will only require email + password to sign in.')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
                         <i class="bi bi-shield-x me-1"></i>Disable 2FA
                     </button>
                 </form>
