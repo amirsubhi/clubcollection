@@ -1,6 +1,6 @@
 # Club Portal
 
-Club Portal is a self-hosted membership and collection management system built on Laravel 11. It's designed for organisations that oversee multiple clubs, track member payments, and manage club expenses all through a clean admin interface with an integrated payment gateway. I built this to replace the hassle of tracking club membership payments manually.
+Club Portal is a self-hosted membership and collection management system built on Laravel 13. It's designed for organisations that oversee multiple clubs, track member payments, and manage club expenses all through a clean admin interface with an integrated payment gateway. I built this to replace the hassle of tracking club membership payments manually.
 
 ## Features
 
@@ -18,7 +18,7 @@ Club Portal is a self-hosted membership and collection management system built o
 
 ## Requirements
 
-- PHP >= 8.2
+- PHP >= 8.3
 - PDO SQLite extension
 - Composer
 
@@ -97,9 +97,9 @@ This project uses [ToyyibPay](https://toyyibpay.com) for online payments. Config
 
 ## Tech Stack
 
-- **Framework:** Laravel 11
+- **Framework:** Laravel 13 (PHP 8.3+)
 - **Database:** SQLite (default) — switchable to MySQL/PostgreSQL via `.env`
-- **Frontend:** Bootstrap 5.3 + Bootstrap Icons
+- **Frontend:** Bootstrap 5.3 + Bootstrap Icons (loaded via CDN — no Node/Vite build step)
 - **Payment:** ToyyibPay
 - **PDF generation:** [barryvdh/laravel-dompdf](https://github.com/barryvdh/laravel-dompdf) (ledger reports)
 - **Mail:** Configurable (SMTP, Mailgun, log, etc.)
@@ -120,7 +120,8 @@ All user-supplied inputs (dates, amounts, IDs) are validated before use. Queries
 - Set `APP_ENV=production` and `APP_DEBUG=false` in `.env`
 - Generate a strong `APP_KEY` with `php artisan key:generate`
 - Serve over HTTPS only
-- Set a strong `TOYYIBPAY_WEBHOOK_SECRET`
+- Set a strong `TOYYIBPAY_WEBHOOK_SECRET` — when empty, all webhook calls are rejected (fail-closed)
+- Set `TRUSTED_PROXIES` if the app sits behind a reverse proxy / load balancer (without it, rate limiting and audit-log IPs see the proxy address, not the client)
 - Keep PHP, Composer packages, and the OS up to date
 - Restrict file system permissions (`storage/` and `bootstrap/cache/` writable by web server only)
 - Regularly back up your database

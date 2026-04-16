@@ -6,9 +6,60 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.0.2] — Unreleased
+
+Security and accessibility hardening pass. No public API changes.
+
+### Security
+- Webhook handler is now atomic (lockForUpdate + transaction) and idempotent;
+  fails closed if `TOYYIBPAY_WEBHOOK_SECRET` is unset.
+- 2FA challenge POST is throttled (5 req/min/IP); audit-log distinguishes
+  password verification from full login; recovery-code use is audited.
+- Install wizard requires a strong password (12+ chars, mixed case, numbers,
+  symbols), is atomic (transaction + atomic marker write), and refuses
+  re-install once installed.
+- Seeder refuses to run in production (default super-admin password is
+  documented and would otherwise be silently provisioned).
+- `MemberController` shallow routes now use `AuthorizesClubResource` and
+  refuse cross-club access; pivot role no longer escalates `users.role`.
+- CSV import capped at 1000 rows; formula characters (`=+@-`) stripped to
+  defang downstream spreadsheet exports.
+- CSP nonce now applied to dashboard / statistics charts (previously blocked
+  silently); inline `onsubmit/onclick/onchange` handlers replaced with
+  CSP-safe data attributes wired in the layouts.
+
+### DB / Infra
+- Composite index on `audit_logs(auditable_type, auditable_id)`.
+- `sessions.user_id` foreign key with cascade-on-delete (MySQL/Postgres).
+- Trusted-proxies wired via `TRUSTED_PROXIES` env var.
+- Ledger date range capped at 24 months to prevent OOM.
+- Portable `whereBetween` month filter in PaymentController (was
+  SQLite-only `strftime`).
+
+### Accessibility
+- `aria-label` on all icon-only action buttons.
+- `scope="col"` on every `<th>` across admin and member tables.
+- `alt` text on every logo image.
+- Status badges normalised to `-subtle` variants for WCAG AA contrast.
+
+### Tooling
+- Removed unused Vite / Tailwind / SCSS scaffolding (Bootstrap is loaded
+  via CDN). `package.json` deleted; `composer setup` no longer runs `npm`.
+- Added `pint.json` so the Laravel preset is consistent across machines.
+- `phpunit.xml` pins `APP_KEY` so encryption-dependent tests don't depend
+  on the developer's local `.env`.
+
+### Tests
+- 129 tests, 290 assertions (was 90 / 167). New suites: WebhookTest (8),
+  TwoFactorTest (9), InstallationTest (6), ShallowResourceAuthorizationTest (10),
+  SendOverdueRemindersTest (2). Existing suites extended with date-range
+  cap, portable month filter, CSV row cap, and CSV formula-stripping tests.
+
+---
+
 ## [v0.0.1] — 2026-03-23
 
-First public release of Club Portal — a self-hosted club membership management system built with Laravel 11.
+First public release of Club Portal — a self-hosted club membership management system built with Laravel 13.
 
 ### Features included
 
