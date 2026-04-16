@@ -7,7 +7,7 @@
     <div class="col-md-4">
         <div class="card shadow-sm text-center p-4">
             @if($club->logo)
-                <img src="{{ asset('storage/'.$club->logo) }}" class="rounded-circle mx-auto mb-3 border" width="100" height="100" style="object-fit:cover">
+                <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->name }} logo" class="rounded-circle mx-auto mb-3 border" width="100" height="100" style="object-fit:cover">
             @else
                 <div class="bg-secondary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:100px;height:100px">
                     <i class="bi bi-building fs-1 text-white"></i>
@@ -36,7 +36,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Name</th><th>Email</th><th>Role</th><th>Job Level</th></tr>
+                        <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Job Level</th></tr>
                     </thead>
                     <tbody>
                         @forelse($club->members as $member)
@@ -64,7 +64,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Job Level</th><th>Monthly (RM)</th><th>Effective From</th></tr>
+                        <tr><th scope="col">Job Level</th><th scope="col">Monthly (RM)</th><th scope="col">Effective From</th></tr>
                     </thead>
                     <tbody>
                         @forelse($club->feeRates->sortByDesc('effective_from')->take(10) as $rate)

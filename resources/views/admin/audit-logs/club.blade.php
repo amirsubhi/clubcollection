@@ -53,11 +53,11 @@
             <table class="table table-hover mb-0 small">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3" style="width:155px">Date / Time</th>
-                        <th style="width:140px">User</th>
-                        <th style="width:160px">Action</th>
-                        <th>Description</th>
-                        <th style="width:80px">Changes</th>
+                        <th scope="col" class="ps-3" style="width:155px">Date / Time</th>
+                        <th scope="col" style="width:140px">User</th>
+                        <th scope="col" style="width:160px">Action</th>
+                        <th scope="col">Description</th>
+                        <th scope="col" style="width:80px">Changes</th>
                     </tr>
                 </thead>
                 <tbody>

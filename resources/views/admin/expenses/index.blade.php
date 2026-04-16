@@ -44,13 +44,13 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Description</th>
-                    <th>Amount</th>
-                    <th>Receipt</th>
-                    <th>Recorded By</th>
-                    <th class="text-end">Actions</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Receipt</th>
+                    <th scope="col">Recorded By</th>
+                    <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,8 +71,8 @@
                     </td>
                     <td class="small text-muted">{{ $expense->recordedBy->name }}</td>
                     <td class="text-end">
-                        <a href="{{ route('admin.expenses.show', $expense) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
-                        <a href="{{ route('admin.expenses.edit', $expense) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ route('admin.expenses.show', $expense) }}" class="btn btn-sm btn-outline-secondary" aria-label="View expense"><i class="bi bi-eye"></i></a>
+                        <a href="{{ route('admin.expenses.edit', $expense) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit expense"><i class="bi bi-pencil"></i></a>
                         <form action="{{ route('admin.expenses.destroy', $expense) }}" method="POST" class="d-inline"
                               data-confirm="Delete this expense?">
                             @csrf @method('DELETE')
