@@ -25,24 +25,37 @@ class LoginController extends Controller
      */
     protected function authenticated(Request $request, $user)
     {
-        AuditLog::create([
-            'user_id'     => $user->id,
-            'user_name'   => $user->name,
-            'user_role'   => $user->role,
-            'action'      => 'auth.login',
-            'description' => "User '{$user->name}' logged in.",
-            'ip_address'  => $request->ip(),
-            'user_agent'  => substr((string) $request->userAgent(), 0, 255),
-        ]);
-
+        // If 2FA is required, log the password-verified step (NOT a full login)
+        // and pin the user id for the challenge controller. The actual
+        // 'auth.login' audit row is written by TwoFactorChallengeController on
+        // a successful TOTP / recovery verification.
         if ($user->hasEnabledTwoFactor() && ! session('two_factor_verified')) {
+            $this->writeAuditRow($request, $user, 'auth.password_verified_pending_2fa',
+                "Password OK for '{$user->name}' — awaiting 2FA verification.");
+
             auth()->logout();
             $request->session()->put('two_factor_user_id', $user->id);
             $request->session()->regenerate();
             return redirect()->route('two-factor.challenge');
         }
 
+        // Full login (no 2FA enabled).
+        $this->writeAuditRow($request, $user, 'auth.login', "User '{$user->name}' logged in.");
+
         return null; // use default $redirectTo
+    }
+
+    private function writeAuditRow(Request $request, $user, string $action, string $description): void
+    {
+        AuditLog::create([
+            'user_id'     => $user->id,
+            'user_name'   => $user->name,
+            'user_role'   => $user->role,
+            'action'      => $action,
+            'description' => $description,
+            'ip_address'  => $request->ip(),
+            'user_agent'  => substr((string) $request->userAgent(), 0, 255),
+        ]);
     }
 
     /**
