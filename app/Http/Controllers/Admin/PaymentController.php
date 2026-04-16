@@ -29,7 +29,16 @@ class PaymentController extends Controller
         }
 
         if ($month) {
-            $query->whereRaw("strftime('%Y-%m', period_start) = ?", [$month]);
+            // Portable across SQLite/MySQL/Postgres: build the calendar-month
+            // range up front and let Eloquent emit a BETWEEN clause. The
+            // previous strftime() call only worked on SQLite.
+            try {
+                $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+                $end   = $start->copy()->endOfMonth();
+                $query->whereBetween('period_start', [$start->toDateString(), $end->toDateString()]);
+            } catch (\Throwable $e) {
+                // Ignore malformed user-supplied filter rather than 500ing.
+            }
         }
 
         if ($jobLevel) {

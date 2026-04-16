@@ -30,6 +30,15 @@ class LedgerTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_date_range_over_24_months_returns_422(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+
+        $this->get(route('admin.clubs.ledger', $club).'?from=2020-01-01&to=2099-12-31')
+            ->assertStatus(422);
+    }
+
     public function test_admin_of_different_club_is_forbidden(): void
     {
         $clubA = Club::factory()->create();
