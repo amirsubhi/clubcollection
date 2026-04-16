@@ -35,6 +35,31 @@ class PaymentControllerTest extends TestCase
         $response->assertViewHas('payments', fn($p) => $p->every(fn($pay) => $pay->status === 'overdue'));
     }
 
+    public function test_index_month_filter_uses_portable_between_clause(): void
+    {
+        // Regression: previously used SQLite-only strftime() in whereRaw.
+        $club   = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+        $member = User::factory()->create();
+        $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
+
+        Payment::factory()->forClub($club)->forMember($member)->create([
+            'period_start' => '2025-03-01',
+            'period_end'   => '2025-03-31',
+            'status'       => 'paid',
+        ]);
+        Payment::factory()->forClub($club)->forMember($member)->create([
+            'period_start' => '2025-04-01',
+            'period_end'   => '2025-04-30',
+            'status'       => 'paid',
+        ]);
+
+        $this->get(route('admin.clubs.payments.index', $club).'?month=2025-03')
+            ->assertOk()
+            ->assertViewHas('payments', fn($p) => $p->count() === 1
+                && $p->first()->period_start->toDateString() === '2025-03-01');
+    }
+
     // ── Store ──────────────────────────────────────────────────────────────
 
     public function test_store_creates_pending_payment(): void
