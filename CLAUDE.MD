@@ -138,6 +138,8 @@ Webhook handler (`app/Http/Controllers/WebhookController.php`):
 
 Login → `RequiresTwoFactor` sees 2FA enabled but session unverified → logs user out, stores `two_factor_user_id` → redirect `/two-factor-challenge` → `TwoFactorChallengeController` validates TOTP → sets `session('two_factor_verified') = true`. Don't design flows that assume a route behind the `two_factor` middleware is reachable while unverified.
 
+**Critical gotcha**: `/two-factor-challenge` (both GET and POST) intentionally has **no `auth` middleware** (`routes/web.php:50-61`). `LoginController::authenticated()` calls `auth()->logout()` and stores `two_factor_user_id` in session — adding `auth` here would redirect the now-unauthenticated user back to `/login`. `TwoFactorChallengeController` gates on `session('two_factor_user_id')` internally. The POST has `throttle:5,1` to block TOTP brute-force.
+
 ### 5. Install wizard
 
 Gated by the `storage/app/.installed` marker file. `CheckInstalled` redirects every non-install / non-webhook route to `/install` until the file exists. Tests create the marker in `Tests\TestCase::setUp()` so requests aren't redirected.
@@ -173,10 +175,14 @@ From `composer.json:37-53`:
 | `vendor/bin/pint` | Laravel Pint — standard preset, no custom config |
 | `php artisan schedule:run` | To execute the daily 08:00 overdue-reminders job, run this per minute from cron |
 
+**`TRUSTED_PROXIES`** (`.env.example`): Accepts comma-separated IPs, CIDR ranges, or `'*'`. Misconfiguring this causes `request()->ip()` to return the load-balancer IP, which pollutes audit logs and breaks per-IP rate limiting.
+
 ## Testing Conventions
 
 - `Tests\TestCase` uses `RefreshDatabase` and `touch`es `storage/app/.installed` in `setUp()`.
 - Helpers on the base class: `actingAsSuperAdmin()`, `actingAsClubAdmin(Club $club)`, `actingAsMember(Club $club)`. Factory users have 2FA disabled, so `RequiresTwoFactor` passes through.
+- **IDOR test pattern**: Cross-club access checks on admin resources expect `assertForbidden()` (they call `authorizeClubAdmin()`). Member portal routes use `abort(404)` for information-hiding — test those with `assertNotFound()`. Don't mix the two.
+- **Session pre-seeding**: Use `withSession(['two_factor_user_id' => $user->id])` when testing the 2FA challenge flow — `TwoFactorChallengeController` gates on that session key, not `Auth::check()`.
 - Feature tests: `tests/Feature/Admin/` — `AuthorizationTest`, `ClubControllerTest`, `ExpenseControllerTest`, `LedgerTest`, `MemberControllerTest`, `MemberCsvImportTest`, `PaymentControllerTest`.
 - Unit tests: `tests/Unit/PaymentModelTest.php`.
 - Factories exist for all 7 domain models in `database/factories/`.
@@ -194,6 +200,7 @@ From `composer.json:37-53`:
 - **Every domain write needs a matching `AuditService::log(...)` call.** Grep for existing calls when adding a new action.
 - **Inline `<script>` / `<style>` without `nonce="{{ $cspNonce }}"` will be blocked** by CSP.
 - **`Payment.status` has three values**, not two — `overdue` is set by the scheduled `payments:send-overdue-reminders` command (`routes/console.php:12-14`).
+- **CSV import hard limit is 1000 rows** (`MemberController::CSV_ROW_LIMIT`); file cap is 2 MB. On completion the controller flashes `import_imported` (int) and `import_errors` (array of `{row, email, reason}`) back via `with()`. `stripFormulaPrefix()` runs on `name` and `email` fields — any value starting with `=`, `+`, `-`, or `@` is defanged to prevent CSV injection when admins later export the list.
 
 ## Working Principles
 
