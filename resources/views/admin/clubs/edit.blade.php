@@ -42,11 +42,26 @@
                         </div>
                     </div>
 
+                    @php($activeGateway = old('payment_gateway', $club->activeGateway()))
+
+                    {{-- Payment gateway selector --}}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Gateway <span class="text-danger">*</span></label>
+                        <select name="payment_gateway" id="paymentGatewaySelect"
+                                class="form-select @error('payment_gateway') is-invalid @enderror">
+                            <option value="toyyibpay" {{ $activeGateway === 'toyyibpay' ? 'selected' : '' }}>ToyyibPay</option>
+                            <option value="billplz"   {{ $activeGateway === 'billplz' ? 'selected' : '' }}>Billplz</option>
+                        </select>
+                        <div class="form-text">Switching gateways does not erase the inactive gateway's stored credentials.</div>
+                        @error('payment_gateway')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
                     {{-- ToyyibPay --}}
-                    <div class="border rounded p-3 mb-4 {{ $club->hasToyyibPayCredentials() ? 'border-success bg-success bg-opacity-10' : 'bg-light' }}">
+                    <div class="border rounded p-3 mb-4 gateway-block {{ $club->hasToyyibPayCredentials() ? 'border-success bg-success bg-opacity-10' : 'bg-light' }}"
+                         data-gateway="toyyibpay">
                         <div class="d-flex align-items-center gap-2 mb-3">
                             <i class="bi bi-credit-card-2-front {{ $club->hasToyyibPayCredentials() ? 'text-success' : 'text-secondary' }}"></i>
-                            <span class="fw-semibold">ToyyibPay Payment Gateway</span>
+                            <span class="fw-semibold">ToyyibPay Credentials</span>
                             @if($club->hasToyyibPayCredentials())
                                 <span class="badge bg-success ms-auto">
                                     <i class="bi bi-check-circle me-1"></i>Configured
@@ -62,14 +77,15 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold small">User Secret Key</label>
                             <div class="input-group input-group-sm">
-                                <input type="password" name="toyyibpay_secret_key" id="secretKeyInput"
+                                <input type="password" name="toyyibpay_secret_key" id="toyyibpaySecretInput"
                                        class="form-control @error('toyyibpay_secret_key') is-invalid @enderror"
                                        value="{{ old('toyyibpay_secret_key') }}"
                                        placeholder="{{ $club->hasToyyibPayCredentials() ? '••••••••••••••••  (leave blank to keep current)' : 'Enter User Secret Key' }}"
                                        autocomplete="off">
-                                <button type="button" id="toggleSecretBtn" class="btn btn-outline-secondary"
+                                <button type="button" class="btn btn-outline-secondary toggle-secret-btn"
+                                        data-target="toyyibpaySecretInput"
                                         title="Show/hide" aria-label="Show or hide secret key">
-                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                    <i class="bi bi-eye"></i>
                                 </button>
                             </div>
                             @error('toyyibpay_secret_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -82,6 +98,68 @@
                                    placeholder="e.g. abc123xyz">
                             <div class="form-text">From ToyyibPay → My Category → Category Code.</div>
                             @error('toyyibpay_category_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    {{-- Billplz --}}
+                    <div class="border rounded p-3 mb-4 gateway-block {{ $club->hasBillplzCredentials() ? 'border-success bg-success bg-opacity-10' : 'bg-light' }}"
+                         data-gateway="billplz">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-credit-card {{ $club->hasBillplzCredentials() ? 'text-success' : 'text-secondary' }}"></i>
+                            <span class="fw-semibold">Billplz Credentials</span>
+                            @if($club->hasBillplzCredentials())
+                                <span class="badge bg-success ms-auto">
+                                    <i class="bi bi-check-circle me-1"></i>Configured
+                                </span>
+                            @else
+                                <span class="badge bg-warning text-dark ms-auto">Not Configured</span>
+                            @endif
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Requires API key, collection ID, and X-Signature key. Leave any
+                            secret blank to keep the existing one.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">API Key</label>
+                            <div class="input-group input-group-sm">
+                                <input type="password" name="billplz_api_key" id="billplzApiKeyInput"
+                                       class="form-control @error('billplz_api_key') is-invalid @enderror"
+                                       value="{{ old('billplz_api_key') }}"
+                                       placeholder="{{ $club->billplz_api_key ? '••••••••••••••••  (leave blank to keep current)' : 'Enter API Key' }}"
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary toggle-secret-btn"
+                                        data-target="billplzApiKeyInput"
+                                        title="Show/hide" aria-label="Show or hide API key">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            @error('billplz_api_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Collection ID</label>
+                            <input type="text" name="billplz_collection_id"
+                                   class="form-control form-control-sm @error('billplz_collection_id') is-invalid @enderror"
+                                   value="{{ old('billplz_collection_id', $club->billplz_collection_id) }}"
+                                   placeholder="e.g. abc12345">
+                            <div class="form-text">From Billplz → Billing → Collections.</div>
+                            @error('billplz_collection_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold small">X-Signature Key</label>
+                            <div class="input-group input-group-sm">
+                                <input type="password" name="billplz_x_signature_key" id="billplzSigKeyInput"
+                                       class="form-control @error('billplz_x_signature_key') is-invalid @enderror"
+                                       value="{{ old('billplz_x_signature_key') }}"
+                                       placeholder="{{ $club->billplz_x_signature_key ? '••••••••••••••••  (leave blank to keep current)' : 'Enter X-Signature Key' }}"
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary toggle-secret-btn"
+                                        data-target="billplzSigKeyInput"
+                                        title="Show/hide" aria-label="Show or hide signature key">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Used to verify webhook authenticity.</div>
+                            @error('billplz_x_signature_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -98,17 +176,34 @@
 </div>
 @push('scripts')
 <script nonce="{{ $cspNonce }}">
-document.getElementById('toggleSecretBtn')?.addEventListener('click', () => {
-    const input = document.getElementById('secretKeyInput');
-    const icon  = document.getElementById('eyeIcon');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'bi bi-eye-slash';
-    } else {
-        input.type = 'password';
-        icon.className = 'bi bi-eye';
+(function () {
+    // Show/hide gateway credential blocks based on the active gateway.
+    const select = document.getElementById('paymentGatewaySelect');
+    const blocks = document.querySelectorAll('.gateway-block');
+    function refresh() {
+        const active = select.value;
+        blocks.forEach(b => {
+            b.style.display = b.dataset.gateway === active ? '' : 'none';
+        });
     }
-});
+    select?.addEventListener('change', refresh);
+    refresh();
+
+    // Show/hide individual secret inputs.
+    document.querySelectorAll('.toggle-secret-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.dataset.target);
+            const icon  = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        });
+    });
+})();
 </script>
 @endpush
 @endsection

@@ -3,18 +3,15 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
-use App\Mail\PaymentConfirmation;
 use App\Models\Club;
-use App\Models\FeeRate;
 use App\Models\Payment;
-use App\Services\ToyyibPayService;
+use App\Services\PaymentGateways\PaymentGatewayManager;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
 {
-    public function __construct(protected ToyyibPayService $toyyibPay) {}
+    public function __construct(protected PaymentGatewayManager $gateways) {}
 
     public function index(Request $request, Club $club)
     {
@@ -27,9 +24,9 @@ class PaymentController extends Controller
 
         // Available years: from earliest payment or current year, up to next year
         $earliestDate = $club->payments()->where('user_id', $user->id)->min('period_start');
-        $minYear      = $earliestDate ? (int) date('Y', strtotime($earliestDate)) : now()->year;
-        $maxYear  = now()->year + 1;
-        $years    = range($maxYear, $minYear);
+        $minYear = $earliestDate ? (int) date('Y', strtotime($earliestDate)) : now()->year;
+        $maxYear = now()->year + 1;
+        $years = range($maxYear, $minYear);
 
         $payments = $club->payments()
             ->where('user_id', $user->id)
@@ -51,11 +48,11 @@ class PaymentController extends Controller
             ->first();
 
         $annualSummary = [
-            'paid'       => (float) ($annualStats->paid       ?? 0),
-            'pending'    => (float) ($annualStats->pending    ?? 0),
-            'overdue'    => (float) ($annualStats->overdue    ?? 0),
-            'paid_count' => (int)   ($annualStats->paid_count ?? 0),
-            'total'      => (float) ($annualStats->total      ?? 0),
+            'paid' => (float) ($annualStats->paid ?? 0),
+            'pending' => (float) ($annualStats->pending ?? 0),
+            'overdue' => (float) ($annualStats->overdue ?? 0),
+            'paid_count' => (int) ($annualStats->paid_count ?? 0),
+            'total' => (float) ($annualStats->total ?? 0),
         ];
 
         return view('member.payments.index', compact('club', 'payments', 'selectedYear', 'years', 'annualSummary'));
@@ -65,6 +62,7 @@ class PaymentController extends Controller
     {
         $this->authorizePayment($payment);
         $payment->load(['club', 'user', 'discount']);
+
         return view('member.payments.invoice', compact('payment'));
     }
 
@@ -77,37 +75,40 @@ class PaymentController extends Controller
         }
 
         $club = $payment->club;
+        $gateway = $this->gateways->for($club);
 
-        if (!$this->toyyibPay->isConfiguredForClub($club)) {
+        if (! $gateway->isConfiguredForClub($club)) {
             return back()->with('error', 'Online payment is not available for this club yet. Please contact the club administrator.');
         }
 
-        $user  = auth()->user();
-        $refNo = 'PAY-' . $payment->id . '-' . time();
+        $user = auth()->user();
+        $refNo = 'PAY-'.$payment->id.'-'.time();
+        $callbackRoute = $gateway->name() === 'billplz' ? 'webhook.billplz' : 'webhook.toyyibpay';
 
-        $billCode = $this->toyyibPay->createBill([
-            'club'         => $club,   // service picks up club's own credentials
-            'bill_name'    => "Club Fee – {$club->name}",
-            'description'  => "Payment for {$payment->period_start->format('M Y')} to {$payment->period_end->format('M Y')}",
-            'amount'       => $payment->amount,
-            'return_url'   => route('member.payments.thankyou', $payment),
-            'callback_url' => route('webhook.toyyibpay'),
+        $result = $gateway->createBill([
+            'club' => $club,
+            'bill_name' => "Club Fee – {$club->name}",
+            'description' => "Payment for {$payment->period_start->format('M Y')} to {$payment->period_end->format('M Y')}",
+            'amount' => $payment->amount,
+            'return_url' => route('member.payments.thankyou', $payment),
+            'callback_url' => route($callbackRoute),
             'reference_no' => $refNo,
-            'payer_name'   => $user->name,
-            'payer_email'  => $user->email,
-            'club_name'    => $club->name,
+            'payer_name' => $user->name,
+            'payer_email' => $user->email,
+            'club_name' => $club->name,
         ]);
 
-        if (!$billCode) {
+        if (! $result) {
             return back()->with('error', 'Unable to create payment bill. Please try again.');
         }
 
         $payment->update([
-            'bill_code' => $billCode,
+            'bill_code' => $result->billCode,
             'reference' => $refNo,
+            'gateway' => $result->gateway,
         ]);
 
-        return redirect($this->toyyibPay->paymentUrl($billCode));
+        return redirect($result->paymentUrl);
     }
 
     public function generateFuture(Request $request, Club $club)
@@ -117,19 +118,19 @@ class PaymentController extends Controller
 
         $request->validate([
             'period_start' => 'required|date|after:today',
-            'frequency'    => 'required|in:monthly,quarterly,yearly',
+            'frequency' => 'required|in:monthly,quarterly,yearly',
         ]);
 
-        $level    = $club->members()->where('users.id', $user->id)->first()?->pivot->job_level;
-        $feeRate  = $club->feeRates()->where('job_level', $level)->whereNull('effective_to')->first();
+        $level = $club->members()->where('users.id', $user->id)->first()?->pivot->job_level;
+        $feeRate = $club->feeRates()->where('job_level', $level)->whereNull('effective_to')->first();
 
-        if (!$feeRate) {
+        if (! $feeRate) {
             return back()->with('error', 'No fee rate configured for your job level.');
         }
 
         $start = Carbon::parse($request->period_start)->startOfMonth();
         $multipliers = ['monthly' => 1, 'quarterly' => 3, 'yearly' => 12];
-        $end   = $start->copy()->addMonths($multipliers[$request->frequency])->subDay();
+        $end = $start->copy()->addMonths($multipliers[$request->frequency])->subDay();
 
         // Check if payment already exists for this period
         $exists = $club->payments()
@@ -142,15 +143,15 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::create([
-            'club_id'      => $club->id,
-            'user_id'      => $user->id,
-            'recorded_by'  => $user->id,
-            'amount'       => $feeRate->monthly_amount * $multipliers[$request->frequency],
-            'frequency'    => $request->frequency,
+            'club_id' => $club->id,
+            'user_id' => $user->id,
+            'recorded_by' => $user->id,
+            'amount' => $feeRate->monthly_amount * $multipliers[$request->frequency],
+            'frequency' => $request->frequency,
             'period_start' => $start->toDateString(),
-            'period_end'   => $end->toDateString(),
-            'due_date'     => $start->toDateString(),
-            'status'       => 'pending',
+            'period_end' => $end->toDateString(),
+            'due_date' => $start->toDateString(),
+            'status' => 'pending',
         ]);
 
         return redirect()->route('member.payments.invoice', $payment)
@@ -161,13 +162,14 @@ class PaymentController extends Controller
     {
         $this->authorizePayment($payment);
         $payment->load(['club', 'user']);
+
         return view('member.payments.thankyou', compact('payment'));
     }
 
     private function authorizeClubMembership($user, Club $club): void
     {
         $isMember = $club->members()->where('users.id', $user->id)->exists();
-        if (!$isMember) {
+        if (! $isMember) {
             abort(403, 'You are not a member of this club.');
         }
     }

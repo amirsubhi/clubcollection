@@ -2,99 +2,134 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\PaymentGateway;
 use App\Mail\PaymentConfirmation;
 use App\Models\Payment;
 use App\Services\AuditService;
-use App\Services\ToyyibPayService;
+use App\Services\PaymentGateways\PaymentGatewayManager;
+use App\Support\Payments\WebhookResult;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class WebhookController extends Controller
 {
-    public function toyyibpay(Request $request, ToyyibPayService $toyyibPay)
+    public function toyyibpay(Request $request, PaymentGatewayManager $manager): Response
     {
-        // Verify shared secret token — prevents unauthorized parties from
-        // triggering payment confirmations by posting to the webhook URL.
-        $token = $request->query('webhook_token', '');
-        if (! $toyyibPay->verifyWebhookSecret($token)) {
-            Log::warning('ToyyibPay webhook: invalid token', ['ip' => $request->ip()]);
-            abort(403, 'Invalid webhook token.');
+        return $this->handle($request, $manager->driver('toyyibpay'));
+    }
+
+    public function billplz(Request $request, PaymentGatewayManager $manager): Response
+    {
+        return $this->handle($request, $manager->driver('billplz'));
+    }
+
+    /**
+     * Shared webhook pipeline: verify, parse, mark paid, email, audit.
+     * Always returns HTTP 200 except when authentication fails (403),
+     * because providers retry on non-200 responses.
+     */
+    private function handle(Request $request, PaymentGateway $gateway): Response
+    {
+        if (! $gateway->verifyWebhookRequest($request)) {
+            Log::warning("{$gateway->name()} webhook: invalid signature/token", ['ip' => $request->ip()]);
+            abort(403, 'Invalid webhook.');
         }
 
-        // Log payload without the secret-bearing query parameter.
-        $payload = $request->except(['webhook_token']);
-        Log::info('ToyyibPay callback received', $payload);
+        $result = $gateway->parseWebhook($request);
 
-        if (! $toyyibPay->verifyCallback($payload)) {
-            Log::warning('ToyyibPay: payment not successful', $payload);
+        Log::info("{$gateway->name()} callback received", $result?->rawPayload ?? []);
+
+        if (! $result || ! $result->paid) {
             return response('ok', 200);
         }
 
-        // Atomic update under a row lock so two concurrent webhook deliveries
-        // (ToyyibPay retries on non-200) cannot both pass the "still pending"
-        // check and double-send the confirmation email.
-        $confirmedPayment = DB::transaction(function () use ($payload) {
+        $payment = $this->markPaymentPaid($result);
+
+        if ($payment) {
+            try {
+                Mail::to($payment->user->email)->send(new PaymentConfirmation($payment));
+            } catch (\Exception $e) {
+                Log::error('Payment confirmation email failed', [
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            Log::info("Payment #{$payment->id} marked as paid via {$gateway->name()} callback");
+        }
+
+        return response('ok', 200);
+    }
+
+    /**
+     * Atomic update under a row lock so two concurrent webhook deliveries
+     * (gateways retry on non-200) cannot both pass the "still pending"
+     * check and double-send the confirmation email.
+     */
+    private function markPaymentPaid(WebhookResult $result): ?Payment
+    {
+        return DB::transaction(function () use ($result) {
             $query = null;
 
-            if (! empty($payload['billcode'])) {
-                $query = Payment::where('bill_code', $payload['billcode']);
-            } elseif (! empty($payload['order_id'])) {
-                $query = Payment::where('reference', $payload['order_id']);
+            if (! empty($result->billCode)) {
+                $query = Payment::where('bill_code', $result->billCode);
+            } elseif (! empty($result->reference)) {
+                $query = Payment::where('reference', $result->reference);
             }
 
             if (! $query) {
-                Log::error('ToyyibPay: missing billcode/order_id', $payload);
+                Log::error("{$result->gateway}: missing billcode/reference", $result->rawPayload);
+
                 return null;
             }
 
             $payment = $query->lockForUpdate()->first();
 
             if (! $payment) {
-                Log::error('ToyyibPay: payment record not found', $payload);
+                Log::error("{$result->gateway}: payment record not found", $result->rawPayload);
+
                 return null;
             }
 
-            // Idempotency: if already paid (concurrent delivery, retry, or
-            // replay) bail without re-running the email or audit.
+            // Idempotency: replays / concurrent retries must not re-process.
             if ($payment->status === 'paid') {
                 return null;
             }
 
             $oldStatus = $payment->status;
+            $newAttrs = [
+                'status' => 'paid',
+                'paid_date' => now()->toDateString(),
+                'transaction_id' => $result->transactionId,
+                'gateway' => $result->gateway,
+            ];
 
-            $payment->update([
-                'status'         => 'paid',
-                'paid_date'      => now()->toDateString(),
-                'transaction_id' => $payload['transaction_id'] ?? null,
-            ]);
+            $payment->update($newAttrs);
+
+            $label = $this->gatewayLabel($result->gateway);
 
             AuditService::log(
                 'payment.paid_via_webhook',
-                "Payment #{$payment->id} marked paid via ToyyibPay (txn: ".
-                    ($payload['transaction_id'] ?? 'n/a').').',
+                "Payment #{$payment->id} marked paid via {$label} (txn: ".
+                    ($result->transactionId ?? 'n/a').').',
                 $payment,
                 $payment->club_id,
                 ['status' => $oldStatus],
-                ['status' => 'paid', 'paid_date' => now()->toDateString(), 'transaction_id' => $payload['transaction_id'] ?? null]
+                $newAttrs
             );
 
             return $payment;
         });
+    }
 
-        if ($confirmedPayment) {
-            try {
-                Mail::to($confirmedPayment->user->email)->send(new PaymentConfirmation($confirmedPayment));
-            } catch (\Exception $e) {
-                Log::error('Payment confirmation email failed', [
-                    'payment_id' => $confirmedPayment->id,
-                    'error'      => $e->getMessage(),
-                ]);
-            }
-            Log::info("Payment #{$confirmedPayment->id} marked as paid via ToyyibPay callback");
-        }
-
-        return response('ok', 200);
+    private function gatewayLabel(string $name): string
+    {
+        return match ($name) {
+            'toyyibpay' => 'ToyyibPay',
+            'billplz' => 'Billplz',
+            default => ucfirst($name),
+        };
     }
 }

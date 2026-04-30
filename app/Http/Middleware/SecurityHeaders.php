@@ -50,7 +50,7 @@ class SecurityHeaders
             "img-src 'self' data: https:",
             "connect-src 'self'",
             "frame-ancestors 'self'",
-            "form-action 'self' https://toyyibpay.com https://dev.toyyibpay.com",
+            "form-action 'self' https://toyyibpay.com https://dev.toyyibpay.com https://www.billplz.com https://www.billplz-sandbox.com",
             "object-src 'none'",
             "base-uri 'self'",
         ]);
