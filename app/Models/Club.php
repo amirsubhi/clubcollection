@@ -13,15 +13,28 @@ class Club extends Model
 
     protected $fillable = [
         'name', 'logo', 'email', 'is_active',
+        'payment_gateway',
         'toyyibpay_secret_key', 'toyyibpay_category_code',
+        'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
     ];
 
     protected function casts(): array
     {
         return [
-            // Secret key is encrypted at rest using the APP_KEY
+            // Secrets are encrypted at rest using the APP_KEY
             'toyyibpay_secret_key' => 'encrypted',
+            'billplz_api_key' => 'encrypted',
+            'billplz_x_signature_key' => 'encrypted',
         ];
+    }
+
+    /**
+     * The active payment gateway for this club. Defaults to ToyyibPay for
+     * legacy rows where the column is null/empty.
+     */
+    public function activeGateway(): string
+    {
+        return $this->payment_gateway ?: 'toyyibpay';
     }
 
     /**
@@ -29,8 +42,20 @@ class Club extends Model
      */
     public function hasToyyibPayCredentials(): bool
     {
-        return !empty($this->toyyibpay_secret_key)
-            && !empty($this->toyyibpay_category_code);
+        return ! empty($this->toyyibpay_secret_key)
+            && ! empty($this->toyyibpay_category_code);
+    }
+
+    /**
+     * Check whether this club has its own Billplz credentials configured.
+     * Webhook verification requires x_signature_key, so we treat it as
+     * mandatory alongside the API key + collection.
+     */
+    public function hasBillplzCredentials(): bool
+    {
+        return ! empty($this->billplz_api_key)
+            && ! empty($this->billplz_collection_id)
+            && ! empty($this->billplz_x_signature_key);
     }
 
     public function members()
@@ -49,7 +74,7 @@ class Club extends Model
     {
         return $this->hasMany(FeeRate::class)->where(function ($q) {
             $q->whereNull('effective_to')
-              ->orWhere('effective_to', '>=', now()->toDateString());
+                ->orWhere('effective_to', '>=', now()->toDateString());
         });
     }
 
@@ -75,6 +100,6 @@ class Club extends Model
 
     public function getLogoUrlAttribute(): ?string
     {
-        return $this->logo ? asset('storage/' . $this->logo) : null;
+        return $this->logo ? asset('storage/'.$this->logo) : null;
     }
 }

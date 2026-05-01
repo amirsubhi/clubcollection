@@ -27,9 +27,15 @@ Route::middleware('redirect_if_installed')->group(function () {
     Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:5,1')->name('install.process');
 });
 
-// ── ToyyibPay webhook — external, no install check, no CSRF ────────────────
+// ── Payment gateway webhooks — external, no install check, no CSRF ────────
+// Each gateway has its own route because payload shape and signature
+// scheme differ; the controller funnels them into a shared helper.
 Route::post('/webhook/toyyibpay', [WebhookController::class, 'toyyibpay'])
     ->name('webhook.toyyibpay')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::post('/webhook/billplz', [WebhookController::class, 'billplz'])
+    ->name('webhook.billplz')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // ── All other routes — require app to be installed ─────────────────────────
