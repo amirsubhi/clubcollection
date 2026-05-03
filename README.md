@@ -8,7 +8,7 @@ Club Portal is a self-hosted membership and collection management system built o
 - **Role-based access** — super admin, club admin, and member roles
 - **Fee management** — per-club fee rates by job level (GM, AGM, Manager, etc.)
 - **Payment tracking** — generate monthly payment records, mark as paid, view invoices
-- **ToyyibPay integration** — online payment with per-club credentials and webhook handling
+- **Online payments** — ToyyibPay and Billplz supported; each club picks its gateway and stores credentials independently
 - **Expense management** — track club expenses by category
 - **Discount management** — apply discounts to member payments
 - **Financial ledger** — chronological ledger with running balance, monthly breakdown, outstanding payments panel; exportable as CSV (Excel-ready) or PDF (A4 landscape, suitable for AGM / treasurer reports)
@@ -91,16 +91,18 @@ Valid `job_level` values: `gm`, `agm`, `manager`, `executive`, `non_exec`
 
 A downloadable template is available on the import page.
 
-## Payment Gateway
+## Payment Gateways
 
-This project uses [ToyyibPay](https://toyyibpay.com) for online payments. Configure credentials per club under club settings. Set `TOYYIBPAY_SANDBOX=true` in `.env` for testing.
+Two gateways are supported: [ToyyibPay](https://toyyibpay.com) and [Billplz](https://www.billplz.com). Each club independently selects its gateway and stores its own credentials via the club settings page in the admin panel. Switching gateways preserves the inactive gateway's stored credentials.
+
+Global fallback credentials for each gateway can be set in `.env` (see `.env.example`). Set `TOYYIBPAY_SANDBOX=true` or `BILLPLZ_SANDBOX=true` for sandbox/testing mode.
 
 ## Tech Stack
 
 - **Framework:** Laravel 13 (PHP 8.3+)
 - **Database:** SQLite (default) — switchable to MySQL/PostgreSQL via `.env`
 - **Frontend:** Bootstrap 5.3 + Bootstrap Icons (loaded via CDN — no Node/Vite build step)
-- **Payment:** ToyyibPay
+- **Payment:** ToyyibPay, Billplz (driver abstraction — per-club gateway selection)
 - **PDF generation:** [barryvdh/laravel-dompdf](https://github.com/barryvdh/laravel-dompdf) (ledger reports)
 - **Mail:** Configurable (SMTP, Mailgun, log, etc.)
 
@@ -120,7 +122,8 @@ All user-supplied inputs (dates, amounts, IDs) are validated before use. Queries
 - Set `APP_ENV=production` and `APP_DEBUG=false` in `.env`
 - Generate a strong `APP_KEY` with `php artisan key:generate`
 - Serve over HTTPS only
-- Set a strong `TOYYIBPAY_WEBHOOK_SECRET` — when empty, all webhook calls are rejected (fail-closed)
+- Set a strong `TOYYIBPAY_WEBHOOK_SECRET` — when empty, all ToyyibPay webhook calls are rejected (fail-closed)
+- Set a strong `BILLPLZ_X_SIGNATURE_KEY` — when empty, all Billplz webhook calls are rejected (fail-closed)
 - Set `TRUSTED_PROXIES` if the app sits behind a reverse proxy / load balancer (without it, rate limiting and audit-log IPs see the proxy address, not the client)
 - Keep PHP, Composer packages, and the OS up to date
 - Restrict file system permissions (`storage/` and `bootstrap/cache/` writable by web server only)
