@@ -85,7 +85,7 @@ class WebhookController extends Controller
                 return null;
             }
 
-            $payment = $query->lockForUpdate()->first();
+            $payment = $query->with('user')->lockForUpdate()->first();
 
             if (! $payment) {
                 Log::error("{$result->gateway}: payment record not found", $result->rawPayload);

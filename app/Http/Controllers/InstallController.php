@@ -141,7 +141,7 @@ class InstallController extends Controller
         }
     }
 
-    private function restoreEnv(?string $backup): void
+    private function restoreEnv(string|false|null $backup): void
     {
         if ($backup === null || $backup === false) {
             return;

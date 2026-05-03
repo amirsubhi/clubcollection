@@ -21,10 +21,11 @@ class Club extends Model
     protected function casts(): array
     {
         return [
-            // Secrets are encrypted at rest using the APP_KEY
-            'toyyibpay_secret_key' => 'encrypted',
-            'billplz_api_key' => 'encrypted',
-            'billplz_x_signature_key' => 'encrypted',
+            // Only secret/key material is encrypted; category/collection IDs
+            // are semi-public identifiers that appear in payment URLs.
+            'toyyibpay_secret_key'     => 'encrypted',
+            'billplz_api_key'          => 'encrypted',
+            'billplz_x_signature_key'  => 'encrypted',
         ];
     }
 
