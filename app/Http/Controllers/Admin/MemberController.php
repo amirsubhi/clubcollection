@@ -45,7 +45,6 @@ class MemberController extends Controller
             'joined_date' => 'required|date',
         ]);
 
-        // Generate a cryptographically random temporary password
         $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
 
         $user = User::create([
@@ -121,10 +120,7 @@ class MemberController extends Controller
             'is_active'   => $request->boolean('is_active'),
         ]);
 
-        // NOTE: do NOT promote $member->role on the global users table from a
-        // per-club pivot edit. The pivot 'role' is club-scoped (admin vs member
-        // OF this club); the users.role column is the system-wide role and
-        // must only be changed by a super admin via AdminUserController.
+        // pivot role is club-scoped; users.role is system-wide, managed by AdminUserController.
 
         AuditService::log(
             'member.updated',
@@ -177,22 +173,15 @@ class MemberController extends Controller
             'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
-        $handle   = fopen($request->file('file')->getRealPath(), 'r');
-        $imported = 0;
-        $errors   = [];
-        $row      = 0;
+        $handle  = fopen($request->file('file')->getRealPath(), 'r');
+        $rawRows = [];
+        $errors  = [];
+        $row     = 0;
 
-        $validJobLevels = ['gm', 'agm', 'manager', 'executive', 'non_exec'];
-        $validRoles     = ['member', 'admin'];
-
+        // First pass: buffer rows into memory, enforcing the cap.
         while (($line = fgetcsv($handle)) !== false) {
             $row++;
-
-            // Skip header row
-            if ($row === 1) {
-                continue;
-            }
-
+            if ($row === 1) continue;
             if ($row > self::CSV_ROW_LIMIT + 1) {
                 $errors[] = [
                     'row'    => $row,
@@ -201,10 +190,28 @@ class MemberController extends Controller
                 ];
                 break;
             }
+            $rawRows[] = [$row, $line];
+        }
+        fclose($handle);
 
+        // One query to check existing emails instead of one per row.
+        $candidateEmails = [];
+        foreach ($rawRows as [$rowNum, $line]) {
+            if (count($line) >= 2) {
+                $email = $this->stripFormulaPrefix(trim($line[1]));
+                if ($email) $candidateEmails[] = $email;
+            }
+        }
+        $existingEmails = User::whereIn('email', $candidateEmails)->pluck('email', 'email')->all();
+
+        $imported       = 0;
+        $validJobLevels = ['gm', 'agm', 'manager', 'executive', 'non_exec'];
+        $validRoles     = ['member', 'admin'];
+
+        foreach ($rawRows as [$rowNum, $line]) {
             // Expect: name, email, job_level, role, joined_date
             if (count($line) < 5) {
-                $errors[] = ['row' => $row, 'email' => '—', 'reason' => 'Row has fewer than 5 columns.'];
+                $errors[] = ['row' => $rowNum, 'email' => '—', 'reason' => 'Row has fewer than 5 columns.'];
                 continue;
             }
 
@@ -217,37 +224,39 @@ class MemberController extends Controller
             $name  = $this->stripFormulaPrefix($name);
             $email = $this->stripFormulaPrefix($email);
 
-            // Validate fields
             if (empty($name)) {
-                $errors[] = ['row' => $row, 'email' => $email ?: '—', 'reason' => 'Name is required.'];
+                $errors[] = ['row' => $rowNum, 'email' => $email ?: '—', 'reason' => 'Name is required.'];
                 continue;
             }
 
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = ['row' => $row, 'email' => $email ?: '—', 'reason' => 'Invalid email address.'];
+                $errors[] = ['row' => $rowNum, 'email' => $email ?: '—', 'reason' => 'Invalid email address.'];
                 continue;
             }
 
             if (! in_array($jobLevel, $validJobLevels, true)) {
-                $errors[] = ['row' => $row, 'email' => $email, 'reason' => "Invalid job_level '{$jobLevel}'. Must be: " . implode(', ', $validJobLevels) . '.'];
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid job_level '{$jobLevel}'. Must be: " . implode(', ', $validJobLevels) . '.'];
                 continue;
             }
 
             if (! in_array($role, $validRoles, true)) {
-                $errors[] = ['row' => $row, 'email' => $email, 'reason' => "Invalid role '{$role}'. Must be: member or admin."];
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid role '{$role}'. Must be: member or admin."];
                 continue;
             }
 
-            if (! strtotime($joinedDate)) {
-                $errors[] = ['row' => $row, 'email' => $email, 'reason' => "Invalid joined_date '{$joinedDate}'. Use YYYY-MM-DD format."];
+            $ts = strtotime($joinedDate);
+            if (! $ts) {
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid joined_date '{$joinedDate}'. Use YYYY-MM-DD format."];
                 continue;
             }
 
-            // Check for duplicate email
-            if (User::where('email', $email)->exists()) {
-                $errors[] = ['row' => $row, 'email' => $email, 'reason' => 'A user with this email already exists. Add them manually.'];
+            if (isset($existingEmails[$email])) {
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'A user with this email already exists. Add them manually.'];
                 continue;
             }
+
+            // Mark as seen to prevent duplicate rows in the same file.
+            $existingEmails[$email] = $email;
 
             $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
 
@@ -261,7 +270,7 @@ class MemberController extends Controller
             $club->members()->attach($user->id, [
                 'role'        => $role,
                 'job_level'   => $jobLevel,
-                'joined_date' => date('Y-m-d', strtotime($joinedDate)),
+                'joined_date' => date('Y-m-d', $ts),
                 'is_active'   => true,
             ]);
 
@@ -276,8 +285,6 @@ class MemberController extends Controller
 
             $imported++;
         }
-
-        fclose($handle);
 
         if ($imported > 0) {
             AuditService::log(

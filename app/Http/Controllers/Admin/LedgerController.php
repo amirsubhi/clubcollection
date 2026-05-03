@@ -147,12 +147,7 @@ class LedgerController extends Controller
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    /**
-     * Hard cap on ledger date-range width. Caps the work LedgerController
-     * does in memory (one row per payment / expense) and the size of the
-     * monthly breakdown loop. 24 months (2 years) covers the realistic AGM
-     * / treasurer report window; longer ranges should be split.
-     */
+    /** 24-month cap prevents loading huge result sets and monthly-loop bloat into memory. */
     private const MAX_RANGE_MONTHS = 24;
 
     private function parseFilters(): array

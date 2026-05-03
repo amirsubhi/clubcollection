@@ -133,15 +133,57 @@ class BillplzWebhookTest extends TestCase
     {
         $payment = $this->makePendingPayment();
         $payload = $this->payload($payment, ['paid' => 'false', 'state' => 'due']);
-        // Re-sign because we mutated values.
-        $payload['x_signature'] = BillplzSignature::compute(
-            array_diff_key($payload, ['x_signature' => null]),
-            $this->key,
-        );
+        // Re-sign because we mutated values. BillplzSignature::compute strips
+        // x_signature internally, so pass the full array directly.
+        $payload['x_signature'] = BillplzSignature::compute($payload, $this->key);
 
         $this->post(route('webhook.billplz'), $payload)->assertOk();
         $this->assertSame('pending', $payment->fresh()->status);
         Mail::assertNothingSent();
+    }
+
+    public function test_webhook_uses_per_club_signature_key(): void
+    {
+        $perClubKey = 'per-club-x-signature-key-different';
+
+        $club = Club::factory()->create([
+            'payment_gateway'        => 'billplz',
+            'billplz_x_signature_key' => $perClubKey,
+        ]);
+        $member = User::factory()->create();
+        $club->members()->attach($member, [
+            'role' => 'member', 'job_level' => 'executive',
+            'joined_date' => now()->toDateString(), 'is_active' => true,
+        ]);
+        $payment = Payment::factory()->forClub($club)->forMember($member)->pending()->create([
+            'bill_code' => 'BPLZ-PERCLUB-'.uniqid(),
+            'gateway'   => 'billplz',
+        ]);
+
+        // Build a payload signed with the per-club key (not the global one set in setUp).
+        $body = [
+            'id'          => $payment->bill_code,
+            'collection_id' => 'col-club',
+            'paid'        => 'true',
+            'state'       => 'paid',
+            'amount'      => (string) (int) round($payment->amount * 100),
+            'paid_amount' => (string) (int) round($payment->amount * 100),
+            'due_at'      => now()->toDateString(),
+            'email'       => $payment->user->email,
+            'name'        => $payment->user->name,
+            'url'         => 'https://www.billplz-sandbox.com/bills/'.$payment->bill_code,
+            'paid_at'     => now()->toIso8601String(),
+            'transaction_id' => 'TXN-PERCLUB-'.uniqid(),
+            'transaction_status' => 'completed',
+            'reference_1_label' => 'PaymentRef',
+            'reference_1' => 'REF-PERCLUB',
+        ];
+        $body['x_signature'] = \App\Support\Payments\BillplzSignature::compute($body, $perClubKey);
+
+        $this->post(route('webhook.billplz'), $body)->assertOk();
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        Mail::assertSent(PaymentConfirmation::class, fn ($mail) => $mail->payment->id === $payment->id);
     }
 
     public function test_webhook_is_idempotent_on_already_paid_payment(): void

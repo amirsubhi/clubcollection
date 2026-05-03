@@ -83,7 +83,11 @@ class PaymentController extends Controller
 
         $user = auth()->user();
         $refNo = 'PAY-'.$payment->id.'-'.time();
-        $callbackRoute = $gateway->name() === 'billplz' ? 'webhook.billplz' : 'webhook.toyyibpay';
+        $callbackRoute = match ($gateway->name()) {
+            'toyyibpay' => 'webhook.toyyibpay',
+            'billplz'   => 'webhook.billplz',
+            default     => throw new \LogicException("No webhook route registered for gateway '{$gateway->name()}'"),
+        };
 
         $result = $gateway->createBill([
             'club' => $club,

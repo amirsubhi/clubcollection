@@ -143,6 +143,9 @@ class BillplzGateway implements PaymentGateway
      * payload identifies the bill, not the club; we look up the payment to
      * find its club. Falling back to the global key keeps the global-config
      * deployment path working.
+     *
+     * This runs one DB query per webhook request before the signature is
+     * verified — acceptable at this scale but worth noting if load increases.
      */
     protected function resolveSignatureKey(Request $request): string
     {
