@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# UI mockup
+/mockup/node_modules
+/mockup/dist
