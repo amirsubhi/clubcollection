@@ -92,7 +92,7 @@
     <h6 class="page-heading">@yield('page-heading', 'My Dashboard')</h6>
     @hasSection('breadcrumb')
     @yield('breadcrumb')
-    @endhasSection
+    @endif
 </div>
 
 <div class="member-main">

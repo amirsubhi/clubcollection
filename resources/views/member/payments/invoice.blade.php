@@ -128,11 +128,7 @@
     </div>
     @endif
 
-    @if($payment->notes)
-    <div class="text-muted small border-top pt-3">
-        <strong>Notes:</strong> {{ $payment->notes }}
-    </div>
-    @endif
+    {{-- payments.notes are admin-only (see admin payment form); never show them to members. --}}
 
     <div class="border-top pt-3 mt-3 text-center text-muted small">
         Thank you for your continued membership in {{ $payment->club->name }}.

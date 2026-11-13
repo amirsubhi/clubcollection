@@ -6,6 +6,7 @@ use App\Contracts\PaymentGateway;
 use App\Models\Club;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
+use App\Support\Payments\WebhookSecret;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -101,8 +102,8 @@ class ToyyibPayGateway implements PaymentGateway
 
     public function verifyWebhookRequest(Request $request): bool
     {
-        if (empty($this->webhookSecret)) {
-            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is not configured');
+        if (! WebhookSecret::isUsable($this->webhookSecret)) {
+            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is missing or still the placeholder value');
 
             return false;
         }

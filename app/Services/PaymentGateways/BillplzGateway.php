@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Support\Payments\BillplzSignature;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
+use App\Support\Payments\WebhookSecret;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -98,8 +99,8 @@ class BillplzGateway implements PaymentGateway
     public function verifyWebhookRequest(Request $request): bool
     {
         $key = $this->resolveSignatureKey($request);
-        if (empty($key)) {
-            Log::error('Billplz webhook denied: x_signature_key is not configured');
+        if (! WebhookSecret::isUsable($key)) {
+            Log::error('Billplz webhook denied: x_signature_key is missing or still the placeholder value');
 
             return false;
         }
