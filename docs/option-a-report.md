@@ -43,3 +43,30 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
 - `bill_amount` was added to the existing migration because there is no live data; from v1.0 use additive migrations only.
+
+## A3 — Fund Usage backend + Inertia pages (in review)
+
+**Built:** private polymorphic `attachments` (encrypted at rest with `Crypt::encryptString` on the private `local` disk, `clubs/{id}/attachments/{Y}/{random}.bin`; sha256/size of the original), audited + throttled download route (club admins only); `expenses` gains type/status/approval/void columns (receipt column and public receipt links removed); `welfare_cases` with encrypted personal fields; `FundUsageService` maker-checker workflow; `Expense::counted()` in ledger, dashboards, statistics and the member card with portable date-range bounds; Inertia `Admin/FundUsage/{Index,Create,Show}` and `Admin/Dashboard` (old Blade dashboard kept at `admin.clubs.dashboard.classic`). Old Expenses GET URLs redirect to Fund Usage.
+
+**Deferred:** welfare personal-data purge command (`retention_until` is set); `account_id` / accounts (PR2); emailing admins on void request (audit-only now); `backup:run`.
+
+## A3 — Fund Usage (attachments + maker-checker + admin pages)
+
+**Built:** Private encrypted attachments (sha256, admin-only, throttled, audited previews/downloads; unaudited thumbnail route), expenses extended with type/status/approval/void fields, `welfare_cases` with encrypted personal fields, `FundUsageService` enforcing maker ≠ checker, beneficiary can't approve or return, conflict-of-interest declaration, attachments frozen on submit, return needs a reason, two-person void, row locks on every transition. `Expense::counted()` (approved only, cash date = paid date or invoice date) drives the ledger and exports, both dashboards, statistics and the member card; SQLite-only `strftime` removed there. Inertia pages: Fund Usage list/create/edit/show and the new admin dashboard (Blade dashboard kept as `admin.clubs.dashboard.classic`). Admin authorization now requires an active membership in an active club.
+
+**Checker findings fixed:** file/database consistency on edit and create (major), beneficiary return, certificate sighted by a different active admin, thumbnails no longer audited per render, cash-date totals, inactive admins blocked, upload form pairing, void-requested chip, explicit redirects, plus tests for each.
+
+**Fable verdict:** GO.
+
+**Follow-ups (non-blocking; go-live items marked ★):**
+- ★ Thumbnail route serves the full original image without an audit row — serve a real downscaled thumbnail (or audit it) before go-live, since welfare photos can be sensitive.
+- Approve should carry `updated_at`/version and reject if the record changed after the approver loaded it.
+- Allow a void request to be withdrawn or rejected.
+- ★ Back up `APP_KEY` off-server; document key rotation with `APP_PREVIOUS_KEYS`.
+- ★ Check cPanel `memory_limit`: a 10 MB file peaks at ~50–60 MB to encrypt/decrypt; consider a lower cap or chunked encryption.
+- Check inline PDF preview under the sandbox CSP in Chrome and Safari.
+- HEIC iPhone photos are rejected — convert client-side or show a clear message.
+- ★ Block club deletion when records exist (cascade wipes approved records and leaves encrypted files on disk).
+- Tell admins not to type personal data in description/return/void reason (these reach the audit log and ledger).
+- Deferred as planned: welfare purge command, void notifications, `backup:run`, `account_id` (PR2).
+- Super admins are not counted in the "needs second approver" banner.

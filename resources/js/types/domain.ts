@@ -48,8 +48,12 @@ export interface Attachment {
   sizeKb: number;
   /** MIME type of the stored file, e.g. "image/jpeg" or "application/pdf". */
   mime?: string;
-  /** Audited view/download URL; when absent a placeholder drawing is shown. */
+  /** Audited inline-view URL (previews); when absent a placeholder drawing is shown. */
   url?: string;
+  /** Unaudited thumbnail URL for gallery tiles (images only). */
+  thumbUrl?: string | null;
+  /** Audited download URL (falls back to `url`). */
+  downloadUrl?: string;
   /** Hex SHA-256 of the stored file, when known. */
   sha256?: string;
 }
@@ -83,7 +87,8 @@ export interface FundItem {
   amount: Sen;
   invoiceDate: string;
   paidDate?: string;
-  account: AccountKind;
+  /** Paying account; arrives with the accounts table (PR2). */
+  account?: AccountKind;
   minuteRef?: string;
   recordedBy: string;
   approvedBy?: string;

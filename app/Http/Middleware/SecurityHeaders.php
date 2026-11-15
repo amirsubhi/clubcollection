@@ -78,7 +78,11 @@ class SecurityHeaders
             "object-src 'none'",
             "base-uri 'self'",
         ]);
-        $response->headers->set('Content-Security-Policy', $csp);
+        // A response that sets its own (stricter) policy keeps it, e.g. the
+        // sandboxed attachment stream (Admin\AttachmentController).
+        if (! $response->headers->has('Content-Security-Policy')) {
+            $response->headers->set('Content-Security-Policy', $csp);
+        }
 
         // Limit browser features
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');

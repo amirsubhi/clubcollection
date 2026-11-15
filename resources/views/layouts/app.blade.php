@@ -163,14 +163,17 @@
         @endphp
         @foreach($adminClubs as $club)
         <div class="nav-section">{{ $club->name }}</div>
-        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.dashboard') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.dashboard*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-graph-up"></i> Dashboard
         </a>
         <a href="{{ route('admin.clubs.payments.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.payments.*', 'admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-wallet2"></i> Payments
         </a>
-        <a href="{{ route('admin.clubs.expenses.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.expenses.*', 'admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-receipt"></i> Expenses
+        <a href="{{ route('admin.clubs.fund-usage.index', $club) }}" class="nav-link">
+            <i class="bi bi-receipt"></i> Fund Usage
+        </a>
+        <a href="{{ route('admin.clubs.expense-categories.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.expense-categories.*', 'admin.expense-categories.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-tags"></i> Expense Categories
         </a>
         <a href="{{ route('admin.clubs.discounts.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.discounts.*', 'admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-tag"></i> Discounts

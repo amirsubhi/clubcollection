@@ -1,4 +1,5 @@
 import * as React from "react";
+import { getNonce } from "get-nonce";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,10 @@ export const SelectContent = React.forwardRef<
       )}
       {...props}
     >
-      <SelectPrimitive.Viewport className="p-1">{children}</SelectPrimitive.Viewport>
+      {/* The viewport injects a <style> (scrollbar hiding); it needs the CSP nonce set in app.tsx. */}
+      <SelectPrimitive.Viewport className="p-1" nonce={getNonce()}>
+        {children}
+      </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ));

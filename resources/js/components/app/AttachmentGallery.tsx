@@ -13,8 +13,10 @@ const isPdf = (a: Attachment) => a.mime === "application/pdf" || a.name.toLowerC
 const isImage = (a: Attachment) => !!a.mime?.startsWith("image/");
 
 /** Real image when there is a URL, a PDF tile for PDFs, otherwise the placeholder drawing. */
-function AttachmentPreview({ a, className, title }: { a: Attachment; className?: string; title: string }) {
-  if (a.url && isImage(a)) return <img src={a.url} alt={title} loading="lazy" className={cn("object-cover", className)} />;
+function AttachmentPreview({ a, className, title, thumb = false }: { a: Attachment; className?: string; title: string; thumb?: boolean }) {
+  // Grid tiles use the unaudited thumbnail; the opened preview uses the audited view URL.
+  const src = thumb && a.thumbUrl !== undefined ? a.thumbUrl : a.url;
+  if (src && isImage(a)) return <img src={src} alt={title} loading="lazy" className={cn("object-cover", className)} />;
   if (isPdf(a))
     return (
       <div className={cn("flex flex-col items-center justify-center gap-2 bg-muted text-muted-foreground", className)} role="img" aria-label={title}>
@@ -40,7 +42,7 @@ export function AttachmentGallery({ items, frozen }: { items: Attachment[]; froz
               aria-label={`Preview ${a.name}`}
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
-                <AttachmentPreview a={a} className="h-full w-full transition-transform group-hover:scale-[1.02]" title={`${kindLabel(a.kind)} preview`} />
+                <AttachmentPreview a={a} thumb className="h-full w-full transition-transform group-hover:scale-[1.02]" title={`${kindLabel(a.kind)} preview`} />
                 {isPdf(a) && (
                   <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-danger-on">
                     <FileText className="h-3 w-3" aria-hidden /> PDF
@@ -88,9 +90,9 @@ export function AttachmentGallery({ items, frozen }: { items: Attachment[]; froz
                 ) : (
                   <span className="text-xs text-muted-foreground">Editable while draft</span>
                 )}
-                {open.url && (
+                {(open.downloadUrl ?? open.url) && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={open.url} download={open.name}>
+                    <a href={open.downloadUrl ?? open.url} download={open.name}>
                       <Download aria-hidden /> Download
                     </a>
                   </Button>

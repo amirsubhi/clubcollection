@@ -12,6 +12,8 @@ export interface UploadItem {
   sizeKb: number;
   isPdf: boolean;
   kind: AttachmentKind | "";
+  /** The picked file, for forms that upload it (e.g. Inertia useForm). */
+  file?: File;
 }
 
 export interface FileUploaderProps {
@@ -31,6 +33,7 @@ function toItems(list: FileList | null): UploadItem[] {
     sizeKb: Math.max(1, Math.round(f.size / 1024)),
     isPdf: f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
     kind: "",
+    file: f,
   }));
 }
 
@@ -63,12 +66,12 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
         <span className="text-sm font-medium">
           Drag files here or <span className="text-primary underline">browse</span>
         </span>
-        <span className="text-xs text-muted-foreground">JPG, PNG or PDF · up to 10 MB each · max {maxFiles} files</span>
+        <span className="text-xs text-muted-foreground">PDF, JPG, PNG or WebP · up to 10 MB each · max {maxFiles} files</span>
         <input
           id={inputId}
           type="file"
           multiple
-          accept="image/*,.pdf"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
           className="sr-only"
           onChange={(e) => {
             onAdd(toItems(e.target.files));

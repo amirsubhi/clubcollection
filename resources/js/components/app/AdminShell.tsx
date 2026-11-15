@@ -25,6 +25,8 @@ export interface AdminNavItem {
   Icon: typeof Menu;
   badge?: number;
   disabled?: boolean;
+  /** Page not on Inertia yet (Blade): use a full page load, not an Inertia visit. */
+  external?: boolean;
 }
 
 export interface AdminNavGroup {
@@ -103,6 +105,10 @@ function NavList({ groups, active, collapsed }: { groups: AdminNavGroup[]; activ
                 <span className={cls} title="Not available yet" aria-disabled>
                   {inner}
                 </span>
+              ) : it.external ? (
+                <a href={it.href} aria-label={collapsed ? it.label : undefined} className={cls}>
+                  {inner}
+                </a>
               ) : (
                 <Link href={it.href} aria-current={isActive ? "page" : undefined} aria-label={collapsed ? it.label : undefined} className={cls}>
                   {inner}

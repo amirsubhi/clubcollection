@@ -4,12 +4,131 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Club;
+use App\Models\Expense;
 use App\Models\FeeRate;
+use App\Support\Admin\AdminNav;
+use App\Support\Admin\FundUsagePresenter as P;
+use App\Support\Admin\FundUsageStats as Stats;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
+/**
+ * Club dashboard. index() is the Inertia landing page (Fund Usage KPIs,
+ * collected vs spent, approvals queue); classic() keeps the earlier Blade
+ * report with its month picker and member lists. Both count approved
+ * spending only (Expense::counted()) and use plain date-range bounds.
+ */
 class DashboardController extends Controller
 {
-    public function index(Club $club)
+    public function index(Request $request, Club $club): Response
+    {
+        $me = (int) $request->user()->id;
+        $stats = new Stats($club);
+        $yearStart = now()->startOfYear();
+        $yearEnd = now()->endOfYear();
+        $lastYearStart = $yearStart->copy()->subYear();
+        $lastYearSameDay = now()->subYear();
+
+        $collected = $stats->collectedBetween($yearStart, $yearEnd);
+        $spent = $stats->spentBetween($yearStart, $yearEnd);
+        $collectedLast = $stats->collectedBetween($lastYearStart, $lastYearSameDay);
+        $spentLast = $stats->spentBetween($lastYearStart, $lastYearSameDay);
+        $awaiting = $stats->awaiting($me);
+
+        $queue = Expense::query()->where('club_id', $club->id)->where('status', 'submitted')
+            ->with(['category:id,name', 'recordedBy:id,name', 'approver:id,name', 'welfareCase:id,expense_id,beneficiary_user_id'])
+            ->withCount('attachments')
+            ->orderBy('submitted_at')
+            ->limit(6)
+            ->get()
+            ->map(fn (Expense $e) => P::row($e, $me) + [
+                'canApprove' => (int) $e->recorded_by !== $me && (int) ($e->welfareCase?->beneficiary_user_id ?? 0) !== $me,
+            ])
+            ->values();
+
+        return Inertia::render('Admin/Dashboard', [
+            'nav' => AdminNav::props($club, $request->user(), $awaiting['mine']),
+            'greetingName' => $request->user()->name,
+            'year' => now()->year,
+            'kpis' => [
+                'balance' => $stats->balance(),
+                'collectedYtd' => $collected,
+                'spentYtd' => $spent,
+                'collectedDeltaPct' => $this->pct($collected, $collectedLast),
+                'spentDeltaPct' => $this->pct($spent, $spentLast),
+                'awaiting' => $awaiting,
+                'welfareYtd' => $stats->spentBetween($yearStart, $yearEnd, 'welfare'),
+                'welfareCountYtd' => $stats->welfareCountBetween($yearStart, $yearEnd),
+            ],
+            'monthly' => $stats->monthly(12),
+            'categories' => $stats->byCategoryBetween($yearStart, $yearEnd),
+            'queue' => $queue,
+            'activity' => $this->recentActivity($club),
+            'urls' => [
+                'fundUsage' => route('admin.clubs.fund-usage.index', $club),
+                'awaitingMine' => route('admin.clubs.fund-usage.index', [$club, 'tab' => 'mine']),
+                'createExpense' => route('admin.clubs.fund-usage.create', $club),
+                'classic' => route('admin.clubs.dashboard.classic', $club),
+                'ledger' => route('admin.clubs.ledger', $club),
+                'auditLog' => route('admin.clubs.audit-logs', $club),
+            ],
+        ]);
+    }
+
+    /** Percentage change, or null when there is nothing to compare with. */
+    private function pct(int $now, int $before): ?float
+    {
+        return $before > 0 ? round(($now - $before) / $before * 100, 1) : null;
+    }
+
+    /**
+     * Latest money events: paid fees and Fund Usage records (any status, so
+     * admins see what is not counted yet). No welfare personal data.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function recentActivity(Club $club): array
+    {
+        $fees = $club->payments()->with('user:id,name')->where('status', 'paid')
+            ->orderByDesc('paid_date')->orderByDesc('id')->limit(5)->get()
+            ->map(fn ($p) => [
+                'id' => 'p'.$p->id,
+                'kind' => 'fee',
+                'title' => 'Fee paid · '.($p->user?->name ?? 'Member'),
+                'who' => $p->gateway ? ucfirst($p->gateway) : 'Recorded by admin',
+                'at' => ($p->paid_date ?? $p->updated_at)->format('Y-m-d'),
+                'sort' => ($p->paid_date ?? $p->updated_at)->format('Y-m-d').' '.$p->updated_at->format('H:i:s'),
+                'amount' => P::sen($p->amount),
+                'direction' => 'in',
+                'pending' => false,
+                'voidPending' => false,
+                'url' => null,
+            ]);
+
+        $funds = $club->expenses()->with(['category:id,name', 'recordedBy:id,name'])
+            ->where('status', '!=', 'void')
+            ->latest('updated_at')->limit(5)->get()
+            ->map(fn (Expense $e) => [
+                'id' => 'e'.$e->id,
+                'kind' => $e->status === 'approved' ? 'approved' : ($e->isWelfare() ? 'welfare' : 'expense'),
+                'title' => $e->reference().' · '.($e->isWelfare() ? 'Welfare' : ($e->payee ?: $e->category?->name)),
+                'who' => $e->recordedBy?->name ?? 'Unknown',
+                'at' => $e->updated_at->format('Y-m-d\TH:i'),
+                'sort' => $e->updated_at->format('Y-m-d H:i:s'),
+                'amount' => P::sen($e->amount),
+                'direction' => 'out',
+                'pending' => $e->status !== 'approved',
+                'voidPending' => $e->isVoidPending(),
+                'url' => route('admin.fund-usage.show', $e),
+            ]);
+
+        return $fees->concat($funds)->sortByDesc('sort')->take(6)
+            ->map(fn ($a) => collect($a)->except('sort')->all())->values()->all();
+    }
+
+    public function classic(Club $club)
     {
         $year  = (int) request('year', now()->year);
         $month = (int) request('month', now()->month);
@@ -22,61 +141,36 @@ class DashboardController extends Controller
             $month = now()->month;
         }
 
-        $periodKey = sprintf('%04d-%02d', $year, $month);
+        // Date-range bounds (portable; no strftime). Spending counts approved records only.
+        $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
+        $monthEnd   = $monthStart->copy()->endOfMonth();
+        $yearStart  = Carbon::create($year, 1, 1)->startOfYear();
+        $yearEnd    = $yearStart->copy()->endOfYear();
+        $periods    = [[$monthStart, $monthEnd], [$yearStart, $yearEnd]];
 
-        // ── Income KPIs — 1 query instead of 3 ───────────────────────────────
-        $incomeStats = $club->payments()
-            ->where('status', 'paid')
-            ->selectRaw("
-                SUM(CASE WHEN strftime('%Y-%m', paid_date) = ? THEN amount ELSE 0 END) as this_month,
-                SUM(CASE WHEN strftime('%Y', paid_date) = ?   THEN amount ELSE 0 END) as this_year,
-                SUM(amount) as all_time
-            ", [$periodKey, (string) $year])
-            ->first();
+        // ── Income KPIs — 1 query ────────────────────────────────────────────
+        $paid = $club->payments()->where('status', 'paid');
+        [$inMonth, $inYear] = Stats::sumByRanges($paid, 'paid_date', $periods);
+        $incomeThisMonth = $inMonth / 100;
+        $incomeThisYear  = $inYear / 100;
+        $incomeAllTime   = P::sen((clone $paid)->sum('amount')) / 100;
 
-        $incomeThisMonth = (float) ($incomeStats->this_month ?? 0);
-        $incomeThisYear  = (float) ($incomeStats->this_year  ?? 0);
-        $incomeAllTime   = (float) ($incomeStats->all_time   ?? 0);
+        // ── Expense KPIs (approved only) — 1 query ───────────────────────────
+        $counted = $club->expenses()->counted();
+        [$outMonth, $outYear] = Stats::sumByRanges($counted, Stats::cashDate(), $periods);
+        $expenseThisMonth = $outMonth / 100;
+        $expenseThisYear  = $outYear / 100;
+        $expenseAllTime   = P::sen((clone $counted)->sum('amount')) / 100;
 
-        // ── Expense KPIs — 1 query instead of 3 ──────────────────────────────
-        $expenseStats = $club->expenses()
-            ->selectRaw("
-                SUM(CASE WHEN strftime('%Y-%m', expense_date) = ? THEN amount ELSE 0 END) as this_month,
-                SUM(CASE WHEN strftime('%Y', expense_date) = ?   THEN amount ELSE 0 END) as this_year,
-                SUM(amount) as all_time
-            ", [$periodKey, (string) $year])
-            ->first();
+        $balance = (P::sen($incomeAllTime) - P::sen($expenseAllTime)) / 100;
 
-        $expenseThisMonth = (float) ($expenseStats->this_month ?? 0);
-        $expenseThisYear  = (float) ($expenseStats->this_year  ?? 0);
-        $expenseAllTime   = (float) ($expenseStats->all_time   ?? 0);
-
-        $balance = $incomeAllTime - $expenseAllTime;
-
-        // ── Monthly trend charts — 2 queries instead of 24 ───────────────────
-        $cutoff = now()->subMonths(11)->startOfMonth()->toDateString();
-
-        $incomeByMonthRaw = $club->payments()
-            ->where('status', 'paid')
-            ->where('paid_date', '>=', $cutoff)
-            ->selectRaw("strftime('%Y-%m', paid_date) as month, SUM(amount) as total")
-            ->groupBy('month')
-            ->pluck('total', 'month');
-
-        $expenseByMonthRaw = $club->expenses()
-            ->where('expense_date', '>=', $cutoff)
-            ->selectRaw("strftime('%Y-%m', expense_date) as month, SUM(amount) as total")
-            ->groupBy('month')
-            ->pluck('total', 'month');
-
+        // ── Monthly trend charts — 2 queries ─────────────────────────────────
         $monthlyIncome  = [];
         $monthlyExpense = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $m     = now()->subMonths($i);
-            $key   = $m->format('Y-m');
-            $label = $m->format('M Y');
-            $monthlyIncome[$label]  = (float) ($incomeByMonthRaw[$key]  ?? 0);
-            $monthlyExpense[$label] = (float) ($expenseByMonthRaw[$key] ?? 0);
+        foreach ((new Stats($club))->monthly(12) as $i => $row) {
+            $label = now()->startOfMonth()->subMonthsNoOverflow(11 - $i)->format('M Y');
+            $monthlyIncome[$label]  = $row['collected'] / 100;
+            $monthlyExpense[$label] = $row['spent'] / 100;
         }
 
         // ── Payment status counts — 1 query instead of 3 ─────────────────────
@@ -94,9 +188,7 @@ class DashboardController extends Controller
 
         // ── Members paid vs unpaid this month ─────────────────────────────────
         // Two targeted queries instead of loading all members then filtering in PHP
-        $paidMemberIds = $club->payments()
-            ->where('status', 'paid')
-            ->whereRaw("strftime('%Y-%m', paid_date) = ?", [$periodKey])
+        $paidMemberIds = Stats::inRange($club->payments()->where('status', 'paid'), 'paid_date', $monthStart, $monthEnd)
             ->pluck('user_id');
 
         $paidMembers   = $club->members()->wherePivot('is_active', true)->whereIn('users.id', $paidMemberIds)->get();
@@ -106,7 +198,7 @@ class DashboardController extends Controller
         $jobLevels          = FeeRate::jobLevelLabels();
         $incomeByJobLevelRaw = $club->payments()
             ->where('payments.status', 'paid')
-            ->whereRaw("strftime('%Y-%m', paid_date) = ?", [$periodKey])
+            ->tap(fn ($q) => Stats::inRange($q, 'payments.paid_date', $monthStart, $monthEnd))
             ->join('club_user', function ($join) use ($club) {
                 $join->on('payments.user_id', '=', 'club_user.user_id')
                      ->where('club_user.club_id', '=', $club->id);
@@ -122,13 +214,13 @@ class DashboardController extends Controller
 
         // ── Expenses by category ──────────────────────────────────────────────
         $expenseByCategory = $club->expenseCategories()
-            ->withSum(['expenses as total' => fn($q) => $q->whereRaw("strftime('%Y-%m', expense_date) = ?", [$periodKey])], 'amount')
+            ->withSum(['expenses as total' => fn($q) => Stats::inRange($q->counted(), Stats::cashDate(), $monthStart, $monthEnd)], 'amount')
             ->get();
 
         // ── Recent transactions ───────────────────────────────────────────────
         $recentPayments = $club->payments()->with('user')->where('status', 'paid')
             ->latest('paid_date')->limit(5)->get();
-        $recentExpenses = $club->expenses()->with('category')
+        $recentExpenses = $club->expenses()->counted()->with('category')
             ->latest('expense_date')->limit(5)->get();
 
         $availableYears = range(now()->year, max(now()->year - 4, 2020));

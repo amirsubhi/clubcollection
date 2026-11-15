@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Models\Payment;
+use App\Support\Admin\FundUsageStats;
 use App\Support\Member\MemberPaymentPresenter as P;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -43,10 +44,13 @@ class DashboardController extends Controller
             ->groupBy('club_id')
             ->pluck('total', 'club_id');
 
+        // Approved (counted) spending only: drafts, pending and void never show.
         $spending = Expense::query()
+            ->counted()
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
             ->whereIn('expenses.club_id', $clubIds)
-            ->whereYear('expenses.expense_date', $year)
+            // By cash date (paid_date, else invoice date), as on the admin pages.
+            ->tap(fn ($q) => FundUsageStats::inRange($q, FundUsageStats::cashDate(), now()->startOfYear(), now()->endOfYear()))
             ->selectRaw('expenses.club_id as club_id, expense_categories.name as category, SUM(expenses.amount) as total')
             ->groupBy('expenses.club_id', 'expense_categories.name')
             ->get()

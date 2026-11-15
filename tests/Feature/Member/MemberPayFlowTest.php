@@ -384,16 +384,20 @@ class MemberPayFlowTest extends TestCase
         $club = Club::factory()->create(['is_active' => true]);
         $member = $this->actingAsMember($club);
         $events = ExpenseCategory::factory()->for($club)->create(['name' => 'Events']);
-        Expense::factory()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 100.00, 'expense_date' => now()->startOfYear()->toDateString(), 'description' => 'SECRET-DESCRIPTION']);
-        Expense::factory()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 25.50, 'expense_date' => now()->startOfYear()->toDateString()]);
+        Expense::factory()->approved()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 100.00, 'expense_date' => now()->startOfYear()->toDateString(), 'description' => 'SECRET-DESCRIPTION']);
+        Expense::factory()->approved()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 25.50, 'expense_date' => now()->startOfYear()->toDateString()]);
         // Last year: excluded.
-        Expense::factory()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 999.00, 'expense_date' => now()->subYear()->toDateString()]);
+        Expense::factory()->approved()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 999.00, 'expense_date' => now()->subYear()->toDateString()]);
+        // Not approved (draft / awaiting / void): never counted.
+        Expense::factory()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 300.00, 'expense_date' => now()->startOfYear()->toDateString()]);
+        Expense::factory()->submitted()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 301.00, 'expense_date' => now()->startOfYear()->toDateString()]);
+        Expense::factory()->voided()->create(['club_id' => $club->id, 'expense_category_id' => $events->id, 'amount' => 302.00, 'expense_date' => now()->startOfYear()->toDateString()]);
         // Someone else's paid fee in the same club counts towards "collected" (aggregate only).
         Payment::factory()->forClub($club)->create(['amount' => 40.00]);
 
         $other = Club::factory()->create(['is_active' => true]);
         $otherCat = ExpenseCategory::factory()->for($other)->create(['name' => 'OTHER-CLUB-CATEGORY']);
-        Expense::factory()->create(['club_id' => $other->id, 'expense_category_id' => $otherCat->id, 'amount' => 5000.00, 'expense_date' => now()->toDateString()]);
+        Expense::factory()->approved()->create(['club_id' => $other->id, 'expense_category_id' => $otherCat->id, 'amount' => 5000.00, 'expense_date' => now()->toDateString()]);
         Payment::factory()->forClub($other)->create(['amount' => 777.00]);
 
         $this->get(route('member.dashboard'))
@@ -422,7 +426,7 @@ class MemberPayFlowTest extends TestCase
             $club->members()->attach($member, ['role' => 'member', 'job_level' => 'manager', 'joined_date' => now()->toDateString(), 'is_active' => true]);
         }
         $catB = ExpenseCategory::factory()->for($b)->create(['name' => 'Sports']);
-        Expense::factory()->create(['club_id' => $b->id, 'expense_category_id' => $catB->id, 'amount' => 10.00, 'expense_date' => now()->toDateString()]);
+        Expense::factory()->approved()->create(['club_id' => $b->id, 'expense_category_id' => $catB->id, 'amount' => 10.00, 'expense_date' => now()->toDateString()]);
         $this->pending($member, $a, ['amount' => 20.00]);
         $this->pending($member, $b, ['amount' => 30.00]);
         $this->pending($member, $inactive, ['amount' => 99.00]);

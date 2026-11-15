@@ -7,6 +7,7 @@ use App\Models\Club;
 use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Models\Payment;
+use App\Support\Admin\FundUsageStats;
 use Illuminate\Support\Facades\DB;
 
 class StatisticsController extends Controller
@@ -34,31 +35,26 @@ class StatisticsController extends Controller
         $pendingCount  = (int)   ($paymentStats->pending_count ?? 0);
         $overdueCount  = (int)   ($paymentStats->overdue_count ?? 0);
         $totalRevenue  = (float) ($paymentStats->total_revenue ?? 0);
-        $totalExpenses = (float) Expense::sum('amount');
+        // Approved (counted) Fund Usage records only.
+        $totalExpenses = (float) Expense::counted()->sum('amount');
         $netBalance    = $totalRevenue - $totalExpenses;
 
         // ── Monthly Trends — 2 queries instead of 24 ─────────────────────────
-        $cutoff = now()->subMonths(11)->startOfMonth()->toDateString();
-
-        $revenueByMonth = Payment::where('status', 'paid')
-            ->where('paid_date', '>=', $cutoff)
-            ->selectRaw("strftime('%Y-%m', paid_date) as month, SUM(amount) as total")
-            ->groupBy('month')
-            ->pluck('total', 'month');
-
-        $expensesByMonth = Expense::where('expense_date', '>=', $cutoff)
-            ->selectRaw("strftime('%Y-%m', expense_date) as month, SUM(amount) as total")
-            ->groupBy('month')
-            ->pluck('total', 'month');
+        // Date-range buckets (portable; no strftime).
+        $ranges = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $m        = now()->startOfMonth()->subMonthsNoOverflow($i);
+            $ranges[] = [$m->copy(), $m->copy()->endOfMonth()];
+        }
+        $revenueByMonth  = FundUsageStats::sumByRanges(Payment::where('status', 'paid'), 'paid_date', $ranges);
+        $expensesByMonth = FundUsageStats::sumByRanges(Expense::counted(), FundUsageStats::cashDate(), $ranges);
 
         $monthlyRevenue  = [];
         $monthlyExpenses = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $m     = now()->subMonths($i);
-            $key   = $m->format('Y-m');
+        foreach ($ranges as $i => [$m]) {
             $label = $m->format('M Y');
-            $monthlyRevenue[$label]  = (float) ($revenueByMonth[$key] ?? 0);
-            $monthlyExpenses[$label] = (float) ($expensesByMonth[$key] ?? 0);
+            $monthlyRevenue[$label]  = $revenueByMonth[$i] / 100;
+            $monthlyExpenses[$label] = $expensesByMonth[$i] / 100;
         }
 
         // ── Per-Club Breakdown — 1 query instead of 5N+1 ─────────────────────
@@ -68,7 +64,7 @@ class StatisticsController extends Controller
             ->withCount(['payments as pending_count' => fn($q) => $q->where('status', 'pending')])
             ->withCount(['payments as overdue_count' => fn($q) => $q->where('status', 'overdue')])
             ->withSum(['payments as total_revenue'   => fn($q) => $q->where('status', 'paid')], 'amount')
-            ->withSum('expenses as total_expenses', 'amount')
+            ->withSum(['expenses as total_expenses' => fn($q) => $q->counted()], 'amount')
             ->get()
             ->each(function ($club) {
                 // Cast nulls (clubs with no payments/expenses) to numeric types
