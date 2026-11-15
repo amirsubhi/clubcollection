@@ -81,12 +81,19 @@ export function CollectedSpentChart({
   const totalIn = monthly.reduce((s, m) => s + m.collected, 0);
   const totalOut = monthly.reduce((s, m) => s + m.spent, 0);
   const last = data.length - 1;
+  // When both series end close together their right-edge labels would overlap:
+  // push the higher one up and the lower one down by half a line each.
+  const peak = Math.max(1, ...data.flatMap((d) => [d.collected, d.spent]));
+  const endC = last >= 0 ? data[last].collected : 0;
+  const endS = last >= 0 ? data[last].spent : 0;
+  const close = Math.abs(endC - endS) < peak * 0.1;
+  const nudge = { collected: close ? (endC >= endS ? -7 : 7) : 0, spent: close ? (endC >= endS ? 7 : -7) : 0 };
   const endLabel =
     (key: "collected" | "spent") =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (p: any) =>
       p.index === last ? (
-        <text x={p.x + 8} y={p.y + 4} className="fill-foreground" fontSize={12} fontWeight={600}>
+        <text x={p.x + 8} y={p.y + 4 + nudge[key]} className="fill-foreground" fontSize={12} fontWeight={600}>
           {config[key].label}
         </text>
       ) : null;

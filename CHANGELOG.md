@@ -8,6 +8,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.2] — Unreleased
 
+### Added (Option A: new member app and admin pages)
+- **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
+  never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
+  Login, the installer and the remaining admin pages are still Blade + Bootstrap.
+- **Member app:** Home (amount due, upcoming and recent fees, club-wide "where your money goes" totals), Payments by
+  year with pay-ahead, invoice / official receipt, Review & pay (POST-only pay) and a status-aware result page.
+- **Fund Usage:** expenses and welfare (kebajikan) cases with maker-checker approval (conflict-of-interest
+  declaration, return with reason, two-admin void), private encrypted attachments with audited downloads, encrypted
+  welfare personal details, and an Inertia admin dashboard.
+- **PWA:** web manifest, icons, a minimal service worker (`public/sw.js`, static assets only) and an install tip.
+- **Small fixes:** the installer requires PHP 8.4 (as `composer.lock` does); the demo super admin is
+  `superadmin@example.com`; the dashboard chart's end labels no longer overlap when both lines end close together;
+  the receipt's paid date uses BM month names on BM pages.
+- **Fix:** `TRUSTED_PROXIES` set in `.env` was ignored (it was read with `env()` in `bootstrap/app.php`, before `.env`
+  loads). It is now `config('app.trusted_proxies')`, applied in `AppServiceProvider`; empty still trusts nothing.
+- **Docs:** README rewrite with screenshots, `docs/USER-GUIDE.md`, `docs/payment-options.md`, end-to-end smoke test
+  (`tests/e2e/`).
+
 ### Security (S1: hardening from the full audit)
 - **Gateway callbacks:** absolute URLs come from `APP_URL` (host and scheme) in production and other `Host` headers are
   refused, so a forged `Host`/`X-Forwarded-Host` can't redirect callbacks or email links. The ToyyibPay callback
@@ -96,7 +114,8 @@ Security and accessibility hardening pass. No public API changes.
 
 ### Tooling
 - Removed unused Vite / Tailwind / SCSS scaffolding (Bootstrap is loaded
-  via CDN). `package.json` deleted; `composer setup` no longer runs `npm`.
+  via CDN). `composer setup` no longer runs `npm`. (Option A later brought
+  back `package.json` with a real Vite + React build; see above.)
 - Added `pint.json` so the Laravel preset is consistent across machines.
 - `phpunit.xml` pins `APP_KEY` so encryption-dependent tests don't depend
   on the developer's local `.env`.

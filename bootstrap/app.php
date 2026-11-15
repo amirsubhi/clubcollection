@@ -3,7 +3,6 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,21 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
-        // Trust the X-Forwarded-* headers from the reverse proxy/load
-        // balancer in front of the app so request()->ip(), $request->secure()
-        // and rate limiting all see the real client IP/scheme. Configure the
-        // proxy address(es) via TRUSTED_PROXIES in .env (use '*' only when
-        // your edge strips client-supplied X-Forwarded-* headers).
-        $proxies = env('TRUSTED_PROXIES', '');
-        if ($proxies !== '') {
-            $middleware->trustProxies(
-                at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)),
-                headers: Request::HEADER_X_FORWARDED_FOR
-                       | Request::HEADER_X_FORWARDED_HOST
-                       | Request::HEADER_X_FORWARDED_PORT
-                       | Request::HEADER_X_FORWARDED_PROTO,
-            );
-        }
+        // Trusted proxies (TRUSTED_PROXIES) are applied in AppServiceProvider
+        // from config('app.trusted_proxies'): this callback runs before .env
+        // is loaded, so env() here would only see real environment variables.
 
         // Only APP_URL's host (and its subdomains) may be used as Host, so links
         // and gateway callback URLs can't be pointed elsewhere. Laravel skips

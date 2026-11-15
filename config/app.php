@@ -49,6 +49,14 @@ return [
     'install_token' => env('INSTALL_TOKEN'),
 
     /*
+    | Reverse proxies / load balancers whose X-Forwarded-* headers are trusted:
+    | a comma-separated list of IPs or CIDR ranges, or '*' (only when the edge
+    | strips client-supplied X-Forwarded-* headers). Empty trusts nothing.
+    | Applied by AppServiceProvider::configureTrustedProxies().
+    */
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
+
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------

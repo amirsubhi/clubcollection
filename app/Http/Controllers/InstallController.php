@@ -15,6 +15,12 @@ class InstallController extends Controller
     /** Shortest install token accepted. */
     public const MIN_TOKEN_LENGTH = 16;
 
+    /** Lowest PHP the app runs on: composer.lock (Laravel 13's dependencies) needs 8.4. */
+    public const MIN_PHP = '8.4.0';
+
+    /** The PHP version the requirement check uses; tests on an older local PHP lower it. */
+    public static string $minimumPhp = self::MIN_PHP;
+
     public function index()
     {
         $requirements = $this->checkRequirements();
@@ -135,15 +141,15 @@ class InstallController extends Controller
 
     private function checkRequirements(): array
     {
-        // Require PHP 8.3 to match composer.json. (README and this controller
-        // previously claimed 8.2; trust composer.)
-        $phpOk      = version_compare(PHP_VERSION, '8.3.0', '>=');
+        // composer.lock needs PHP 8.4, even though composer.json still says ^8.3.
+        $minPhp     = self::$minimumPhp;
+        $phpOk      = version_compare(PHP_VERSION, $minPhp, '>=');
         $sqliteOk   = extension_loaded('pdo_sqlite');
         $storageOk  = is_writable(storage_path('app'));
         $envOk      = file_exists(base_path('.env')) && is_writable(base_path('.env'));
 
         return [
-            'php'      => ['pass' => $phpOk,     'label' => 'PHP >= 8.3',           'value' => PHP_VERSION],
+            'php'      => ['pass' => $phpOk,     'label' => 'PHP >= '.preg_replace('/\.0$/', '', $minPhp), 'value' => PHP_VERSION],
             'sqlite'   => ['pass' => $sqliteOk,  'label' => 'PDO SQLite Extension', 'value' => $sqliteOk ? 'Enabled' : 'Missing'],
             'storage'  => ['pass' => $storageOk, 'label' => 'Storage Writable',     'value' => $storageOk ? 'Writable' : 'Not writable'],
             'env'      => ['pass' => $envOk,     'label' => '.env File Writable',   'value' => $envOk ? 'Writable' : 'Missing or not writable'],

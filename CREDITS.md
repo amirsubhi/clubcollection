@@ -75,6 +75,34 @@ This project uses third-party libraries and components. Their licenses and copyr
 - **Copyright:** Copyright (c) 2011 Michael Dowling and contributors
 - **Source:** https://github.com/guzzle/guzzle
 
+### Inertia.js Laravel adapter
+- **Package:** `inertiajs/inertia-laravel`
+- **License:** MIT
+- **Source:** https://github.com/inertiajs/inertia-laravel
+
+---
+
+## Frontend (npm, bundled into `public/build` by Vite)
+
+| Package | License | Source |
+|---|---|---|
+| `react`, `react-dom` | MIT | https://github.com/facebook/react |
+| `@inertiajs/react` | MIT | https://github.com/inertiajs/inertia |
+| `tailwindcss` (build time) | MIT | https://github.com/tailwindlabs/tailwindcss |
+| `recharts` | MIT | https://github.com/recharts/recharts |
+| `@radix-ui/react-*` (checkbox, dialog, dropdown-menu, select, slot, tabs, tooltip) | MIT | https://github.com/radix-ui/primitives |
+| `lucide-react` | ISC | https://github.com/lucide-icons/lucide |
+| `clsx` | MIT | https://github.com/lukeed/clsx |
+| `tailwind-merge` | MIT | https://github.com/dcastil/tailwind-merge |
+| `class-variance-authority` | Apache-2.0 | https://github.com/joe-bell/cva |
+| `get-nonce` | MIT | https://github.com/theKashey/get-nonce |
+| `vite`, `laravel-vite-plugin`, `@vitejs/plugin-react`, `typescript`, `postcss`, `autoprefixer` (build time only) | MIT / Apache-2.0 (TypeScript) | https://vite.dev |
+
+Their transitive dependencies are listed in `package-lock.json`; licence texts ship in `node_modules/*/LICENSE`.
+
+### Fonts (Google Fonts)
+- **Bricolage Grotesque, Plus Jakarta Sans, JetBrains Mono** — SIL Open Font License 1.1, loaded from fonts.googleapis.com.
+
 ---
 
 ## Frontend (CDN)

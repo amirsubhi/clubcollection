@@ -244,7 +244,7 @@ class SecurityHardeningTest extends TestCase
     {
         (new DatabaseSeeder)->run();
 
-        $super = User::where('email', 'superadmin@clubportal.com')->sole();
+        $super = User::where('email', 'superadmin@example.com')->sole();
         $this->assertFalse(\Illuminate\Support\Facades\Hash::check('Admin@123', $super->password));
     }
 

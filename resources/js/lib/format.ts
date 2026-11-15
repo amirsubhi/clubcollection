@@ -39,11 +39,11 @@ export function fmtPeriod(start: string, end: string, lang: "bm" | "en" = "en"):
 }
 
 /** ISO datetime "yyyy-mm-ddTHH:MM" -> "d MMM yyyy, h:mm am"; a date-only value prints the date alone. */
-export function fmtDateTime(iso: string): string {
-  if (!iso.includes("T")) return fmtDate(iso);
+export function fmtDateTime(iso: string, lang: "bm" | "en" = "en"): string {
+  if (!iso.includes("T")) return fmtDate(iso, lang);
   const [date, time = "00:00"] = iso.split("T");
   const [h, min] = time.split(":").map(Number);
   const ap = h >= 12 ? "pm" : "am";
   const hh = h % 12 === 0 ? 12 : h % 12;
-  return `${fmtDate(date)}, ${hh}:${String(min).padStart(2, "0")} ${ap}`;
+  return `${fmtDate(date, lang)}, ${hh}:${String(min).padStart(2, "0")} ${ap}`;
 }

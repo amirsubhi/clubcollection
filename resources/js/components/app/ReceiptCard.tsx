@@ -60,7 +60,7 @@ export function ReceiptCard({
           {member.memberNo && <span className="block font-mono text-xs font-normal text-muted-foreground">{member.memberNo}</span>}
         </dd>
         <dt className="text-muted-foreground">{t("paidOn")}</dt>
-        <dd className="text-right">{fmtDateTime(r.paidAt)}</dd>
+        <dd className="text-right">{fmtDateTime(r.paidAt, lang)}</dd>
         <dt className="text-muted-foreground">{t("method")}</dt>
         <dd className="text-right">{[r.method ?? "FPX", r.bank].filter(Boolean).join(" · ")}</dd>
         {r.fpxTxn && (

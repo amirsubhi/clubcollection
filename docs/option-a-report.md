@@ -69,6 +69,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ★ Block club deletion when records exist (cascade wipes approved records and leaves encrypted files on disk).
 - Tell admins not to type personal data in description/return/void reason (these reach the audit log and ledger).
 - Deferred as planned: welfare purge command, void notifications, `backup:run`, `account_id` (PR2).
+- Welfare personal data is **not purged automatically** yet (`retention_until` is only recorded, although the form says data is deleted after about 7 years); until the purge command exists, purging is manual (see `docs/RELEASE.md`).
 - Super admins are not counted in the "needs second approver" banner.
 
 ## A4 — Installable web app (PWA)
