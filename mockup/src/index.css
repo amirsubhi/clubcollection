@@ -78,9 +78,9 @@
     --card-foreground: 241 241 244; /* #F1F1F4 */
     --popover: 46 47 53; /* #2E2F35 */
     --popover-foreground: 241 241 244; /* #F1F1F4 */
-    --primary: 180 173 246; /* #B4ADF6 */
-    --primary-foreground: 27 23 71; /* #1B1747 */
-    --deep: 52 50 90; /* #34325A */
+    --primary: 155 140 250; /* #9B8CFA */
+    --primary-foreground: 20 17 46; /* #14112E */
+    --deep: 59 47 138; /* #3B2F8A */
     --deep-foreground: 243 241 255; /* #F3F1FF */
     --mint: 31 59 51; /* #1F3B33 */
     --mint-foreground: 168 235 208; /* #A8EBD0 */
@@ -88,11 +88,11 @@
     --secondary-foreground: 241 241 244; /* #F1F1F4 */
     --muted: 42 43 48; /* #2A2B30 */
     --muted-foreground: 179 180 190; /* #B3B4BE */
-    --accent: 52 50 79; /* #34324F */
-    --accent-foreground: 207 202 251; /* #CFCAFB */
+    --accent: 53 44 110; /* #352C6E */
+    --accent-foreground: 206 198 255; /* #CEC6FF */
     --border: 58 59 66; /* #3A3B42 */
     --input: 111 112 122; /* #6F707A */
-    --ring: 180 173 246; /* #B4ADF6 */
+    --ring: 155 140 250; /* #9B8CFA */
     --success: 116 211 169; /* #74D3A9 */
     --success-soft: 30 50 41; /* #1E3229 */
     --success-foreground: 147 226 191; /* #93E2BF */
@@ -104,17 +104,17 @@
     --danger-soft: 62 37 42; /* #3E252A */
     --danger-foreground: 246 182 192; /* #F6B6C0 */
     --on-danger: 42 10 18; /* #2A0A12 */
-    --info: 180 173 246; /* #B4ADF6 */
-    --info-soft: 52 50 79; /* #34324F */
-    --info-foreground: 207 202 251; /* #CFCAFB */
+    --info: 155 140 250; /* #9B8CFA */
+    --info-soft: 53 44 110; /* #352C6E */
+    --info-foreground: 206 198 255; /* #CEC6FF */
     --sidebar: 34 35 39; /* #222327 */
     --strip: 42 43 48; /* #2A2B30 */
     --strip-foreground: 241 241 244; /* #F1F1F4 */
-    --chart-1: 142 132 222; /* #8E84DE */
+    --chart-1: 155 140 250; /* #9B8CFA */
     --chart-2: 65 168 125; /* #41A87D */
     --chart-3: 98 150 206; /* #6296CE */
     --chart-4: 201 118 133; /* #C97685 */
-    --chart-1-stroke: 142 132 222; /* #8E84DE */
+    --chart-1-stroke: 155 140 250; /* #9B8CFA */
     --chart-2-stroke: 65 168 125; /* #41A87D */
     --chart-3-stroke: 98 150 206; /* #6296CE */
     --chart-4-stroke: 201 118 133; /* #C97685 */
@@ -139,9 +139,9 @@
   --card-foreground: 241 241 244; /* #F1F1F4 */
   --popover: 46 47 53; /* #2E2F35 */
   --popover-foreground: 241 241 244; /* #F1F1F4 */
-  --primary: 180 173 246; /* #B4ADF6 */
-  --primary-foreground: 27 23 71; /* #1B1747 */
-  --deep: 52 50 90; /* #34325A */
+  --primary: 155 140 250; /* #9B8CFA */
+  --primary-foreground: 20 17 46; /* #14112E */
+  --deep: 59 47 138; /* #3B2F8A */
   --deep-foreground: 243 241 255; /* #F3F1FF */
   --mint: 31 59 51; /* #1F3B33 */
   --mint-foreground: 168 235 208; /* #A8EBD0 */
@@ -149,11 +149,11 @@
   --secondary-foreground: 241 241 244; /* #F1F1F4 */
   --muted: 42 43 48; /* #2A2B30 */
   --muted-foreground: 179 180 190; /* #B3B4BE */
-  --accent: 52 50 79; /* #34324F */
-  --accent-foreground: 207 202 251; /* #CFCAFB */
+  --accent: 53 44 110; /* #352C6E */
+  --accent-foreground: 206 198 255; /* #CEC6FF */
   --border: 58 59 66; /* #3A3B42 */
   --input: 111 112 122; /* #6F707A */
-  --ring: 180 173 246; /* #B4ADF6 */
+  --ring: 155 140 250; /* #9B8CFA */
   --success: 116 211 169; /* #74D3A9 */
   --success-soft: 30 50 41; /* #1E3229 */
   --success-foreground: 147 226 191; /* #93E2BF */
@@ -165,17 +165,17 @@
   --danger-soft: 62 37 42; /* #3E252A */
   --danger-foreground: 246 182 192; /* #F6B6C0 */
   --on-danger: 42 10 18; /* #2A0A12 */
-  --info: 180 173 246; /* #B4ADF6 */
-  --info-soft: 52 50 79; /* #34324F */
-  --info-foreground: 207 202 251; /* #CFCAFB */
+  --info: 155 140 250; /* #9B8CFA */
+  --info-soft: 53 44 110; /* #352C6E */
+  --info-foreground: 206 198 255; /* #CEC6FF */
   --sidebar: 34 35 39; /* #222327 */
   --strip: 42 43 48; /* #2A2B30 */
   --strip-foreground: 241 241 244; /* #F1F1F4 */
-  --chart-1: 142 132 222; /* #8E84DE */
+  --chart-1: 155 140 250; /* #9B8CFA */
   --chart-2: 65 168 125; /* #41A87D */
   --chart-3: 98 150 206; /* #6296CE */
   --chart-4: 201 118 133; /* #C97685 */
-  --chart-1-stroke: 142 132 222; /* #8E84DE */
+  --chart-1-stroke: 155 140 250; /* #9B8CFA */
   --chart-2-stroke: 65 168 125; /* #41A87D */
   --chart-3-stroke: 98 150 206; /* #6296CE */
   --chart-4-stroke: 201 118 133; /* #C97685 */
