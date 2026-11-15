@@ -32,13 +32,16 @@ Route::middleware('redirect_if_installed')->group(function () {
 // ── Payment gateway webhooks — external, no install check, no CSRF ────────
 // Each gateway has its own route because payload shape and signature
 // scheme differ; the controller funnels them into a shared helper.
+// Exclude the class the web group actually uses (PreventRequestForgery in
+// Laravel 13): excluding its subclass VerifyCsrfToken did not match, so real
+// gateway callbacks got 419 (tests skip CSRF, so only the e2e smoke caught it).
 Route::post('/webhook/toyyibpay', [WebhookController::class, 'toyyibpay'])
     ->name('webhook.toyyibpay')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 
 Route::post('/webhook/billplz', [WebhookController::class, 'billplz'])
     ->name('webhook.billplz')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 
 // ── Dev-only UI kit (Inertia wiring check) — local & testing only ────────────
 if (app()->environment('local', 'testing')) {

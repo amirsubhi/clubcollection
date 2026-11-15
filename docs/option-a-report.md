@@ -87,3 +87,137 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - Hide the install tip inside WhatsApp/Facebook in-app browsers on iOS (no Add to Home Screen there).
 - Absolute paths assume the app is at the domain root, not a cPanel subfolder.
 - bfcache shows the old page on Back after logout (pre-existing): send `no-store` on authenticated pages or reload on `pageshow`.
+
+## A5 — Verification and decision summary
+
+### What was verified
+
+| Check | Result |
+|---|---|
+| End-to-end smoke (`tests/e2e/smoke.mjs`, Playwright/Chromium against `php artisan serve` + fresh SQLite + `E2eSeeder`) | **Pass.** Member: login → Home shows RM 50.00 due → Review & pay → POST pay → redirect to the (faked) ToyyibPay bill → real `/webhook/toyyibpay` callback with the configured token (wrong token → 403) → PayResult "Berjaya" → Home "Semua yuran telah dibayar". Admin A: Fund Usage → expense RM 12.34 with a PNG + PDF → submitted. Admin B: approve with the declaration → "Spent this year" RM 0.00 → RM 12.34. 10 steps, 13 light/dark screenshot pairs (390×844 member, 1366×860 admin); no console errors, CSP violations, failed requests or horizontal overflow. A second run without re-seeding fails and exits 1, as intended. |
+| `php artisan test` | 263 tests, 262 pass. The only failure is the known `LedgerTest` date-range test (this machine runs PHP 8.3; `composer.lock` needs 8.4). |
+| `npx tsc --noEmit` | Clean. |
+| `npm run build` (`vite build`) | Clean, 3,607 modules, ~5 s. |
+| Lighthouse 12, mobile, member Home logged in (session cookie via `--extra-headers`) | Performance **69**, Accessibility **100**, Best practices **100**, SEO 91. FCP 4.1 s, LCP 4.6 s, TBT 250 ms, CLS 0. |
+
+**Bug found by the smoke test and fixed (pre-existing, not caused by Option A):** real gateway callbacks to
+`/webhook/toyyibpay` and `/webhook/billplz` were rejected with **419 (CSRF)**. The routes excluded
+`VerifyCsrfToken`, but Laravel 13's web group runs its parent `PreventRequestForgery`, and exclusion matches by
+class, so nothing was excluded. Feature tests never saw it because the CSRF middleware skips itself under
+PHPUnit. In production no payment would have been marked paid automatically. Fixed in `routes/web.php`;
+`tests/Feature/WebhookCsrfExemptionTest.php` checks the resolved middleware list and fails without the fix.
+
+**Lighthouse caveats:** measured on `php artisan serve`, which sends no compression, under Lighthouse's simulated
+slow 4G. The two biggest costs are text compression (≈367 KiB savings available) and the 464 KB main `app` chunk
+(154 KB gzipped; ≈263 KiB unused on Home). On Apache with `mod_deflate` the score should be higher, but that was
+not measured. The SEO point lost is a missing `<meta name="description">`, which doesn't matter for a logged-in page.
+
+**Not verified here:** a real ToyyibPay sandbox bill and callback (bill creation is faked with `Http::fake`;
+the webhook itself is real), a real cPanel host, and a real iPhone.
+
+**E2E support added (local only):** `Database\Seeders\E2eSeeder` (throws outside local/testing) and
+`App\Providers\E2eFakeGatewayServiceProvider` (active only when `APP_ENV=local` **and** `E2E_FAKE_GATEWAY=1`,
+never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Both guards are covered by
+`tests/Feature/E2eSupportGuardTest.php`. See `tests/e2e/README.md` for how to run it.
+
+### Metrics
+
+- **Time:** A1–A4 were committed between 07:37 and 11:17 UTC on 2026-11-15 (about 4 hours of agent wall-clock time
+  after the mockup, including the review gates). A5 took about another hour.
+- **Lines of code** (`git diff ab0cd3d^..HEAD`, A1–A4, before A5): 148 files, +16,518 / −1,263, of which
+  - TypeScript/TSX: **+6,278** (pages 2,545; app components 2,171; UI primitives 674, mostly moved from the mockup; lib 467; types 282; entry 68);
+  - PHP app code: **+2,703 / −294** (app/ 2,703 added; routes, migrations, seeders, factories and bootstrap another +246);
+  - Blade views: +41 / **−836** (old member pages removed);
+  - tests: **+2,032 / −126**;
+  - lockfiles +4,572 (generated), CSS/JS/config/PWA files +503, docs +133.
+  - A5 adds about 620 lines: the smoke script, its README, the seeder, the provider, 2 test files and the route fix.
+- **Reuse of the existing backend:**
+  - Kept unchanged: `PaymentGatewayManager`, `AuditService`, `Club`, `User`, `TwoFactorChallengeController` and the 2FA middleware.
+  - Small changes: `ToyyibPayGateway` (+4/−2), `BillplzGateway` (+6), `WebhookController` (+26, the underpayment guard), `Payment` (+24), `LoginController` (+10, Inertia logout), `SecurityHeaders` (+57/−6, nonce CSP for Vite).
+  - New backend: Fund Usage (attachments, maker-checker service, welfare cases, presenters/stats, Inertia middleware), about 2,000 lines of PHP.
+  - Payments, gateways, webhooks, auth/2FA, audit and the data model were reused rather than rewritten. The existing app had about 4,400 lines of PHP in `app/` before Option A and about 6,800 now.
+- **Tests:** 153 before Option A → 257 after A4 → **263** now.
+- **Build output:** `public/build` 1.3 MB on disk across 40 assets. Main `app` JS 464 KB (154 KB gzip); `Charts` (Recharts) 403 KB (111 KB gzip), loaded only on pages with charts (not member Home); CSS 46 KB (9 KB gzip); page chunks 4–29 KB each.
+
+### cPanel deploy (summary; details in `docs/RELEASE.md`)
+
+1. Build locally or in CI: `composer install --no-dev -o`, `npm ci && npm run build`. **The server never needs Node.**
+2. Upload the app including `vendor/` and `public/build/`. Leave out `node_modules/` and `public/hot`.
+3. On the server: `php artisan migrate --force`, `config:cache`, `route:cache`, `view:cache`.
+4. Bump `CACHE_VERSION` in `public/sw.js` every release.
+5. `.htaccess` needs Apache `mod_headers` (standard on cPanel) for the `sw.js`/manifest `no-cache` headers.
+6. Keep the previous release's `public/build/assets` for one release, so open tabs don't hit missing chunks.
+7. Set `TOYYIBPAY_WEBHOOK_SECRET` (and `APP_KEY`) on the host. `E2E_FAKE_GATEWAY` must never be set there; the provider also refuses to run unless `APP_ENV=local`.
+
+### Before go-live checklist
+
+All ★ and go-live items from A1–A4 plus what A5 and Fable's final review found. **Must-do before go-live** items are marked 🔴; the rest can follow soon after launch or are optional.
+
+**🔴 Must-do before go-live**
+- [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix.
+- [ ] Gateway secrets set on the host: `TOYYIBPAY_WEBHOOK_SECRET` and `BILLPLZ_X_SIGNATURE_KEY` (placeholders are refused).
+- [ ] Host WAF/ModSecurity and HTTPS/www redirects don't block or 301 the gateways' server-to-server POSTs.
+- [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database.
+- [ ] PHP 8.4 on the host; align `composer.json` (`php ^8.3`) with the lock so a wrong host fails loudly.
+- [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
+- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start).
+- [ ] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler.
+
+Full list by area:
+
+**Payments**
+- [ ] ToyyibPay **sandbox** run end to end: confirm the callback `amount` unit (ringgit vs sen), whether customer-borne charges are included, and `status` vs `status_id`.
+- [ ] Re-test a real sandbox callback on the host after the A5 **webhook CSRF fix** (it previously got 419).
+- [ ] `TOYYIBPAY_WEBHOOK_SECRET` set on the host to a random value (placeholders are refused).
+- [ ] Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside).
+- [ ] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available.
+- [ ] **Reference fallback** when a bill code isn't found (only with a paid amount present).
+- [ ] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment).
+- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start).
+- [ ] Billplz callback for a replaced bill on a per-club-key club.
+- [ ] **Real iPhone payment return** from FPX/bank in the installed PWA (separate cookie jar from Safari).
+
+**Data and files**
+- [ ] **Back up `APP_KEY`** off-server; document rotation with `APP_PREVIOUS_KEYS` (attachments and welfare fields are encrypted with it).
+- [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt).
+- [ ] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original.
+- [ ] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk).
+- [ ] From v1.0, use additive migrations only.
+- [ ] Tell admins not to type personal data in description, return or void reasons.
+
+**Hosting**
+- [ ] `APP_ENV=production` and `APP_DEBUG=false` on the host (the e2e guards rely on `APP_ENV`).
+- [ ] **PHP 8.4 on the host** (`composer.lock` requires it; this machine's PHP 8.3 is why `LedgerTest` fails).
+- [ ] Apache `mod_headers` (and `mod_deflate` for compression, the biggest Lighthouse win) enabled.
+- [ ] Send **`no-store` on authenticated pages** (bfcache shows the old page on Back after logout).
+- [ ] Keep the previous build's assets for one release.
+- [ ] Install at the domain root, or fix absolute paths and set `ASSET_URL` for a subfolder.
+- [ ] Add a production test that `/dev/ui-kit` returns 404.
+- [ ] Add a CI workflow (`npm ci && npm run typecheck && npm run build`, `php artisan test`). Optionally add the e2e smoke as a nightly job.
+
+**Product and decisions**
+- [ ] Confirm with the committee that members may see club-wide fund totals.
+- [ ] Check inline PDF preview under the sandbox CSP in Chrome and Safari; decide how to handle HEIC photos.
+- [ ] Optional: self-host fonts, which removes Google hosts from the CSP and helps offline/PWA.
+- [ ] Optional: split the 464 KB main chunk.
+
+### Option A vs Option B — what the evidence says
+
+The Option A slice was built and verified end to end on the existing Laravel backend:
+- It covers login, the member pay flow with a verified webhook, Fund Usage with encrypted multi-file upload and two-person approval, the admin dashboard, and the PWA.
+- Payments, gateways, webhooks, auth/2FA, audit logging and the data model were reused almost unchanged.
+- The new work was mainly front-end (about 6,300 lines of TSX) plus the Fund Usage domain (about 2,000 lines of PHP), backed by about 110 new tests.
+- Deployment stays the same as today on cPanel: PHP only, with prebuilt assets uploaded and no Node process on the server.
+
+The weaker points:
+- Mobile Lighthouse performance was 69 on an uncompressed dev server.
+- Two stacks now coexist (the remaining Blade pages still load Bootstrap from a CDN).
+- The A5 smoke run found a pre-existing webhook bug that unit tests could not catch, so the go-live checklist above matters more than the stack choice.
+
+Option B (AdonisJS) would mean re-implementing the same gateway, webhook, audit and auth logic in a new codebase and running a Node app under cPanel Passenger. Nothing in A1–A5 required that. The plan says to reconsider B only if A falls short on cPanel or on ease of editing. The first can only be confirmed on the real host (PHP 8.4, `mod_headers`/`mod_deflate`, memory limit). The second is the user's call after editing a page or two. **The decision is the user's.**
+
+### Final review (Fable) — advisory recommendation
+
+Verdict on A5: GO. Hardening applied before commit: the private `local` disk is no longer served over HTTP (`'serve' => false`), with a test that the `storage.local*` routes stay absent.
+
+Advice to the owner: continue with Option A. The slice reused payments, webhooks, auth/2FA and the audit log almost untouched, deploys as plain PHP with no Node on the server, and grew the suite from 153 to 263 tests. The one serious defect found (webhooks getting 419) was pre-existing and unrelated to the stack; a rewrite would re-open that kind of money-path risk across the whole codebase and add Node-on-cPanel hosting risk. Option B only becomes worth it if the real host can't run PHP 8.4, or if the owner finds the React pages hard to edit after trying one or two. Suggested order: the 🔴 must-dos and a real-host sandbox payment first, then migrate the remaining Blade pages module by module, retiring Bootstrap last. Re-measure Lighthouse on the host with compression on; the 69 was measured uncompressed.
