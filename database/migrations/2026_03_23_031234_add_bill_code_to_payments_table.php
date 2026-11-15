@@ -14,13 +14,15 @@ return new class extends Migration
         Schema::table('payments', function (Blueprint $table) {
             $table->string('bill_code')->nullable()->after('reference');
             $table->string('transaction_id')->nullable()->after('bill_code');
+            // Amount the open bill was created for; a bill is only reused while it matches.
+            $table->decimal('bill_amount', 10, 2)->nullable()->after('bill_code');
         });
     }
 
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->dropColumn(['bill_code', 'transaction_id']);
+            $table->dropColumn(['bill_code', 'bill_amount', 'transaction_id']);
         });
     }
 };

@@ -159,4 +159,37 @@ class WebhookTest extends TestCase
         $this->assertSame($firstTxn, $fresh->transaction_id);
         Mail::assertSentCount(1);
     }
+
+    public function test_webhook_with_a_lower_amount_leaves_the_fee_unpaid(): void
+    {
+        $payment = $this->makePendingPayment(['amount' => 50.00]);
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment, ['amount' => '10.00']))
+            ->assertOk();
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        Mail::assertNothingSent();
+    }
+
+    public function test_webhook_with_the_full_amount_marks_paid(): void
+    {
+        $payment = $this->makePendingPayment(['amount' => 50.00, 'bill_amount' => 50.00]);
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment, ['amount' => '50.00']))
+            ->assertOk();
+
+        $this->assertSame('paid', $payment->fresh()->status);
+    }
+
+    public function test_webhook_without_an_amount_refuses_a_bill_created_for_a_different_amount(): void
+    {
+        // Bill opened for RM 20; fee is RM 50 (bill_code kept, e.g. a legacy row).
+        $payment = $this->makePendingPayment(['amount' => 50.00, 'bill_amount' => 20.00]);
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment))
+            ->assertOk();
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.underpaid_webhook', 'auditable_id' => $payment->id]);
+    }
 }

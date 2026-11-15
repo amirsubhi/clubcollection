@@ -276,3 +276,11 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Printing an invoice or receipt from the member portal: drop the app chrome. */
+@media print {
+  .member-scope > header,
+  .member-scope > nav {
+    display: none !important;
+  }
+}

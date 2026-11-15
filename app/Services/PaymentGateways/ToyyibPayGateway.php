@@ -124,15 +124,17 @@ class ToyyibPayGateway implements PaymentGateway
             transactionId: $payload['transaction_id'] ?? null,
             gateway: $this->name(),
             rawPayload: $payload,
+            // ToyyibPay's callback `amount` is in ringgit (e.g. "10.00").
+            paidAmountSen: isset($payload['amount']) && is_numeric($payload['amount']) ? (int) round(((float) $payload['amount']) * 100) : null,
         );
     }
 
     /**
      * Build the public payment URL for a bill code.
      */
-    protected function paymentUrl(string $billCode): string
+    public function paymentUrl(string $billCode): string
     {
-        return "{$this->baseUrl}/{$billCode}";
+        return "{$this->baseUrl}/".rawurlencode($billCode);
     }
 
     /**

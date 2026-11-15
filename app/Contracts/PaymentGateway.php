@@ -30,6 +30,12 @@ interface PaymentGateway
     public function createBill(array $params): ?PaymentBillResult;
 
     /**
+     * Public payment page URL for a bill this gateway created earlier, so an
+     * open bill can be reused instead of creating a second one.
+     */
+    public function paymentUrl(string $billCode): string;
+
+    /**
      * Authenticate an incoming webhook request. Must fail closed when the
      * gateway's verification material (shared secret / signature key) is
      * not configured.

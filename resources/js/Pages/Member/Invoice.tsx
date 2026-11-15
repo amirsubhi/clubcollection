@@ -1,0 +1,139 @@
+import { Lock, Printer } from "lucide-react";
+import { Head, Link } from "@inertiajs/react";
+import { MemberShell } from "@/components/app/MemberShell";
+import { FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
+import { Money } from "@/components/app/Money";
+import { ReceiptCard } from "@/components/app/ReceiptCard";
+import { PaymentStatusBadge } from "@/components/app/StatusBadges";
+import { Button } from "@/components/ui/button";
+import { fmtDate, rm } from "@/lib/format";
+import { useLang, useT } from "@/lib/i18n";
+import type { MemberPaymentRow, MemberReceipt, PaymentContext } from "@/types/member";
+
+interface Props extends PaymentContext {
+  payment: MemberPaymentRow;
+  receipt: MemberReceipt | null;
+  issuedOn: string | null;
+  discount: { name: string; type: "fixed" | "percentage" | string; value: number } | null;
+}
+
+function PrintButton() {
+  const t = useT();
+  return (
+    <Button variant="outline" size="lg" type="button" className="h-12 rounded-full print:hidden" onClick={() => window.print()}>
+      <Printer aria-hidden /> {t("print")}
+    </Button>
+  );
+}
+
+export default function Invoice({ payment, receipt, issuedOn, discount, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+  const t = useT();
+  const { lang } = useLang();
+  const feeLabel = useFeeLabel();
+  const nav = { home: dashboardUrl, payments: paymentsUrl };
+
+  if (receipt) {
+    return (
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("receipt")} backHref={paymentsUrl}>
+        <Head title={t("receipt")} />
+        <FlashBanner />
+        <ReceiptCard
+          club={{ name: payClub.name }}
+          member={{ name: member.name }}
+          receipt={{
+            receiptNo: receipt.receiptNo,
+            amount: receipt.amount,
+            paidAt: receipt.paidAt,
+            method: receipt.gateway ? "FPX" : t("recordedByTreasurer"),
+            bank: receipt.gateway ?? undefined,
+            fpxTxn: receipt.transactionId ?? undefined,
+            gatewayRef: receipt.reference ?? undefined,
+            items: [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }],
+          }}
+        />
+        <PrintButton />
+      </MemberShell>
+    );
+  }
+
+  return (
+    <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("invoice")} backHref={paymentsUrl}>
+      <Head title={t("invoice")} />
+      <FlashBanner />
+      <section aria-label={t("invoice")} className="flex flex-col gap-5 rounded-[20px] border bg-card p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm text-muted-foreground">{payClub.name}</div>
+            <div className="font-mono text-lg">{payment.invoiceNo}</div>
+          </div>
+          <PaymentStatusBadge status={payment.status} label={t(statusLabelKey(payment.status))} size="sm" />
+        </div>
+        <dl className="grid grid-cols-2 gap-3 text-base">
+          <div className="min-w-0">
+            <dt className="text-sm text-muted-foreground">{t("billedTo")}</dt>
+            <dd className="font-semibold">{member.name}</dd>
+            <dd className="truncate text-sm text-muted-foreground">{member.email}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-muted-foreground">{t("due")}</dt>
+            <dd className={payment.status === "overdue" ? "font-semibold text-danger-foreground" : "font-semibold"}>{fmtDate(payment.dueDate, lang)}</dd>
+            {issuedOn && (
+              <>
+                <dt className="mt-2 text-sm text-muted-foreground">{t("issuedOn")}</dt>
+                <dd>{fmtDate(issuedOn, lang)}</dd>
+              </>
+            )}
+          </div>
+        </dl>
+        <table className="w-full text-base">
+          <thead>
+            <tr className="border-b text-left text-sm text-muted-foreground">
+              <th scope="col" className="py-2 font-medium">
+                {t("item")}
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                {t("amount")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b">
+              <td className="py-3 pr-2">
+                {feeLabel(payment)}
+                <span className="block text-sm text-muted-foreground">{t(`freq_${payment.frequency}`)}</span>
+              </td>
+              <td className="py-3 text-right align-top">
+                <Money sen={payment.amount} />
+              </td>
+            </tr>
+            {discount && (
+              <tr className="border-b text-sm text-muted-foreground">
+                <td className="py-2 pr-2">
+                  {t("discount")}: {discount.name}
+                </td>
+                <td className="py-2 text-right">{discount.type === "fixed" ? `−${rm(discount.value)}` : `−${discount.value}%`}</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="pt-3 font-semibold">{t("total")}</td>
+              <td className="pt-3 text-right">
+                <Money sen={payment.amount} className="font-display text-2xl font-bold" />
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+      {payment.urls.review && (
+        <Button asChild size="xl" className="w-full rounded-full text-lg print:hidden">
+          <Link href={payment.urls.review}>
+            <Lock aria-hidden /> {t("reviewPay")} {rm(payment.amount)}
+          </Link>
+        </Button>
+      )}
+      <PrintButton />
+      <HelpLine email={payClub.email} />
+    </MemberShell>
+  );
+}

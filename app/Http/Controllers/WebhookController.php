@@ -98,6 +98,32 @@ class WebhookController extends Controller
                 return null;
             }
 
+            // Never mark a fee paid for less than it is worth: the gateway's
+            // reported amount when it sends one, otherwise the amount the bill
+            // was created for. Return 200 upstream (no retries); audit for the treasurer.
+            $dueSen = (int) round(((float) $payment->amount) * 100);
+            $short = $result->paidAmountSen !== null
+                ? $result->paidAmountSen < $dueSen
+                : ! $payment->billMatchesAmount();
+            if ($short) {
+                Log::warning("{$result->gateway}: paid amount below fee; payment #{$payment->id} left unpaid", [
+                    'paid_amount_sen' => $result->paidAmountSen,
+                    'bill_amount' => $payment->bill_amount,
+                    'amount' => $payment->amount,
+                ]);
+                AuditService::log(
+                    'payment.underpaid_webhook',
+                    "Payment #{$payment->id}: {$this->gatewayLabel($result->gateway)} reported a payment below the fee amount; not marked paid (txn: ".
+                        ($result->transactionId ?? 'n/a').').',
+                    $payment,
+                    $payment->club_id,
+                    ['status' => $payment->status, 'amount' => $payment->amount, 'bill_amount' => $payment->bill_amount],
+                    ['paid_amount_sen' => $result->paidAmountSen, 'transaction_id' => $result->transactionId]
+                );
+
+                return null;
+            }
+
             $oldStatus = $payment->status;
             $newAttrs = [
                 'status' => 'paid',

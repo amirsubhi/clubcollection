@@ -35,7 +35,7 @@ class PayRouteSelectsGatewayTest extends TestCase
         $member = $this->actingAsMember($club);
         $payment = $this->pendingPaymentFor($member, $club);
 
-        $response = $this->get(route('member.payments.pay', $payment));
+        $response = $this->post(route('member.payments.pay', $payment));
 
         $response->assertRedirect('https://dev.toyyibpay.com/TPAYBILL123');
         $this->assertSame('toyyibpay', $payment->fresh()->gateway);
@@ -64,7 +64,7 @@ class PayRouteSelectsGatewayTest extends TestCase
         $member = $this->actingAsMember($club);
         $payment = $this->pendingPaymentFor($member, $club);
 
-        $response = $this->get(route('member.payments.pay', $payment));
+        $response = $this->post(route('member.payments.pay', $payment));
 
         $response->assertRedirect('https://www.billplz-sandbox.com/bills/bill-abc');
         $this->assertSame('billplz', $payment->fresh()->gateway);
@@ -87,8 +87,9 @@ class PayRouteSelectsGatewayTest extends TestCase
         $member = $this->actingAsMember($club);
         $payment = $this->pendingPaymentFor($member, $club);
 
-        $this->get(route('member.payments.pay', $payment))
-            ->assertRedirect();
+        $this->post(route('member.payments.pay', $payment))
+            ->assertRedirect(route('member.payments.review', $payment))
+            ->assertSessionHas('error', 'member.gateway_unavailable');
         $this->assertNull($payment->fresh()->gateway);
         $this->assertNull($payment->fresh()->bill_code);
     }

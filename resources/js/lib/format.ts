@@ -23,8 +23,24 @@ export function fmtDate(iso: string, lang: "bm" | "en" = "en"): string {
   return `${d} ${names[m - 1]} ${y}`;
 }
 
-/** ISO datetime "yyyy-mm-ddTHH:MM" -> "d MMM yyyy, h:mm am". */
+/** ISO yyyy-mm-dd -> "MMM yyyy". */
+export function fmtMonth(iso: string, lang: "bm" | "en" = "en"): string {
+  const [y, m] = iso.slice(0, 10).split("-").map(Number);
+  return `${(lang === "bm" ? MONTHS_BM : MONTHS)[m - 1]} ${y}`;
+}
+
+/** Fee period: "Okt 2026", or "Okt – Dis 2026", or "Dis 2026 – Feb 2027". */
+export function fmtPeriod(start: string, end: string, lang: "bm" | "en" = "en"): string {
+  const a = fmtMonth(start, lang);
+  const b = fmtMonth(end, lang);
+  if (a === b) return a;
+  if (start.slice(0, 4) === end.slice(0, 4)) return `${a.split(" ")[0]} – ${b}`;
+  return `${a} – ${b}`;
+}
+
+/** ISO datetime "yyyy-mm-ddTHH:MM" -> "d MMM yyyy, h:mm am"; a date-only value prints the date alone. */
 export function fmtDateTime(iso: string): string {
+  if (!iso.includes("T")) return fmtDate(iso);
   const [date, time = "00:00"] = iso.split("T");
   const [h, min] = time.split(":").map(Number);
   const ap = h >= 12 ? "pm" : "am";

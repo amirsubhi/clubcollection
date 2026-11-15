@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+{{-- The shared `locale` prop (HandleInertiaRequests): "ms" for members and guests. --}}
+<html lang="{{ str_replace('_', '-', $page['props']['locale'] ?? app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

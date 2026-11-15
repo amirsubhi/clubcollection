@@ -96,6 +96,11 @@ class BillplzGateway implements PaymentGateway
         }
     }
 
+    public function paymentUrl(string $billCode): string
+    {
+        return rtrim($this->baseUrl, '/').'/bills/'.rawurlencode($billCode);
+    }
+
     public function verifyWebhookRequest(Request $request): bool
     {
         $key = $this->resolveSignatureKey($request);
@@ -133,6 +138,7 @@ class BillplzGateway implements PaymentGateway
             transactionId: $request->input('transaction_id'),
             gateway: $this->name(),
             rawPayload: $payload,
+            paidAmountSen: is_numeric($request->input('paid_amount')) ? (int) $request->input('paid_amount') : null,
         );
     }
 

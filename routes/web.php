@@ -87,7 +87,11 @@ Route::middleware('check_installed')->group(function () {
             Route::get('clubs/{club}/payments', [MemberPayment::class, 'index'])->name('payments.index');
             Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->name('payments.generate-future');
             Route::get('payments/{payment}/invoice', [MemberPayment::class, 'invoice'])->name('payments.invoice');
-            Route::get('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
+            // Review is the GET page (email links point here); pay is POST-only so a
+            // link, prefetch or crawler can never open a bill at the gateway.
+            Route::get('payments/{payment}/review', [MemberPayment::class, 'review'])->name('payments.review');
+            Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
+            Route::get('payments/{payment}/status', [MemberPayment::class, 'status'])->name('payments.status');
             Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
         });
 

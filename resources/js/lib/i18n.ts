@@ -141,6 +141,86 @@ const dict = {
   back: { bm: "Kembali", en: "Back" },
   overdueBadge: { bm: "Lewat", en: "Late" },
   forMonths: { bm: "Okt & Nov 2026", en: "Oct & Nov 2026" },
+  // ── Member pay flow (A2) ── "{x}" placeholders are filled with fill().
+  hi: { bm: "Hai", en: "Hi" },
+  allPaid: { bm: "Semua yuran telah dibayar", en: "All fees are paid" },
+  allPaidBody: { bm: "Terima kasih. Tiada apa-apa perlu dibayar sekarang.", en: "Thank you. Nothing to pay right now." },
+  lateN: { bm: "{n} lewat", en: "{n} late" },
+  openN: { bm: "{n} yuran belum dibayar", en: "{n} fees to pay" },
+  payOldestFirst: { bm: "Bayar satu per satu, bermula dengan yang paling lama.", en: "Pay one at a time, oldest first." },
+  membershipFee: { bm: "Yuran keahlian", en: "Membership fee" },
+  freq_monthly: { bm: "Bulanan", en: "Monthly" },
+  freq_quarterly: { bm: "Suku tahunan", en: "Quarterly" },
+  freq_yearly: { bm: "Tahunan", en: "Yearly" },
+  nothingDue: { bm: "Tiada yuran perlu dibayar.", en: "Nothing due." },
+  noRecent: { bm: "Belum ada bayaran.", en: "No payments yet." },
+  moneyGoesYear: { bm: "Tahun {y} setakat ini, jumlah keseluruhan sahaja", en: "{y} so far, totals only" },
+  noSpending: { bm: "Belum ada perbelanjaan direkodkan tahun ini.", en: "No spending recorded this year yet." },
+  others: { bm: "Lain-lain", en: "Others" },
+  viewPayments: { bm: "Lihat bayaran", en: "View payments" },
+  myClubs: { bm: "Kelab saya", en: "My clubs" },
+  clubsN: { bm: "{n} kelab", en: "{n} clubs" },
+  noClubs: { bm: "Anda belum menjadi ahli mana-mana kelab.", en: "You're not a member of any club yet." },
+  signOut: { bm: "Log keluar", en: "Sign out" },
+  security: { bm: "Keselamatan & 2FA", en: "Security & 2FA" },
+  adminPortal: { bm: "Portal pentadbir", en: "Admin portal" },
+  year: { bm: "Tahun", en: "Year" },
+  stillToPay: { bm: "Belum selesai", en: "Still to pay" },
+  paidGroup: { bm: "Sudah dibayar", en: "Paid" },
+  noPaymentsYear: { bm: "Tiada bayaran untuk {y}.", en: "No payments for {y}." },
+  paidInYear: { bm: "Dibayar {y}", en: "Paid {y}" },
+  owingInYear: { bm: "Belum dibayar {y}", en: "To pay {y}" },
+  futureTitle: { bm: "Bayar tempoh akan datang", en: "Pay a future period" },
+  futureBody: { bm: "Cipta invois untuk bulan akan datang dan bayar lebih awal.", en: "Create an invoice for a coming month and pay early." },
+  futureStart: { bm: "Bulan mula", en: "Start month" },
+  futureType: { bm: "Jenis bayaran", en: "Payment type" },
+  futureSubmit: { bm: "Cipta invois", en: "Create invoice" },
+  prevPage: { bm: "Sebelum", en: "Previous" },
+  nextPage: { bm: "Seterusnya", en: "Next" },
+  pageOf: { bm: "Halaman {a} daripada {b}", en: "Page {a} of {b}" },
+  issuedOn: { bm: "Tarikh invois", en: "Invoice date" },
+  discount: { bm: "Diskaun", en: "Discount" },
+  print: { bm: "Cetak", en: "Print" },
+  period: { bm: "Tempoh", en: "Period" },
+  securedGw: { bm: "Dilindungi oleh FPX melalui {gw}", en: "Secured by FPX via {gw}" },
+  handoffGw: {
+    bm: "Anda akan dibawa ke {gw} untuk memilih bank (FPX), kemudian ke laman bank anda. Jangan tutup tetingkap sehingga selesai.",
+    en: "You will go to {gw} to choose your bank (FPX), then to your bank's page. Don't close the window until it finishes.",
+  },
+  redirectingGw: { bm: "Membawa anda ke {gw}…", en: "Taking you to {gw}…" },
+  gatewayUnavailable: {
+    bm: "Bayaran dalam talian belum tersedia untuk kelab ini. Sila hubungi pentadbir kelab.",
+    en: "Online payment isn't available for this club yet. Please contact the club administrator.",
+  },
+  openBillWarn: {
+    bm: "Anda pernah memulakan bayaran ini. Jika wang telah keluar dari akaun anda, jangan bayar lagi. Status akan dikemas kini secara automatik.",
+    en: "You started this payment before. If money already left your account, don't pay again. The status updates automatically.",
+  },
+  processing: { bm: "Dalam proses", en: "Processing" },
+  failedChip: { bm: "Gagal", en: "Failed" },
+  successChip: { bm: "Berjaya", en: "Successful" },
+  stillWaiting: {
+    bm: "Bank masih belum mengesahkan. Kami akan menghantar e-mel kepada anda sebaik sahaja bayaran disahkan.",
+    en: "The bank hasn't confirmed yet. We'll email you as soon as the payment is confirmed.",
+  },
+  checking: { bm: "Menyemak status…", en: "Checking status…" },
+  recordedByTreasurer: { bm: "Direkod oleh bendahari", en: "Recorded by the treasurer" },
+  helpAdmin: { bm: "Hubungi pentadbir kelab", en: "Contact the club administrator" },
+  receiptEmailed: { bm: "Resit akan dihantar ke e-mel anda.", en: "A receipt will be emailed to you." },
+  notReceivedTitle: { bm: "Bayaran belum diterima", en: "Payment not received yet" },
+  failedMoneyLeftAdvice: {
+    bm: "Jika wang telah keluar dari akaun anda, jangan bayar lagi — hubungi bendahari dengan rujukan di bawah.",
+    en: "If money left your account, don't pay again — contact the treasurer with the reference below.",
+  },
+  flash_already_paid: { bm: "Yuran ini telah dibayar.", en: "This fee has already been paid." },
+  flash_gateway_unavailable: {
+    bm: "Bayaran dalam talian belum tersedia untuk kelab ini. Sila hubungi pentadbir kelab.",
+    en: "Online payment isn't available for this club yet. Please contact the club administrator.",
+  },
+  flash_bill_failed: { bm: "Bil bayaran tidak dapat dicipta. Sila cuba lagi.", en: "We couldn't create the payment bill. Please try again." },
+  flash_no_fee_rate: { bm: "Tiada kadar yuran ditetapkan untuk tahap jawatan anda.", en: "No fee rate is set for your job level." },
+  flash_period_exists: { bm: "Rekod bayaran untuk tempoh ini sudah wujud.", en: "A payment record already exists for this period." },
+  flash_future_created: { bm: "Invois baharu dicipta. Teruskan untuk membayar.", en: "New invoice created. Continue to pay." },
 } as const;
 
 export type DictKey = keyof typeof dict;
@@ -153,6 +233,15 @@ export const LangContext = createContext<{ lang: Lang; setLang: (l: Lang) => voi
 export function useT() {
   const { lang } = useContext(LangContext);
   return (key: DictKey) => dict[key][lang];
+}
+
+/** Replace "{name}" placeholders in a translated string. */
+export function fill(text: string, vars: Record<string, string | number>): string {
+  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
+}
+
+export function isDictKey(key: string): key is DictKey {
+  return Object.prototype.hasOwnProperty.call(dict, key);
 }
 
 export function useLang() {

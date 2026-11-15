@@ -63,7 +63,7 @@
     </div>
 
     <div class="cta">
-      <a href="{{ route('member.payments.pay', $payment) }}">Pay Now</a>
+      <a href="{{ route('member.payments.review', $payment) }}">Pay Now</a>
     </div>
 
     <p style="font-size:13px;color:#6c757d;text-align:center">

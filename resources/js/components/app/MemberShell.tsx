@@ -25,7 +25,7 @@ export function LangToggle() {
           aria-checked={lang === l}
           onClick={() => setLang(l)}
           className={cn(
-            "inline-flex h-10 min-w-11 items-center justify-center rounded-full px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
