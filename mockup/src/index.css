@@ -72,44 +72,44 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --background: 18 17 28; /* #12111C */
-    --foreground: 236 234 247; /* #ECEAF7 */
-    --card: 27 26 41; /* #1B1A29 */
-    --card-foreground: 236 234 247; /* #ECEAF7 */
-    --popover: 34 33 52; /* #222134 */
-    --popover-foreground: 236 234 247; /* #ECEAF7 */
-    --primary: 179 171 245; /* #B3ABF5 */
-    --primary-foreground: 26 20 71; /* #1A1447 */
-    --deep: 43 37 102; /* #2B2566 */
-    --deep-foreground: 241 239 255; /* #F1EFFF */
-    --mint: 20 58 46; /* #143A2E */
+    --background: 30 31 35; /* #1E1F23 */
+    --foreground: 241 241 244; /* #F1F1F4 */
+    --card: 38 39 44; /* #26272C */
+    --card-foreground: 241 241 244; /* #F1F1F4 */
+    --popover: 46 47 53; /* #2E2F35 */
+    --popover-foreground: 241 241 244; /* #F1F1F4 */
+    --primary: 180 173 246; /* #B4ADF6 */
+    --primary-foreground: 27 23 71; /* #1B1747 */
+    --deep: 52 50 90; /* #34325A */
+    --deep-foreground: 243 241 255; /* #F3F1FF */
+    --mint: 31 59 51; /* #1F3B33 */
     --mint-foreground: 168 235 208; /* #A8EBD0 */
-    --secondary: 38 36 56; /* #262438 */
-    --secondary-foreground: 236 234 247; /* #ECEAF7 */
-    --muted: 32 31 48; /* #201F30 */
-    --muted-foreground: 169 166 194; /* #A9A6C2 */
-    --accent: 42 39 80; /* #2A2750 */
-    --accent-foreground: 201 195 250; /* #C9C3FA */
-    --border: 51 49 74; /* #33314A */
-    --input: 124 121 155; /* #7C799B */
-    --ring: 179 171 245; /* #B3ABF5 */
-    --success: 111 211 166; /* #6FD3A6 */
-    --success-soft: 19 48 38; /* #133026 */
-    --success-foreground: 143 224 188; /* #8FE0BC */
+    --secondary: 48 49 55; /* #303137 */
+    --secondary-foreground: 241 241 244; /* #F1F1F4 */
+    --muted: 42 43 48; /* #2A2B30 */
+    --muted-foreground: 179 180 190; /* #B3B4BE */
+    --accent: 52 50 79; /* #34324F */
+    --accent-foreground: 207 202 251; /* #CFCAFB */
+    --border: 58 59 66; /* #3A3B42 */
+    --input: 111 112 122; /* #6F707A */
+    --ring: 180 173 246; /* #B4ADF6 */
+    --success: 116 211 169; /* #74D3A9 */
+    --success-soft: 30 50 41; /* #1E3229 */
+    --success-foreground: 147 226 191; /* #93E2BF */
     --on-success: 11 42 31; /* #0B2A1F */
-    --warning: 237 190 106; /* #EDBE6A */
-    --warning-soft: 55 41 15; /* #37290F */
-    --warning-foreground: 243 206 138; /* #F3CE8A */
-    --danger: 240 154 168; /* #F09AA8 */
-    --danger-soft: 61 24 32; /* #3D1820 */
-    --danger-foreground: 246 179 189; /* #F6B3BD */
+    --warning: 237 193 110; /* #EDC16E */
+    --warning-soft: 58 48 32; /* #3A3020 */
+    --warning-foreground: 243 208 142; /* #F3D08E */
+    --danger: 242 160 173; /* #F2A0AD */
+    --danger-soft: 62 37 42; /* #3E252A */
+    --danger-foreground: 246 182 192; /* #F6B6C0 */
     --on-danger: 42 10 18; /* #2A0A12 */
-    --info: 179 171 245; /* #B3ABF5 */
-    --info-soft: 42 39 80; /* #2A2750 */
-    --info-foreground: 201 195 250; /* #C9C3FA */
-    --sidebar: 22 21 35; /* #161523 */
-    --strip: 38 36 56; /* #262438 */
-    --strip-foreground: 236 234 247; /* #ECEAF7 */
+    --info: 180 173 246; /* #B4ADF6 */
+    --info-soft: 52 50 79; /* #34324F */
+    --info-foreground: 207 202 251; /* #CFCAFB */
+    --sidebar: 34 35 39; /* #222327 */
+    --strip: 42 43 48; /* #2A2B30 */
+    --strip-foreground: 241 241 244; /* #F1F1F4 */
     --chart-1: 142 132 222; /* #8E84DE */
     --chart-2: 65 168 125; /* #41A87D */
     --chart-3: 98 150 206; /* #6296CE */
@@ -118,59 +118,59 @@
     --chart-2-stroke: 65 168 125; /* #41A87D */
     --chart-3-stroke: 98 150 206; /* #6296CE */
     --chart-4-stroke: 201 118 133; /* #C97685 */
-    --on-chart-1: 18 17 28; /* #12111C */
-    --on-chart-2: 18 17 28; /* #12111C */
-    --on-chart-3: 18 17 28; /* #12111C */
-    --on-chart-4: 18 17 28; /* #12111C */
-    --chart-grid: 43 41 64; /* #2B2940 */
-    --chart-axis: 169 166 194; /* #A9A6C2 */
+    --on-chart-1: 30 31 35; /* #1E1F23 */
+    --on-chart-2: 30 31 35; /* #1E1F23 */
+    --on-chart-3: 30 31 35; /* #1E1F23 */
+    --on-chart-4: 30 31 35; /* #1E1F23 */
+    --chart-grid: 52 53 59; /* #34353B */
+    --chart-axis: 179 180 190; /* #B3B4BE */
     --mock: 196 181 253; /* #C4B5FD */
-    --mock-soft: 35 27 56; /* #231B38 */
+    --mock-soft: 46 42 63; /* #2E2A3F */
     --mock-border: 124 107 196; /* #7C6BC4 */
-    --overlay: 5 4 10; /* #05040A */
+    --overlay: 11 11 13; /* #0B0B0D */
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: 18 17 28; /* #12111C */
-  --foreground: 236 234 247; /* #ECEAF7 */
-  --card: 27 26 41; /* #1B1A29 */
-  --card-foreground: 236 234 247; /* #ECEAF7 */
-  --popover: 34 33 52; /* #222134 */
-  --popover-foreground: 236 234 247; /* #ECEAF7 */
-  --primary: 179 171 245; /* #B3ABF5 */
-  --primary-foreground: 26 20 71; /* #1A1447 */
-  --deep: 43 37 102; /* #2B2566 */
-  --deep-foreground: 241 239 255; /* #F1EFFF */
-  --mint: 20 58 46; /* #143A2E */
+  --background: 30 31 35; /* #1E1F23 */
+  --foreground: 241 241 244; /* #F1F1F4 */
+  --card: 38 39 44; /* #26272C */
+  --card-foreground: 241 241 244; /* #F1F1F4 */
+  --popover: 46 47 53; /* #2E2F35 */
+  --popover-foreground: 241 241 244; /* #F1F1F4 */
+  --primary: 180 173 246; /* #B4ADF6 */
+  --primary-foreground: 27 23 71; /* #1B1747 */
+  --deep: 52 50 90; /* #34325A */
+  --deep-foreground: 243 241 255; /* #F3F1FF */
+  --mint: 31 59 51; /* #1F3B33 */
   --mint-foreground: 168 235 208; /* #A8EBD0 */
-  --secondary: 38 36 56; /* #262438 */
-  --secondary-foreground: 236 234 247; /* #ECEAF7 */
-  --muted: 32 31 48; /* #201F30 */
-  --muted-foreground: 169 166 194; /* #A9A6C2 */
-  --accent: 42 39 80; /* #2A2750 */
-  --accent-foreground: 201 195 250; /* #C9C3FA */
-  --border: 51 49 74; /* #33314A */
-  --input: 124 121 155; /* #7C799B */
-  --ring: 179 171 245; /* #B3ABF5 */
-  --success: 111 211 166; /* #6FD3A6 */
-  --success-soft: 19 48 38; /* #133026 */
-  --success-foreground: 143 224 188; /* #8FE0BC */
+  --secondary: 48 49 55; /* #303137 */
+  --secondary-foreground: 241 241 244; /* #F1F1F4 */
+  --muted: 42 43 48; /* #2A2B30 */
+  --muted-foreground: 179 180 190; /* #B3B4BE */
+  --accent: 52 50 79; /* #34324F */
+  --accent-foreground: 207 202 251; /* #CFCAFB */
+  --border: 58 59 66; /* #3A3B42 */
+  --input: 111 112 122; /* #6F707A */
+  --ring: 180 173 246; /* #B4ADF6 */
+  --success: 116 211 169; /* #74D3A9 */
+  --success-soft: 30 50 41; /* #1E3229 */
+  --success-foreground: 147 226 191; /* #93E2BF */
   --on-success: 11 42 31; /* #0B2A1F */
-  --warning: 237 190 106; /* #EDBE6A */
-  --warning-soft: 55 41 15; /* #37290F */
-  --warning-foreground: 243 206 138; /* #F3CE8A */
-  --danger: 240 154 168; /* #F09AA8 */
-  --danger-soft: 61 24 32; /* #3D1820 */
-  --danger-foreground: 246 179 189; /* #F6B3BD */
+  --warning: 237 193 110; /* #EDC16E */
+  --warning-soft: 58 48 32; /* #3A3020 */
+  --warning-foreground: 243 208 142; /* #F3D08E */
+  --danger: 242 160 173; /* #F2A0AD */
+  --danger-soft: 62 37 42; /* #3E252A */
+  --danger-foreground: 246 182 192; /* #F6B6C0 */
   --on-danger: 42 10 18; /* #2A0A12 */
-  --info: 179 171 245; /* #B3ABF5 */
-  --info-soft: 42 39 80; /* #2A2750 */
-  --info-foreground: 201 195 250; /* #C9C3FA */
-  --sidebar: 22 21 35; /* #161523 */
-  --strip: 38 36 56; /* #262438 */
-  --strip-foreground: 236 234 247; /* #ECEAF7 */
+  --info: 180 173 246; /* #B4ADF6 */
+  --info-soft: 52 50 79; /* #34324F */
+  --info-foreground: 207 202 251; /* #CFCAFB */
+  --sidebar: 34 35 39; /* #222327 */
+  --strip: 42 43 48; /* #2A2B30 */
+  --strip-foreground: 241 241 244; /* #F1F1F4 */
   --chart-1: 142 132 222; /* #8E84DE */
   --chart-2: 65 168 125; /* #41A87D */
   --chart-3: 98 150 206; /* #6296CE */
@@ -179,16 +179,16 @@
   --chart-2-stroke: 65 168 125; /* #41A87D */
   --chart-3-stroke: 98 150 206; /* #6296CE */
   --chart-4-stroke: 201 118 133; /* #C97685 */
-  --on-chart-1: 18 17 28; /* #12111C */
-  --on-chart-2: 18 17 28; /* #12111C */
-  --on-chart-3: 18 17 28; /* #12111C */
-  --on-chart-4: 18 17 28; /* #12111C */
-  --chart-grid: 43 41 64; /* #2B2940 */
-  --chart-axis: 169 166 194; /* #A9A6C2 */
+  --on-chart-1: 30 31 35; /* #1E1F23 */
+  --on-chart-2: 30 31 35; /* #1E1F23 */
+  --on-chart-3: 30 31 35; /* #1E1F23 */
+  --on-chart-4: 30 31 35; /* #1E1F23 */
+  --chart-grid: 52 53 59; /* #34353B */
+  --chart-axis: 179 180 190; /* #B3B4BE */
   --mock: 196 181 253; /* #C4B5FD */
-  --mock-soft: 35 27 56; /* #231B38 */
+  --mock-soft: 46 42 63; /* #2E2A3F */
   --mock-border: 124 107 196; /* #7C6BC4 */
-  --overlay: 5 4 10; /* #05040A */
+  --overlay: 11 11 13; /* #0B0B0D */
 }
 
 /* Receipts and the AGM sheet stay white "paper" in both themes (people print and share them). */
