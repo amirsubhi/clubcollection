@@ -38,6 +38,11 @@ Route::post('/webhook/billplz', [WebhookController::class, 'billplz'])
     ->name('webhook.billplz')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
+// ── Dev-only UI kit (Inertia wiring check) — local & testing only ────────────
+if (app()->environment('local', 'testing')) {
+    Route::get('/dev/ui-kit', fn () => \Inertia\Inertia::render('Dev/UiKit'))->name('dev.ui-kit');
+}
+
 // ── All other routes — require app to be installed ─────────────────────────
 Route::middleware('check_installed')->group(function () {
 

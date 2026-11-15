@@ -13,8 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Apply security headers to every web response
+        // HandleInertiaRequests comes after SecurityHeaders so the CSP nonce
+        // (and Vite::useCspNonce) is set before an Inertia page renders. It
+        // passes plain Blade responses through untouched.
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
         // Trust the X-Forwarded-* headers from the reverse proxy/load
