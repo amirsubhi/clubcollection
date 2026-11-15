@@ -5,6 +5,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Admin\ClubController;
+use App\Http\Controllers\Admin\ClubBillingController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\FeeRateController;
 use App\Http\Controllers\Admin\AdminUserController;
@@ -90,7 +91,7 @@ Route::middleware('check_installed')->group(function () {
             Route::get('dashboard', [MemberDashboard::class, 'index'])->name('dashboard');
 
             Route::get('clubs/{club}/payments', [MemberPayment::class, 'index'])->name('payments.index');
-            Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->name('payments.generate-future');
+            Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->middleware('throttle:10,1')->name('payments.generate-future');
             Route::get('payments/{payment}/invoice', [MemberPayment::class, 'invoice'])->name('payments.invoice');
             // Review is the GET page (email links point here); pay is POST-only so a
             // link, prefetch or crawler can never open a bill at the gateway.
@@ -119,6 +120,10 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('clubs.fee-rates', FeeRateController::class)->shallow();
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
+
+            // Billing plans and gateway-fee settings (club admins of this club + super admin).
+            Route::get('clubs/{club}/billing', [ClubBillingController::class, 'edit'])->name('clubs.billing.edit');
+            Route::put('clubs/{club}/billing', [ClubBillingController::class, 'update'])->middleware('throttle:20,1')->name('clubs.billing.update');
             // The previous Blade dashboard (month filter, paid/unpaid members, job levels).
             Route::get('clubs/{club}/dashboard/classic', [DashboardController::class, 'classic'])->name('clubs.dashboard.classic');
 

@@ -101,6 +101,10 @@ class WebhookController extends Controller
             // Never mark a fee paid for less than it is worth: the gateway's
             // reported amount when it sends one, otherwise the amount the bill
             // was created for. Return 200 upstream (no retries); audit for the treasurer.
+            // Compared with the fee amount only, never amount + gateway fee: a
+            // member-borne charge (Billplz adds it to the bill; ToyyibPay may or
+            // may not include it in `amount`) makes the paid amount higher, which
+            // is accepted.
             $dueSen = (int) round(((float) $payment->amount) * 100);
             $short = $result->paidAmountSen !== null
                 ? $result->paidAmountSen < $dueSen
@@ -130,6 +134,10 @@ class WebhookController extends Controller
                 'paid_date' => now()->toDateString(),
                 'transaction_id' => $result->transactionId,
                 'gateway' => $result->gateway,
+                // Paid online: record it, and the gateway fee the club absorbed on
+                // this bill (0 when the member paid it) for the dashboard KPI.
+                'paid_via' => $result->gateway,
+                'fee_absorbed_sen' => $payment->bill_fee_payer === 'member' ? 0 : (int) ($payment->bill_fee_sen ?? 0),
             ];
 
             $payment->update($newAttrs);

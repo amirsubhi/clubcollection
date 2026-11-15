@@ -15,7 +15,8 @@ class Payment extends Model
         'club_id', 'user_id', 'recorded_by', 'amount', 'frequency',
         'period_start', 'period_end', 'due_date', 'paid_date',
         'status', 'reference', 'discount_id', 'notes',
-        'bill_code', 'bill_amount', 'gateway', 'transaction_id',
+        'bill_code', 'bill_amount', 'bill_fee_payer', 'bill_fee_sen', 'gateway', 'transaction_id',
+        'paid_via', 'fee_absorbed_sen',
     ];
 
     protected function casts(): array
@@ -27,6 +28,8 @@ class Payment extends Model
             'paid_date' => 'date',
             'amount' => 'decimal:2',
             'bill_amount' => 'decimal:2',
+            'bill_fee_sen' => 'integer',
+            'fee_absorbed_sen' => 'integer',
         ];
     }
 
@@ -41,6 +44,8 @@ class Payment extends Model
                 && $payment->bill_code !== null) {
                 $payment->bill_code = null;
                 $payment->bill_amount = null;
+                $payment->bill_fee_payer = null;
+                $payment->bill_fee_sen = null;
             }
         });
     }

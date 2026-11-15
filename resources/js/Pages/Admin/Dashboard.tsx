@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@inertiajs/react";
-import { ArrowRight, Ban, CheckCircle2, Clock, FilePlus2, HandHeart, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
+import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
@@ -40,12 +40,13 @@ interface Props {
     awaiting: { count: number; sum: number; mine: number };
     welfareYtd: number;
     welfareCountYtd: number;
+    gatewayFees: { absorbedYtd: number; payer: "club" | "member"; perBill: number };
   };
   monthly: MonthPoint[];
   categories: { name: string; amount: number }[];
   queue: (FundRow & { canApprove: boolean })[];
   activity: Activity[];
-  urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string };
+  urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string; billing: string };
 }
 
 const activityIcon: Record<Activity["kind"], { Icon: typeof Wallet; tone: Tone }> = {
@@ -102,11 +103,21 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <KpiTile label="Fund balance" value={rm(kpis.balance)} hint="All time, approved spending only" Icon={Landmark} />
         <KpiTile label="Collected this year" value={rm(kpis.collectedYtd)} delta={delta(kpis.collectedDeltaPct)} deltaGood={(kpis.collectedDeltaPct ?? 0) >= 0} hint={kpis.collectedDeltaPct === null ? "Paid fees" : "vs same period last year"} Icon={Wallet} />
         <KpiTile label="Spent this year" value={rm(kpis.spentYtd)} delta={delta(kpis.spentDeltaPct)} deltaGood={(kpis.spentDeltaPct ?? 0) <= 0} hint={kpis.spentDeltaPct === null ? "Approved only" : "vs same period last year"} Icon={TrendingDown} />
         <KpiTile label="Awaiting approval" value={`${kpis.awaiting.count} record${kpis.awaiting.count === 1 ? "" : "s"}`} hint={`${rm(kpis.awaiting.sum)} · ${kpis.awaiting.mine} need you`} Icon={Clock} />
+        <KpiTile
+          label="Gateway fees this year"
+          value={rm(kpis.gatewayFees.absorbedYtd)}
+          hint={
+            kpis.gatewayFees.payer === "member" && kpis.gatewayFees.absorbedYtd === 0
+              ? "Paid by members (dibayar ahli)"
+              : "Absorbed by the club, online payments"
+          }
+          Icon={CreditCard}
+        />
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
@@ -180,6 +191,9 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
             </a>
             <a href={urls.classic} className="font-semibold text-primary hover:underline">
               Monthly report (classic)
+            </a>
+            <a href={urls.billing} className="font-semibold text-primary hover:underline">
+              Billing settings
             </a>
           </div>
         </Panel>

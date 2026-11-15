@@ -24,6 +24,7 @@ final class AdminNav
             $blade('payments', 'Payments', route('admin.clubs.payments.index', $club), 'payments'),
             $blade('members', 'Members', route('admin.clubs.members.index', $club), 'members'),
             $blade('fee-rates', 'Fee Rates', route('admin.clubs.fee-rates.index', $club), 'rates'),
+            $blade('billing', 'Billing settings', route('admin.clubs.billing.edit', $club), 'billing'),
             $blade('discounts', 'Discounts', route('admin.clubs.discounts.index', $club), 'discounts'),
             $blade('categories', 'Expense categories', route('admin.clubs.expense-categories.index', $club), 'categories'),
             $blade('ledger', 'Ledger', route('admin.clubs.ledger', $club), 'ledger'),

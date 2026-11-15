@@ -185,6 +185,9 @@
         <a href="{{ route('admin.clubs.fee-rates.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.fee-rates.*', 'admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Fee Rates
         </a>
+        <a href="{{ route('admin.clubs.billing.edit', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.billing.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-sliders"></i> Billing settings
+        </a>
         <a href="{{ route('admin.clubs.ledger', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.ledger*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-journal-bookmark"></i> Ledger
         </a>

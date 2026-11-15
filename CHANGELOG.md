@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.2] — Unreleased
 
+### Payments (P1: billing frequency and gateway fee)
+- ToyyibPay `billChargeToCustomer` now follows the club's gateway-fee setting. "Club absorbs" (the default) keeps
+  the previous value `1` until a sandbox run confirms how ToyyibPay reads each value; "member pays" (`0`) stays
+  disabled for ToyyibPay until `TOYYIBPAY_CHARGE_VERIFIED=true`.
+
 Security and accessibility hardening pass. No public API changes.
 
 ### Security

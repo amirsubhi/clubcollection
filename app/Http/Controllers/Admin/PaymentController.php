@@ -113,11 +113,24 @@ class PaymentController extends Controller
         ]);
 
         $start = Carbon::parse($data['period_start']);
+
+
         $end   = match($data['frequency']) {
             'monthly'   => $start->copy()->endOfMonth(),
             'quarterly' => $start->copy()->addMonths(3)->subDay(),
             'yearly'    => $start->copy()->addYear()->subDay(),
         };
+
+        // Same rule as member pay-ahead: no two fees for one member may cover
+        // the same days (the unique index only catches an identical start).
+        // There is no void status on payments yet; when one is added, exclude it here.
+        $overlaps = $club->payments()->where('user_id', $data['user_id'])
+            ->whereDate('period_start', '<=', $end->toDateString())
+            ->whereDate('period_end', '>=', $start->toDateString())
+            ->exists();
+        if ($overlaps) {
+            return back()->withInput()->withErrors(['period_start' => 'This member already has a payment covering part of this period.']);
+        }
 
         $payment = Payment::create([
             'club_id'      => $club->id,

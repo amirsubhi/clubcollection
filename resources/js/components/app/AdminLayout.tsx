@@ -17,6 +17,7 @@ import {
   Wallet,
   BookOpen,
   Coins,
+  SlidersHorizontal,
 } from "lucide-react";
 import { AdminShell, type AdminNavGroup } from "./AdminShell";
 import { Alert } from "@/components/ui/alert";
@@ -28,6 +29,7 @@ const icons: Record<string, typeof Menu> = {
   payments: Wallet,
   members: Users,
   rates: Coins,
+  billing: SlidersHorizontal,
   discounts: Percent,
   categories: FolderTree,
   ledger: BookOpen,

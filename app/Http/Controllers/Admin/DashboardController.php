@@ -61,6 +61,13 @@ class DashboardController extends Controller
                 'awaiting' => $awaiting,
                 'welfareYtd' => $stats->spentBetween($yearStart, $yearEnd, 'welfare'),
                 'welfareCountYtd' => $stats->welfareCountBetween($yearStart, $yearEnd),
+                // Fees on online payments this year that the club absorbed; when
+                // members pay the fee the page shows "dibayar ahli" instead.
+                'gatewayFees' => [
+                    'absorbedYtd' => $stats->gatewayFeesAbsorbedBetween($yearStart, $yearEnd),
+                    'payer' => $club->gatewayFeePayer(),
+                    'perBill' => $club->gatewayFeeSen(),
+                ],
             ],
             'monthly' => $stats->monthly(12),
             'categories' => $stats->byCategoryBetween($yearStart, $yearEnd),
@@ -73,6 +80,7 @@ class DashboardController extends Controller
                 'classic' => route('admin.clubs.dashboard.classic', $club),
                 'ledger' => route('admin.clubs.ledger', $club),
                 'auditLog' => route('admin.clubs.audit-logs', $club),
+                'billing' => route('admin.clubs.billing.edit', $club),
             ],
         ]);
     }

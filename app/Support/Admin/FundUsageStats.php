@@ -37,6 +37,20 @@ final class FundUsageStats
             ->sum('amount'));
     }
 
+    /**
+     * Gateway fees the club absorbed (sen) on fees paid online in the range:
+     * fee_absorbed_sen is set by the verified webhook when it marks a fee paid
+     * (0 when the member paid the fee; null for fees settled by hand).
+     */
+    public function gatewayFeesAbsorbedBetween(CarbonInterface $from, CarbonInterface $to): int
+    {
+        return (int) $this->club->payments()
+            ->where('status', 'paid')
+            ->whereNotNull('paid_via')
+            ->tap(fn ($q) => self::inRange($q, 'paid_date', $from, $to))
+            ->sum('fee_absorbed_sen');
+    }
+
     public function spentBetween(CarbonInterface $from, CarbonInterface $to, ?string $type = null): int
     {
         return FundUsagePresenter::sen($this->club->expenses()->counted()

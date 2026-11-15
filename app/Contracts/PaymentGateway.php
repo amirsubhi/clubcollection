@@ -25,7 +25,13 @@ interface PaymentGateway
      *
      * Expected $params keys:
      *   club, bill_name, description, amount, return_url, callback_url,
-     *   reference_no, payer_name, payer_email, payer_phone (optional), club_name
+     *   reference_no, payer_name, payer_email, payer_phone (optional), club_name,
+     *   fee (optional App\Support\Payments\GatewayFee; absent = club absorbs)
+     *
+     * `amount` is always the fee amount without any gateway charge. When
+     * fee->memberPays(), the gateway must make the member bear its charge
+     * exactly once: by its own customer-charge flag, or by adding
+     * fee->feeSen to the bill amount when it has no such flag.
      */
     public function createBill(array $params): ?PaymentBillResult;
 

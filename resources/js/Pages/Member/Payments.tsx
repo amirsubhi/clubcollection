@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { CalendarPlus, ChevronDown } from "lucide-react";
+import { CalendarPlus, ChevronDown, PiggyBank } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, PaymentRow } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { Button } from "@/components/ui/button";
-import { FieldError, Input, Label } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fill, useT } from "@/lib/i18n";
+import { fmtDate, fmtMonth, rm } from "@/lib/format";
+import { fill, useLang, useT } from "@/lib/i18n";
 import type { MemberPaymentRow } from "@/types/member";
 
 interface Props {
@@ -17,15 +18,53 @@ interface Props {
   summary: { paid: number; pending: number; overdue: number; paidCount: number; total: number };
   payments: MemberPaymentRow[];
   pagination: { currentPage: number; lastPage: number; total: number; prevUrl: string | null; nextUrl: string | null };
-  futureForm: { action: string; defaultStart: string };
+  futureForm: {
+    action: string;
+    freeMonths: string[];
+    defaultStart: string | null;
+    maxEnd: string;
+    paidUntil: string | null;
+    plans: ("monthly" | "quarterly" | "yearly")[];
+    defaultPlan: "monthly" | "quarterly" | "yearly";
+    monthlySen: number | null;
+    feePayer: "club" | "member";
+    feeSen: number;
+  };
   paymentsUrl: string;
   dashboardUrl: string;
 }
 
-function FutureForm({ action, defaultStart }: Props["futureForm"]) {
+type Plan = "monthly" | "quarterly" | "yearly";
+const PLAN_MONTHS: Record<Plan, 1 | 3 | 12> = { monthly: 1, quarterly: 3, yearly: 12 };
+
+/** ISO date of the last day of a period of `months` starting on the first-of-month `start`. */
+function periodEnd(start: string, months: number): string {
+  const [y, m] = start.slice(0, 7).split("-").map(Number);
+  const last = new Date(Date.UTC(y, m - 1 + months, 0));
+  return last.toISOString().slice(0, 10);
+}
+
+/** Pay ahead: 1, 3 or 12 months (as the club allows), with the gateway-charge saving vs paying monthly. */
+function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans, defaultPlan, monthlySen, feePayer, feeSen }: Props["futureForm"]) {
   const t = useT();
+  const { lang } = useLang();
   const [open, setOpen] = useState(false);
-  const form = useForm({ period_start: defaultStart, frequency: "monthly" });
+  // Default plan, or the longest allowed plan that still fits the cap from the default start.
+  const firstFit = (start: string | null, preferred: Plan): Plan => {
+    const ok = (p: Plan) => !!start && periodEnd(start, PLAN_MONTHS[p]) <= maxEnd;
+    return ok(preferred) ? preferred : ([...plans].reverse().find(ok) ?? preferred);
+  };
+  const form = useForm<{ period_start: string; frequency: Plan }>({ period_start: defaultStart ?? "", frequency: firstFit(defaultStart, defaultPlan) });
+  // A plan is offered only if its period ends within the 12-month cap from the chosen start.
+  const fits = (p: Plan) => !!form.data.period_start && periodEnd(form.data.period_start, PLAN_MONTHS[p]) <= maxEnd;
+  const chooseStart = (v: string) => {
+    form.setData((d) => ({ period_start: v, frequency: firstFit(v, d.frequency) }));
+  };
+  const memberPays = feePayer === "member" && feeSen > 0;
+  const chosen = PLAN_MONTHS[form.data.frequency];
+  const totalFor = (p: Plan) => (monthlySen ?? 0) * PLAN_MONTHS[p] + (memberPays ? feeSen : 0);
+  const saving = feeSen * (chosen - 1);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     form.post(action, { preserveScroll: true });
@@ -50,41 +89,80 @@ function FutureForm({ action, defaultStart }: Props["futureForm"]) {
       </button>
       {open && (
         <form id="future-body" onSubmit={submit} className="flex flex-col gap-4 border-t px-4 py-4" noValidate>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="period_start" className="text-base">
-              {t("futureStart")}
-            </Label>
-            <Input
-              id="period_start"
-              type="date"
-              className="h-12 text-base"
-              value={form.data.period_start}
-              invalid={!!form.errors.period_start}
-              onChange={(e) => form.setData("period_start", e.target.value)}
-            />
-            {form.errors.period_start && <FieldError>{form.errors.period_start}</FieldError>}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="frequency" className="text-base">
-              {t("futureType")}
-            </Label>
-            <Select value={form.data.frequency} onValueChange={(v) => form.setData("frequency", v)}>
-              <SelectTrigger id="frequency" className="h-12 text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(["monthly", "quarterly", "yearly"] as const).map((f) => (
-                  <SelectItem key={f} value={f} className="py-2.5 text-base">
-                    {t(`freq_${f}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.errors.frequency && <FieldError>{form.errors.frequency}</FieldError>}
-          </div>
-          <Button type="submit" size="lg" className="h-12 rounded-full" disabled={form.processing}>
-            {t("futureSubmit")}
-          </Button>
+          {monthlySen === null ? (
+            <p className="text-base text-muted-foreground">{t("noFeeRateYet")}</p>
+          ) : freeMonths.length === 0 ? (
+            <p className="text-base text-muted-foreground" data-testid="paid-up-to">
+              {fill(t("paidUpTo"), { d: paidUntil ? fmtDate(paidUntil, lang) : "" })}
+            </p>
+          ) : (
+            <>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1.5 text-base font-medium">{t("futurePlan")}</legend>
+                <div className={`grid gap-2 ${plans.length === 3 ? "grid-cols-3" : plans.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {plans.map((p) => {
+                    const checked = form.data.frequency === p;
+                    const disabled = !fits(p);
+                    return (
+                      <label
+                        key={p}
+                        title={disabled ? t("beyondCap") : undefined}
+                        className={`relative flex min-h-[88px] flex-col justify-between gap-1 rounded-2xl border p-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${
+                          disabled ? "cursor-not-allowed opacity-50" : checked ? "cursor-pointer border-primary bg-accent/70 text-accent-foreground" : "cursor-pointer hover:bg-muted/60"
+                        }`}
+                      >
+                        <input type="radio" name="frequency" value={p} checked={checked} disabled={disabled} onChange={() => form.setData("frequency", p)} className="sr-only" />
+                        {p === defaultPlan && (
+                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">{t("recommended")}</span>
+                        )}
+                        <span className="text-base font-semibold">{t(`months_${PLAN_MONTHS[p]}`)}</span>
+                        <span className="text-xs text-muted-foreground">{t(`freq_${p}`)}</span>
+                        <span className="money text-sm font-bold">{rm((monthlySen ?? 0) * PLAN_MONTHS[p])}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.errors.frequency && <FieldError>{form.errors.frequency}</FieldError>}
+              </fieldset>
+
+              {chosen > 1 && saving > 0 && (
+                <p className="flex items-start gap-2 rounded-2xl bg-success-soft p-3 text-sm font-medium text-success-foreground" data-testid="saving-hint">
+                  <PiggyBank className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                  <span>
+                    {memberPays
+                      ? fill(t("saveVsMonthly"), { plan: t(form.data.frequency === "yearly" ? "planWord_yearly" : "planWord_quarterly"), x: rm(saving) })
+                      : t("helpsClubSave")}
+                  </span>
+                </p>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="period_start" className="text-base">
+                  {t("futureStart")}
+                </Label>
+                <Select value={form.data.period_start} onValueChange={chooseStart}>
+                  <SelectTrigger id="period_start" className="h-12 text-base">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {freeMonths.map((m) => (
+                      <SelectItem key={m} value={m} className="py-2.5 text-base">
+                        {fmtMonth(m, lang)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.errors.period_start && <FieldError>{form.errors.period_start}</FieldError>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Button type="submit" size="lg" className="h-12 rounded-full" disabled={form.processing || !fits(form.data.frequency)}>
+                  {fill(t("futureSubmitAmt"), { x: rm(totalFor(form.data.frequency)) })}
+                </Button>
+                {memberPays && <p className="text-center text-sm text-muted-foreground">{fill(t("plusCharge"), { x: rm(feeSen) })}</p>}
+              </div>
+            </>
+          )}
         </form>
       )}
     </section>

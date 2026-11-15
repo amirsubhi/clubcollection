@@ -6,6 +6,7 @@ use App\Contracts\PaymentGateway;
 use App\Models\Club;
 use App\Models\Payment;
 use App\Support\Payments\BillplzSignature;
+use App\Support\Payments\GatewayFee;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
 use App\Support\Payments\WebhookSecret;
@@ -60,6 +61,16 @@ class BillplzGateway implements PaymentGateway
                             ? $club->billplz_collection_id
                             : $this->globalCollectionId;
 
+        // Billplz has no "charge the customer" flag: when the member bears the
+        // gateway fee, add it to the bill amount explicitly.
+        $fee = $params['fee'] ?? null;
+        $amountSen = (int) round($params['amount'] * 100);
+        $description = $params['description'];
+        if ($fee instanceof GatewayFee && $fee->memberPays() && $fee->feeSen > 0) {
+            $amountSen += $fee->feeSen;
+            $description = mb_substr($description.' (incl. RM'.number_format($fee->feeSen / 100, 2).' gateway charge)', 0, 200);
+        }
+
         try {
             $response = Http::withBasicAuth($apiKey, '')
                 ->asForm()
@@ -68,10 +79,10 @@ class BillplzGateway implements PaymentGateway
                     'email' => $params['payer_email'],
                     'mobile' => $params['payer_phone'] ?? null,
                     'name' => $params['payer_name'],
-                    'amount' => (int) round($params['amount'] * 100),
+                    'amount' => $amountSen,
                     'callback_url' => $params['callback_url'],
                     'redirect_url' => $params['return_url'],
-                    'description' => $params['description'],
+                    'description' => $description,
                     'reference_1_label' => 'PaymentRef',
                     'reference_1' => $params['reference_no'],
                 ]);

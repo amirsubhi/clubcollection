@@ -9,9 +9,12 @@ use App\Models\Payment;
 use App\Services\AuditService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
+use App\Support\Payments\GatewayFee;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,10 +81,7 @@ class PaymentController extends Controller
                 'prevUrl' => $payments->previousPageUrl(),
                 'nextUrl' => $payments->nextPageUrl(),
             ],
-            'futureForm' => [
-                'action' => route('member.payments.generate-future', $club),
-                'defaultStart' => now()->addMonth()->startOfMonth()->toDateString(),
-            ],
+            'futureForm' => $this->futureFormProps($club, $user),
             'paymentsUrl' => route('member.payments.index', $club),
             'dashboardUrl' => route('member.dashboard'),
         ]);
@@ -122,16 +122,28 @@ class PaymentController extends Controller
 
         $payment->load(['club', 'user']);
         $gateway = $this->gateways->for($payment->club);
+        $hasOpenBill = $this->openBillFor($payment, $gateway) !== null;
+        // An open bill is reused as it is, so show the fee mode it was created
+        // with; otherwise the club's current setting (what a new bill will use).
+        $fee = $hasOpenBill ? self::storedFee($payment) : GatewayFee::forClub($payment->club);
+        $amountSen = P::sen($payment->amount);
 
         return Inertia::render('Member/ReviewPay', [
             'payment' => P::summary($payment),
+            // What the member will be charged: the fee amount, plus the gateway
+            // charge only when the bill passes it on to the member.
+            'charges' => [
+                'payer' => $fee->payer,
+                'feeSen' => $fee->memberSurchargeSen(),
+                'totalSen' => $fee->totalSen($amountSen),
+            ],
             'gateway' => [
                 'name' => $gateway->name(),
                 'label' => P::gatewayLabel($gateway->name()),
                 'available' => $gateway->isConfiguredForClub($payment->club),
             ],
             // A bill was already opened for this fee: warn before paying again.
-            'hasOpenBill' => $this->openBillFor($payment, $gateway) !== null,
+            'hasOpenBill' => $hasOpenBill,
             'payUrl' => route('member.payments.pay', $payment),
             ...$this->context($payment),
         ]);
@@ -162,6 +174,7 @@ class PaymentController extends Controller
         }
 
         $user = auth()->user();
+        $fee = GatewayFee::forClub($club);
         $refNo = 'PAY-'.$payment->id.'-'.time();
         $callbackRoute = match ($gateway->name()) {
             'toyyibpay' => 'webhook.toyyibpay',
@@ -180,6 +193,7 @@ class PaymentController extends Controller
             'payer_name' => $user->name,
             'payer_email' => $user->email,
             'club_name' => $club->name,
+            'fee' => $fee,
         ]);
 
         if (! $result) {
@@ -187,11 +201,17 @@ class PaymentController extends Controller
                 ->with('error', 'member.bill_failed');
         }
 
-        $old = $payment->only(['bill_code', 'bill_amount', 'gateway', 'reference']);
+        $billFields = ['bill_code', 'bill_amount', 'bill_fee_payer', 'bill_fee_sen', 'gateway', 'reference'];
+        $old = $payment->only($billFields);
 
+        // bill_amount is the fee amount; the fee mode is stored alongside so the
+        // bill is reused only while amount, gateway and fee mode all still match,
+        // and so the dashboard can total the fees the club absorbed.
         $payment->update([
             'bill_code' => $result->billCode,
             'bill_amount' => $payment->amount,
+            'bill_fee_payer' => $fee->payer,
+            'bill_fee_sen' => $fee->feeSen,
             'reference' => $refNo,
             'gateway' => $result->gateway,
         ]);
@@ -205,7 +225,7 @@ class PaymentController extends Controller
                 $payment,
                 $payment->club_id,
                 $old,
-                $payment->only(['bill_code', 'bill_amount', 'gateway', 'reference'])
+                $payment->only($billFields)
             );
         }
 
@@ -224,51 +244,161 @@ class PaymentController extends Controller
             ->header('Cache-Control', 'no-store');
     }
 
+    /**
+     * Pay ahead: one fee record covering 1, 3 or 12 months (as the club allows),
+     * priced at the member's monthly rate × months. Starts at most 12 months
+     * ahead and never overlaps a period the member already has.
+     */
     public function generateFuture(Request $request, Club $club)
     {
         $user = auth()->user();
-        $this->authorizeClubMembership($user, $club);
+        $this->authorizeActiveMembership($user, $club);
 
         $request->validate([
             'period_start' => 'required|date|after:today',
             'frequency' => 'required|in:monthly,quarterly,yearly',
         ]);
 
-        $level = $club->members()->where('users.id', $user->id)->first()?->pivot->job_level;
-        $feeRate = $club->feeRates()->where('job_level', $level)->whereNull('effective_to')->first();
+        if (! in_array($request->frequency, $club->allowedPlans(), true)) {
+            return back()->with('error', 'member.plan_not_allowed');
+        }
 
-        if (! $feeRate) {
+        $monthlySen = $this->monthlyFeeSen($club, $user);
+        if ($monthlySen === null) {
             return back()->with('error', 'member.no_fee_rate');
         }
 
+        $months = Club::PLAN_MONTHS[$request->frequency];
         $start = Carbon::parse($request->period_start)->startOfMonth();
-        $multipliers = ['monthly' => 1, 'quarterly' => 3, 'yearly' => 12];
-        $end = $start->copy()->addMonths($multipliers[$request->frequency])->subDay();
+        $end = $start->copy()->addMonthsNoOverflow($months)->subDay();
 
-        // Check if payment already exists for this period
-        $exists = $club->payments()
-            ->where('user_id', $user->id)
-            ->where('period_start', $start->toDateString())
-            ->exists();
-
-        if ($exists) {
-            return back()->with('error', 'member.period_exists');
+        // Pay ahead means a coming month: the current month's fee is billed by the club.
+        if ($start->lt(now()->addMonthNoOverflow()->startOfMonth())) {
+            return back()->with('error', 'member.start_next_month');
+        }
+        if ($end->gt(self::latestFutureEnd())) {
+            return back()->with('error', 'member.too_far_ahead');
         }
 
-        $payment = Payment::create([
-            'club_id' => $club->id,
-            'user_id' => $user->id,
-            'recorded_by' => $user->id,
-            'amount' => $feeRate->monthly_amount * $multipliers[$request->frequency],
-            'frequency' => $request->frequency,
-            'period_start' => $start->toDateString(),
-            'period_end' => $end->toDateString(),
-            'due_date' => $start->toDateString(),
-            'status' => 'pending',
-        ]);
+        // Serialise per member+club so two quick submits can't both pass the
+        // overlap check (the unique index also guards the same start month).
+        $lock = Cache::lock("pay-ahead:{$club->id}:{$user->id}", 10);
+        if (! $lock->get()) {
+            return back()->with('error', 'member.try_again');
+        }
 
-        return redirect()->route('member.payments.invoice', $payment)
+        try {
+            $overlaps = $club->payments()
+                ->where('user_id', $user->id)
+                ->whereDate('period_start', '<=', $end->toDateString())
+                ->whereDate('period_end', '>=', $start->toDateString())
+                ->exists();
+
+            if ($overlaps) {
+                return back()->with('error', 'member.period_overlaps');
+            }
+
+            try {
+                $payment = Payment::create([
+                    'club_id' => $club->id,
+                    'user_id' => $user->id,
+                    'recorded_by' => $user->id,
+                    'amount' => number_format(($monthlySen * $months) / 100, 2, '.', ''),
+                    'frequency' => $request->frequency,
+                    'period_start' => $start->toDateString(),
+                    'period_end' => $end->toDateString(),
+                    'due_date' => $start->toDateString(),
+                    'status' => 'pending',
+                ]);
+            } catch (QueryException $e) {
+                // Unique (club, user, period_start) lost a race.
+                return back()->with('error', 'member.period_overlaps');
+            }
+        } finally {
+            $lock->release();
+        }
+
+        AuditService::log(
+            'payment.pay_ahead_created',
+            "Payment #{$payment->id} created by the member to pay ahead ({$request->frequency}, {$start->toDateString()} to {$end->toDateString()}).",
+            $payment,
+            $club->id,
+            [],
+            $payment->only(['amount', 'frequency', 'period_start', 'period_end'])
+        );
+
+        return redirect()->route('member.payments.review', $payment)
             ->with('success', 'member.future_created');
+    }
+
+    /** The fee mode an existing bill was created with (legacy bills: club absorbed). */
+    private static function storedFee(Payment $payment): GatewayFee
+    {
+        return $payment->bill_fee_payer === null
+            ? new GatewayFee('club', 0)
+            : new GatewayFee($payment->bill_fee_payer, (int) $payment->bill_fee_sen);
+    }
+
+    /**
+     * Pay-ahead cap: a period may run at most to the end of the month 12 months
+     * from now (so a monthly fee can start 12 months ahead, a yearly one at most
+     * next month). Capping the end, not just the start, stops a yearly plan
+     * starting a year out from billing almost two years ahead.
+     */
+    public static function latestFutureEnd(): Carbon
+    {
+        return now()->startOfMonth()->addMonthsNoOverflow(12)->endOfMonth()->startOfDay();
+    }
+
+    /** The member's current monthly fee in sen, or null when no rate is set. */
+    private function monthlyFeeSen(Club $club, $user): ?int
+    {
+        $level = $club->members()->where('users.id', $user->id)->first()?->pivot->job_level;
+        $feeRate = $club->feeRates()->where('job_level', $level)->whereNull('effective_to')->first();
+
+        return $feeRate ? P::sen($feeRate->monthly_amount) : null;
+    }
+
+    /**
+     * Pay-ahead chooser props: plans the club allows, prices, the fee mode for
+     * the savings hint and a sensible first month (after the member's last period).
+     *
+     * @return array<string, mixed>
+     */
+    private function futureFormProps(Club $club, $user): array
+    {
+        $nextMonth = now()->addMonthNoOverflow()->startOfMonth();
+        $maxEnd = self::latestFutureEnd();
+
+        // Months already covered by one of the member's fees (any status).
+        $periods = $club->payments()->where('user_id', $user->id)
+            ->whereDate('period_end', '>=', $nextMonth->toDateString())
+            ->get(['period_start', 'period_end']);
+        $free = [];
+        for ($m = $nextMonth->copy(); $m->lte($maxEnd); $m->addMonthNoOverflow()) {
+            $monthEnd = $m->copy()->endOfMonth();
+            $covered = $periods->contains(fn ($p) => $p->period_start->lte($monthEnd) && $p->period_end->gte($m));
+            if (! $covered) {
+                $free[] = $m->toDateString();
+            }
+        }
+        $paidUntil = $club->payments()->where('user_id', $user->id)->max('period_end');
+        $fee = GatewayFee::forClub($club);
+
+        return [
+            'action' => route('member.payments.generate-future', $club),
+            // Start months not yet covered; the first is the default. Empty when
+            // the member already has fees up to the cap.
+            'freeMonths' => $free,
+            'defaultStart' => $free[0] ?? null,
+            'maxEnd' => $maxEnd->toDateString(),
+            'paidUntil' => $paidUntil ? Carbon::parse($paidUntil)->toDateString() : null,
+            'plans' => $club->allowedPlans(),
+            'defaultPlan' => $club->defaultPlan(),
+            'monthlySen' => $this->monthlyFeeSen($club, $user),
+            'feePayer' => $fee->payer,
+            'feeSen' => $fee->feeSen,
+        ];
     }
 
     /**
@@ -322,11 +452,14 @@ class PaymentController extends Controller
 
     /**
      * The payment URL of the bill already opened for this fee at the club's
-     * current gateway and for the current amount, or null when there is none
-     * to reuse.
+     * current gateway and for the current amount (whatever fee mode it was
+     * created with), or null when there is none to reuse.
      */
     private function openBillFor(Payment $payment, PaymentGateway $gateway): ?string
     {
+        // The fee mode is deliberately not compared: a later change to the club's
+        // fee setting must not orphan a bill the member may already be paying
+        // (its webhook would no longer match). The bill keeps its stored mode.
         if ($payment->status === 'paid' || empty($payment->bill_code) || $payment->gateway !== $gateway->name()
             || ! $payment->billMatchesAmount()) {
             return null;
@@ -355,6 +488,16 @@ class PaymentController extends Controller
         $isMember = $club->members()->where('users.id', $user->id)->exists();
         if (! $isMember) {
             abort(403, 'You are not a member of this club.');
+        }
+    }
+
+    /** Active member of an active club (pay-ahead creates new fees). */
+    private function authorizeActiveMembership($user, Club $club): void
+    {
+        $active = $club->is_active
+            && $club->members()->where('users.id', $user->id)->where('club_user.is_active', true)->exists();
+        if (! $active) {
+            abort(403, 'You are not an active member of this club.');
         }
     }
 

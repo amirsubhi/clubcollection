@@ -88,6 +88,12 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - Absolute paths assume the app is at the domain root, not a cPanel subfolder.
 - bfcache shows the old page on Back after logout (pre-existing): send `no-store` on authenticated pages or reload on `pageshow`.
 
+## P1 — Billing frequency and gateway-fee setting
+
+**Built:** per-club billing settings (`allow_monthly/quarterly/yearly`, `default_plan`, `gateway_fee_payer` club|member, `gateway_fee_sen`) on a new Blade page `admin.clubs.billing.edit` for that club's admins and super admins, validated and audited (`club.billing_updated`). ToyyibPay's `billChargeToCustomer` now comes from `ToyyibPayGateway::BILL_CHARGE_TO_CUSTOMER` (club → blank, member → `'0'`; **TODO: confirm semantics in sandbox**); Billplz adds the fee to the bill amount when members pay. Bills store `bill_fee_payer`/`bill_fee_sen`; an open bill is reused while amount and gateway match and keeps its stored fee mode (shown on ReviewPay) even if the setting changes. "Member pays" is disabled for ToyyibPay until `TOYYIBPAY_CHARGE_VERIFIED=true`. ReviewPay shows "Yuran + caj = Jumlah" when members pay. Pay-ahead chooser (1/3/12 months, allowed plans only, default plan, savings hint) creates one fee record per period ending at most 12 months ahead, offers only uncovered start months, and refuses overlaps (also in admin create), plus a unique index on (club, user, period_start). Admin dashboard KPI "Gateway fees this year" sums `fee_absorbed_sen`, set with `paid_via` by the verified webhook. Committee note `docs/payment-options.md`.
+
+**Follow-ups:** confirm `billChargeToCustomer` and whether ToyyibPay's callback `amount` includes the charge (P3 sandbox); the configured fee is what members are shown, ToyyibPay applies its own.
+
 ## A5 — Verification and decision summary
 
 ### What was verified
@@ -221,3 +227,15 @@ Option B (AdonisJS) would mean re-implementing the same gateway, webhook, audit 
 Verdict on A5: GO. Hardening applied before commit: the private `local` disk is no longer served over HTTP (`'serve' => false`), with a test that the `storage.local*` routes stay absent.
 
 Advice to the owner: continue with Option A. The slice reused payments, webhooks, auth/2FA and the audit log almost untouched, deploys as plain PHP with no Node on the server, and grew the suite from 153 to 263 tests. The one serious defect found (webhooks getting 419) was pre-existing and unrelated to the stack; a rewrite would re-open that kind of money-path risk across the whole codebase and add Node-on-cPanel hosting risk. Option B only becomes worth it if the real host can't run PHP 8.4, or if the owner finds the React pages hard to edit after trying one or two. Suggested order: the 🔴 must-dos and a real-host sandbox payment first, then migrate the remaining Blade pages module by module, retiring Bootstrap last. Re-measure Lighthouse on the host with compression on; the 69 was measured uncompressed.
+
+### P1 final review (Fable): GO
+
+Applied before commit: ToyyibPay "club absorbs" keeps the pre-P1 `billChargeToCustomer=1` until the sandbox run confirms how blank vs `1` is read (avoids members being charged RM1 more than shown).
+
+Follow-ups (non-blocking):
+- P3 sandbox: first item is confirming `billChargeToCustomer` values and the callback `amount` unit; then decide whether to enable `TOYYIBPAY_CHARGE_VERIFIED`.
+- Columns and the unique index were added by editing existing migrations (no live data); any existing database needs `migrate:fresh`.
+- Admin fee `store` overlap check has no lock/transaction; two concurrent creates could overlap.
+- Review → pay race: if an admin flips the fee setting between page load and POST, the charge can differ from what was shown; post the expected total and reject a mismatch.
+- Fee KPI and the member-pays line use the configured fee (default RM1), not the gateway's real fee (Billplz RM1.25 + SST); label as "estimated".
+- Pay-ahead ignores discounts and uses today's rate for all months.

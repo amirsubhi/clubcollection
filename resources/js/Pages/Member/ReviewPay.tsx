@@ -14,17 +14,21 @@ import type { MemberPaymentRow, PaymentContext } from "@/types/member";
 interface Props extends PaymentContext {
   payment: MemberPaymentRow;
   gateway: { name: string; label: string; available: boolean };
+  /** feeSen is the gateway charge the member pays on top (0 when the club absorbs it). */
+  charges: { payer: "club" | "member"; feeSen: number; totalSen: number };
   hasOpenBill: boolean;
   payUrl: string;
 }
 
 /** Review & pay: a confirm step that is clearly not a receipt; the amount is on the one primary button. */
-export default function ReviewPay({ payment, gateway, hasOpenBill, payUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
   const [sent, setSent] = useState(false);
   const gw = { gw: gateway.label };
+  const memberCharge = charges.payer === "member" && charges.feeSen > 0;
+  const total = charges.totalSen;
 
   const pay = () => {
     if (sent || !gateway.available) return;
@@ -39,7 +43,12 @@ export default function ReviewPay({ payment, gateway, hasOpenBill, payUrl, membe
       <Head title={t("reviewPay")} />
       <div className="flex flex-col items-center gap-1 pt-1 text-center">
         <span className="text-base text-muted-foreground">{t("payFeeTitle")}</span>
-        <Money sen={payment.amount} className="figure font-display text-[44px] font-extrabold leading-none tracking-tight" />
+        <Money sen={total} className="figure font-display text-[44px] font-extrabold leading-none tracking-tight" />
+        {memberCharge && (
+          <span className="text-sm text-muted-foreground" data-testid="fee-line">
+            {fill(t("feeLine"), { a: rm(payment.amount), b: rm(charges.feeSen), c: rm(total) })}
+          </span>
+        )}
       </div>
 
       <FlashBanner />
@@ -70,10 +79,19 @@ export default function ReviewPay({ payment, gateway, hasOpenBill, payUrl, membe
             <dt className="text-sm text-muted-foreground">{t("payee")}</dt>
             <dd className="text-base font-semibold">{payClub.name}</dd>
           </div>
+          {memberCharge && (
+            <div className="px-4 py-3">
+              <dt className="text-sm text-muted-foreground">{t("gatewayCharge")}</dt>
+              <dd className="flex justify-between gap-2 text-base">
+                <span className="min-w-0 text-sm text-muted-foreground">{t("chargeByMember")}</span>
+                <Money sen={charges.feeSen} className="font-semibold" />
+              </dd>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 bg-muted/60 px-4 py-3">
             <dt className="text-base font-semibold">{t("total")}</dt>
             <dd>
-              <Money sen={payment.amount} className="font-display text-2xl font-bold" />
+              <Money sen={total} className="font-display text-2xl font-bold" />
             </dd>
           </div>
         </dl>
@@ -115,7 +133,7 @@ export default function ReviewPay({ payment, gateway, hasOpenBill, payUrl, membe
               </>
             ) : (
               <>
-                <Lock aria-hidden /> {t("payNow")} {rm(payment.amount)}
+                <Lock aria-hidden /> {t("payNow")} {rm(total)}
               </>
             )}
           </Button>

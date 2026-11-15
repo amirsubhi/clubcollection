@@ -92,7 +92,11 @@ class MemberPagesRenderTest extends TestCase
     public function test_paid_invoice_renders_receipt_variant(): void
     {
         $paid = Payment::factory()->forClub($this->club)->forMember($this->member)
-            ->create(['transaction_id' => 'TXN-1', 'gateway' => 'toyyibpay']);
+            ->create([
+            'period_start' => now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+            'period_end' => now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
+            'transaction_id' => 'TXN-1', 'gateway' => 'toyyibpay',
+        ]);
 
         $this->get(route('member.payments.invoice', $paid))
             ->assertOk()
@@ -123,7 +127,10 @@ class MemberPagesRenderTest extends TestCase
 
     public function test_review_of_a_paid_fee_redirects_to_the_receipt(): void
     {
-        $paid = Payment::factory()->forClub($this->club)->forMember($this->member)->create();
+        $paid = Payment::factory()->forClub($this->club)->forMember($this->member)->create([
+            'period_start' => now()->subMonthNoOverflow()->startOfMonth()->toDateString(),
+            'period_end' => now()->subMonthNoOverflow()->endOfMonth()->toDateString(),
+        ]);
 
         $this->get(route('member.payments.review', $paid))
             ->assertRedirect(route('member.payments.invoice', $paid));

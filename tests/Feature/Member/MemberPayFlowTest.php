@@ -335,7 +335,9 @@ class MemberPayFlowTest extends TestCase
         $club = Club::factory()->create();
         $member = $this->actingAsMember($club);
         $this->pending($member, $club, ['amount' => 10.00, 'due_date' => now()->subDays(3)->toDateString()]);
-        $this->pending($member, $club, ['amount' => 20.00, 'due_date' => now()->addDays(3)->toDateString()]);
+        $this->pending($member, $club, ['amount' => 20.00, 'due_date' => now()->addDays(3)->toDateString(),
+            'period_start' => now()->addMonthNoOverflow()->startOfMonth()->toDateString(),
+            'period_end' => now()->addMonthNoOverflow()->endOfMonth()->toDateString()]);
 
         $this->get(route('member.dashboard'))
             ->assertInertia(fn (Assert $page) => $page
@@ -460,7 +462,7 @@ class MemberPayFlowTest extends TestCase
         ]);
 
         $payment = Payment::where('user_id', $member->id)->latest('id')->first();
-        $response->assertRedirect(route('member.payments.invoice', $payment))
+        $response->assertRedirect(route('member.payments.review', $payment))
             ->assertSessionHas('success', 'member.future_created');
         $this->assertSame('30.00', $payment->amount);
         $this->assertSame('pending', $payment->status);
