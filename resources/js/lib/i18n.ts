@@ -284,6 +284,14 @@ const dict = {
     en: "The treasurer will check your slip. The fee counts as paid once confirmed, and the receipt is emailed to you.",
   },
   tooManyFiles: { bm: "Maksimum {n} fail.", en: "Up to {n} files only." },
+  fileTooLarge: {
+    bm: "{f}: melebihi {mb} MB, jadi tidak ditambah. Pilih fail yang lebih kecil.",
+    en: "{f}: larger than {mb} MB, so not added. Choose a smaller file.",
+  },
+  openBillTransferWarn: {
+    bm: "Anda pernah memulakan bayaran dalam talian untuk yuran ini. Jika wang telah keluar dari akaun anda, jangan buat pindahan juga: status akan dikemas kini secara automatik.",
+    en: "You started an online payment for this fee before. If money already left your account, don't transfer as well: the status updates automatically.",
+  },
   verifyingTitle: { bm: "Slip dihantar", en: "Slip sent" },
   verifyingBody: {
     bm: "Bendahari sedang menyemak slip anda. Resit akan dihantar ke e-mel anda selepas disahkan. Jangan bayar sekali lagi.",
@@ -318,6 +326,10 @@ const dict = {
     en: "Too many slips for this fee. Please contact the treasurer.",
   },
   flash_transfer_unavailable: { bm: "Kelab ini belum menerima pindahan bank.", en: "This club doesn't take bank transfers yet." },
+  flash_post_too_large: {
+    bm: "Fail yang dihantar terlalu besar. Setiap fail mesti 10 MB atau kurang; cuba lagi dengan fail yang lebih kecil.",
+    en: "What you sent was too large. Each file must be 10 MB or smaller; try again with smaller files.",
+  },
   installTitle: { bm: "Pasang di skrin utama", en: "Add to home screen" },
   installBody: {
     bm: "Buka Club Portal terus dari skrin telefon anda, seperti aplikasi.",

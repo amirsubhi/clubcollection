@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Services\AuditService;
+use App\Services\BankDetailsChangeService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Validator;
 
@@ -20,10 +21,16 @@ class ClubBillingController extends Controller
         'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
+    public function __construct(private BankDetailsChangeService $bankChanges) {}
+
     public function edit(Club $club)
     {
+        $club->load('bankChangeRequestedBy');
+
         return view('admin.clubs.billing', [
             'club' => $club,
+            'bankChangeVersion' => $this->bankChanges->version($club),
+            'bankApprovalBlocker' => $club->hasPendingBankChange() ? $this->bankChanges->approvalBlocker($club, auth()->user()) : null,
             'plans' => Club::PLAN_MONTHS,
             'gatewayLabel' => $club->activeGateway() === 'billplz' ? 'Billplz' : 'ToyyibPay',
             'memberFeeAllowed' => $club->memberFeeAllowed(),
@@ -95,21 +102,47 @@ class ClubBillingController extends Controller
             'default_plan' => $data['default_plan'],
             'gateway_fee_payer' => $data['gateway_fee_payer'],
             'gateway_fee_sen' => (int) round(((float) $data['gateway_fee']) * 100),
-        ] + $bank;
+        ];
 
         $old = $club->only(self::FIELDS);
         $club->update($new);
+        // Bank details members pay into need a second approver (S1); switching
+        // transfers off, or on with the current details, applies at once.
+        $pending = $this->bankChanges->save($club, $request->user(), $bank);
+        $club->refresh();
 
         AuditService::log(
             'club.billing_updated',
-            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; bank transfer '.($new['transfer_enabled'] ? 'on' : 'off').').',
+            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
             $club,
             $club->id,
             $old,
-            $club->fresh()->only(self::FIELDS)
+            $club->only(self::FIELDS)
         );
 
-        return redirect()->route('admin.clubs.billing.edit', $club)->with('success', 'Billing settings saved.');
+        return redirect()->route('admin.clubs.billing.edit', $club)->with('success', $pending
+            ? 'Billing settings saved. The new bank details wait for another admin to approve them; members still see the current details.'
+            : 'Billing settings saved.');
+    }
+
+    /** A different club admin (or the super admin) approves the pending bank details. */
+    public function approveBankChange(Request $request, Club $club)
+    {
+        $data = $request->validate(['version' => 'required|string|max:64']);
+        if ($reason = $this->bankChanges->approvalBlocker($club, $request->user())) {
+            return back()->with('error', $reason);
+        }
+        $this->bankChanges->approve($club, $request->user(), $data['version']);
+
+        return redirect()->route('admin.clubs.billing.edit', $club)->with('success', 'Bank details approved. Members now see the new details.');
+    }
+
+    /** Any admin of the club (the requester too) can drop a pending change. */
+    public function cancelBankChange(Request $request, Club $club)
+    {
+        $this->bankChanges->cancel($club, $request->user());
+
+        return redirect()->route('admin.clubs.billing.edit', $club)->with('success', 'Pending bank details change cancelled.');
     }
 
     /** Trim; an empty field is stored as null. Account numbers keep the spaces/dashes the admin typed. */

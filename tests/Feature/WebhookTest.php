@@ -12,13 +12,18 @@ use Tests\TestCase;
 
 class WebhookTest extends TestCase
 {
-    private string $secret = 'test-webhook-secret-2026';
-
     protected function setUp(): void
     {
         parent::setUp();
-        config(['toyyibpay.webhook_secret' => $this->secret]);
+        config(['toyyibpay.webhook_secret' => self::TOYYIB_SECRET]);
         Mail::fake();
+        $this->fakeToyyibConfirm();
+    }
+
+    /** The webhook URL carrying the bill's own token. */
+    private function url(Payment $p): string
+    {
+        return route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($p->reference);
     }
 
     private function makePendingPayment(array $overrides = []): Payment
@@ -82,7 +87,7 @@ class WebhookTest extends TestCase
     {
         $payment = $this->makePendingPayment();
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment))
+        $this->post($this->url($payment), $this->payload($payment))
             ->assertOk();
 
         $fresh = $payment->fresh();
@@ -103,7 +108,7 @@ class WebhookTest extends TestCase
         $payment = $this->makePendingPayment();
 
         $this->post(
-            route('webhook.toyyibpay').'?webhook_token='.$this->secret,
+            $this->url($payment),
             $this->payload($payment, ['billcode' => null])
         )->assertOk();
 
@@ -114,12 +119,19 @@ class WebhookTest extends TestCase
     {
         // ToyyibPay retries on non-200, so we must always return 200 even
         // when the bill_code doesn't match a known payment.
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, [
+        // The callback is authentic (token for its own order_id), the gateway
+        // confirms the bill was paid, but it matches no fee: answered 200 and
+        // audited for the treasurer.
+        $this->fakeToyyibConfirm('10.00');
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken('PAY-999-1'), [
             'billcode'  => 'UNKNOWN',
+            'order_id'  => 'PAY-999-1',
             'status_id' => 1,
+            'transaction_id' => 'TXN-UNMATCHED',
         ])->assertOk();
 
         Mail::assertNothingSent();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.unmatched_webhook']);
     }
 
     public function test_webhook_ignores_unsuccessful_status(): void
@@ -127,7 +139,7 @@ class WebhookTest extends TestCase
         $payment = $this->makePendingPayment();
 
         $this->post(
-            route('webhook.toyyibpay').'?webhook_token='.$this->secret,
+            $this->url($payment),
             $this->payload($payment, ['status_id' => 3]) // 1 = success per ToyyibPayService
         )->assertOk();
 
@@ -140,7 +152,7 @@ class WebhookTest extends TestCase
         $payment = $this->makePendingPayment();
 
         // First call marks paid + sends mail.
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment))
+        $this->post($this->url($payment), $this->payload($payment))
             ->assertOk();
         $firstPaidDate = $payment->fresh()->paid_date;
         $firstTxn      = $payment->fresh()->transaction_id;
@@ -148,7 +160,7 @@ class WebhookTest extends TestCase
 
         // Second delivery (retry / replay) must NOT re-process.
         $this->post(
-            route('webhook.toyyibpay').'?webhook_token='.$this->secret,
+            $this->url($payment),
             $this->payload($payment, ['transaction_id' => 'OVERWRITE-ATTEMPT'])
         )->assertOk();
 
@@ -164,7 +176,7 @@ class WebhookTest extends TestCase
     {
         $payment = $this->makePendingPayment(['amount' => 50.00]);
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment, ['amount' => '10.00']))
+        $this->post($this->url($payment), $this->payload($payment, ['amount' => '10.00']))
             ->assertOk();
 
         $this->assertSame('pending', $payment->fresh()->status);
@@ -175,7 +187,7 @@ class WebhookTest extends TestCase
     {
         $payment = $this->makePendingPayment(['amount' => 50.00, 'bill_amount' => 50.00]);
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment, ['amount' => '50.00']))
+        $this->post($this->url($payment), $this->payload($payment, ['amount' => '50.00']))
             ->assertOk();
 
         $this->assertSame('paid', $payment->fresh()->status);
@@ -186,7 +198,7 @@ class WebhookTest extends TestCase
         // Bill opened for RM 20; fee is RM 50 (bill_code kept, e.g. a legacy row).
         $payment = $this->makePendingPayment(['amount' => 50.00, 'bill_amount' => 20.00]);
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment))
+        $this->post($this->url($payment), $this->payload($payment))
             ->assertOk();
 
         $this->assertSame('pending', $payment->fresh()->status);
@@ -200,7 +212,7 @@ class WebhookTest extends TestCase
         $payment = $this->makePendingPayment();
         $payment->forceFill(['status' => 'pending_verification', 'transfer_date' => now()->toDateString(), 'transfer_submitted_at' => now()])->save();
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment))
+        $this->post($this->url($payment), $this->payload($payment))
             ->assertOk();
 
         // The money was really taken by the gateway: settle it, never ignore it.
@@ -218,8 +230,8 @@ class WebhookTest extends TestCase
         $payment->forceFill(['status' => 'paid', 'paid_via' => 'transfer', 'paid_date' => now()->toDateString()])->save();
         $payload = $this->payload($payment, ['transaction_id' => 'TXN-DUP-1']);
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $payload)->assertOk();
-        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $payload)->assertOk();
+        $this->post($this->url($payment), $payload)->assertOk();
+        $this->post($this->url($payment), $payload)->assertOk();
 
         $this->assertSame('transfer', $payment->fresh()->paid_via);
         Mail::assertNothingSent();

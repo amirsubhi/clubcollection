@@ -7,6 +7,7 @@ use App\Mail\TransferRejected;
 use App\Models\Club;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\Payments\OwnFeeRule;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -196,8 +197,8 @@ class TransferVerificationService
     /** Why $admin may not approve or reject $payment's slip, or null when they may. Status is not checked. */
     public function blocker(Payment $payment, User $admin): ?string
     {
-        if (! $admin->isSuperAdmin() && (int) $payment->user_id === (int) $admin->id) {
-            return 'This is your own fee, so another admin must check it.';
+        if ($own = OwnFeeRule::blocker($payment, $admin)) {
+            return $own;
         }
         $club = $payment->club ?? Club::find($payment->club_id);
         if (! $club || ! app(FundUsageService::class)->isClubAdmin($club, $admin)) {

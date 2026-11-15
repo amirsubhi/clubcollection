@@ -14,7 +14,7 @@ class TwoFactorTest extends TestCase
     {
         $this->actingAsSuperAdmin();
 
-        $this->post(route('profile.2fa.enable'))
+        $this->post(route('profile.2fa.enable'), ['current_password' => 'password'])
             ->assertOk()
             ->assertViewHas('qrSvg')
             ->assertViewHas('secret');
@@ -27,12 +27,12 @@ class TwoFactorTest extends TestCase
     public function test_confirm_two_factor_with_valid_code_enables_2fa(): void
     {
         $user = $this->actingAsSuperAdmin();
-        $this->post(route('profile.2fa.enable'));
+        $this->post(route('profile.2fa.enable'), ['current_password' => 'password']);
 
         $secret = $user->fresh()->getTwoFactorSecret();
         $code   = (new Google2FA())->getCurrentOtp($secret);
 
-        $this->post(route('profile.2fa.confirm'), ['code' => $code])
+        $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'password'])
             ->assertRedirect(route('profile.security'));
 
         $fresh = $user->fresh();
@@ -44,9 +44,9 @@ class TwoFactorTest extends TestCase
     public function test_confirm_two_factor_with_invalid_code_keeps_2fa_off(): void
     {
         $user = $this->actingAsSuperAdmin();
-        $this->post(route('profile.2fa.enable'));
+        $this->post(route('profile.2fa.enable'), ['current_password' => 'password']);
 
-        $this->post(route('profile.2fa.confirm'), ['code' => '000000'])
+        $this->post(route('profile.2fa.confirm'), ['code' => '000000', 'current_password' => 'password'])
             ->assertRedirect();
 
         $this->assertNull($user->fresh()->two_factor_confirmed_at);
@@ -183,5 +183,101 @@ class TwoFactorTest extends TestCase
         $this->withSession(['two_factor_user_id' => $user->id])
             ->post(route('two-factor.verify'), ['code' => '000000'])
             ->assertStatus(429);
+    }
+
+    // ── S1 hardening ───────────────────────────────────────────────────────
+
+    public function test_enable_and_confirm_require_the_current_password(): void
+    {
+        $user = $this->actingAsSuperAdmin();
+
+        $this->post(route('profile.2fa.enable'))->assertSessionHasErrors('current_password');
+        $this->post(route('profile.2fa.enable'), ['current_password' => 'wrong'])->assertSessionHasErrors('current_password');
+        $this->assertNull($user->fresh()->two_factor_secret);
+
+        $this->post(route('profile.2fa.enable'), ['current_password' => 'password'])->assertOk();
+        $code = (new Google2FA())->getCurrentOtp($user->fresh()->getTwoFactorSecret());
+        $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'wrong'])->assertSessionHasErrors('current_password');
+        $this->assertNull($user->fresh()->two_factor_confirmed_at);
+    }
+
+    public function test_enable_is_refused_while_2fa_is_confirmed(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'two_factor_secret' => encrypt('JBSWY3DPEHPK3PXP'),
+            'two_factor_confirmed_at' => now(),
+        ]);
+        $this->actingAs($user)->withSession(['two_factor_verified' => true]);
+
+        $this->post(route('profile.2fa.enable'), ['current_password' => 'password'])
+            ->assertRedirect(route('profile.security'))
+            ->assertSessionHas('error');
+
+        $fresh = $user->fresh();
+        $this->assertSame('JBSWY3DPEHPK3PXP', $fresh->getTwoFactorSecret());
+        $this->assertNotNull($fresh->two_factor_confirmed_at);
+    }
+
+    public function test_a_replayed_totp_code_is_refused(): void
+    {
+        $secret = (new Google2FA())->generateSecretKey();
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'two_factor_secret' => encrypt($secret),
+            'two_factor_confirmed_at' => now(),
+        ]);
+        $code = (new Google2FA())->getCurrentOtp($secret);
+
+        $this->withSession(['two_factor_user_id' => $user->id])
+            ->post(route('two-factor.verify'), ['code' => $code])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+        $this->assertNotNull($user->fresh()->two_factor_last_used_step);
+
+        // Someone who saw the code tries it again in a new session.
+        auth()->logout();
+        $this->flushSession();
+        $this->withSession(['two_factor_user_id' => $user->id])
+            ->post(route('two-factor.verify'), ['code' => $code])
+            ->assertSessionHasErrors('code');
+        $this->assertGuest();
+    }
+
+    public function test_the_challenge_locks_after_five_failures_for_that_user(): void
+    {
+        $secret = (new Google2FA())->generateSecretKey();
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'two_factor_secret' => encrypt($secret),
+            'two_factor_confirmed_at' => now(),
+        ]);
+
+        // Five wrong codes (spread over IPs, so the per-IP route throttle never sees them).
+        for ($i = 0; $i < 5; $i++) {
+            \Illuminate\Support\Facades\RateLimiter::hit(\App\Http\Controllers\Auth\TwoFactorChallengeController::lockKey($user), 900);
+        }
+
+        $this->withSession(['two_factor_user_id' => $user->id])
+            ->post(route('two-factor.verify'), ['code' => (new Google2FA())->getCurrentOtp($secret)])
+            ->assertSessionHasErrors('code');
+        $this->assertGuest();
+    }
+
+    public function test_the_fifth_wrong_code_is_audited_as_a_lock(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'two_factor_secret' => encrypt((new Google2FA())->generateSecretKey()),
+            'two_factor_confirmed_at' => now(),
+        ]);
+        for ($i = 0; $i < 4; $i++) {
+            \Illuminate\Support\Facades\RateLimiter::hit(\App\Http\Controllers\Auth\TwoFactorChallengeController::lockKey($user), 900);
+        }
+
+        $this->withSession(['two_factor_user_id' => $user->id])
+            ->post(route('two-factor.verify'), ['code' => '000000'])
+            ->assertSessionHasErrors('code');
+
+        $this->assertDatabaseHas('audit_logs', ['action' => '2fa.locked', 'user_id' => $user->id]);
     }
 }

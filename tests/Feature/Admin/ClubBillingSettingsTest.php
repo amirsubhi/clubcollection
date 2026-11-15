@@ -150,24 +150,43 @@ class ClubBillingSettingsTest extends TestCase
         ], $overrides));
     }
 
+    /** A second club admin approves the pending bank change (S1), then the first admin is acting again. */
+    private function approveAsSecondAdmin(Club $club): void
+    {
+        $first = auth()->user();
+        $second = User::factory()->create(['role' => 'admin']);
+        $club->members()->attach($second, ['role' => 'admin', 'job_level' => 'manager', 'joined_date' => now()->toDateString(), 'is_active' => true]);
+        $this->actingAs($second);
+        $version = app(\App\Services\BankDetailsChangeService::class)->version($club->fresh());
+        $this->post(route('admin.clubs.billing.bank-change.approve', $club), ['version' => $version])->assertSessionHasNoErrors();
+        $this->actingAs($first);
+    }
+
     public function test_transfer_details_are_saved_and_audited(): void
     {
+        \Illuminate\Support\Facades\Mail::fake();
         $club = Club::factory()->create();
         $this->actingAsClubAdmin($club);
 
         $this->put(route('admin.clubs.billing.update', $club), $this->bank())->assertSessionHasNoErrors();
+        // Waiting for a second admin: members don't see the details yet.
+        $this->assertFalse($club->fresh()->transferReady());
+        $this->assertTrue($club->fresh()->hasPendingBankChange());
+        $this->approveAsSecondAdmin($club);
 
         $club->refresh();
         $this->assertTrue($club->transferReady());
         $this->assertSame('1234 5678 9012', $club->bank_account_no);
         $this->assertNull($club->duitnow_id);
-        $log = AuditLog::where('action', 'club.billing_updated')->latest('id')->firstOrFail();
+        $log = AuditLog::where('action', 'club.bank_change_approved')->latest('id')->firstOrFail();
         $this->assertFalse($log->old_values['transfer_enabled']);
         $this->assertSame('Bank Contoh', $log->new_values['bank_name']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'club.bank_change_requested', 'club_id' => $club->id]);
     }
 
     public function test_transfer_cannot_be_enabled_without_complete_details(): void
     {
+        \Illuminate\Support\Facades\Mail::fake();
         $club = Club::factory()->create();
         $this->actingAsClubAdmin($club);
 
@@ -176,10 +195,12 @@ class ClubBillingSettingsTest extends TestCase
         $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_name' => '']))
             ->assertSessionHasErrors('transfer_enabled');
         $this->assertFalse((bool) $club->fresh()->transfer_enabled);
+        $this->assertFalse($club->fresh()->hasPendingBankChange());
 
-        // A DuitNow ID alone is enough; details may be saved while switched off.
+        // A DuitNow ID alone is enough (once approved); switching off is immediate.
         $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_no' => '', 'duitnow_id' => '0123456789']))
             ->assertSessionHasNoErrors();
+        $this->approveAsSecondAdmin($club);
         $this->assertTrue($club->fresh()->transferReady());
         $this->put(route('admin.clubs.billing.update', $club), $this->bank(['transfer_enabled' => '0', 'bank_name' => '']))
             ->assertSessionHasNoErrors();

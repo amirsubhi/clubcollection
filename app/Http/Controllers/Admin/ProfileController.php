@@ -27,7 +27,14 @@ class ProfileController extends Controller
 
     public function enableTwoFactor(Request $request)
     {
+        // A borrowed, unlocked session must not replace (or set up) the second factor (S1).
+        $request->validate(['current_password' => 'required|current_password'], [], ['current_password' => 'password']);
+
         $user   = auth()->user();
+        if ($user->hasEnabledTwoFactor()) {
+            return redirect()->route('profile.security')
+                ->with('error', '2FA is already on. Disable it first (with your password) to set it up again.');
+        }
         $secret = $this->google2fa->generateSecretKey();
 
         // Store the secret temporarily (unconfirmed) in the DB
@@ -35,6 +42,7 @@ class ProfileController extends Controller
             'two_factor_secret'          => encrypt($secret),
             'two_factor_recovery_codes'  => null,
             'two_factor_confirmed_at'    => null,
+            'two_factor_last_used_step'  => null,
         ])->save();
 
         // Generate QR code as inline SVG
@@ -51,16 +59,22 @@ class ProfileController extends Controller
 
     public function confirmTwoFactor(Request $request)
     {
-        $request->validate(['code' => 'required|string|digits:6']);
+        $request->validate([
+            'code' => 'required|string|digits:6',
+            'current_password' => 'required|current_password',
+        ], [], ['current_password' => 'password']);
 
         $user   = auth()->user();
         $secret = $user->getTwoFactorSecret();
 
+        if ($user->hasEnabledTwoFactor()) {
+            return redirect()->route('profile.security')->with('error', '2FA is already on.');
+        }
         if (! $secret) {
             return back()->with('error', '2FA setup not started. Please click Enable first.');
         }
 
-        $valid = $this->google2fa->verifyKey($secret, $request->code);
+        $valid = $user->verifyTwoFactorCode($request->code, $secret);
 
         if (! $valid) {
             return back()->withErrors(['code' => 'Invalid code. Please try again.']);
@@ -92,6 +106,7 @@ class ProfileController extends Controller
             'two_factor_secret'         => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at'   => null,
+            'two_factor_last_used_step' => null,
         ])->save();
 
         session()->forget('two_factor_verified');

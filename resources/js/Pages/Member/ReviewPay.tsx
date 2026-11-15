@@ -98,7 +98,7 @@ function MethodOption({
 }
 
 /** Bank details, the reference to type, and the slip form. */
-function TransferForm({ transfer, amount }: { transfer: TransferOption; amount: number }) {
+function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOption; amount: number; hasOpenBill: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const text = useServerText();
@@ -138,6 +138,13 @@ function TransferForm({ transfer, amount }: { transfer: TransferOption; amount: 
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+      {hasOpenBill && (
+        <Alert variant="warning" className="text-base" data-testid="transfer-open-bill">
+          <AlertTriangle aria-hidden />
+          <p>{t("openBillTransferWarn")}</p>
+        </Alert>
+      )}
+
       <section aria-labelledby="tx-step1" className="flex flex-col gap-3">
         <h2 id="tx-step1" className="flex items-center gap-2 text-base font-semibold">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground" aria-hidden>
@@ -179,6 +186,7 @@ function TransferForm({ transfer, amount }: { transfer: TransferOption; amount: 
           showKind={false}
           comfortable
           maxFiles={transfer.maxFiles}
+          maxKb={transfer.maxMb * 1024}
           error={tooMany ? fill(t("tooManyFiles"), { n: transfer.maxFiles }) : fileError ? text(fileError) : undefined}
           text={{
             dropPrefix: t("dropPrefix"),
@@ -190,6 +198,7 @@ function TransferForm({ transfer, amount }: { transfer: TransferOption; amount: 
             takePhoto: t("takePhoto"),
             cameraHint: t("cameraHint"),
             remove: (name) => fill(t("removeFile"), { f: name }),
+            tooLarge: (names, mb) => fill(t("fileTooLarge"), { f: names, mb }),
           }}
         />
         <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
@@ -240,6 +249,14 @@ function TransferForm({ transfer, amount }: { transfer: TransferOption; amount: 
           </div>
         </div>
       </section>
+
+      {/* Errors that belong to no field: transfers switched off, or the fee changed meanwhile. */}
+      {(err("method") || err("status")) && (
+        <Alert variant="danger" className="text-base" data-testid="transfer-error">
+          <AlertTriangle aria-hidden />
+          <p>{text((err("method") ?? err("status"))!)}</p>
+        </Alert>
+      )}
 
       <div className="flex flex-col gap-2">
         <Button type="submit" size="xl" className="w-full rounded-full text-lg" disabled={form.processing || items.length === 0} aria-live="polite">
@@ -455,7 +472,7 @@ export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payU
             )}
 
             {isTransfer && transfer ? (
-              <TransferForm transfer={transfer} amount={payment.amount} />
+              <TransferForm transfer={transfer} amount={payment.amount} hasOpenBill={hasOpenBill} />
             ) : (
               <>
                 <div className="flex flex-col gap-3">

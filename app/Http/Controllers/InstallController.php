@@ -12,14 +12,46 @@ use Illuminate\Validation\Rules\Password;
 
 class InstallController extends Controller
 {
+    /** Shortest install token accepted. */
+    public const MIN_TOKEN_LENGTH = 16;
+
     public function index()
     {
         $requirements = $this->checkRequirements();
-        return view('install.index', compact('requirements'));
+        $installerEnabled = self::installToken() !== null;
+
+        return response()->view('install.index', compact('requirements', 'installerEnabled'), $installerEnabled ? 200 : 403);
+    }
+
+    /**
+     * The install token from INSTALL_TOKEN, else from storage/app/.install-token;
+     * null (installer disabled) when neither is set or it is too short (S1).
+     */
+    public static function installToken(): ?string
+    {
+        $token = trim((string) config('app.install_token'));
+        if ($token === '' && is_file($file = storage_path('app/.install-token'))) {
+            $token = trim((string) @file_get_contents($file));
+        }
+
+        return strlen($token) >= self::MIN_TOKEN_LENGTH ? $token : null;
     }
 
     public function process(Request $request)
     {
+        // Disabled without a token; a wrong token is refused before anything
+        // else runs, so a fresh upload can't be claimed by whoever finds it first.
+        $token = self::installToken();
+        if ($token === null) {
+            abort(403, 'The installer is disabled. Set INSTALL_TOKEN in .env to run it.');
+        }
+        if (! hash_equals($token, (string) $request->input('install_token', ''))) {
+            Log::warning('Install: wrong install token', ['ip' => $request->ip()]);
+
+            return back()->withInput($request->except(['install_token', 'admin_password', 'admin_password_confirmation']))
+                ->withErrors(['install_token' => 'The install token is not correct.']);
+        }
+
         $requirements = $this->checkRequirements();
 
         if (! $requirements['all_pass']) {
@@ -34,18 +66,28 @@ class InstallController extends Controller
         }
 
         $data = $request->validate([
-            'app_name'       => 'required|string|max:100',
+            // Written into .env inside double quotes: no quotes, backslashes, $ (variable
+            // interpolation) or line breaks.
+            'app_name'       => ['required', 'string', 'max:100', 'not_regex:/["\\\\$\r\n]/'],
             'app_url'        => 'required|url|max:255',
             'admin_name'     => 'required|string|max:255',
             'admin_email'    => 'required|email|max:255',
             'admin_password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()],
+        ], [
+            'app_name.not_regex' => 'The application name may not contain quotes, backslashes, $ or line breaks.',
         ]);
+        $https = str_starts_with(strtolower($data['app_url']), 'https://');
 
         // Update .env first — non-fatal if it fails (we revert below on rollback).
+        // Production settings (S1); a secure-only session cookie needs https.
         $envBackup = @file_get_contents(base_path('.env'));
         $this->updateEnv([
             'APP_NAME' => '"' . $data['app_name'] . '"',
-            'APP_URL'  => $data['app_url'],
+            'APP_URL'  => rtrim($data['app_url'], '/'),
+            'APP_ENV'  => 'production',
+            'APP_DEBUG' => 'false',
+            'SESSION_SECURE_COOKIE' => $https ? 'true' : 'false',
+            'LOG_LEVEL' => 'warning',
         ]);
 
         // Run migrations.
@@ -83,8 +125,12 @@ class InstallController extends Controller
             return back()->with('error', 'Failed to finalize installation. See application logs.');
         }
 
+        // The token is single-use.
+        $this->updateEnv(['INSTALL_TOKEN' => '']);
+        @unlink(storage_path('app/.install-token'));
+
         return redirect()->route('login')
-            ->with('success', 'Installation complete! You can now log in.');
+            ->with('success', 'Installation complete! You can now log in.'.($https ? '' : ' Your URL is not https, so session cookies are not marked secure: switch to https before going live.'));
     }
 
     private function checkRequirements(): array

@@ -113,6 +113,46 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Follow-ups:** no in-app notification to admins when a slip arrives (badge + dashboard only); slips have no virus scan beyond the type/size checks. Deleting a club now also removes its encrypted attachment files; deleting a user whose fees cascade away (or who uploaded documents, `uploaded_by` is restrict-on-delete) is not handled yet and needs a "deactivate instead of delete" rule for users with financial records.
 
+## S1 — Security hardening from the full audit
+
+Two read-only audits (auth/access; money/files/injection) found no critical issue, SQL injection, XSS or path
+traversal, but did find maker-checker bypasses, a webhook-token exposure path, races and hardening gaps. S1 fixes
+them (details in `CHANGELOG.md`):
+
+- **Webhooks:** URLs pinned to `APP_URL` (+ trusted hosts); per-bill HMAC callback token; 32+ character secret;
+  ToyyibPay `getBillTransactions` confirm step (fails closed, gateway retries); `payment_bills` keeps every bill so a
+  paid superseded bill still settles or is flagged; unmatched callbacks audited; transaction-id dedupe; gateway
+  match; allow-listed log fields; throttled routes; per-fee pay lock.
+- **Maker-checker:** no self-settling (mark paid / status edit); only the super admin grants club admin (audited,
+  emailed); bank/DuitNow detail changes need a second approver; stale admin payment edits refused.
+- **Accounts:** 2FA setup needs the password, codes can't be replayed, per-user lockout; password reset gives one
+  answer for every email, is throttled and ends other sessions.
+- **Install/deploy:** installer needs `INSTALL_TOKEN` and writes production settings; seeder local/testing only with
+  no known password; production `.env` block and PHP upload limits (12M/32M) in `docs/RELEASE.md`.
+- **Exports:** CSV formula cells neutralised, slugged download names; ledger sums in sen.
+
+**Known limit:** a Billplz callback that matches no fee is checked with the global `BILLPLZ_X_SIGNATURE_KEY` only.
+For a club with its own Billplz keys such a callback is refused (403) and not audited; trying every club's key was
+not worth the cost. Billplz has no confirm step like ToyyibPay's, so its `x_signature` is the only proof.
+
+**Deferred** (not in S1):
+- forcing a password change on first login;
+- mandatory 2FA for super admins;
+- a slip submission number;
+- deactivating instead of deleting users who have financial records (for now the delete is refused with a message).
+
+**Review gate:** checker found no blockers; 1 major (a second gateway payment on another bill of an already-paid fee was not recorded) and 7 minors were fixed. Fable: **GO** (also ran the app in production mode to confirm host pinning).
+
+**Fable follow-ups (non-blocking, most important first):**
+1. 🔴 **Sandbox hard gate:** confirm ToyyibPay's server callback field names (`status`/`refno` vs `status_id`/`transaction_id` read by `ToyyibPayGateway::parseWebhook`), that it retries non-200 callbacks, how soon `getBillTransactions` lists a payment, and what `billpaymentAmount` holds. If retries don't happen, set `TOYYIBPAY_VERIFY_CALLBACK=false` or add reconciliation.
+2. Audit (once per bill) when `getBillTransactions` is unreachable (503 path), like the 409 case.
+3. Installer: check the typed `app_url` host matches the request host, so a typo can't lock the site out.
+4. Map untrusted-host errors to 400 instead of 500.
+5. Password-reset limiter keyed by IP + email (staff share one office IP); set `TRUSTED_PROXIES` if the host uses a proxy.
+6. 2FA setup: on a wrong password/code redirect to the security page instead of `back()` to a POST-only URL (405).
+7. Unmatched-webhook audit rows can still be added with any real paid bill code (no settlement possible); low priority.
+8. Docs: a bank change requested by the only super admin for a club with no admin can't be approved; cancel and let a club admin request it.
+
 ## A5 — Verification and decision summary
 
 ### What was verified
@@ -172,7 +212,7 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 4. Bump `CACHE_VERSION` in `public/sw.js` every release.
 5. `.htaccess` needs Apache `mod_headers` (standard on cPanel) for the `sw.js`/manifest `no-cache` headers.
 6. Keep the previous release's `public/build/assets` for one release, so open tabs don't hit missing chunks.
-7. Set `TOYYIBPAY_WEBHOOK_SECRET` (and `APP_KEY`) on the host. `E2E_FAKE_GATEWAY` must never be set there; the provider also refuses to run unless `APP_ENV=local`.
+7. Set `TOYYIBPAY_WEBHOOK_SECRET` (32+ characters), `APP_KEY` and, for the first install, `INSTALL_TOKEN` on the host, and run `/install` straight after the upload (S1). `E2E_FAKE_GATEWAY` must never be set there; the provider also refuses to run unless `APP_ENV=local`.
 
 ### Before go-live checklist
 
@@ -192,14 +232,15 @@ Full list by area:
 
 **Payments**
 - [ ] ToyyibPay **sandbox** run end to end: confirm the callback `amount` unit (ringgit vs sen), whether customer-borne charges are included, and `status` vs `status_id`.
+- [ ] In the same sandbox run (S1): confirm that ToyyibPay **retries a callback answered with a non-200** (the confirm step answers 503/409 and relies on it), how soon after payment `getBillTransactions` lists the transaction (a lag means 409s), and what its `billpaymentAmount` holds when the customer bears the charge.
 - [ ] Re-test a real sandbox callback on the host after the A5 **webhook CSRF fix** (it previously got 419).
 - [ ] `TOYYIBPAY_WEBHOOK_SECRET` set on the host to a random value (placeholders are refused).
-- [ ] Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside).
+- [x] Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside). Done in S1.
 - [ ] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available.
 - [ ] **Reference fallback** when a bill code isn't found (only with a paid amount present).
 - [ ] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment).
 - [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start).
-- [ ] Billplz callback for a replaced bill on a per-club-key club.
+- [ ] Billplz callback for a replaced bill on a per-club-key club (S1 keeps replaced bills in `payment_bills` and matches them; still to try in the Billplz sandbox).
 - [ ] **Real iPhone payment return** from FPX/bank in the installed PWA (separate cookie jar from Safari).
 
 **Data and files**

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\PaymentBill;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -14,6 +16,9 @@ use Illuminate\Support\Str;
  * When active:
  *  - ToyyibPay bill creation (createBill) is answered by Http::fake with a
  *    random bill code, so no real gateway is called;
+ *  - the callback confirmation (getBillTransactions) is answered with one
+ *    successful transaction for the amount the bill was opened for, so the
+ *    real confirm step still runs against the e2e bill;
  *  - E2E_PRIVATE_ROOT (optional) moves the private "local" disk, so test
  *    uploads stay out of storage/app/private.
  */
@@ -32,6 +37,14 @@ class E2eFakeGatewayServiceProvider extends ServiceProvider
 
         Http::fake([
             '*/index.php/api/createBill' => fn () => Http::response([['BillCode' => 'e2e'.Str::lower(Str::random(8))]]),
+            '*/index.php/api/getBillTransactions' => function (Request $request) {
+                $bill = PaymentBill::where('gateway', 'toyyibpay')->where('bill_code', (string) ($request['billCode'] ?? ''))->first();
+
+                return Http::response($bill ? [[
+                    'billpaymentStatus' => '1',
+                    'billpaymentAmount' => number_format($bill->amount_sen / 100, 2, '.', ''),
+                ]] : []);
+            },
         ]);
 
         $root = env('E2E_PRIVATE_ROOT');

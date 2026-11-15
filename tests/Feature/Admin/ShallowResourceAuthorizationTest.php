@@ -74,8 +74,10 @@ class ShallowResourceAuthorizationTest extends TestCase
     {
         // Regression for an earlier bug where setting pivot.role = 'admin'
         // also wrote 'admin' to users.role on the global users table.
+        // Only the super admin can grant the club-admin role (S1).
+        \Illuminate\Support\Facades\Mail::fake();
         $club  = Club::factory()->create();
-        $this->actingAsClubAdmin($club);
+        $this->actingAsSuperAdmin();
         $member = User::factory()->create(['role' => 'member']);
         $club->members()->attach($member, [
             'role'        => 'member',

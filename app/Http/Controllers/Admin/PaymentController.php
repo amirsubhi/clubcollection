@@ -9,6 +9,7 @@ use App\Models\Discount;
 use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Services\AuditService;
+use App\Support\Payments\OwnFeeRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -101,7 +102,7 @@ class PaymentController extends Controller
             'frequency'    => 'required|in:monthly,quarterly,yearly',
             'period_start' => 'required|date',
             'due_date'     => 'required|date',
-            'amount'       => 'required|numeric|min:0',
+            'amount'       => 'required|numeric|min:0|max:100000|decimal:0,2',
             'discount_id'  => [
                 'nullable',
                 'exists:discounts,id',
@@ -186,10 +187,13 @@ class PaymentController extends Controller
         $this->authorizeClubAdmin($payment->club);
         $data = $request->validate([
             'due_date'    => 'required|date',
-            'amount'      => 'required|numeric|min:0',
+            'amount'      => 'required|numeric|min:0|max:100000|decimal:0,2',
             // pending_verification is accepted so the edit form round-trips, but it
             // can only be entered or left through the Verifications queue (below).
             'status'      => 'required|in:pending,paid,overdue,pending_verification',
+            // The status the form was loaded with: a save over a newer change
+            // (webhook, slip approval, another admin) is refused.
+            'original_status' => 'required|in:pending,paid,overdue,pending_verification',
             'paid_date'   => 'nullable|date',
             'discount_id' => [
                 'nullable',
@@ -203,41 +207,76 @@ class PaymentController extends Controller
             'notes'       => 'nullable|string|max:500',
             'reference'   => 'nullable|string|max:255',
         ]);
+        $admin = $request->user();
 
-        $verifying = $payment->status === 'pending_verification';
-        if (($data['status'] === 'pending_verification') !== $verifying) {
-            return back()->withInput()->withErrors(['status' => $verifying
-                ? 'A transfer slip is waiting for verification. Approve or reject it in Verifications instead.'
-                : '"Awaiting verification" is set only when a member uploads a transfer slip.']);
-        }
+        // Locked and re-read, so a webhook or slip approval landing at the same
+        // moment can't be overwritten by a form loaded before it.
+        $refusal = DB::transaction(function () use ($data, $payment, $admin) {
+            $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            $originalStatus = $data['original_status'];
+            unset($data['original_status']);
+            $refuse = fn (string $message) => back()->withInput()->withErrors(['status' => $message]);
 
-        // The member transferred this exact amount: while the slip is checked only the notes may change.
-        if ($verifying) {
-            $changed = (int) round(((float) $data['amount']) * 100) !== (int) round(((float) $payment->amount) * 100)
-                || (int) ($data['discount_id'] ?? 0) !== (int) ($payment->discount_id ?? 0)
-                || Carbon::parse($data['due_date'])->toDateString() !== $payment->due_date->toDateString()
-                || (empty($data['paid_date']) ? null : Carbon::parse($data['paid_date'])->toDateString()) !== $payment->paid_date?->toDateString()
-                || ($data['reference'] ?? null) !== $payment->reference;
-            if ($changed) {
-                return back()->withInput()->withErrors(['status' => 'A transfer slip is waiting for verification, so only the notes can be changed. Approve or reject it in Verifications first.']);
+            if ($payment->status !== $originalStatus) {
+                return $refuse("This payment changed since you opened the form (it is now \"{$payment->status}\"). Reload the page and make your change again.");
             }
+
+            $verifying = $payment->status === 'pending_verification';
+            if (($data['status'] === 'pending_verification') !== $verifying) {
+                return $refuse($verifying
+                    ? 'A transfer slip is waiting for verification. Approve or reject it in Verifications instead.'
+                    : '"Awaiting verification" is set only when a member uploads a transfer slip.');
+            }
+
+            // The member transferred this exact amount: while the slip is checked only the notes may change.
+            if ($verifying) {
+                $changed = (int) round(((float) $data['amount']) * 100) !== $payment->amountSen()
+                    || (int) ($data['discount_id'] ?? 0) !== (int) ($payment->discount_id ?? 0)
+                    || Carbon::parse($data['due_date'])->toDateString() !== $payment->due_date->toDateString()
+                    || (empty($data['paid_date']) ? null : Carbon::parse($data['paid_date'])->toDateString()) !== $payment->paid_date?->toDateString()
+                    || ($data['reference'] ?? null) !== $payment->reference;
+                if ($changed) {
+                    return $refuse('A transfer slip is waiting for verification, so only the notes can be changed. Approve or reject it in Verifications first.');
+                }
+            }
+
+            if ($data['status'] === 'paid' && $payment->status !== 'paid'
+                && ($own = OwnFeeRule::blocker($payment, $admin, 'mark it paid'))) {
+                return $refuse($own);
+            }
+            // Nor lower what they owe: amount and discount of their own fee are another admin's call.
+            $moneyChanged = (int) round(((float) $data['amount']) * 100) !== $payment->amountSen()
+                || (int) ($data['discount_id'] ?? 0) !== (int) ($payment->discount_id ?? 0);
+            if ($moneyChanged && ($own = OwnFeeRule::blocker($payment, $admin, 'change its amount or discount'))) {
+                return back()->withInput()->withErrors(['amount' => $own]);
+            }
+
+            if ($data['status'] === 'paid' && empty($data['paid_date'])) {
+                $data['paid_date'] = now()->toDateString();
+            }
+
+            $old = $payment->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference', 'paid_via', 'gateway', 'verified_by']);
+            $payment->fill($data);
+            // No longer paid: how and by whom it was settled no longer applies.
+            if ($old['status'] === 'paid' && $data['status'] !== 'paid') {
+                $payment->forceFill(['paid_via' => null, 'gateway' => null, 'verified_by' => null, 'verified_at' => null]);
+            }
+            $payment->save();
+
+            AuditService::log(
+                'payment.updated',
+                "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']}).",
+                $payment,
+                $payment->club_id,
+                $old,
+                $payment->fresh()->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference', 'paid_via', 'gateway', 'verified_by'])
+            );
+
+            return null;
+        });
+        if ($refusal) {
+            return $refusal;
         }
-
-        if ($data['status'] === 'paid' && empty($data['paid_date'])) {
-            $data['paid_date'] = now()->toDateString();
-        }
-
-        $old = $payment->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference']);
-        $payment->update($data);
-
-        AuditService::log(
-            'payment.updated',
-            "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']}).",
-            $payment,
-            $payment->club_id,
-            $old,
-            $payment->fresh()->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference'])
-        );
 
         return redirect()->route('admin.payments.show', $payment)
             ->with('success', 'Payment updated.');
@@ -247,6 +286,9 @@ class PaymentController extends Controller
     {
         $this->authorizeClubAdmin($payment->club);
         $request->validate(['reference' => 'nullable|string|max:255']);
+        if ($own = OwnFeeRule::blocker($payment, $request->user(), 'mark it paid')) {
+            return back()->with('error', $own);
+        }
 
         // Lock and re-check, so a slip approval or a webhook running at the same moment can't race this.
         $refusal = DB::transaction(function () use ($request, $payment) {
@@ -291,6 +333,9 @@ class PaymentController extends Controller
         $clubId  = $club->id;
         $summary = "Payment #{$payment->id} (RM {$payment->amount}, {$payment->status}) deleted.";
         $old     = $payment->only(['status', 'amount', 'period_start', 'period_end', 'user_id']);
+        if ($own = OwnFeeRule::blocker($payment, request()->user(), 'delete it')) {
+            return back()->with('error', $own);
+        }
         // Transfer slips are kept as evidence: a fee with slips can't be deleted.
         if ($payment->status === 'pending_verification' || $payment->attachments()->exists()) {
             return back()->with('error', 'This payment has transfer slips attached, so it is kept for the record and can\'t be deleted.');

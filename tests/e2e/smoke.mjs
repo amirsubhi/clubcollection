@@ -2,6 +2,7 @@
 // End-to-end smoke test for Option A (member pay flow + Fund Usage maker-checker + transfer slip verification).
 // See tests/e2e/README.md for the database and server set-up. Exits non-zero on failure.
 import { createRequire } from "node:module";
+import { createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -12,7 +13,7 @@ const { chromium, request: pwRequest } = require("playwright");
 
 const BASE = (process.env.E2E_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const OUT = process.env.E2E_OUT_DIR || join(tmpdir(), "clubportal-e2e-shots");
-const SECRET = process.env.E2E_WEBHOOK_SECRET || "e2e-webhook-secret-local-only";
+const SECRET = process.env.E2E_WEBHOOK_SECRET || "e2e-webhook-secret-local-only-0123456789"; // >= 32 characters
 const PASSWORD = process.env.E2E_PASSWORD || "E2e-Smoke-Pass-2026"; // Database\Seeders\E2eSeeder::PASSWORD
 const USERS = {
   member: "e2e.member@clubportal.test",
@@ -201,18 +202,28 @@ try {
     log("redirected to gateway with bill", billCode);
     await shot(m.page, "a3-gateway");
   });
+  let reference;
+  await step("PayResult shows the bill reference while pending", async () => {
+    await m.page.unroute(`https://${GATEWAY_HOST}/**`);
+    await m.page.goto(`${BASE}/my/payments/${paymentId}/thankyou`);
+    reference = await m.page.evaluate(() => JSON.parse(document.querySelector("[data-page]").getAttribute("data-page")).props.reference);
+    if (!/^PAY-\d+-\d+$/.test(reference || "")) throw new Error(`unexpected bill reference "${reference}"`);
+  });
   await step("gateway webhook marks the fee paid", async () => {
     const api = await pwRequest.newContext();
-    const form = { billcode: billCode, status_id: "1", amount: "50.00", transaction_id: "E2E-TXN-0001", msg: "ok" };
+    // ToyyibPay sends the bill reference as order_id; the callback token is a per-bill HMAC of it.
+    const form = { billcode: billCode, order_id: reference, status_id: "1", amount: "50.00", transaction_id: "E2E-TXN-0001", msg: "ok" };
+    const token = createHmac("sha256", SECRET).update(reference).digest("hex");
     const bad = await api.post(`${BASE}/webhook/toyyibpay?webhook_token=wrong-token`, { form });
     if (bad.status() !== 403) throw new Error(`webhook with a wrong token returned ${bad.status()}, expected 403`);
-    const res = await api.post(`${BASE}/webhook/toyyibpay?webhook_token=${encodeURIComponent(SECRET)}`, { form });
+    const global = await api.post(`${BASE}/webhook/toyyibpay?webhook_token=${encodeURIComponent(SECRET)}`, { form });
+    if (global.status() !== 403) throw new Error(`webhook with the raw secret as token returned ${global.status()}, expected 403`);
+    const res = await api.post(`${BASE}/webhook/toyyibpay?webhook_token=${token}`, { form });
     const body = await res.text();
     if (res.status() !== 200 || body.trim() !== "ok") throw new Error(`webhook returned ${res.status()} ${body.slice(0, 80)}`);
     await api.dispose();
   });
   await step("PayResult shows Berjaya", async () => {
-    await m.page.unroute(`https://${GATEWAY_HOST}/**`);
     await m.page.goto(`${BASE}/my/payments/${paymentId}/thankyou?status_id=1&billcode=${encodeURIComponent(billCode)}`);
     await m.page.getByText("Berjaya", { exact: true }).first().waitFor();
     await shot(m.page, "a4-pay-result");

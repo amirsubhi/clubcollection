@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ForgotPasswordController extends Controller
 {
@@ -19,4 +21,25 @@ class ForgotPasswordController extends Controller
     */
 
     use SendsPasswordResetEmails;
+
+    /** Same answer whether or not the email has an account (S1: no account discovery). */
+    public const GENERIC_STATUS = 'If that email address has an account, we have emailed a password reset link to it.';
+
+    protected function sendResetLinkResponse(Request $request, $response)
+    {
+        return $this->genericResponse($request);
+    }
+
+    /** Unknown email, or a link already sent a moment ago: the same answer as success. */
+    protected function sendResetLinkFailedResponse(Request $request, $response)
+    {
+        return $this->genericResponse($request);
+    }
+
+    private function genericResponse(Request $request)
+    {
+        return $request->wantsJson()
+            ? new JsonResponse(['message' => self::GENERIC_STATUS], 200)
+            : back()->with('status', self::GENERIC_STATUS);
+    }
 }

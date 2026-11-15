@@ -26,7 +26,7 @@ class MemberPayFlowTest extends TestCase
     {
         config([
             'toyyibpay.base_url' => 'https://dev.toyyibpay.com',
-            'toyyibpay.webhook_secret' => 'secret',
+            'toyyibpay.webhook_secret' => self::TOYYIB_SECRET,
         ]);
 
         return Club::factory()->create([

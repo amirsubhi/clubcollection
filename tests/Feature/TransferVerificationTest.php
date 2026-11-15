@@ -334,7 +334,7 @@ class TransferVerificationTest extends TestCase
         $this->patch(route('admin.payments.mark-paid', $fee))->assertRedirect(route('admin.clubs.verifications.index', $this->club));
         $this->assertSame('pending_verification', $fee->fresh()->status);
 
-        $edit = ['due_date' => $fee->due_date->toDateString(), 'amount' => '50.00', 'status' => 'paid'];
+        $edit = ['due_date' => $fee->due_date->toDateString(), 'amount' => '50.00', 'status' => 'paid', 'original_status' => 'pending_verification'];
         $this->put(route('admin.payments.update', $fee), $edit)->assertSessionHasErrors('status');
         $this->assertSame('pending_verification', $fee->fresh()->status);
         // Only the notes may change while it stays in the queue.
@@ -346,7 +346,7 @@ class TransferVerificationTest extends TestCase
 
         // Nobody can put a fee into the queue by hand.
         $other = Payment::factory()->forClub($this->club)->forMember($this->member)->pending()->create(['period_start' => now()->addMonths(2)->startOfMonth()->toDateString()]);
-        $this->put(route('admin.payments.update', $other), ['status' => 'pending_verification'] + $edit)->assertSessionHasErrors('status');
+        $this->put(route('admin.payments.update', $other), ['status' => 'pending_verification', 'original_status' => 'pending'] + $edit)->assertSessionHasErrors('status');
         $this->assertSame('pending', $other->fresh()->status);
 
         // Slips are evidence: the fee can't be deleted.

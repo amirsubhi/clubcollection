@@ -251,7 +251,7 @@
                     @endforeach
                     <tr class="row-closing">
                         <td colspan="3" class="text-right">Total Outstanding (RM)</td>
-                        <td class="text-right">{{ number_format($overduePayments->sum('amount') + $pendingPayments->sum('amount') + $verifyingPayments->sum('amount'), 2) }}</td>
+                        <td class="text-right">{{ number_format($outstandingTotal, 2) }}</td>
                         <td></td>
                     </tr>
                     </tbody>

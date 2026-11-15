@@ -24,6 +24,8 @@ export interface UploaderText {
   takePhoto: string;
   cameraHint: string;
   remove: (name: string) => string;
+  /** Shown when picked files are over maxKb (they are not added). */
+  tooLarge: (names: string, mb: number) => string;
 }
 
 const defaultText = (maxFiles: number): UploaderText => ({
@@ -33,6 +35,7 @@ const defaultText = (maxFiles: number): UploaderText => ({
   takePhoto: "Take photo",
   cameraHint: "On a phone this opens the camera.",
   remove: (name) => `Remove ${name}`,
+  tooLarge: (names, mb) => `${names}: larger than ${mb} MB, so not added. Choose a smaller file.`,
 });
 
 export interface FileUploaderProps {
@@ -47,6 +50,8 @@ export interface FileUploaderProps {
   text?: Partial<UploaderText>;
   /** Larger type and touch targets for member pages. */
   comfortable?: boolean;
+  /** Per-file size limit (KB). Bigger files are refused here, before any upload, with text.tooLarge. */
+  maxKb?: number;
 }
 
 function toItems(list: FileList | null): UploadItem[] {
@@ -62,11 +67,21 @@ function toItems(list: FileList | null): UploadItem[] {
 }
 
 /** Multi-file uploader: drag-drop or browse, camera capture on phones, per-file kind and remove. Upload is left to the parent form (e.g. Inertia useForm). */
-export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxFiles = 10, showKind = true, text, comfortable = false }: FileUploaderProps) {
+export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, error, maxFiles = 10, showKind = true, text, comfortable = false, maxKb }: FileUploaderProps) {
   const inputId = useId();
   const tx = { ...defaultText(maxFiles), ...text };
   const camRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  const [sizeError, setSizeError] = useState<string | null>(null);
+  // Refuse oversize files on the device: a slow upload that the server then
+  // rejects (or that PHP drops whole) is the worst way to find out.
+  const onAdd = (picked: UploadItem[]) => {
+    const tooBig = maxKb ? picked.filter((f) => (f.file ? f.file.size > maxKb * 1024 : f.sizeKb > maxKb)) : [];
+    setSizeError(tooBig.length ? tx.tooLarge(tooBig.map((f) => f.name).join(", "), Math.round((maxKb ?? 0) / 1024)) : null);
+    const ok = picked.filter((f) => !tooBig.includes(f));
+    if (ok.length) onAddAll(ok);
+  };
+  const shownError = error ?? sizeError ?? undefined;
   return (
     <div className="flex flex-col gap-3">
       <label
@@ -84,7 +99,7 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
         className={cn(
           "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/50 px-4 py-7 text-center transition-colors focus-within:ring-2 focus-within:ring-ring",
           over ? "border-primary bg-accent" : "border-input hover:bg-muted",
-          error && "border-danger bg-danger-soft/50",
+          shownError && "border-danger bg-danger-soft/50",
         )}
       >
         <UploadCloud className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -123,7 +138,11 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
           }}
         />
       </div>
-      {error && <p className={cn("font-medium text-danger-foreground", comfortable ? "text-sm" : "text-xs")}>{error}</p>}
+      {shownError && (
+        <p role="alert" className={cn("font-medium text-danger-foreground", comfortable ? "text-sm" : "text-xs")}>
+          {shownError}
+        </p>
+      )}
       {files.length > 0 && (
         <ul className="flex flex-col divide-y rounded-lg border">
           {files.map((f) => (

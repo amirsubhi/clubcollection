@@ -9,6 +9,7 @@ use App\Models\Club;
 use App\Models\FeeRate;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Support\Export\CsvSafe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -41,9 +42,12 @@ class MemberController extends Controller
             'name'        => 'required|string|max:255',
             'email'       => 'required|email|max:255|unique:users,email',
             'job_level'   => 'required|in:gm,agm,manager,executive,non_exec',
-            'role'        => 'required|in:admin,member',
+            // Club admins don't see the role field: a missing role is 'member'.
+            'role'        => 'nullable|in:admin,member',
             'joined_date' => 'required|date',
         ]);
+        $data['role'] ??= 'member';
+        $this->assertMayGrant($data['role']);
 
         $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
 
@@ -79,6 +83,9 @@ class MemberController extends Controller
             [],
             ['role' => $data['role'], 'job_level' => $data['job_level'], 'joined_date' => $data['joined_date']]
         );
+        if ($data['role'] === 'admin') {
+            $this->recordAdminGrant($club, $user);
+        }
 
         return redirect()->route('admin.clubs.members.index', $club)
             ->with('success', "Member added. Login credentials have been sent to {$user->email}.");
@@ -91,6 +98,7 @@ class MemberController extends Controller
 
         $jobLevels = FeeRate::jobLevelLabels();
         $pivot     = $club->members()->where('users.id', $member->id)->first()?->pivot;
+        $this->assertMayManageRow($pivot?->role);
         return view('admin.members.edit', compact('club', 'member', 'jobLevels', 'pivot'));
     }
 
@@ -101,12 +109,18 @@ class MemberController extends Controller
 
         $data = $request->validate([
             'job_level'   => 'required|in:gm,agm,manager,executive,non_exec',
-            'role'        => 'required|in:admin,member',
+            // Club admins don't see the role field: a missing role keeps the current one.
+            'role'        => 'nullable|in:admin,member',
             'joined_date' => 'required|date',
             'is_active'   => 'boolean',
         ]);
 
         $pivot  = $club->members()->where('users.id', $member->id)->first()?->pivot;
+        abort_unless($pivot, 404);
+        $data['role'] ??= $pivot->role;
+        // Club admin rows and the admin role are the super admin's to manage.
+        $this->assertMayManageRow($pivot->role);
+        $this->assertMayGrant($data['role']);
         $oldPivot = $pivot ? [
             'role'      => $pivot->role,
             'job_level' => $pivot->job_level,
@@ -121,6 +135,9 @@ class MemberController extends Controller
         ]);
 
         // pivot role is club-scoped; users.role is system-wide, managed by AdminUserController.
+        if ($data['role'] === 'admin' && $pivot->role !== 'admin') {
+            $this->recordAdminGrant($club, $member);
+        }
 
         AuditService::log(
             'member.updated',
@@ -139,6 +156,8 @@ class MemberController extends Controller
     {
         $club = $this->resolveClubForMember($club, $member);
         $this->authorizeClubAdmin($club);
+        $pivot = $club->members()->where('users.id', $member->id)->first()?->pivot;
+        $this->assertMayManageRow($pivot?->role);
 
         $club->members()->detach($member->id);
 
@@ -207,6 +226,7 @@ class MemberController extends Controller
         $imported       = 0;
         $validJobLevels = ['gm', 'agm', 'manager', 'executive', 'non_exec'];
         $validRoles     = ['member', 'admin'];
+        $canGrant       = auth()->user()->isSuperAdmin();
 
         foreach ($rawRows as [$rowNum, $line]) {
             // Expect: name, email, job_level, role, joined_date
@@ -244,6 +264,11 @@ class MemberController extends Controller
                 continue;
             }
 
+            if ($role === 'admin' && ! $canGrant) {
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'Only the super admin can make someone a club admin. Change the role to member, or ask the super admin to import this row.'];
+                continue;
+            }
+
             $ts = strtotime($joinedDate);
             if (! $ts) {
                 $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid joined_date '{$joinedDate}'. Use YYYY-MM-DD format."];
@@ -273,6 +298,10 @@ class MemberController extends Controller
                 'joined_date' => date('Y-m-d', $ts),
                 'is_active'   => true,
             ]);
+
+            if ($role === 'admin') {
+                $this->recordAdminGrant($club, $user);
+            }
 
             try {
                 Mail::to($user->email)->send(new MemberWelcome($user, $club, $temporaryPassword));
@@ -313,12 +342,58 @@ class MemberController extends Controller
 
         $callback = function () {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['name', 'email', 'job_level', 'role', 'joined_date']);
-            fputcsv($handle, ['Ahmad Razif', 'razif@example.com', 'manager', 'member', date('Y-m-d')]);
+            CsvSafe::put($handle, ['name', 'email', 'job_level', 'role', 'joined_date']);
+            CsvSafe::put($handle, ['Ahmad Razif', 'razif@example.com', 'manager', 'member', date('Y-m-d')]);
             fclose($handle);
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Only the super admin grants the club-admin role (S1): a club admin can
+     * add and edit members only.
+     */
+    private function assertMayGrant(string $role): void
+    {
+        if ($role === 'admin' && ! auth()->user()->isSuperAdmin()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'role' => 'Only the super admin can make someone a club admin.',
+            ]);
+        }
+    }
+
+    /** A club admin can't change or remove another club-admin row (nor their own). */
+    private function assertMayManageRow(?string $currentRole): void
+    {
+        if ($currentRole === 'admin' && ! auth()->user()->isSuperAdmin()) {
+            abort(403, 'Only the super admin can change or remove a club admin.');
+        }
+    }
+
+    /** Audit a club-admin grant and tell every admin of the club. */
+    private function recordAdminGrant(Club $club, User $grantee): void
+    {
+        $by = auth()->user();
+        AuditService::log(
+            'member.admin_granted',
+            "{$grantee->name} ({$grantee->email}) was made a club admin by {$by->name}.",
+            $grantee,
+            $club->id,
+            [],
+            ['role' => 'admin', 'granted_by' => $by->id]
+        );
+
+        $club->notifyAdmins(
+            'New club admin',
+            [
+                "{$grantee->name} ({$grantee->email}) is now an admin of {$club->name}.",
+                "Granted by {$by->name} on ".now()->format('j M Y, H:i').'.',
+                'Club admins can manage members, fees, payments and fund usage for this club.',
+            ],
+            route('admin.clubs.audit-logs', $club),
+            'Open the audit log'
+        );
     }
 
     /**

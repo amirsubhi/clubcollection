@@ -146,8 +146,11 @@ class BillplzWebhookTest extends TestCase
     {
         $perClubKey = 'per-club-x-signature-key-different';
 
+        // Only a club with complete Billplz credentials uses its own key.
         $club = Club::factory()->create([
             'payment_gateway'        => 'billplz',
+            'billplz_api_key'        => 'club-api-key',
+            'billplz_collection_id'  => 'col-club',
             'billplz_x_signature_key' => $perClubKey,
         ]);
         $member = User::factory()->create();

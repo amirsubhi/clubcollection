@@ -47,7 +47,7 @@ class MemberControllerTest extends TestCase
         $this->actingAsClubAdmin($club);
 
         $this->post(route('admin.clubs.members.store', $club), [])
-            ->assertSessionHasErrors(['name', 'email', 'job_level', 'role', 'joined_date']);
+            ->assertSessionHasErrors(['name', 'email', 'job_level', 'joined_date']);
     }
 
     public function test_store_rejects_invalid_job_level(): void
@@ -101,8 +101,10 @@ class MemberControllerTest extends TestCase
 
     public function test_update_changes_pivot_role_and_job_level(): void
     {
+        // Only the super admin can grant the club-admin role (S1).
+        Mail::fake();
         $club   = Club::factory()->create();
-        $this->actingAsClubAdmin($club);
+        $this->actingAsSuperAdmin();
         $member = User::factory()->create();
         $club->members()->attach($member, [
             'role'        => 'member',

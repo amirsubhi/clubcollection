@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\FeeRate;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class FeeRateController extends Controller
 {
+    use AuthorizesClubResource;
+
     public function index(Club $club)
     {
         $rates = $club->feeRates()->orderByDesc('effective_from')->get()
@@ -62,15 +65,19 @@ class FeeRateController extends Controller
             ['rates' => $newRates]
         );
 
-        return redirect()->route('admin.fee-rates.index', $club)
+        return redirect()->route('admin.clubs.fee-rates.index', $club)
             ->with('success', 'Fee rates updated successfully.');
     }
 
-    public function destroy(Club $club, FeeRate $feeRate)
+    /**
+     * Shallow route (/admin/fee-rates/{fee_rate}): there is no {club} segment,
+     * so the club comes from the rate itself and is authorized here (the old
+     * signature bound an empty Club and refused every delete).
+     */
+    public function destroy(FeeRate $feeRate)
     {
-        if ($feeRate->club_id !== $club->id) {
-            abort(403, 'This fee rate does not belong to this club.');
-        }
+        $club = $feeRate->club;
+        $this->authorizeClubAdmin($club);
 
         $old = $feeRate->only(['job_level', 'monthly_amount', 'effective_from', 'effective_to']);
         $feeRate->delete();
@@ -83,7 +90,7 @@ class FeeRateController extends Controller
             $old
         );
 
-        return redirect()->route('admin.fee-rates.index', $club)
+        return redirect()->route('admin.clubs.fee-rates.index', $club)
             ->with('success', 'Fee rate deleted.');
     }
 }

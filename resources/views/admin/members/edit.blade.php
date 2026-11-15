@@ -23,6 +23,8 @@
                         <div class="form-text">Changing this will apply the new fee rate to future payment records.</div>
                         @error('job_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    {{-- Only the super admin grants or changes the club-admin role (S1). --}}
+                    @if(auth()->user()->isSuperAdmin())
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Club Role <span class="text-danger">*</span></label>
                         <select name="role" class="form-select @error('role') is-invalid @enderror">
@@ -32,6 +34,9 @@
                         <div class="form-text">Admin role grants ability to manage payments, expenses, and members for this club.</div>
                         @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    @else
+                    <p class="small text-muted mb-3"><i class="bi bi-shield-lock me-1"></i>Club role: <strong>{{ ucfirst($pivot?->role ?? 'member') }}</strong>. Only the super admin can make someone a club admin.</p>
+                    @endif
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date Joined <span class="text-danger">*</span></label>
                         <input type="date" name="joined_date" class="form-control @error('joined_date') is-invalid @enderror"

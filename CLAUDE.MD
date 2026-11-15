@@ -170,7 +170,7 @@ From `composer.json:37-53`:
 | `composer setup` | `composer install` → copy `.env` → `key:generate` → `migrate --force` → `npm install` → `npm run build` |
 | `composer dev` | Runs four concurrent processes: `artisan serve`, `queue:listen --tries=1 --timeout=0`, `pail` (log tail), `npm run dev` |
 | `composer test` | `config:clear` then `php artisan test` (PHPUnit; SQLite in-memory per `phpunit.xml`) |
-| `php artisan db:seed` | Creates `superadmin@clubportal.com` / `Admin@123` + sample club + fee rates + expense categories (no sample members/payments) |
+| `php artisan db:seed` | Local/testing only (refuses elsewhere). Creates `superadmin@clubportal.com` with `SEED_SUPER_ADMIN_PASSWORD` or a random password it prints once, plus a sample club, fee rates, expense categories and demo members/payments |
 | `php artisan test --filter=LedgerTest` | Run a single test file |
 | `vendor/bin/pint` | Laravel Pint — standard preset, no custom config |
 | `php artisan schedule:run` | To execute the daily 08:00 overdue-reminders job, run this per minute from cron |

@@ -33,6 +33,13 @@ return new class extends Migration
             $table->string('bank_account_name', 150)->nullable();
             $table->string('bank_account_no', 30)->nullable();
             $table->string('duitnow_id', 100)->nullable();
+            // A requested change to the bank / DuitNow details (S1). Members keep
+            // seeing the live columns above until a different club admin (or the
+            // super admin) approves it on the billing page. JSON of
+            // transfer_enabled, bank_name, bank_account_name, bank_account_no, duitnow_id.
+            $table->json('pending_bank_change')->nullable();
+            $table->foreignId('bank_change_requested_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('bank_change_requested_at')->nullable();
             $table->timestamps();
         });
     }

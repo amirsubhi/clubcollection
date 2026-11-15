@@ -12,6 +12,61 @@
 @endphp
 <div class="row justify-content-center">
     <div class="col-lg-7">
+        @if($club->hasPendingBankChange())
+        @php
+            $pendingBank = $club->pending_bank_change;
+            $requester = $club->bankChangeRequestedBy;
+        @endphp
+        {{-- Bank / DuitNow change waiting for a second admin (S1). --}}
+        <div class="card shadow-sm border-warning mb-4" id="bank-change">
+            <div class="card-body p-4">
+                <h2 class="h6 fw-semibold mb-1"><i class="bi bi-hourglass-split me-1"></i>Bank details change waiting for approval</h2>
+                <p class="text-muted small mb-3">
+                    Requested by <strong>{{ $requester?->name ?? 'a former admin' }}</strong>
+                    on {{ $club->bank_change_requested_at?->format('j M Y, H:i') }}.
+                    Members keep seeing the current details until another admin approves.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm small mb-3">
+                        <thead><tr><th></th><th>Now (members see)</th><th>Requested</th></tr></thead>
+                        <tbody>
+                            @foreach(['bank_name' => 'Bank name', 'bank_account_name' => 'Account holder', 'bank_account_no' => 'Account number', 'duitnow_id' => 'DuitNow ID'] as $field => $label)
+                            @php $changed = ($club->{$field} ?? null) !== ($pendingBank[$field] ?? null); @endphp
+                            <tr>
+                                <th class="fw-semibold">{{ $label }}</th>
+                                <td>{{ $club->{$field} ?? '—' }}</td>
+                                <td class="{{ $changed ? 'fw-semibold text-warning-emphasis' : '' }}">{{ $pendingBank[$field] ?? '—' }}</td>
+                            </tr>
+                            @endforeach
+                            <tr>
+                                <th class="fw-semibold">Bank transfer</th>
+                                <td>{{ $club->transfer_enabled ? 'On' : 'Off' }}</td>
+                                <td>{{ ! empty($pendingBank['transfer_enabled']) ? 'On' : 'Off' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                @error('bank_change')<div class="alert alert-danger small">{{ $message }}</div>@enderror
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    @if($bankApprovalBlocker === null)
+                    <form action="{{ route('admin.clubs.billing.bank-change.approve', $club) }}" method="POST" class="d-inline"
+                          data-confirm="Approve these bank details? Members will be told to pay into this account.">
+                        @csrf
+                        <input type="hidden" name="version" value="{{ $bankChangeVersion }}">
+                        <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check2-circle me-1"></i>Approve</button>
+                    </form>
+                    @else
+                    <span class="small text-muted"><i class="bi bi-info-circle me-1"></i>{{ $bankApprovalBlocker }}</span>
+                    @endif
+                    <form action="{{ route('admin.clubs.billing.bank-change.cancel', $club) }}" method="POST" class="d-inline"
+                          data-confirm="Cancel this pending bank details change?">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-lg me-1"></i>Cancel request</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
         <div class="card shadow-sm">
             <div class="card-body p-4">
                 <form action="{{ route('admin.clubs.billing.update', $club) }}" method="POST">
@@ -89,6 +144,9 @@
                         admin checks it in <strong>Verifications</strong> before the fee counts as paid. Members see
                         these details, so use the club's own account.
                     </p>
+                    <p class="small mb-3"><i class="bi bi-shield-lock me-1"></i>A change to the bank name, holder, account number or DuitNow ID
+                        must be approved by another admin of this club (or the super admin) before members see it. All club admins are emailed.
+                        Switching transfers off takes effect at once.</p>
                     <div class="form-check form-switch mb-3">
                         <input type="hidden" name="transfer_enabled" value="0">
                         <input class="form-check-input @error('transfer_enabled') is-invalid @enderror" type="checkbox" role="switch"

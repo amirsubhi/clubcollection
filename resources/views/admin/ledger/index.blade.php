@@ -188,7 +188,7 @@
                     <tfoot class="table-light fw-semibold">
                         <tr>
                             <td class="ps-3" colspan="3">Total Outstanding</td>
-                            <td class="text-end">RM {{ number_format($overduePayments->sum('amount') + $pendingPayments->sum('amount') + $verifyingPayments->sum('amount'), 2) }}</td>
+                            <td class="text-end">RM {{ number_format($outstandingTotal, 2) }}</td>
                             <td class="pe-3"></td>
                         </tr>
                     </tfoot>

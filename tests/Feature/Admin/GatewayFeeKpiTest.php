@@ -20,7 +20,8 @@ class GatewayFeeKpiTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         Mail::fake();
-        config(['toyyibpay.webhook_secret' => 'secret']);
+        config(['toyyibpay.webhook_secret' => self::TOYYIB_SECRET]);
+        $this->fakeToyyibConfirm();
     }
 
     private function paidOnline(Club $club, User $member, int $monthsAgo, string $payer, int $feeSen): Payment
@@ -28,10 +29,10 @@ class GatewayFeeKpiTest extends TestCase
         $start = now()->startOfMonth()->subMonthsNoOverflow($monthsAgo);
         $p = Payment::factory()->forClub($club)->forMember($member)->pending()->create([
             'period_start' => $start->toDateString(), 'period_end' => $start->copy()->endOfMonth()->toDateString(),
-            'bill_code' => 'B'.uniqid(), 'bill_amount' => 50.00, 'bill_fee_payer' => $payer, 'bill_fee_sen' => $feeSen, 'gateway' => 'toyyibpay',
+            'bill_code' => 'B'.uniqid(), 'reference' => 'REF-'.uniqid(), 'bill_amount' => 50.00, 'bill_fee_payer' => $payer, 'bill_fee_sen' => $feeSen, 'gateway' => 'toyyibpay',
         ]);
-        $this->post(route('webhook.toyyibpay').'?webhook_token=secret', [
-            'billcode' => $p->bill_code, 'status_id' => 1, 'amount' => '50.00', 'transaction_id' => 'T'.$p->id,
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($p->reference), [
+            'billcode' => $p->bill_code, 'order_id' => $p->reference, 'status_id' => 1, 'amount' => '50.00', 'transaction_id' => 'T'.$p->id,
         ])->assertOk();
 
         return $p->fresh();

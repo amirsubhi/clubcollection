@@ -81,6 +81,13 @@ class WebhookPlaceholderSecretTest extends TestCase
         $this->assertFalse(WebhookSecret::isUsable('   '));
         $this->assertFalse(WebhookSecret::isUsable('your_webhook_secret_here'));
         $this->assertFalse(WebhookSecret::isUsable('your_billplz_x_signature_key_here'));
-        $this->assertTrue(WebhookSecret::isUsable('a-real-random-secret-value'));
+        // Our own secret must be at least 32 characters (S1).
+        $this->assertFalse(WebhookSecret::isUsable('a-real-random-secret-value'));
+        $this->assertFalse(WebhookSecret::isUsable(str_repeat('k', 31)));
+        $this->assertTrue(WebhookSecret::isUsable(str_repeat('k', 32)));
+        $this->assertTrue(WebhookSecret::isUsable('a-real-random-secret-value-0123456789'));
+        // A gateway-issued key (Billplz) has its own format: only blanks and placeholders are refused.
+        $this->assertTrue(WebhookSecret::isUsable('S-short-billplz-key', 1));
+        $this->assertFalse(WebhookSecret::isUsable('your_billplz_x_signature_key_here', 1));
     }
 }

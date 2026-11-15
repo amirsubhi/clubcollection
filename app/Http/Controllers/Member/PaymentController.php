@@ -18,6 +18,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -293,6 +294,30 @@ class PaymentController extends Controller
     {
         $this->authorizePayment($payment);
 
+        // One bill at a time per fee: two quick submits (double click, two
+        // tabs) must not both open a bill and orphan the first one (S1).
+        $lock = Cache::lock("pay:{$payment->id}", 15);
+        if (! $lock->get()) {
+            return redirect()->route('member.payments.review', $payment)
+                ->with('error', 'member.try_again');
+        }
+
+        try {
+            $fresh = $payment->fresh();
+            if (! $fresh) {
+                // Deleted by an admin while the member was on the review page.
+                return redirect()->route('member.dashboard')->with('error', 'member.try_again');
+            }
+
+            return $this->openBill($fresh);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /** pay() under the per-fee lock, on a freshly read row. */
+    private function openBill(Payment $payment)
+    {
         if ($payment->status === 'paid') {
             return redirect()->route('member.payments.invoice', $payment)
                 ->with('error', 'member.already_paid');
@@ -313,8 +338,8 @@ class PaymentController extends Controller
         }
 
         // Reuse the bill already opened at this gateway instead of creating a
-        // second one: a new bill_code would orphan the first, and a payment
-        // made against the orphan would never be matched by the webhook.
+        // second one. A replaced bill stays in payment_bills, so a late payment
+        // against it is still matched by the webhook.
         if ($url = $this->openBillFor($payment, $gateway)) {
             return Inertia::location($url);
         }
@@ -353,17 +378,29 @@ class PaymentController extends Controller
         // bill_amount is the fee amount; the fee mode is stored alongside so the
         // bill is reused only while amount, gateway and fee mode all still match,
         // and so the dashboard can total the fees the club absorbed.
-        $payment->update([
-            'bill_code' => $result->billCode,
-            'bill_amount' => $payment->amount,
-            'bill_fee_payer' => $fee->payer,
-            'bill_fee_sen' => $fee->feeSen,
-            'reference' => $refNo,
-            'gateway' => $result->gateway,
-        ]);
+        DB::transaction(function () use ($payment, $result, $fee, $refNo) {
+            $payment->bills()->whereNull('superseded_at')->update(['superseded_at' => now()]);
+            $payment->bills()->create([
+                'gateway' => $result->gateway,
+                'bill_code' => $result->billCode,
+                'reference' => $refNo,
+                'amount_sen' => $payment->amountSen(),
+                'fee_payer' => $fee->payer,
+                'fee_sen' => $fee->feeSen,
+            ]);
+            $payment->update([
+                'bill_code' => $result->billCode,
+                'bill_amount' => $payment->amount,
+                'bill_fee_payer' => $fee->payer,
+                'bill_fee_sen' => $fee->feeSen,
+                'reference' => $refNo,
+                'gateway' => $result->gateway,
+            ]);
+        });
 
         // An earlier bill (other gateway, or a different amount) is superseded:
-        // record it so a late payment against it can be reconciled by hand.
+        // it stays in payment_bills, so a late payment against it still settles
+        // (or is flagged when the amount is wrong).
         if (! empty($old['bill_code'])) {
             AuditService::log(
                 'payment.bill_replaced',

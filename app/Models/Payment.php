@@ -55,6 +55,20 @@ class Payment extends Model
                 $payment->bill_fee_sen = null;
             }
         });
+
+        // A dropped bill stays payable at the gateway: keep it on record as
+        // superseded so a late payment against it is still matched (S1).
+        static::saved(function (Payment $payment) {
+            if ($payment->wasChanged('bill_code') && $payment->bill_code === null) {
+                $payment->bills()->whereNull('superseded_at')->update(['superseded_at' => now()]);
+            }
+        });
+    }
+
+    /** Fee amount in sen. */
+    public function amountSen(): int
+    {
+        return (int) round(((float) $this->amount) * 100);
     }
 
     /** Slips are frozen while being checked and once the fee is paid. */
@@ -86,6 +100,12 @@ class Payment extends Model
     {
         return $this->bill_amount === null
             || (int) round(((float) $this->bill_amount) * 100) === (int) round(((float) $this->amount) * 100);
+    }
+
+    /** Every gateway bill opened for this fee, the current one included. */
+    public function bills()
+    {
+        return $this->hasMany(PaymentBill::class);
     }
 
     public function club()
