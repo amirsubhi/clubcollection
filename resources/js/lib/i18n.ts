@@ -221,6 +221,16 @@ const dict = {
   flash_no_fee_rate: { bm: "Tiada kadar yuran ditetapkan untuk tahap jawatan anda.", en: "No fee rate is set for your job level." },
   flash_period_exists: { bm: "Rekod bayaran untuk tempoh ini sudah wujud.", en: "A payment record already exists for this period." },
   flash_future_created: { bm: "Invois baharu dicipta. Teruskan untuk membayar.", en: "New invoice created. Continue to pay." },
+  installTitle: { bm: "Pasang di skrin utama", en: "Add to home screen" },
+  installBody: {
+    bm: "Buka Club Portal terus dari skrin telefon anda, seperti aplikasi.",
+    en: "Open Club Portal straight from your phone's home screen, like an app.",
+  },
+  installAction: { bm: "Pasang", en: "Install" },
+  installIosStep1: { bm: "Tekan butang Kongsi", en: "Tap the Share button" },
+  installIosStep2: { bm: "Pilih “Tambah ke Skrin Utama”", en: "Choose “Add to Home Screen”" },
+  installLater: { bm: "Bukan sekarang", en: "Not now" },
+  installClose: { bm: "Tutup cadangan pasang", en: "Close install suggestion" },
 } as const;
 
 export type DictKey = keyof typeof dict;

@@ -73,6 +73,9 @@ class SecurityHeaders
             'font-src '.implode(' ', $fontSrc),
             "img-src 'self' data: https:",
             'connect-src '.implode(' ', $connectSrc),
+            // PWA: the service worker (public/sw.js) and manifest are same-origin only.
+            "worker-src 'self'",
+            "manifest-src 'self'",
             "frame-ancestors 'self'",
             "form-action 'self' https://toyyibpay.com https://dev.toyyibpay.com https://www.billplz.com https://www.billplz-sandbox.com",
             "object-src 'none'",

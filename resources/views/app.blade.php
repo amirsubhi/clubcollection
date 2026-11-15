@@ -7,6 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- Read by the Vite dev client and by app.tsx (Radix scroll-lock styles) so injected <style> tags carry the CSP nonce. --}}
     <meta property="csp-nonce" nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+    @include('partials.pwa-head')
     <title inertia>{{ config('app.name', 'Club Portal') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

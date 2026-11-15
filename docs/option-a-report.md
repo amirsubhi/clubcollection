@@ -70,3 +70,20 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - Tell admins not to type personal data in description/return/void reason (these reach the audit log and ledger).
 - Deferred as planned: welfare purge command, void notifications, `backup:run`, `account_id` (PR2).
 - Super admins are not counted in the "needs second approver" banner.
+
+## A4 — Installable web app (PWA)
+
+**Built:** Still the same browser website, now installable ("Add to Home Screen"): web manifest, icons (192, 512, maskable, apple-touch), a minimal service worker that caches only `/build/assets/*` and `/icons/*` (plus the offline page and its icon), an offline fallback page (BM + EN) for failed top-level page loads, and an install tip on member Home (Android button, iOS Share instructions; dismissible, hidden when installed). CSP gains `worker-src 'self'` and `manifest-src 'self'`. `.htaccess` serves `sw.js` and the manifest with `no-cache`. `docs/RELEASE.md` covers the cache version bump and how to remove the service worker.
+
+**Checker:** no blockers or majors. Verified in production mode that no HTML, Inertia JSON, attachment or payment response is ever cached, logged-out start URL goes to login, switching users shows no stale data, and a cache version bump replaces old caches. Minors fixed: offline icon precached, cache writes awaited, orientation lock removed, prompt also on the no-clubs screen, iOS Chrome/Edge get Share instructions.
+
+**Fable verdict:** GO.
+
+**Follow-ups (non-blocking):**
+- Test on a real iPhone: an installed app has separate cookies from Safari, so a bank/FPX return may land in Safari logged out (the webhook still records the payment).
+- After a deploy, keep the previous build's `public/build/assets` for one release (or reload on chunk-load error) so open tabs don't hit missing chunks.
+- `/icons/*` isn't content-hashed; changing an icon needs a `CACHE_VERSION` bump.
+- `start_url` is `/my/dashboard` — make sure admin-only users are redirected sensibly.
+- Hide the install tip inside WhatsApp/Facebook in-app browsers on iOS (no Add to Home Screen there).
+- Absolute paths assume the app is at the domain root, not a cPanel subfolder.
+- bfcache shows the old page on Back after logout (pre-existing): send `no-store` on authenticated pages or reload on `pageshow`.

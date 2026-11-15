@@ -5,6 +5,7 @@ import { createInertiaApp } from "@inertiajs/react";
 import { setNonce } from "get-nonce";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LangContext, type Lang } from "@/lib/i18n";
+import { captureInstallPrompt, registerServiceWorker } from "@/lib/pwa";
 import { readPref, writePref } from "@/lib/storage";
 import { bootTheme, ThemeProvider } from "@/lib/theme";
 
@@ -15,6 +16,10 @@ if (nonce) setNonce(nonce);
 
 // Apply the saved theme (system / light / dark via data-theme on <html>) before the first render.
 bootTheme();
+
+// PWA: service worker (production + secure origin only) and the Chrome install event for the member home prompt.
+registerServiceWorker();
+captureInstallPrompt();
 
 /** Laravel locale ("ms", "en", ...) to the UI language; a saved choice wins. */
 function initialLang(locale: unknown): Lang {

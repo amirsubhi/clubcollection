@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, ChevronRight, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
+import { InstallPrompt } from "@/components/app/InstallPrompt";
 import { FlashBanner, PaymentRow, SectionCard, toSlices } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { CategoryBar } from "@/components/app/CategoryBar";
@@ -176,10 +177,14 @@ export default function Home({ year, outstanding, upcoming, recentPaid, clubs, d
       <FlashBanner />
 
       {clubs.length === 0 ? (
-        <p className="rounded-[20px] border bg-card p-5 text-center text-base text-muted-foreground">{t("noClubs")}</p>
+        <>
+          <p className="rounded-[20px] border bg-card p-5 text-center text-base text-muted-foreground">{t("noClubs")}</p>
+          <InstallPrompt />
+        </>
       ) : (
         <>
           <Hero outstanding={outstanding} next={upcoming[0]} />
+          <InstallPrompt />
 
           <SectionCard
             id="up-h"
