@@ -70,7 +70,7 @@ money is hard to reach if the treasurer leaves or is unavailable). Moving to a s
 
 ## Nota teknikal / Technical note
 
-- ToyyibPay `billChargeToCustomer` mapping used by the app: club absorbs → blank, member pays → `'0'` (our reading of
+- ToyyibPay `billChargeToCustomer` mapping used by the app: club absorbs → `1` (the value used before P1, kept until verified), member pays → `'0'` (our reading of
   the API docs: FPX charge to the customer). **Not yet verified**; the "member pays" option stays disabled for ToyyibPay
   clubs until the sandbox confirms it and `TOYYIBPAY_CHARGE_VERIFIED=true` is set. The app never adds the fee to a ToyyibPay bill amount, so members are not charged twice.
 - Billplz has no such option, so when members pay the charge the app adds it to the Billplz bill amount.
