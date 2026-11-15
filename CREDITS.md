@@ -1,142 +1,158 @@
-# Third-Party Credits & Notices
+# Credits and third-party notices
 
-This project uses third-party libraries and components. Their licenses and copyright notices are listed below.
+Club Portal is built on open-source software and published research. This file lists the direct dependencies with
+their licences and copyright holders, the design and code it learned from, and the notices their licences ask for.
 
----
-
-## PHP / Composer Packages
-
-### Laravel Framework
-- **Package:** `laravel/framework`
-- **License:** MIT
-- **Copyright:** Copyright (c) Taylor Otwell
-- **Source:** https://github.com/laravel/framework
-
-### Laravel Tinker
-- **Package:** `laravel/tinker`
-- **License:** MIT
-- **Copyright:** Copyright (c) Taylor Otwell
-- **Source:** https://github.com/laravel/tinker
-
-### Laravel UI
-- **Package:** `laravel/ui`
-- **License:** MIT
-- **Copyright:** Copyright (c) Taylor Otwell
-- **Source:** https://github.com/laravel/ui
-
-### barryvdh/laravel-dompdf
-- **Package:** `barryvdh/laravel-dompdf`
-- **License:** MIT
-- **Copyright:** Copyright (c) 2021 barryvdh
-- **Source:** https://github.com/barryvdh/laravel-dompdf
-
-### dompdf/dompdf
-- **Package:** `dompdf/dompdf`
-- **License:** GNU Lesser General Public License v2.1 (LGPL-2.1)
-- **Source:** https://github.com/dompdf/dompdf
-
-> This library is used as an unmodified, dynamically linked component via Composer.
-> The LGPL-2.1 license text is available in `vendor/dompdf/dompdf/LICENSE.LGPL`.
-> The full source code for dompdf is available at the link above.
-
-### dompdf/php-font-lib
-- **Package:** `dompdf/php-font-lib`
-- **License:** GNU Lesser General Public License v2.1 or later (LGPL-2.1-or-later)
-- **Source:** https://github.com/dompdf/php-font-lib
-
-> This library is used as an unmodified, dynamically linked component via Composer.
-> The LGPL-2.1 license text is available in `vendor/dompdf/php-font-lib/LICENSE`.
-> The full source code is available at the link above.
-
-### dompdf/php-svg-lib
-- **Package:** `dompdf/php-svg-lib`
-- **License:** GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
-- **Source:** https://github.com/dompdf/php-svg-lib
-
-> This library is used as an unmodified, dynamically linked component via Composer.
-> The LGPL-3.0 license text is available in `vendor/dompdf/php-svg-lib/LICENSE`.
-> The full source code is available at the link above.
-
-### pragmarx/google2fa
-- **Package:** `pragmarx/google2fa`
-- **License:** MIT
-- **Copyright:** Copyright 2014-2018 Phil, Antonio Carlos Ribeiro and All Contributors
-- **Source:** https://github.com/antonioribeiro/google2fa
-
-### bacon/bacon-qr-code
-- **Package:** `bacon/bacon-qr-code`
-- **License:** BSD 2-Clause ("Simplified BSD License")
-- **Copyright:** Copyright (c) 2017-present, Ben Scholzen 'DASPRiD'
-- **Source:** https://github.com/Bacon/BaconQrCode
-
-### GuzzleHTTP
-- **Package:** `guzzlehttp/guzzle`
-- **License:** MIT
-- **Copyright:** Copyright (c) 2011 Michael Dowling and contributors
-- **Source:** https://github.com/guzzle/guzzle
-
-### Inertia.js Laravel adapter
-- **Package:** `inertiajs/inertia-laravel`
-- **License:** MIT
-- **Source:** https://github.com/inertiajs/inertia-laravel
+- **Every shipped package** (direct and indirect, with versions): [docs/THIRD-PARTY-LICENSES.md](docs/THIRD-PARTY-LICENSES.md).
+  It is generated from `composer.lock` and `package-lock.json`; regenerate it after any dependency change with
+  `npm run licenses` (or `node scripts/licenses.mjs`) and commit the result.
+- **Full licence texts** of every shipped package are collected by the same script into the
+  [licence texts section](docs/THIRD-PARTY-LICENSES.md#licence-texts) and into [`public/licenses.txt`](public/licenses.txt),
+  which is committed and uploaded with every release, so a deployed site serves them at `/licenses.txt`.
 
 ---
 
-## Frontend (npm, bundled into `public/build` by Vite)
+## PHP (Composer, `composer.json`)
 
-| Package | License | Source |
-|---|---|---|
-| `react`, `react-dom` | MIT | https://github.com/facebook/react |
-| `@inertiajs/react` | MIT | https://github.com/inertiajs/inertia |
-| `tailwindcss` (build time) | MIT | https://github.com/tailwindlabs/tailwindcss |
-| `recharts` | MIT | https://github.com/recharts/recharts |
-| `@radix-ui/react-*` (checkbox, dialog, dropdown-menu, select, slot, tabs, tooltip) | MIT | https://github.com/radix-ui/primitives |
-| `lucide-react` | ISC | https://github.com/lucide-icons/lucide |
-| `clsx` | MIT | https://github.com/lukeed/clsx |
-| `tailwind-merge` | MIT | https://github.com/dcastil/tailwind-merge |
-| `class-variance-authority` | Apache-2.0 | https://github.com/joe-bell/cva |
-| `get-nonce` | MIT | https://github.com/theKashey/get-nonce |
-| `vite`, `laravel-vite-plugin`, `@vitejs/plugin-react`, `typescript`, `postcss`, `autoprefixer` (build time only) | MIT / Apache-2.0 (TypeScript) | https://vite.dev |
+Installed into `vendor/` by `composer install --no-dev`. Versions are the ones in `composer.lock`.
 
-Their transitive dependencies are listed in `package-lock.json`; licence texts ship in `node_modules/*/LICENSE`.
+| Package | Version | Licence | Copyright | Source |
+|---|---|---|---|---|
+| `laravel/framework` | 13.1.1 | MIT | Taylor Otwell | https://github.com/laravel/framework |
+| `laravel/tinker` | 3.0.0 | MIT | Taylor Otwell | https://github.com/laravel/tinker |
+| `laravel/ui` | 4.6.3 | MIT | Taylor Otwell | https://github.com/laravel/ui |
+| `inertiajs/inertia-laravel` | 2.0.28 | MIT | Jonathan Reinink | https://github.com/inertiajs/inertia-laravel |
+| `barryvdh/laravel-dompdf` | 3.1.2 | MIT | 2021 barryvdh (Barry vd. Heuvel) | https://github.com/barryvdh/laravel-dompdf |
+| `pragmarx/google2fa` | 8.0.3 | MIT | 2014-2018 Phil, Antonio Carlos Ribeiro and all contributors | https://github.com/antonioribeiro/google2fa |
+| `bacon/bacon-qr-code` | 3.0.4 | BSD-2-Clause | 2017-present Ben Scholzen 'DASPRiD' | https://github.com/Bacon/BaconQrCode |
 
-### Fonts (Google Fonts)
-- **Bricolage Grotesque, Plus Jakarta Sans, JetBrains Mono** — SIL Open Font License 1.1, loaded from fonts.googleapis.com.
+Notable indirect PHP packages:
+
+| Package | Version | Licence | Why it is here | Source |
+|---|---|---|---|---|
+| `dompdf/dompdf` | 3.1.5 | LGPL-2.1 | PDF engine behind `barryvdh/laravel-dompdf` (ledger PDF) | https://github.com/dompdf/dompdf |
+| `dompdf/php-font-lib` | 1.0.2 | LGPL-2.1-or-later | used by dompdf | https://github.com/dompdf/php-font-lib |
+| `dompdf/php-svg-lib` | 1.0.2 | LGPL-3.0-or-later | used by dompdf | https://github.com/dompdf/php-svg-lib |
+| `guzzlehttp/guzzle` | 7.10.0 | MIT (2011 Michael Dowling and other contributors) | Laravel's HTTP client, used to call ToyyibPay and Billplz | https://github.com/guzzle/guzzle |
+
+The ledger PDF uses the **DejaVu Sans** and **DejaVu Sans Mono** fonts that ship inside dompdf
+(`vendor/dompdf/dompdf/lib/fonts/`). They are free fonts under the DejaVu fonts licence (based on the Bitstream Vera
+licence): https://dejavu-fonts.github.io/License.html
+
+### LGPL notes
+
+`dompdf/dompdf`, `dompdf/php-font-lib` and `dompdf/php-svg-lib` are licensed under the GNU Lesser General Public
+License (v2.1, v2.1 or later, and v3.0 or later). This project complies as follows:
+
+1. **No modifications:** the libraries are used as published, with no changes to their source code.
+2. **Separate packages:** they are installed by Composer as separate packages in `vendor/` and loaded at run time,
+   not merged into this project's code.
+3. **Source available:** the complete source of each library is public at the links above, and `composer install`
+   fetches exactly the versions in `composer.lock`.
+4. **Licence texts:** the full LGPL texts ship with the libraries (`vendor/dompdf/dompdf/LICENSE.LGPL`,
+   `vendor/dompdf/php-font-lib/LICENSE`, `vendor/dompdf/php-svg-lib/LICENSE`).
+
+Anyone can replace these libraries with a modified version by changing `composer.json` / `composer.lock`.
 
 ---
 
-## Frontend (CDN)
+## JavaScript (npm, `package.json`)
 
-### Bootstrap
-- **Version used:** 5.3
-- **License:** MIT
-- **Copyright:** Copyright (c) 2011–2024 The Bootstrap Authors
-- **Source:** https://github.com/twbs/bootstrap
+### Bundled into `public/build` by Vite
 
-### Bootstrap Icons
-- **Version used:** 1.x
-- **License:** MIT
-- **Copyright:** Copyright (c) 2019–2024 The Bootstrap Authors
-- **Source:** https://github.com/twbs/icons
+Versions are the ones in `package-lock.json`.
 
-### Chart.js
-- **Version used:** 4.4
-- **License:** MIT
-- **Copyright:** Copyright (c) 2014–2024 Chart.js Contributors
-- **Source:** https://github.com/chartjs/Chart.js
+| Package | Version | Licence | Copyright | Source |
+|---|---|---|---|---|
+| `react`, `react-dom` | 18.3.1 | MIT | Facebook, Inc. and its affiliates | https://github.com/facebook/react |
+| `@inertiajs/react` | 2.3.29 | MIT | Jonathan Reinink | https://github.com/inertiajs/inertia |
+| `@radix-ui/react-checkbox`, `-dialog`, `-dropdown-menu`, `-select`, `-slot`, `-tabs`, `-tooltip` | 1.x / 2.x | MIT | 2022 WorkOS | https://github.com/radix-ui/primitives |
+| `recharts` | 2.15.4 | MIT | 2015-present recharts | https://github.com/recharts/recharts |
+| `lucide-react` | 1.73.0 | ISC (icons derived from Feather: MIT, 2013-present Cole Bemis) | Lucide Icons and Contributors | https://github.com/lucide-icons/lucide |
+| `class-variance-authority` | 0.7.1 | Apache-2.0 | 2022 Joe Bell | https://github.com/joe-bell/cva |
+| `clsx` | 2.1.1 | MIT | Luke Edwards | https://github.com/lukeed/clsx |
+| `tailwind-merge` | 3.7.0 | MIT | 2021 Dany Castillo | https://github.com/dcastil/tailwind-merge |
+| `get-nonce` | 1.0.1 | MIT | 2020 Anton Korzunov | https://github.com/theKashey/get-nonce |
+
+`class-variance-authority` is under the Apache License 2.0; its full text, with all the others, is in
+`public/licenses.txt` (served at `/licenses.txt`).
+
+`@inertiajs/core` (pulled in by `@inertiajs/react`) bundles the page-load progress bar from
+**NProgress** (MIT, (c) 2013, 2014 Rico Sta. Cruz, https://github.com/rstacruz/nprogress).
+
+### Build tools (not shipped)
+
+Used only to build `public/build` on a developer machine or CI; none of them runs on the server.
+
+| Package | Licence | Copyright | Source |
+|---|---|---|---|
+| `vite` | MIT | 2019-present VoidZero Inc. and Vite contributors | https://github.com/vitejs/vite |
+| `@vitejs/plugin-react` | MIT | 2019-present Yuxi (Evan) You and Vite contributors | https://github.com/vitejs/vite-plugin-react |
+| `laravel-vite-plugin` | MIT | Taylor Otwell | https://github.com/laravel/vite-plugin |
+| `tailwindcss` | MIT | Tailwind Labs, Inc. | https://github.com/tailwindlabs/tailwindcss |
+| `postcss`, `autoprefixer` | MIT | 2013 Andrey Sitnik | https://github.com/postcss/postcss |
+| `typescript` | Apache-2.0 | Microsoft Corporation | https://github.com/microsoft/TypeScript |
+| `@types/node`, `@types/react`, `@types/react-dom` | MIT | Microsoft Corporation | https://github.com/DefinitelyTyped/DefinitelyTyped |
+
+Tailwind CSS does write some of its own CSS into the built stylesheet: its base styles ("Preflight"), which are
+built on **modern-normalize** (MIT, Sindre Sorhus, https://github.com/sindresorhus/modern-normalize). Both are MIT.
+
+### UI mockup (`mockup/package.json`)
+
+The design mockup in [`mockup/`](mockup/README.md) uses the same React, Radix UI, Recharts, Lucide, cva, clsx,
+tailwind-merge and build packages as above (same licences), plus `vite-plugin-singlefile` (MIT, 2021-present
+Richard S. Tallent, II, https://github.com/richardtallent/vite-plugin-singlefile) to build it as one HTML file. The
+mockup is not part of the app or its release.
 
 ---
 
-## LGPL Compliance Notes
+## Loaded from CDNs and font services
 
-Three packages in this project (`dompdf/dompdf`, `dompdf/php-font-lib`, `dompdf/php-svg-lib`)
-are licensed under the GNU Lesser General Public License (LGPL v2.1 or v3.0).
+The remaining Blade pages (login, installer and the classic admin pages) load these from jsDelivr. Versions are the
+ones pinned in `resources/views/layouts/*.blade.php`, `resources/views/install/index.blade.php` and the two Chart.js pages.
 
-This project complies with the LGPL as follows:
+| Library | Version | Licence | Copyright | Source |
+|---|---|---|---|---|
+| Bootstrap | 5.3.3 | MIT | 2011-2024 The Bootstrap Authors | https://github.com/twbs/bootstrap |
+| Bootstrap Icons | 1.11.3 | MIT | 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons |
+| Chart.js | 4.4.4 | MIT | 2014-2024 Chart.js Contributors | https://github.com/chartjs/Chart.js |
 
-1. **No modifications** — these libraries are used as-is with no modifications to their source code.
-2. **Dynamic linking** — they are included as separate Composer packages, not compiled into the application binary.
-3. **Source availability** — the complete and corresponding source code for each LGPL library is publicly available at the GitHub links listed above and can be obtained via `composer install`.
-4. **License notices** — the full LGPL license texts ship with the libraries under `vendor/dompdf/*/LICENSE*` and are reproduced here by reference.
+Chart.js draws the charts on the classic admin dashboard and the super admin's statistics page.
 
-Users who wish to obtain the source code for any LGPL component may do so by running `composer install` from this repository or by visiting the respective GitHub links above.
+**Fonts:** the React pages (`resources/views/app.blade.php`) load **Bricolage Grotesque**, **Plus Jakarta Sans** and
+**JetBrains Mono** from Google Fonts. All three are under the SIL Open Font License 1.1
+(https://openfontlicense.org). The Blade pages use Bootstrap's system font stack and load no text web fonts (only the Bootstrap Icons icon font).
+
+---
+
+## Design and code acknowledgements
+
+- **[shadcn/ui](https://github.com/shadcn-ui/ui)** (MIT, 2023 shadcn): the UI primitives in
+  `resources/js/components/ui/` (button, card, dialog, select, tabs, chart and the rest) are written in the shadcn/ui
+  style: Radix UI primitives styled with Tailwind, with variants built with `class-variance-authority` and a `cn()`
+  helper (`clsx` + `tailwind-merge`). The chart wrapper around Recharts follows shadcn/ui's chart pattern.
+- **[satnaing/shadcn-admin](https://github.com/satnaing/shadcn-admin)** (MIT): the admin shell's layout pattern
+  (collapsible sidebar, top bar, theme menu, data table with faceted filters) was modelled on it in the design mockup
+  and carried into the app (`resources/js/components/app/AdminShell.tsx` for the shell,
+  `resources/js/Pages/Admin/FundUsage/Index.tsx` for the faceted filters).
+- **[Inertia.js](https://inertiajs.com)** (MIT): the React pages are served by Laravel controllers through Inertia's
+  Laravel adapter and React client, so the app keeps Laravel's routing, auth and validation with no separate API.
+- **[Lucide](https://lucide.dev)** (ISC): the icons on the React pages.
+- **[Bootstrap](https://getbootstrap.com)** and **[Bootstrap Icons](https://icons.getbootstrap.com)** (MIT): the
+  remaining Blade pages.
+
+### UX research
+
+The member and admin redesign applied published usability guidance from the Nielsen Norman Group, the Baymard
+Institute, the W3C Web Content Accessibility Guidelines (WCAG 2.2), the GOV.UK Design System, Material Design,
+Apple's Human Interface Guidelines and others. Every rule and its source is listed in
+[mockup/RESEARCH.md](mockup/RESEARCH.md).
+
+---
+
+## Trademarks
+
+ToyyibPay, Billplz, FPX, DuitNow and PayNet, Laravel, Inertia, React, Tailwind CSS, Bootstrap, Google Fonts, cPanel,
+GitHub and the other product names mentioned in this project are trademarks or registered trademarks of their
+respective owners (FPX and DuitNow belong to Payments Network Malaysia Sdn Bhd, PayNet). They are used only to
+describe what the software works with. This project is not affiliated with, sponsored by or endorsed by any of them.

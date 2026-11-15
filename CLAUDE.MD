@@ -9,7 +9,8 @@ the code, trust the code and fix this file.
 Billplz, chosen per club) or by free bank / DuitNow transfer with a slip that an admin verifies. Admins record
 spending ("Fund Usage": expenses and welfare cases) with documents and two-person approval. Also: installer, TOTP
 2FA, roles, CSV member import, ledger with CSV/PDF export, audit log, installable PWA. Deployed on cPanel (PHP only,
-prebuilt assets). User-facing docs: `README.md`, `docs/USER-GUIDE.md`, `docs/RELEASE.md`.
+prebuilt assets). User-facing docs: `README.md`, `docs/INSTALL.md` (first install), `docs/RELEASE.md` (build and
+upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/THIRD-PARTY-LICENSES.md`.
 
 ## Stack
 
@@ -40,9 +41,11 @@ app/Services/                  AuditService, AttachmentService, FundUsageService
 app/Support/                   presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                WebhookSecret, BillplzSignature, ...), Export/CsvSafe
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
-routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00
+routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 (app timezone UTC)
 database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSeeder (e2e fixtures)
 public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release)
+scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)
+mockup/                        standalone design mockup (sample data only; see mockup/README.md)
 tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.mjs (Playwright)
 ```
 
@@ -102,6 +105,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 | `php artisan db:seed` | demo data, local/testing only; super admin password from `SEED_SUPER_ADMIN_PASSWORD` or printed once |
 | `node tests/e2e/smoke.mjs` | browser smoke test; setup in `tests/e2e/README.md` |
 | `vendor/bin/pint` | code style (`pint.json`) |
+| `npm run licenses` | regenerate `docs/THIRD-PARTY-LICENSES.md` from the lockfiles (`scripts/licenses.mjs`); run after any dependency change |
 
 Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 
@@ -115,7 +119,7 @@ Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 
 ## Pitfalls
 
-- Migrations before v1.0 were edited in place (no live data); an old database needs `migrate:fresh`. From v1.0, additive only.
+- Until the first real production install (the next release tag) migrations are edited in place (no live data); an old database needs `migrate:fresh`. After that, additive only.
 - `CACHE_STORE` must not be `array` in production (pay lock, rate limits).
 - `bootstrap/app.php`'s `withMiddleware` callback runs before `.env` is loaded: never read `env()` there. Trusted proxies
   come from `config('app.trusted_proxies')` (`TRUSTED_PROXIES`) via `AppServiceProvider::configureTrustedProxies()`.
@@ -128,7 +132,5 @@ Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 - Surgical changes in the existing style; ask when a request has several sensible readings.
 - Before calling a task done: add or update tests, run `php artisan test`, and for front-end changes `npm run typecheck`
   and `npm run build`.
-
----
-
-Built by [@amirsubhi](https://github.com/amirsubhi), assisted by [Claude Code](https://claude.ai/code).
+- Keep the docs in step with the code: first-install facts live in `docs/INSTALL.md` (README and `docs/RELEASE.md`
+  only summarise or link to it); a new direct dependency also goes into `CREDITS.md`.

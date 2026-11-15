@@ -236,20 +236,21 @@ See [payment-options.md](payment-options.md) for a comparison of charges.
 
 ### Install the app
 
-1. Prepare the server as in [RELEASE.md](RELEASE.md) step 3: create `.env` with the app key, `APP_URL` and a random
-   `INSTALL_TOKEN` of at least 16 characters, then run `php artisan storage:link` and **`php artisan migrate --force`**
-   (without the tables `/install` shows a server error).
-2. Open `https://<your-domain>/install` straight after the upload. **Club Portal Setup** checks PHP, SQLite and that
-   `storage/` and `.env` are writable.
-3. Enter the **INSTALL_TOKEN from your .env**, the application name and URL (the exact `https://` address members will
+The full first-install steps (server requirements, `.env`, `migrate --force`, email, cron, upload limits, MySQL,
+backups and troubleshooting) are in [INSTALL.md](INSTALL.md). The installer itself works like this:
+
+1. With `.env` ready and `php artisan migrate --force` done ([INSTALL.md steps 5–6](INSTALL.md#step-5-create-env)),
+   open `https://<your-domain>/install`. **Club Portal Setup** checks PHP, SQLite and that `storage/` and `.env` are
+   writable.
+2. Enter the **INSTALL_TOKEN from your .env**, the application name and URL (the exact `https://` address members will
    use), and the super admin's name, email and a strong password (12+ characters with upper and lower case, numbers
    and symbols).
-4. **Install Application** runs the migrations, creates the super admin, writes production settings and blanks the
+3. **Install Application** runs the migrations, creates the super admin, writes production settings and blanks the
    token. The installer can't run again afterwards.
 
-Then turn on 2FA for your account, and follow [RELEASE.md](RELEASE.md) for the webhook secret, email settings,
-cron job and upload limits. The ToyyibPay webhook secret lives in `.env`; the Billplz X-Signature key goes in `.env`
-or per club (club settings).
+Then turn on 2FA for your account and finish the rest of [INSTALL.md](INSTALL.md#step-8-email-smtp) (email, webhook
+secret, upload limits, `config:cache`, cron). The ToyyibPay webhook secret lives in `.env`; the Billplz X-Signature
+key goes in `.env` or per club (club settings).
 
 ### Create a club
 

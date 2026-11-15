@@ -11,7 +11,7 @@ running `php artisan serve`:
    Submit for approval.
 3. **Admin B (checker):** opens the record → Approve with the conflict-of-interest declaration →
    the dashboard "Spent this year" goes up by exactly RM 12.34.
-4. **Second member (bank transfer):** Review & pay → "Pindahan DuitNow (tiada caj)" → the bank details and
+4. **Second member (bank transfer):** Review & pay → "Pindahan bank / DuitNow" → the bank details and
    the `YURAN-{id}` reference show → uploads a PNG slip → the invoice, review page and Home show
    **Menunggu pengesahan**.
 5. **Admin B (verifier):** Verifications page → Approve with a bank reference → "Recently handled" shows
@@ -25,7 +25,7 @@ gateway (that is how `Inertia::location` works).
 
 ## Requirements
 
-- PHP 8.3+, Composer dependencies installed, `npm ci && npm run build` done (the test uses the
+- PHP 8.4 (`composer.lock` requires it), Composer dependencies installed, `npm ci && npm run build` done (the test uses the
   production build in `public/build`, not the Vite dev server; delete `public/hot` if present).
 - Node 18+ with the `playwright` package resolvable (`require('playwright')`) and its Chromium installed.
   It is **not** a project dependency, so `npm ci` never downloads browsers. Install once with

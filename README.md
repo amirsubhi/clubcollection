@@ -7,6 +7,10 @@ free bank / DuitNow transfer with a slip, and get a receipt. Committee members r
 documents, and a second admin has to approve it before it counts. It runs on ordinary cPanel PHP hosting: no Node
 process on the server.
 
+**Status:** in active development and not yet live with real payments. Before using it for real money, work through
+the [before-go-live checklist](docs/option-a-report.md#before-go-live-checklist), starting with a ToyyibPay or
+Billplz sandbox run on your own host.
+
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/member-home.png" width="220" alt="Member home with the amount due"><br><sub>Member home</sub></td>
@@ -79,14 +83,16 @@ amounts in the screenshots are made up.
 
 ## Requirements
 
-- PHP **8.4** (`composer.lock` needs it) with PDO SQLite (the installer checks for `pdo_sqlite` even when the app
-  uses MySQL) plus your database's driver, and Composer.
-- Node 22 **only to build** the front end (`npm run build`). The server never runs Node.
+- PHP **8.4** with `pdo_sqlite` (the installer checks for it even when the app uses MySQL), your database's driver
+  and the usual Laravel extensions. `composer.json` still says `^8.3`, but `composer.lock` needs 8.4.
+- Composer and Node 22 **only to build** a release (`composer install`, `npm run build`). The server never runs Node.
+
+The full list, with the extensions and why each is needed, is in [docs/INSTALL.md](docs/INSTALL.md#1-what-you-need).
 
 ## Quick start (local development)
 
 ```bash
-git clone <repo-url> club-portal && cd club-portal
+git clone https://github.com/amirsubhi/clubcollection.git club-portal && cd club-portal
 composer install
 cp .env.example .env && php artisan key:generate
 touch database/database.sqlite
@@ -101,40 +107,30 @@ The demo seeder creates a super admin `superadmin@example.com` whose password is
 `.env`, or a random one it prints once. There is no well-known default password. It also creates a sample club with
 members, fees and Fund Usage records. It refuses to run unless `APP_ENV` is `local` or `testing`.
 
-`composer dev` runs the server, queue worker and log tail together.
+`composer dev` runs the server, queue listener and log tail together.
 
-## Deploying to cPanel (summary)
+## Installing on cPanel (summary)
 
-Full steps, the production `.env` block and PWA notes are in [docs/RELEASE.md](docs/RELEASE.md).
+**Follow [docs/INSTALL.md](docs/INSTALL.md) for a first install**: it has every step, the `.env` values, MySQL,
+backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md). In short:
 
-1. Build from a clean checkout, locally or in CI: `composer install --no-dev -o` and `npm ci && npm run build`.
-2. Upload the app with `vendor/` and `public/build/`. Don't upload `node_modules/`, `public/hot`, a local `.env`,
-   `database/*.sqlite` or `storage/app/.installed`. The web root must be the app's `public/` folder: point the
-   domain's document root at it, or upload the app outside `public_html` and symlink `public_html` to `public/`.
-   Then `chmod -R 775 storage bootstrap/cache`.
-3. Create the server's `.env`: copy `.env.example` to `.env`, run `php artisan key:generate`, and set
-   `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` (the exact `https://` address) and a random `INSTALL_TOKEN`
-   (16+ characters).
-4. Fill in the `MAIL_*` SMTP settings (e.g. a cPanel email account). **Without them no email goes out**, including the
-   welcome email with each new member's temporary password, receipts and slip rejections.
-5. Run `php artisan storage:link` (club logos need it) and **`php artisan migrate --force`**. The sessions and cache
-   live in the database, so `/install` returns a 500 error until the tables exist (with SQLite, this also creates
-   `database/database.sqlite`).
-6. Open `https://<your-domain>/install` straight away. The installer asks for the token, checks requirements (it needs
-   the `pdo_sqlite` PHP extension even if you use MySQL), creates the super admin, writes production settings and
-   blanks the token.
-7. Set `TOYYIBPAY_WEBHOOK_SECRET` to a random value of **at least 32 characters** (and `BILLPLZ_X_SIGNATURE_KEY` if you
-   use Billplz); without them every gateway callback is refused. Then run `php artisan config:cache`, and run it
-   again after **any** later `.env` change.
-8. Raise the PHP upload limits to `upload_max_filesize = 12M` and `post_max_size = 32M` (slips and documents are up to
-   10 MB each; 32M fits about 3 full-size documents per save, see RELEASE.md).
-9. Add a cron job (cPanel → Cron Jobs, every minute):
-   `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1`. It sends the overdue-fee reminders daily at
-   08:00. No queue worker is needed.
-10. Each release: `php artisan migrate --force`, cache config/routes/views, and bump `CACHE_VERSION` in `public/sw.js`.
+1. Build from a clean checkout: `composer install --no-dev -o` and `npm ci && npm run build`.
+2. Upload the app with `vendor/` and `public/build/` (not `node_modules/`, `public/hot`, a local `.env`,
+   `database/*.sqlite` or `storage/app/.installed`), point the domain's document root at `public/`, and
+   `chmod -R 775 storage bootstrap/cache`.
+3. Create `.env` (`key:generate`, `APP_ENV=production`, `APP_DEBUG=false`, the exact `https://` `APP_URL`, a random
+   `INSTALL_TOKEN` of 16+ characters), then `php artisan storage:link` and **`php artisan migrate --force`** (before
+   `/install`, which returns a 500 error until the tables exist).
+4. Open `https://<your-domain>/install` straight away: it asks for the token and creates the super admin.
+5. Set the `MAIL_*` SMTP settings (without them no email goes out), `TOYYIBPAY_WEBHOOK_SECRET` (32+ characters) and
+   `BILLPLZ_X_SIGNATURE_KEY` if you use Billplz, PHP `upload_max_filesize = 12M` / `post_max_size = 32M`, and
+   `TRUSTED_PROXIES` if your host has a proxy in front of PHP. Run `php artisan config:cache` after **any** `.env` change.
+6. Add a cron job every minute: `cd /path/to/app && php artisan schedule:run`. It sends the overdue-fee reminders
+   daily at 08:00 UTC (4 pm Malaysia time). No queue worker is needed.
 
-> **Before v1.0:** some columns were added by editing existing migrations, so an existing database from an earlier
-> build needs `php artisan migrate:fresh`. From v1.0, migrations will be additive only.
+> **Until the first real production install (the next release tag):** some columns were added by editing existing
+> migrations, so an existing database from an earlier build needs `php artisan migrate:fresh --force` (this deletes
+> all data). After that release, migrations will be additive only.
 
 ## Payments
 
@@ -163,10 +159,9 @@ Full steps, the production `.env` block and PWA notes are in [docs/RELEASE.md](d
 
 **You are responsible for securing your own deployment**: HTTPS only, `APP_DEBUG=false`, a backed-up `APP_KEY`
 (without it the stored documents can't be read), regular database and `storage/app/private` backups, and
-`TRUSTED_PROXIES` if your host puts a proxy in front of PHP. See [docs/RELEASE.md](docs/RELEASE.md).
+`TRUSTED_PROXIES` if your host puts a proxy in front of PHP. See [docs/INSTALL.md](docs/INSTALL.md#6-backups).
 
-To report a security vulnerability, use GitHub's private vulnerability reporting (the repository's **Security** tab →
-**Report a vulnerability**). Please don't open a public issue.
+To report a security vulnerability, please don't open a public issue: see [SECURITY.md](SECURITY.md).
 
 ## Testing
 
@@ -183,12 +178,16 @@ verification against a running server: see [tests/e2e/README.md](tests/e2e/READM
 
 | Document | What it covers |
 |---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | First install: requirements, local and cPanel steps, MySQL, backups, troubleshooting |
 | [docs/USER-GUIDE.md](docs/USER-GUIDE.md) | Task-based guide for members, treasurers / club admins and the super admin |
-| [docs/RELEASE.md](docs/RELEASE.md) | Release build, cPanel deploy, production `.env`, upload limits, PWA service worker |
+| [docs/RELEASE.md](docs/RELEASE.md) | Building a release, upgrading, production `.env`, upload limits, PWA service worker |
 | [docs/payment-options.md](docs/payment-options.md) | Gateway fees compared, recommendation for small clubs |
 | [docs/option-a-report.md](docs/option-a-report.md) | Build log, review findings and the before-go-live checklist |
 | [tests/e2e/README.md](tests/e2e/README.md) | Running the end-to-end smoke test |
 | [CHANGELOG.md](CHANGELOG.md) | Changes by release |
+| [SECURITY.md](SECURITY.md) | Reporting a vulnerability, supported versions, security model |
+| [CREDITS.md](CREDITS.md), [docs/THIRD-PARTY-LICENSES.md](docs/THIRD-PARTY-LICENSES.md) | Licences, copyright notices and acknowledgements |
+| [mockup/README.md](mockup/README.md) | The design mockup the React pages were built from |
 
 ## Disclaimer
 
@@ -205,29 +204,23 @@ By deploying this software, you agree that you are solely responsible for securi
 
 This disclaimer does not override any rights you may have under the MIT License.
 
-## License
+## Licence
 
-Licensed under the [MIT License](LICENSE).
+Licensed under the [MIT License](LICENSE). Copyright (c) 2026 Amir Subhi and clubcollection contributors.
 
-## Third-Party Credits
+## Credits
 
-This project builds on open-source libraries. See [CREDITS.md](CREDITS.md) for the direct dependencies (PHP and front end), their licenses, and copyright notices.
+Club Portal builds on open-source work: Laravel, Inertia, React, Radix UI, Tailwind CSS, Recharts, Lucide, dompdf,
+Bootstrap, Chart.js and many smaller packages, with UI primitives in the style of shadcn/ui and an admin layout
+modelled on shadcn-admin. [CREDITS.md](CREDITS.md) lists the direct dependencies with their licences and copyright
+holders, the LGPL notes for dompdf, the design acknowledgements and the trademarks notice;
+[docs/THIRD-PARTY-LICENSES.md](docs/THIRD-PARTY-LICENSES.md) lists every shipped package, and their full licence
+texts are served by every install at `/licenses.txt` ([public/licenses.txt](public/licenses.txt)).
 
-Notable licenses in use:
-
-| Package(s) | License |
-|---|---|
-| Laravel, laravel/ui, laravel/tinker, barryvdh/laravel-dompdf, pragmarx/google2fa, guzzlehttp/guzzle | MIT |
-| bacon/bacon-qr-code | BSD-2-Clause |
-| dompdf/dompdf, dompdf/php-font-lib | LGPL-2.1 |
-| dompdf/php-svg-lib | LGPL-3.0 |
-| Bootstrap, Bootstrap Icons, Chart.js (CDN) | MIT |
-| React, Inertia, Tailwind CSS, Recharts, Radix UI, Vite | MIT |
-| lucide-react | ISC |
-| class-variance-authority | Apache-2.0 |
-
-The LGPL-licensed dompdf packages are used unmodified as separate Composer packages. Their complete source code is publicly available and linked in CREDITS.md.
+Most packages are MIT. The exceptions worth knowing: `dompdf/dompdf` (LGPL-2.1), `dompdf/php-font-lib`
+(LGPL-2.1 or later) and `dompdf/php-svg-lib` (LGPL-3.0 or later), used unmodified as separate Composer packages; `bacon/bacon-qr-code` (BSD-2-Clause);
+`lucide-react` (ISC); `class-variance-authority` (Apache-2.0).
 
 ---
 
-Built by [@amirsubhi](https://github.com/amirsubhi), assisted by [Claude Code](https://claude.ai/code).
+Built by [@amirsubhi](https://github.com/amirsubhi).
