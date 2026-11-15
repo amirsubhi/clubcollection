@@ -19,7 +19,7 @@ class PayRouteSelectsGatewayTest extends TestCase
     {
         config([
             'toyyibpay.base_url' => 'https://dev.toyyibpay.com',
-            'toyyibpay.webhook_secret' => 'secret',
+            'toyyibpay.webhook_secret' => self::TOYYIB_SECRET,
         ]);
         Http::fake([
             'dev.toyyibpay.com/index.php/api/createBill' => Http::response([

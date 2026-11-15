@@ -24,11 +24,18 @@ class SendOverdueReminders extends Command
             ->where('status', 'pending')
             ->where('due_date', '<', now()->toDateString())
             ->chunkById(200, function ($chunk) use (&$sent, &$marked) {
-                $ids = $chunk->modelKeys();
-                Payment::whereIn('id', $ids)->update(['status' => 'overdue']);
-                $marked += count($ids);
-
                 foreach ($chunk as $payment) {
+                    // Re-check the status in the update itself: a webhook or an
+                    // admin may have settled the fee since the chunk was read,
+                    // and a paid fee must never be turned back into overdue (S1).
+                    $updated = Payment::whereKey($payment->id)
+                        ->where('status', 'pending')
+                        ->update(['status' => 'overdue']);
+                    if ($updated === 0) {
+                        continue;
+                    }
+                    $marked++;
+
                     // Audit the state change so the schedule's writes are
                     // attributable in the audit log (system actor).
                     AuditService::log(

@@ -14,25 +14,36 @@ use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
+    public static function allowedIn(string $environment): bool
+    {
+        return in_array($environment, ['local', 'testing'], true);
+    }
+
     public function run(): void
     {
-        // Production guard — the demo super-admin password 'Admin@123' is well
-        // known. Refuse to create it in a production environment to prevent an
-        // accidental `php artisan db:seed` from silently provisioning a public
-        // admin account. Use the install wizard or seed manually instead.
-        if (app()->environment('production')) {
+        // Demo data only (S1): the seeder provisions a super admin and sample
+        // people, so it refuses anywhere but local development and tests (an
+        // accidental `php artisan db:seed` on a server must never create an
+        // admin account). Use the install wizard there instead.
+        if (! self::allowedIn((string) app()->environment())) {
             $this->command?->warn(
-                'DatabaseSeeder skipped in production. Use the install wizard '.
-                'or create a super admin manually with a strong password.'
+                'DatabaseSeeder refused: it only runs when APP_ENV is local or testing. '.
+                'Use the install wizard to create the super admin.'
             );
             return;
         }
 
-        // Super Admin
+        // Demo super admin: SEED_SUPER_ADMIN_PASSWORD when set, otherwise a
+        // random password printed once. There is no well-known default.
+        $password = (string) env('SEED_SUPER_ADMIN_PASSWORD', '');
+        if ($password === '') {
+            $password = Str::password(20, symbols: false);
+            $this->command?->info("Demo super admin: superadmin@clubportal.com / {$password} (shown once; local only)");
+        }
         User::create([
             'name'     => 'Super Admin',
             'email'    => 'superadmin@clubportal.com',
-            'password' => Hash::make('Admin@123'),
+            'password' => Hash::make($password),
             'role'     => 'super_admin',
         ]);
 
@@ -41,6 +52,11 @@ class DatabaseSeeder extends Seeder
             'name'      => 'Recreation Club',
             'email'     => 'recreation@company.com',
             'is_active' => true,
+            // Sample (not real) details so members see the bank-transfer option.
+            'transfer_enabled'  => true,
+            'bank_name'         => 'Bank Contoh',
+            'bank_account_name' => 'Kelab Contoh',
+            'bank_account_no'   => '1234 5678 9012',
         ]);
 
         // Default fee rates

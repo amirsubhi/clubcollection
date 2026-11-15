@@ -1,4 +1,4 @@
-import { Lock, Printer } from "lucide-react";
+import { Hourglass, Lock, Printer } from "lucide-react";
 import { Head, Link } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
@@ -44,7 +44,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             receiptNo: receipt.receiptNo,
             amount: receipt.amount,
             paidAt: receipt.paidAt,
-            method: receipt.gateway ? "FPX" : t("recordedByTreasurer"),
+            method: receipt.method === "gateway" ? "FPX" : receipt.method === "transfer" ? t("methodTransferReceipt") : t("recordedByTreasurer"),
             bank: receipt.gateway ?? undefined,
             fpxTxn: receipt.transactionId ?? undefined,
             gatewayRef: receipt.reference ?? undefined,
@@ -66,7 +66,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             <div className="text-sm text-muted-foreground">{payClub.name}</div>
             <div className="font-mono text-lg">{payment.invoiceNo}</div>
           </div>
-          <PaymentStatusBadge status={payment.status} label={t(statusLabelKey(payment.status))} size="sm" />
+          <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))} size="sm" />
         </div>
         <dl className="grid grid-cols-2 gap-3 text-base">
           <div className="min-w-0">
@@ -125,7 +125,21 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
           </tfoot>
         </table>
       </section>
-      {payment.urls.review && (
+      {payment.status === "verifying" && payment.urls.review && (
+        <section aria-labelledby="inv-vf" className="flex items-start gap-3 rounded-[20px] bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30 print:hidden" data-testid="invoice-verifying">
+          <Hourglass className="mt-0.5 h-6 w-6 shrink-0" strokeWidth={1.75} aria-hidden />
+          <div className="min-w-0">
+            <h2 id="inv-vf" className="text-base font-semibold">
+              {t("verifyingTitle")}
+            </h2>
+            <p className="text-base">{t("verifyingBody")}</p>
+            <Link href={payment.urls.review} className="mt-1 inline-flex min-h-11 items-center text-base font-semibold text-primary underline-offset-4 hover:underline">
+              {t("yourSlips")}
+            </Link>
+          </div>
+        </section>
+      )}
+      {payment.urls.review && payment.status !== "verifying" && (
         <Button asChild size="xl" className="w-full rounded-full text-lg print:hidden">
           <Link href={payment.urls.review}>
             <Lock aria-hidden /> {t("reviewPay")} {rm(payment.amount)}

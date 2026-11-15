@@ -29,7 +29,7 @@ class GatewayFeeTest extends TestCase
         Mail::fake();
         config([
             'toyyibpay.base_url' => 'https://dev.toyyibpay.com',
-            'toyyibpay.webhook_secret' => 'toyyib-webhook-secret',
+            'toyyibpay.webhook_secret' => self::TOYYIB_SECRET,
             'billplz.base_url' => 'https://www.billplz-sandbox.com',
             // These tests exercise "member pays" on ToyyibPay as if the sandbox had confirmed it.
             'toyyibpay.charge_to_customer_verified' => true,
@@ -255,16 +255,17 @@ class GatewayFeeTest extends TestCase
         $club = $this->club('toyyibpay', 'member', 100);
         $member = User::factory()->create();
         $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
-        $url = route('webhook.toyyibpay').'?webhook_token=toyyib-webhook-secret';
+        $this->fakeToyyibConfirm();
 
         $cases = [['11.00', 'paid'], ['10.00', 'paid'], ['9.99', 'pending']];
         foreach ($cases as $i => [$paid, $expected]) {
             $p = Payment::factory()->forClub($club)->forMember($member)->pending()->create([
                 'amount' => 10.00,
                 'period_start' => now()->addMonthsNoOverflow($i + 1)->startOfMonth()->toDateString(),
-                'bill_code' => "TB-{$i}", 'bill_amount' => 10.00, 'bill_fee_payer' => 'member', 'bill_fee_sen' => 100, 'gateway' => 'toyyibpay',
+                'bill_code' => "TB-{$i}", 'reference' => "REF-TB-{$i}", 'bill_amount' => 10.00, 'bill_fee_payer' => 'member', 'bill_fee_sen' => 100, 'gateway' => 'toyyibpay',
             ]);
-            $this->post($url, ['billcode' => "TB-{$i}", 'status_id' => 1, 'amount' => $paid, 'transaction_id' => "T{$i}"])->assertOk();
+            $url = route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken("REF-TB-{$i}");
+            $this->post($url, ['billcode' => "TB-{$i}", 'order_id' => "REF-TB-{$i}", 'status_id' => 1, 'amount' => $paid, 'transaction_id' => "T{$i}"])->assertOk();
             $this->assertSame($expected, $p->fresh()->status, "paid {$paid}");
         }
     }

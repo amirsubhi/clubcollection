@@ -1,7 +1,7 @@
 import type { AttachmentKind } from "@/types/domain";
 
 type Art = "receipt" | "invoice" | "slip" | "letter";
-const artFor: Record<AttachmentKind, Art> = { receipt: "receipt", invoice: "invoice", bank_slip: "slip", acknowledgement: "letter", other: "letter" };
+const artFor: Record<AttachmentKind, Art> = { receipt: "receipt", invoice: "invoice", bank_slip: "slip", acknowledgement: "letter", other: "letter", proof_of_payment: "slip" };
 
 /** Placeholder drawing by document kind, used only when an attachment has no URL to preview. */
 export function AttachmentArt({ kind, className, title }: { kind: AttachmentKind; className?: string; title?: string }) {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasAttachments;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,8 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 class Payment extends Model
 {
     /** @use HasFactory<PaymentFactory> */
-    use HasFactory;
+    use HasAttachments, HasFactory;
 
+    public const STATUSES = ['pending', 'paid', 'overdue', 'pending_verification'];
+
+    /** transfer_* and verified_* are not fillable: only TransferVerificationService sets them. */
     protected $fillable = [
         'club_id', 'user_id', 'recorded_by', 'amount', 'frequency',
         'period_start', 'period_end', 'due_date', 'paid_date',
@@ -30,6 +34,9 @@ class Payment extends Model
             'bill_amount' => 'decimal:2',
             'bill_fee_sen' => 'integer',
             'fee_absorbed_sen' => 'integer',
+            'transfer_date' => 'date',
+            'transfer_submitted_at' => 'datetime',
+            'verified_at' => 'datetime',
         ];
     }
 
@@ -48,6 +55,44 @@ class Payment extends Model
                 $payment->bill_fee_sen = null;
             }
         });
+
+        // A dropped bill stays payable at the gateway: keep it on record as
+        // superseded so a late payment against it is still matched (S1).
+        static::saved(function (Payment $payment) {
+            if ($payment->wasChanged('bill_code') && $payment->bill_code === null) {
+                $payment->bills()->whereNull('superseded_at')->update(['superseded_at' => now()]);
+            }
+        });
+    }
+
+    /** Fee amount in sen. */
+    public function amountSen(): int
+    {
+        return (int) round(((float) $this->amount) * 100);
+    }
+
+    /** Slips are frozen while being checked and once the fee is paid. */
+    public function attachmentsLocked(): bool
+    {
+        return in_array($this->status, ['paid', 'pending_verification'], true);
+    }
+
+    public function isVerifying(): bool
+    {
+        return $this->status === 'pending_verification';
+    }
+
+    /** Slips of the latest submission (earlier, rejected slips are kept as history). */
+    public function currentSlips()
+    {
+        return $this->attachments()->where('kind', 'proof_of_payment')
+            ->when($this->transfer_submitted_at, fn ($q) => $q->where('created_at', '>=', $this->transfer_submitted_at));
+    }
+
+    /** The reference a member types in their bank transfer: YURAN-{id}. */
+    public function transferReference(): string
+    {
+        return 'YURAN-'.$this->id;
     }
 
     /** True when the open bill was created for the current amount (or predates bill_amount). */
@@ -55,6 +100,12 @@ class Payment extends Model
     {
         return $this->bill_amount === null
             || (int) round(((float) $this->bill_amount) * 100) === (int) round(((float) $this->amount) * 100);
+    }
+
+    /** Every gateway bill opened for this fee, the current one included. */
+    public function bills()
+    {
+        return $this->hasMany(PaymentBill::class);
     }
 
     public function club()
@@ -70,6 +121,11 @@ class Payment extends Model
     public function recordedBy()
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function verifiedBy()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function discount()

@@ -11,11 +11,19 @@ namespace App\Support\Payments;
  */
 final class WebhookSecret
 {
-    public static function isUsable(?string $secret): bool
+    /** Our own HMAC secrets (TOYYIBPAY_WEBHOOK_SECRET) must be at least this long. */
+    public const MIN_LENGTH = 32;
+
+    /**
+     * $minLength is MIN_LENGTH for secrets we generate; a key issued by the
+     * gateway (Billplz x_signature) has the gateway's own format, so its
+     * caller passes 1 and only placeholders and blanks are refused.
+     */
+    public static function isUsable(?string $secret, int $minLength = self::MIN_LENGTH): bool
     {
         $secret = trim((string) $secret);
 
-        if ($secret === '') {
+        if ($secret === '' || mb_strlen($secret) < max(1, $minLength)) {
             return false;
         }
 

@@ -78,7 +78,8 @@ class AttachmentService
         if (! in_array($kind, Attachment::KINDS, true)) {
             $kind = 'other';
         }
-        if ($owner->attachments()->count() >= Attachment::MAX_FILES) {
+        // Transfer slips have their own limits (1–3 per submission, TransferVerificationService::MAX_SLIPS_TOTAL per fee).
+        if ($kind !== 'proof_of_payment' && $owner->attachments()->count() >= Attachment::MAX_FILES) {
             throw ValidationException::withMessages(['files' => 'A record can have at most '.Attachment::MAX_FILES.' documents.']);
         }
 

@@ -18,7 +18,8 @@ export interface Member {
   role?: string;
 }
 
-export type PaymentStatus = "paid" | "pending" | "overdue";
+/** "verifying": a bank-transfer slip is waiting for the treasurer (payments.status pending_verification). */
+export type PaymentStatus = "paid" | "pending" | "overdue" | "verifying";
 
 export interface MemberPayment {
   id: number;
@@ -39,7 +40,7 @@ export interface MemberPayment {
 export type FundType = "expense" | "welfare";
 export type FundStatus = "draft" | "submitted" | "approved" | "void";
 export type AccountKind = "cash" | "bank";
-export type AttachmentKind = "invoice" | "receipt" | "bank_slip" | "acknowledgement" | "other";
+export type AttachmentKind = "invoice" | "receipt" | "bank_slip" | "acknowledgement" | "other" | "proof_of_payment";
 
 export interface Attachment {
   id: string;

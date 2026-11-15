@@ -69,7 +69,7 @@ class FundUsageRequest extends FormRequest
             'files' => ['nullable', 'array', 'max:'.Attachment::MAX_FILES],
             'files.*' => AttachmentService::fileRules(),
             'kinds' => ['nullable', 'array'],
-            'kinds.*' => ['nullable', Rule::in(Attachment::KINDS)],
+            'kinds.*' => ['nullable', Rule::in(Attachment::FUND_KINDS)],
             'remove_attachment_ids' => ['nullable', 'array'],
             'remove_attachment_ids.*' => ['integer'],
 

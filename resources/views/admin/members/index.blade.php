@@ -49,6 +49,10 @@
                         @endif
                     </td>
                     <td class="text-end">
+                        @if($member->pivot->role === 'admin' && ! auth()->user()->isSuperAdmin())
+                        {{-- Club admin rows are managed by the super admin (S1). --}}
+                        <span class="small text-muted" title="Only the super admin can change or remove a club admin"><i class="bi bi-shield-lock"></i></span>
+                        @else
                         <a href="{{ route('admin.members.edit', [$club, $member]) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit member">
                             <i class="bi bi-pencil"></i>
                         </a>
@@ -57,6 +61,7 @@
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" aria-label="Remove member"><i class="bi bi-person-dash"></i></button>
                         </form>
+                        @endif
                     </td>
                 </tr>
                 @empty

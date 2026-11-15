@@ -152,9 +152,13 @@
                         <span><span class="badge bg-warning me-1">&nbsp;</span>Pending</span>
                         <strong>{{ $pendingCount }}</strong>
                     </div>
-                    <div class="d-flex justify-content-between small">
+                    <div class="d-flex justify-content-between small mb-1">
                         <span><span class="badge bg-danger me-1">&nbsp;</span>Overdue</span>
                         <strong>{{ $overdueCount }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span><span class="badge bg-info me-1">&nbsp;</span>Awaiting verification</span>
+                        <strong>{{ $verifyingCount }}</strong>
                     </div>
                 </div>
             </div>
@@ -315,10 +319,10 @@ new Chart(document.getElementById('trendChart'), {
 new Chart(document.getElementById('statusChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Paid', 'Pending', 'Overdue'],
+        labels: ['Paid', 'Pending', 'Overdue', 'Awaiting verification'],
         datasets: [{
-            data: [{{ $paidCount }}, {{ $pendingCount }}, {{ $overdueCount }}],
-            backgroundColor: ['#198754', '#ffc107', '#dc3545']
+            data: [{{ $paidCount }}, {{ $pendingCount }}, {{ $overdueCount }}, {{ $verifyingCount }}],
+            backgroundColor: ['#198754', '#ffc107', '#dc3545', '#0dcaf0']
         }]
     },
     options: {

@@ -50,6 +50,11 @@
                         <div class="invalid-feedback text-center">{{ $message }}</div>
                         @enderror
                     </div>
+                    <div class="mb-3">
+                        <label for="confirm2faPassword" class="form-label small fw-semibold">Your password</label>
+                        <input type="password" id="confirm2faPassword" name="current_password" autocomplete="current-password" required
+                               class="form-control @error('current_password') is-invalid @enderror">
+                    </div>
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-shield-check me-1"></i>Confirm &amp; Enable 2FA
                     </button>

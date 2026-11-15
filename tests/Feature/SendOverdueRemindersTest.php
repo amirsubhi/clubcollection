@@ -71,4 +71,17 @@ class SendOverdueRemindersTest extends TestCase
             'auditable_id' => $payment->id,
         ]);
     }
+
+    public function test_command_skips_fees_whose_transfer_slip_is_being_checked(): void
+    {
+        Mail::fake();
+        $payment = $this->makePendingOverdue();
+        $payment->forceFill(['status' => 'pending_verification'])->save();
+
+        Artisan::call('payments:send-overdue-reminders');
+
+        $this->assertSame('pending_verification', $payment->fresh()->status);
+        Mail::assertNothingSent();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'payment.marked_overdue', 'auditable_id' => $payment->id]);
+    }
 }

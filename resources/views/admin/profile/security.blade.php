@@ -69,6 +69,14 @@
                     <p class="small text-muted mb-3">
                         You will need an authenticator app on your phone. After enabling, you will be asked to scan a QR code and confirm with a code from the app.
                     </p>
+                    <div class="mb-3">
+                        <label for="enable2faPassword" class="form-label small fw-semibold">Confirm your password to set up 2FA</label>
+                        <input type="password" id="enable2faPassword" name="current_password" autocomplete="current-password" required
+                               class="form-control form-control-sm @error('current_password') is-invalid @enderror">
+                        @error('current_password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                     <button type="submit" class="btn btn-sm btn-primary">
                         <i class="bi bi-shield-check me-1"></i>Enable 2FA
                     </button>

@@ -15,7 +15,7 @@ interface Props {
   club: { id: number; name: string };
   selectedYear: number;
   years: number[];
-  summary: { paid: number; pending: number; overdue: number; paidCount: number; total: number };
+  summary: { paid: number; pending: number; overdue: number; verifying: number; paidCount: number; total: number };
   payments: MemberPaymentRow[];
   pagination: { currentPage: number; lastPage: number; total: number; prevUrl: string | null; nextUrl: string | null };
   futureForm: {
@@ -171,10 +171,12 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
 
 export default function Payments({ club, selectedYear, years, summary, payments, pagination, futureForm, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
-  const open = payments.filter((p) => p.status !== "paid");
+  const open = payments.filter((p) => p.status === "pending" || p.status === "overdue");
+  const verifying = payments.filter((p) => p.status === "verifying");
   const paid = payments.filter((p) => p.status === "paid");
   const groups = [
     { key: "open", title: t("stillToPay"), items: open },
+    { key: "verifying", title: t("verifying"), items: verifying },
     { key: "paid", title: t("paidGroup"), items: paid },
   ].filter((g) => g.items.length > 0);
 

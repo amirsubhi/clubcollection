@@ -71,8 +71,8 @@ class PayAheadTest extends TestCase
     public function test_yearly_payment_goes_through_review_pay_webhook_and_result(): void
     {
         Mail::fake();
-        config(['toyyibpay.base_url' => 'https://dev.toyyibpay.com', 'toyyibpay.webhook_secret' => 'secret']);
-        Http::fake(['dev.toyyibpay.com/index.php/api/createBill' => Http::response([['BillCode' => 'YEARBILL']])]);
+        config(['toyyibpay.base_url' => 'https://dev.toyyibpay.com', 'toyyibpay.webhook_secret' => self::TOYYIB_SECRET]);
+        $this->fakeToyyibConfirm(null, ['dev.toyyibpay.com/index.php/api/createBill' => Http::response([['BillCode' => 'YEARBILL']])]);
         config(['toyyibpay.charge_to_customer_verified' => true]);
         $this->club->update(['gateway_fee_payer' => 'member']);
 
@@ -88,8 +88,9 @@ class PayAheadTest extends TestCase
         $this->post(route('member.payments.pay', $payment))->assertRedirect('https://dev.toyyibpay.com/YEARBILL');
         Http::assertSent(fn ($r) => (int) $r['billAmount'] === 12000 && $r['billChargeToCustomer'] === '0');
 
-        $this->post(route('webhook.toyyibpay').'?webhook_token=secret', [
-            'billcode' => 'YEARBILL', 'status_id' => 1, 'amount' => '121.00', 'transaction_id' => 'TXN-Y',
+        $reference = $payment->fresh()->reference;
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($reference), [
+            'billcode' => 'YEARBILL', 'order_id' => $reference, 'status_id' => 1, 'amount' => '121.00', 'transaction_id' => 'TXN-Y',
         ])->assertOk();
         $this->assertSame('paid', $payment->fresh()->status);
 

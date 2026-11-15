@@ -19,6 +19,7 @@ class User extends Authenticatable
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
+        'two_factor_last_used_step',
     ];
 
     protected function casts(): array
@@ -48,6 +49,27 @@ class User extends Authenticatable
             return [];
         }
         return json_decode(decrypt($this->two_factor_recovery_codes), true) ?? [];
+    }
+
+    /**
+     * Check a TOTP code and remember its time step, so the same code (or an
+     * older one) is never accepted again (S1: no replay within its window).
+     */
+    public function verifyTwoFactorCode(string $code, ?string $secret = null): bool
+    {
+        $secret ??= $this->getTwoFactorSecret();
+        if (! $secret || ! preg_match('/^\d{6}$/', $code)) {
+            return false;
+        }
+
+        $step = (new \PragmaRX\Google2FA\Google2FA())->verifyKeyNewer($secret, $code, (int) ($this->two_factor_last_used_step ?? 0));
+        if ($step === false) {
+            return false;
+        }
+
+        $this->forceFill(['two_factor_last_used_step' => (int) $step])->save();
+
+        return true;
     }
 
     // ── Role helpers ───────────────────────────────────────────────────────

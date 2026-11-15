@@ -100,6 +100,14 @@
             </div>
         @endif
 
+        @unless($installerEnabled)
+            <div class="alert alert-warning mb-4">
+                <strong><i class="bi bi-lock-fill me-1"></i>The installer is disabled.</strong>
+                Add a random <code>INSTALL_TOKEN</code> (at least 16 characters) to <code>.env</code>, or put it in
+                <code>storage/app/.install-token</code>, then reload this page. The token is cleared once the install is done.
+            </div>
+        @endunless
+
         {{-- ── System Requirements ─────────────────────────────── --}}
         <p class="section-title"><i class="bi bi-cpu me-1"></i>System Requirements</p>
         <div class="card border-0 bg-light rounded-3 mb-4 px-3">
@@ -129,8 +137,16 @@
             </div>
         @endif
 
+        @if($installerEnabled)
         <form method="POST" action="{{ route('install.process') }}">
             @csrf
+
+            <p class="section-title mt-2"><i class="bi bi-key me-1"></i>Install token</p>
+            <div class="mb-3">
+                <label for="installToken" class="form-label">INSTALL_TOKEN from your .env</label>
+                <input type="password" id="installToken" name="install_token" autocomplete="off" required
+                       class="form-control @error('install_token') is-invalid @enderror">
+            </div>
 
             {{-- ── Application Settings ────────────────────────── --}}
             <p class="section-title mt-2"><i class="bi bi-sliders me-1"></i>Application Settings</p>
@@ -188,6 +204,7 @@
                 <i class="bi bi-rocket-takeoff me-2"></i>Install Application
             </button>
         </form>
+        @endif
     </div>
 </div>
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, CheckCircle2, Clock, HandHeart, PencilLine, Receipt, Undo2, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, Clock, HandHeart, Hourglass, PencilLine, Receipt, Undo2, type LucideIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { statusMeta } from "@/lib/fund-meta";
 import type { FundStatus, FundType, PaymentStatus } from "@/types/domain";
@@ -74,6 +74,7 @@ const payMeta: Record<PaymentStatus, { Icon: LucideIcon; tone: ChipTone }> = {
   paid: { Icon: CheckCircle2, tone: "success" },
   pending: { Icon: Clock, tone: "info" },
   overdue: { Icon: AlertTriangle, tone: "danger" },
+  verifying: { Icon: Hourglass, tone: "warning" },
 };
 
 export function PaymentStatusBadge({ status, label, size = "md" }: { status: PaymentStatus; label: string; size?: "sm" | "md" }) {

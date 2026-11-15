@@ -28,6 +28,10 @@ final class MemberPaymentPresenter
         if ($payment->status === 'paid') {
             return 'paid';
         }
+        // A transfer slip is waiting for the treasurer: not paid, not overdue.
+        if ($payment->status === 'pending_verification') {
+            return 'verifying';
+        }
 
         return ($payment->status === 'overdue' || $payment->due_date->lt(today())) ? 'overdue' : 'pending';
     }
@@ -93,8 +97,13 @@ final class MemberPaymentPresenter
             'amount' => self::sen($payment->amount),
             'paidAt' => ($payment->paid_date ?? $payment->updated_at)->toDateString(),
             'gateway' => self::gatewayLabel($payment->gateway),
+            // 'gateway' (FPX), 'transfer' (slip checked by the treasurer) or 'manual'.
+            'method' => $payment->gateway ? 'gateway' : ($payment->paid_via === 'transfer' ? 'transfer' : 'manual'),
             'transactionId' => $payment->transaction_id,
-            'reference' => $payment->reference,
+            // A transfer shows the bank reference (admin's, else the member's), not the internal bill reference.
+            'reference' => $payment->paid_via === 'transfer'
+                ? ($payment->transfer_bank_ref ?? $payment->transfer_ref ?? $payment->transferReference())
+                : $payment->reference,
         ];
     }
 }

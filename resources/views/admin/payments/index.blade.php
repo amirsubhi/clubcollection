@@ -5,7 +5,7 @@
 @section('content')
 {{-- Summary Cards --}}
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm">
             <div class="card-body d-flex align-items-center gap-3 p-3">
                 <div class="bg-success bg-opacity-10 rounded p-2"><i class="bi bi-cash-coin fs-4 text-success"></i></div>
@@ -16,7 +16,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm">
             <div class="card-body d-flex align-items-center gap-3 p-3">
                 <div class="bg-warning bg-opacity-10 rounded p-2"><i class="bi bi-hourglass-split fs-4 text-warning"></i></div>
@@ -27,7 +27,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-0 shadow-sm">
             <div class="card-body d-flex align-items-center gap-3 p-3">
                 <div class="bg-danger bg-opacity-10 rounded p-2"><i class="bi bi-exclamation-triangle fs-4 text-danger"></i></div>
@@ -37,6 +37,17 @@
                 </div>
             </div>
         </div>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ route('admin.clubs.verifications.index', $club) }}" class="card border-0 shadow-sm text-decoration-none text-reset h-100">
+            <div class="card-body d-flex align-items-center gap-3 p-3">
+                <div class="bg-info bg-opacity-10 rounded p-2"><i class="bi bi-patch-check fs-4 text-info"></i></div>
+                <div>
+                    <div class="fw-bold fs-5">{{ $summary['total_verifying'] }}</div>
+                    <div class="text-muted small">Awaiting verification</div>
+                </div>
+            </div>
+        </a>
     </div>
 </div>
 
@@ -55,6 +66,7 @@
                     <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
                     <option value="paid" {{ $status == 'paid' ? 'selected' : '' }}>Paid</option>
                     <option value="overdue" {{ $status == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                    <option value="pending_verification" {{ $status == 'pending_verification' ? 'selected' : '' }}>Awaiting verification</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -109,13 +121,17 @@
                             <span class="badge bg-success-subtle text-success border border-success-subtle">Paid</span>
                         @elseif($payment->status === 'overdue')
                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Overdue</span>
+                        @elseif($payment->status === 'pending_verification')
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Awaiting verification</span>
                         @else
                             <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
                         @endif
                     </td>
                     <td class="text-end">
                         <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-secondary" aria-label="View payment"><i class="bi bi-eye"></i></a>
-                        @if($payment->status !== 'paid')
+                        @if($payment->status === 'pending_verification')
+                        <a href="{{ route('admin.clubs.verifications.index', $club) }}" class="btn btn-sm btn-info" title="Check the transfer slip" aria-label="Check the transfer slip"><i class="bi bi-patch-check"></i></a>
+                        @elseif($payment->status !== 'paid')
                         <form action="{{ route('admin.payments.mark-paid', $payment) }}" method="POST" class="d-inline">
                             @csrf @method('PATCH')
                             <button class="btn btn-sm btn-success" title="Mark Paid" aria-label="Mark payment as paid"><i class="bi bi-check-lg"></i></button>

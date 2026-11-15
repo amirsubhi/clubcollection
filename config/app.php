@@ -42,6 +42,13 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
 
     /*
+    | One-time token the install wizard asks for (S1). With no token (here or
+    | in storage/app/.install-token) the wizard is disabled. The wizard blanks
+    | it in .env and deletes the token file once the install succeeds.
+    */
+    'install_token' => env('INSTALL_TOKEN'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------

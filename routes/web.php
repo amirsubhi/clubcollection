@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LedgerController;
 use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\TransferVerificationController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboard;
@@ -38,10 +39,12 @@ Route::middleware('redirect_if_installed')->group(function () {
 // gateway callbacks got 419 (tests skip CSRF, so only the e2e smoke caught it).
 Route::post('/webhook/toyyibpay', [WebhookController::class, 'toyyibpay'])
     ->name('webhook.toyyibpay')
+    ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 
 Route::post('/webhook/billplz', [WebhookController::class, 'billplz'])
     ->name('webhook.billplz')
+    ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 
 // ── Dev-only UI kit (Inertia wiring check) — local & testing only ────────────
@@ -64,6 +67,15 @@ Route::middleware('check_installed')->group(function () {
         ->middleware('throttle:5,1')
         ->name('login');  // overrides the one from Auth::routes()
 
+    // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
+    // on their own named limiter (AppServiceProvider).
+    Route::post('password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
+        ->middleware('throttle:password-reset')->name('password.email');
+    Route::post('password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
+        ->middleware('throttle:password-reset')->name('password.update');
+    Route::post('password/confirm', [\App\Http\Controllers\Auth\ConfirmPasswordController::class, 'confirm'])
+        ->middleware(['auth', 'throttle:password-reset']);
+
     // ── Two-factor challenge — no `auth` middleware ───────────────────────────
     // LoginController::authenticated() calls auth()->logout() and pins the
     // user id in the session under 'two_factor_user_id'. If we required `auth`
@@ -77,7 +89,9 @@ Route::middleware('check_installed')->group(function () {
         ->middleware('throttle:5,1')
         ->name('two-factor.verify');
 
-    Route::middleware(['auth', 'two_factor'])->group(function () {
+    // auth.session (AuthenticateSession) ends every other session of a user
+    // whose password changed, e.g. after a password reset (S1).
+    Route::middleware(['auth', 'auth.session', 'two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
 
         // ── Profile / 2FA setup ──────────────────────────────────────────────
@@ -99,6 +113,10 @@ Route::middleware('check_installed')->group(function () {
             Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
             Route::get('payments/{payment}/status', [MemberPayment::class, 'status'])->name('payments.status');
             Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
+            // Manual bank / DuitNow transfer: upload a slip; a club admin approves it.
+            Route::post('payments/{payment}/transfer', [MemberPayment::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer');
+            // The member's own slip (owner only, audited, no-cache).
+            Route::get('slips/{attachment}', [MemberPayment::class, 'slip'])->middleware('throttle:60,1')->name('payments.slip');
         });
 
         // ── Super Admin ──────────────────────────────────────────────
@@ -124,6 +142,9 @@ Route::middleware('check_installed')->group(function () {
             // Billing plans and gateway-fee settings (club admins of this club + super admin).
             Route::get('clubs/{club}/billing', [ClubBillingController::class, 'edit'])->name('clubs.billing.edit');
             Route::put('clubs/{club}/billing', [ClubBillingController::class, 'update'])->middleware('throttle:20,1')->name('clubs.billing.update');
+            // Bank / DuitNow detail changes need a second admin (S1).
+            Route::post('clubs/{club}/billing/bank-change/approve', [ClubBillingController::class, 'approveBankChange'])->middleware('throttle:20,1')->name('clubs.billing.bank-change.approve');
+            Route::post('clubs/{club}/billing/bank-change/cancel', [ClubBillingController::class, 'cancelBankChange'])->middleware('throttle:20,1')->name('clubs.billing.bank-change.cancel');
             // The previous Blade dashboard (month filter, paid/unpaid members, job levels).
             Route::get('clubs/{club}/dashboard/classic', [DashboardController::class, 'classic'])->name('clubs.dashboard.classic');
 
@@ -145,6 +166,13 @@ Route::middleware('check_installed')->group(function () {
                 Route::post('fund-usage/{expense}/void-request', [FundUsageController::class, 'voidRequest'])->name('fund-usage.void-request');
                 Route::post('fund-usage/{expense}/void-confirm', [FundUsageController::class, 'voidConfirm'])->name('fund-usage.void-confirm');
             });
+            // ── Payment verifications (member transfer slips) ─────────────
+            Route::get('clubs/{club}/verifications', [TransferVerificationController::class, 'index'])->name('clubs.verifications.index');
+            Route::middleware('throttle:20,1')->group(function () {
+                Route::post('verifications/{payment}/approve', [TransferVerificationController::class, 'approve'])->name('verifications.approve');
+                Route::post('verifications/{payment}/reject', [TransferVerificationController::class, 'reject'])->name('verifications.reject');
+            });
+
             // Private documents: club admins of the owning club only, audited.
             Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->middleware('throttle:60,1')->name('attachments.show');
             // Gallery thumbnails (images only): authorized, not audited, looser limit.

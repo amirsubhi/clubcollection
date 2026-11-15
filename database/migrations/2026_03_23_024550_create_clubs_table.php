@@ -26,6 +26,20 @@ return new class extends Migration
             // (added on top). gateway_fee_sen is the expected fee per bill.
             $table->string('gateway_fee_payer', 10)->default('club');
             $table->unsignedInteger('gateway_fee_sen')->default(100);
+            // Manual bank / DuitNow transfer (P2). Plain text on purpose: members
+            // are shown these details so they can pay. See Club::transferReady().
+            $table->boolean('transfer_enabled')->default(false);
+            $table->string('bank_name', 100)->nullable();
+            $table->string('bank_account_name', 150)->nullable();
+            $table->string('bank_account_no', 30)->nullable();
+            $table->string('duitnow_id', 100)->nullable();
+            // A requested change to the bank / DuitNow details (S1). Members keep
+            // seeing the live columns above until a different club admin (or the
+            // super admin) approves it on the billing page. JSON of
+            // transfer_enabled, bank_name, bank_account_name, bank_account_no, duitnow_id.
+            $table->json('pending_bank_change')->nullable();
+            $table->foreignId('bank_change_requested_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('bank_change_requested_at')->nullable();
             $table->timestamps();
         });
     }

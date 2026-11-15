@@ -236,6 +236,7 @@ class PaymentControllerTest extends TestCase
             'due_date' => $payment->due_date,
             'amount'   => $payment->amount,
             'status'   => 'paid',
+            'original_status' => 'pending',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('payments', [

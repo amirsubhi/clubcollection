@@ -3,6 +3,8 @@
 namespace App\Contracts;
 
 use App\Models\Club;
+use App\Models\Payment;
+use App\Models\PaymentBill;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
 use Illuminate\Http\Request;
@@ -42,14 +44,16 @@ interface PaymentGateway
     public function paymentUrl(string $billCode): string;
 
     /**
-     * Authenticate an incoming webhook request. Must fail closed when the
+     * Authenticate an incoming webhook request against the fee (and bill) it
+     * names, or none when it matched no fee. Must fail closed when the
      * gateway's verification material (shared secret / signature key) is
      * not configured.
      */
-    public function verifyWebhookRequest(Request $request): bool;
+    public function verifyWebhookRequest(Request $request, ?Payment $payment, ?PaymentBill $bill = null): bool;
 
     /**
-     * Parse a verified webhook request into a normalised result.
+     * Parse a webhook request into a normalised result. Parsing only: the
+     * caller looks the fee up and then calls verifyWebhookRequest().
      */
     public function parseWebhook(Request $request): ?WebhookResult;
 }

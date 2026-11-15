@@ -10,13 +10,16 @@
                 <p class="text-muted small mb-4">Member: <strong>{{ $payment->user->name }}</strong> &middot; Period: {{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</p>
                 <form action="{{ route('admin.payments.update', $payment) }}" method="POST">
                     @csrf @method('PUT')
+                    {{-- The status this form was loaded with: a save over a newer change is refused. --}}
+                    <input type="hidden" name="original_status" value="{{ $payment->status }}">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Amount (RM) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">RM</span>
-                            <input type="number" step="0.01" name="amount" class="form-control"
+                            <input type="number" step="0.01" min="0" max="100000" name="amount" class="form-control"
                                    value="{{ old('amount', $payment->amount) }}">
                         </div>
+                        @error('amount')<div class="text-danger small">{{ $message }}</div>@enderror
                         <div class="form-text">Adjust the payable amount if needed (e.g. for partial waivers or corrections).</div>
                     </div>
                     <div class="mb-3">
@@ -31,7 +34,14 @@
                             <option value="pending" {{ old('status', $payment->status) == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="paid" {{ old('status', $payment->status) == 'paid' ? 'selected' : '' }}>Paid</option>
                             <option value="overdue" {{ old('status', $payment->status) == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                            @if($payment->status === 'pending_verification')
+                            <option value="pending_verification" selected>Awaiting verification (set by the member's slip)</option>
+                            @endif
                         </select>
+                        @if($payment->status === 'pending_verification')
+                        <div class="form-text text-info-emphasis">A transfer slip is waiting. Approve or reject it in <a href="{{ route('admin.clubs.verifications.index', $payment->club) }}">Verifications</a>.</div>
+                        @endif
+                        @error('status')<div class="text-danger small">{{ $message }}</div>@enderror
                         <div class="form-text">Pending = awaiting payment. Paid = received. Overdue = past due date without payment.</div>
                     </div>
                     <div class="mb-3">

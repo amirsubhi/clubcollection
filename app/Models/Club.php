@@ -18,6 +18,7 @@ class Club extends Model
         'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
         'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan',
         'gateway_fee_payer', 'gateway_fee_sen',
+        'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
     /** Billing plans and how many months each covers. */
@@ -37,6 +38,9 @@ class Club extends Model
             'allow_quarterly'          => 'boolean',
             'allow_yearly'             => 'boolean',
             'gateway_fee_sen'          => 'integer',
+            'transfer_enabled'         => 'boolean',
+            'pending_bank_change'      => 'array',
+            'bank_change_requested_at' => 'datetime',
         ];
     }
 
@@ -98,6 +102,33 @@ class Club extends Model
         return max(0, (int) ($this->gateway_fee_sen ?? 100));
     }
 
+    /** Bank details are complete enough to show (bank, holder, and account number or DuitNow ID). */
+    public function transferDetailsComplete(): bool
+    {
+        return filled($this->bank_name) && filled($this->bank_account_name)
+            && (filled($this->bank_account_no) || filled($this->duitnow_id));
+    }
+
+    /** Bank / DuitNow fields whose change needs a second approver (S1). */
+    public const BANK_DETAIL_FIELDS = ['bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id'];
+
+    public function hasPendingBankChange(): bool
+    {
+        return ! empty($this->pending_bank_change);
+    }
+
+    /** Who asked for the pending bank-detail change. */
+    public function bankChangeRequestedBy()
+    {
+        return $this->belongsTo(User::class, 'bank_change_requested_by');
+    }
+
+    /** Members may pay by manual bank / DuitNow transfer with a slip (P2). */
+    public function transferReady(): bool
+    {
+        return (bool) $this->transfer_enabled && $this->transferDetailsComplete();
+    }
+
     /**
      * Check whether this club has its own ToyyibPay credentials configured.
      */
@@ -117,6 +148,37 @@ class Club extends Model
         return ! empty($this->billplz_api_key)
             && ! empty($this->billplz_collection_id)
             && ! empty($this->billplz_x_signature_key);
+    }
+
+    /**
+     * Active admins of this club (club_user.role = admin).
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public function activeAdmins()
+    {
+        return $this->members()->wherePivot('role', 'admin')->wherePivot('is_active', true)->get();
+    }
+
+    /**
+     * Email every active admin of the club (S1 security notices). Failures are
+     * logged, never thrown: the change itself already happened.
+     *
+     * @param  list<string>  $lines
+     */
+    public function notifyAdmins(string $heading, array $lines, ?string $actionUrl = null, ?string $actionLabel = null, ?User $alsoTo = null): void
+    {
+        $recipients = $this->activeAdmins()->pluck('email');
+        if ($alsoTo) {
+            $recipients->push($alsoTo->email);
+        }
+        foreach ($recipients->filter()->unique()->values() as $email) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($email)->send(new \App\Mail\ClubAdminNotice($this, $heading, $lines, $actionUrl, $actionLabel));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Club admin notice email failed', ['club_id' => $this->id, 'error' => $e->getMessage()]);
+            }
+        }
     }
 
     public function members()

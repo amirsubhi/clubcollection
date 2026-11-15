@@ -28,6 +28,7 @@ class DashboardController extends Controller
                 SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
                 SUM(CASE WHEN status = 'pending' AND due_date >= ? THEN 1 ELSE 0 END) as pending_count,
                 SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < ?) THEN 1 ELSE 0 END) as overdue_count,
+                SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count,
                 SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_paid
             ", [today()->toDateString(), today()->toDateString()])
             ->groupBy('club_id')
@@ -75,6 +76,7 @@ class DashboardController extends Controller
                     'paid' => (int) ($s->paid_count ?? 0),
                     'pending' => (int) ($s->pending_count ?? 0),
                     'overdue' => (int) ($s->overdue_count ?? 0),
+                    'verifying' => (int) ($s->verifying_count ?? 0),
                     'totalPaid' => P::sen($s->total_paid ?? 0),
                 ],
                 'fund' => [
@@ -102,15 +104,22 @@ class DashboardController extends Controller
             ->limit(3)
             ->get();
 
+        // A fee whose transfer slip is being checked is not owed any more (the
+        // member has paid; the treasurer is confirming), so it is left out of
+        // the amount due and counted on its own line.
+        $owing = $open->reject(fn (Payment $p) => $p->isVerifying());
+
         return Inertia::render('Member/Home', [
             'year' => $year,
             'outstanding' => [
-                'total' => $open->sum(fn (Payment $p) => P::sen($p->amount)),
-                'count' => $open->count(),
-                'overdueCount' => $open->filter(fn (Payment $p) => P::displayStatus($p) === 'overdue')->count(),
+                'total' => $owing->sum(fn (Payment $p) => P::sen($p->amount)),
+                'count' => $owing->count(),
+                'overdueCount' => $owing->filter(fn (Payment $p) => P::displayStatus($p) === 'overdue')->count(),
+                'verifyingCount' => $open->count() - $owing->count(),
             ],
-            // Oldest open fee first: the hero button pays exactly this one.
-            'upcoming' => $open->take(5)->map($withClub)->values(),
+            // Oldest fee still owed first (the hero button pays exactly this one),
+            // then fees whose slip is being checked.
+            'upcoming' => $owing->concat($open->filter(fn (Payment $p) => $p->isVerifying()))->take(5)->map($withClub)->values(),
             'recentPaid' => $recentPaid->map($withClub)->values(),
             'clubs' => $clubCards,
             'dashboardUrl' => route('member.dashboard'),

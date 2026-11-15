@@ -131,7 +131,11 @@ class ClubController extends Controller
         if ($club->logo) {
             Storage::disk('public')->delete($club->logo);
         }
+        $clubId = $club->id;
         $club->delete();
+        // The database cascade removes the club's attachment rows (fees' transfer
+        // slips, expense documents); remove their encrypted files too.
+        Storage::disk(\App\Services\AttachmentService::DISK)->deleteDirectory("clubs/{$clubId}/attachments");
 
         AuditService::log('club.deleted', "Club '{$name}' deleted.");
 

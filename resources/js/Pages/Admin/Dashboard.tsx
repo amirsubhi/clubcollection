@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@inertiajs/react";
-import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
+import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart, Hourglass, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
@@ -10,7 +10,7 @@ import { toSlices } from "@/components/app/MemberParts";
 import { FundStatusBadge, StatusChip } from "@/components/app/StatusBadges";
 import { Avatar, IconBubble, type Tone } from "@/components/app/Visuals";
 import { Button } from "@/components/ui/button";
-import { fmtDate, fmtDateTime, rm } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtPeriod, rm } from "@/lib/format";
 import type { AdminNavProps, FundRow } from "@/types/admin";
 import type { MonthPoint } from "@/types/domain";
 
@@ -45,8 +45,14 @@ interface Props {
   monthly: MonthPoint[];
   categories: { name: string; amount: number }[];
   queue: (FundRow & { canApprove: boolean })[];
+  /** Transfer slips waiting for an admin (TransferVerificationController::card, without files). */
+  slips: {
+    count: number;
+    transferReady: boolean;
+    items: { id: number; member: { name: string }; periodStart: string; periodEnd: string; amount: number; transferDate: string | null; submittedAt: string | null }[];
+  };
   activity: Activity[];
-  urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string; billing: string };
+  urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string; billing: string; verifications: string };
 }
 
 const activityIcon: Record<Activity["kind"], { Icon: typeof Wallet; tone: Tone }> = {
@@ -78,7 +84,44 @@ function greeting() {
   return h < 12 ? "Selamat pagi" : h < 19 ? "Selamat petang" : "Selamat malam";
 }
 
-export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, categories, queue, activity, urls }: Props) {
+/** Pengesahan bayaran: transfer slips members sent, oldest first. */
+function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
+  return (
+    <Panel
+      title="Transfer slips"
+      sub={slips.count > 0 ? `Slip menunggu pengesahan · ${slips.count} waiting` : "Slip menunggu pengesahan"}
+      action={
+        <Link href={url} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+          Check <ArrowRight className="h-4 w-4" aria-hidden />
+        </Link>
+      }
+    >
+      {slips.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No slips waiting.</p>
+      ) : (
+        <ul className="flex flex-col divide-y">
+          {slips.items.map((s) => (
+            <li key={s.id}>
+              <Link href={url} className="-mx-2 flex min-h-12 items-center gap-3 rounded-md px-2 py-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <IconBubble Icon={Hourglass} tone="warning" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{s.member.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    Fee {fmtPeriod(s.periodStart, s.periodEnd)}
+                    {s.transferDate ? ` · transferred ${fmtDate(s.transferDate)}` : ""}
+                  </div>
+                </div>
+                <Money sen={s.amount} className="text-sm font-bold" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, categories, queue, slips, activity, urls }: Props) {
   const slices = toSlices(categories, { bm: "Lain-lain", en: "Others" });
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
   return (
@@ -125,51 +168,54 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
           <CollectedSpentChart data={monthly} lang="en" height={280} />
         </Panel>
 
-        <Panel
-          title="Approvals queue"
-          sub="Menunggu kelulusan"
-          action={
-            <Link href={urls.fundUsage} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
-              All <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          }
-        >
-          {queue.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing is waiting for approval.</p>
-          ) : (
-            <ul className="flex flex-col divide-y">
-              {queue.map((i) => (
-                <li key={i.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-start gap-3">
-                    <Avatar name={i.recordedBy} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">{i.ref}</span>
-                        <Money sen={i.amount} className="text-sm font-bold" />
-                      </div>
-                      <div className="truncate text-sm font-semibold">{i.payee ?? `Welfare · ${i.category}`}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        by {i.recordedBy.split(" ")[0]} · {fmtDate(i.paidDate ?? i.invoiceDate)}
+        <div className="flex min-w-0 flex-col gap-4">
+          {(slips.count > 0 || slips.transferReady) && <SlipsPanel slips={slips} url={urls.verifications} />}
+          <Panel
+            title="Approvals queue"
+            sub="Menunggu kelulusan"
+            action={
+              <Link href={urls.fundUsage} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                All <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            }
+          >
+            {queue.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing is waiting for approval.</p>
+            ) : (
+              <ul className="flex flex-col divide-y">
+                {queue.map((i) => (
+                  <li key={i.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-start gap-3">
+                      <Avatar name={i.recordedBy} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">{i.ref}</span>
+                          <Money sen={i.amount} className="text-sm font-bold" />
+                        </div>
+                        <div className="truncate text-sm font-semibold">{i.payee ?? `Welfare · ${i.category}`}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          by {i.recordedBy.split(" ")[0]} · {fmtDate(i.paidDate ?? i.invoiceDate)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 pl-12">
-                    <FundStatusBadge status={i.status} />
-                    {i.canApprove ? (
-                      <Button asChild size="sm" className="h-8">
-                        <Link href={i.url}>Review</Link>
-                      </Button>
-                    ) : (
-                      <Link href={i.url} className="text-xs text-muted-foreground hover:underline">
-                        {i.recordedByMe ? "You recorded this" : "You can't approve this"}
-                      </Link>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
+                    <div className="flex items-center justify-between gap-2 pl-12">
+                      <FundStatusBadge status={i.status} />
+                      {i.canApprove ? (
+                        <Button asChild size="sm" className="h-8">
+                          <Link href={i.url}>Review</Link>
+                        </Button>
+                      ) : (
+                        <Link href={i.url} className="text-xs text-muted-foreground hover:underline">
+                          {i.recordedByMe ? "You recorded this" : "You can't approve this"}
+                        </Link>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </div>
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">

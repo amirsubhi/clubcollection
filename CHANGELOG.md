@@ -8,6 +8,53 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.2] — Unreleased
 
+### Security (S1: hardening from the full audit)
+- **Gateway callbacks:** absolute URLs come from `APP_URL` (host and scheme) in production and other `Host` headers are
+  refused, so a forged `Host`/`X-Forwarded-Host` can't redirect callbacks or email links. The ToyyibPay callback
+  token is now a per-bill HMAC of the bill reference (a leaked token works for that bill only), the webhook secret
+  must be 32+ characters, and a paid callback is confirmed with ToyyibPay `getBillTransactions` before settling
+  (`TOYYIBPAY_VERIFY_CALLBACK`, default on; unreachable API = not settled, non-200 so ToyyibPay retries).
+- **Bills:** every bill is kept in the new `payment_bills` table; a paid superseded bill still settles when the
+  amount is right and is flagged when it isn't. `pay` runs under a per-fee lock. Unmatched paid callbacks are
+  audited (`payment.unmatched_webhook`); a second gateway payment on a fee already paid is flagged for a refund
+  (`payment.gateway_paid_twice`); refund flags and unmatched/unconfirmed audits are written only after the gateway
+  confirms the payment (once per bill, so a leaked token can't flood the log); a bill can't be opened while the
+  webhook secret is unusable; a transaction id settles at most once (also after an admin revert);
+  callbacks from another gateway are ignored; logs keep allow-listed fields only; webhooks are throttled (300/min per IP);
+  Billplz uses a club's own signature key only when the club's Billplz credentials are complete.
+- **Admin payments:** edits run under a row lock and are refused when the status changed since the form opened;
+  leaving "paid" clears how it was settled; amount capped at RM100,000 with 2 decimals; admins can't mark their own
+  fee paid, change its amount or discount, or delete it (super admin exempt). The overdue reminder no longer overwrites a fee paid meanwhile. Ledger sums in sen.
+- **Roles:** only the super admin grants the club-admin role (member form, edit and CSV import); club admins can't
+  change or remove a club admin. Grants are audited and emailed to the club's admins.
+- **Bank / DuitNow details:** a change waits for a second club admin (or the super admin) to approve it on the
+  billing page; members see the old details until then; all club admins are emailed on request and approval.
+  Switching transfers off is immediate. Requester can cancel but not approve.
+- **2FA:** setting it up needs the current password and is refused while 2FA is on; a TOTP code can't be reused
+  (`two_factor_last_used_step`); the challenge locks for 15 minutes after 5 wrong codes per user.
+- **Password reset:** same answer for known and unknown emails; reset, email and confirm POSTs throttled 5/min;
+  a password change ends the user's other sessions (`auth.session`).
+- **Install and deploy:** the installer needs `INSTALL_TOKEN` (disabled without it), rejects quotes and line breaks
+  in the app name, writes production settings and blanks the token. The demo seeder only runs in local/testing and
+  has no well-known password. `SESSION_SECURE_COOKIE` in `.env.example`; production `.env` block and PHP upload
+  limits in `docs/RELEASE.md`.
+- **Exports:** CSV cells starting with `= + - @` (or tab/CR) get a `'` prefix, plain numbers excepted; download names are slugged.
+- **Super-admin user management:** `{admin}` routes bind admin users only; create/update/delete audited; the last
+  super admin (and yourself) can't be demoted or removed; an admin with records is kept with a message.
+- **Fixes:** fee-rate delete (always 403 before) and the fee-rate/discount redirects; ReviewPay shows transfer
+  errors and the open-bill warning on the transfer option; the uploader refuses files over 10 MB on the device; a
+  bilingual page for uploads over `post_max_size`.
+
+### Payments (P2: manual DuitNow transfer with slip upload)
+- Clubs can publish bank / DuitNow details (Billing settings). Members then choose "Pindahan DuitNow (tiada caj)"
+  on Review & pay, transfer with the reference `YURAN-{id}` and upload 1–3 slips (stored encrypted, private).
+- The fee waits as "Menunggu pengesahan" (`pending_verification`) until a club admin approves or rejects it on the
+  new **Verifications** page (nav badge + dashboard panel). Approve marks it paid by transfer and emails the
+  receipt; reject needs a reason, emails the member (BM/EN) and lets them send a new slip. All steps audited.
+- Admins can't approve their own fee; online pay, manual mark-paid and status edits are refused while a slip is
+  being checked; a gateway payment that still arrives is settled and flagged for a refund.
+- Payments, ledger (screen/CSV/PDF) and statistics show "Awaiting verification" as its own status.
+
 ### Payments (P1: billing frequency and gateway fee)
 - ToyyibPay `billChargeToCustomer` now follows the club's gateway-fee setting. "Club absorbs" (the default) keeps
   the previous value `1` until a sandbox run confirms how ToyyibPay reads each value; "member pays" (`0`) stays

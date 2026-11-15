@@ -18,9 +18,13 @@ final class AdminNav
     {
         $blade = fn (string $key, string $label, string $href, string $icon) => compact('key', 'label', 'href', 'icon') + ['external' => true];
 
+        // Transfer slips waiting for an admin (one count query per page).
+        $slips = $club->payments()->where('status', 'pending_verification')->count();
+
         $clubItems = [
             ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('admin.clubs.dashboard', $club), 'icon' => 'dashboard', 'external' => false],
             ['key' => 'fund-usage', 'label' => 'Fund Usage', 'href' => route('admin.clubs.fund-usage.index', $club), 'icon' => 'fund', 'external' => false, 'badge' => $awaiting ?: null],
+            ['key' => 'verifications', 'label' => 'Verifications', 'href' => route('admin.clubs.verifications.index', $club), 'icon' => 'verify', 'external' => false, 'badge' => $slips ?: null],
             $blade('payments', 'Payments', route('admin.clubs.payments.index', $club), 'payments'),
             $blade('members', 'Members', route('admin.clubs.members.index', $club), 'members'),
             $blade('fee-rates', 'Fee Rates', route('admin.clubs.fee-rates.index', $club), 'rates'),

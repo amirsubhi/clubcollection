@@ -37,6 +37,11 @@ return Application::configure(basePath: dirname(__DIR__))
             );
         }
 
+        // Only APP_URL's host (and its subdomains) may be used as Host, so links
+        // and gateway callback URLs can't be pointed elsewhere. Laravel skips
+        // this check in local and in tests.
+        $middleware->trustHosts();
+
         $middleware->alias([
             'super_admin'           => \App\Http\Middleware\SuperAdmin::class,
             'club_admin'            => \App\Http\Middleware\ClubAdmin::class,

@@ -24,6 +24,8 @@ export interface MemberReceipt {
   paidAt: string;
   /** "ToyyibPay" / "Billplz", or null when the treasurer recorded it by hand. */
   gateway: string | null;
+  /** How it was paid: online (gateway), bank transfer checked by the treasurer, or recorded by hand. */
+  method: "gateway" | "transfer" | "manual";
   transactionId: string | null;
   reference: string | null;
 }
@@ -47,6 +49,29 @@ export interface HomeClub {
   jobLevel: string;
   role: string;
   paymentsUrl: string;
-  summary: { paid: number; pending: number; overdue: number; totalPaid: Sen };
+  summary: { paid: number; pending: number; overdue: number; verifying: number; totalPaid: Sen };
   fund: { collected: Sen; spent: Sen; categories: FundCategory[] };
+}
+
+/** PaymentController::transferProps(): the club's bank details for a manual transfer. */
+export interface TransferOption {
+  bankName: string;
+  accountName: string;
+  accountNo: string | null;
+  duitnowId: string | null;
+  /** What the member types as the transfer reference: YURAN-{id}. */
+  reference: string;
+  submitUrl: string;
+  today: string;
+  minDate: string;
+  maxFiles: number;
+  maxMb: number;
+}
+
+/** PaymentController::verificationProps(): a slip waiting for the treasurer. */
+export interface TransferVerification {
+  submittedAt: string | null;
+  transferDate: string | null;
+  transferRef: string | null;
+  slips: { id: number; name: string; isPdf: boolean; url: string }[];
 }

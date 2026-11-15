@@ -22,7 +22,9 @@ return new class extends Migration
             $table->date('period_end');
             $table->date('due_date');
             $table->date('paid_date')->nullable();
-            $table->enum('status', ['pending', 'paid', 'overdue'])->default('pending');
+            // pending_verification: the member uploaded a bank-transfer slip and a
+            // club admin has not approved or rejected it yet (P2). Not paid.
+            $table->enum('status', ['pending', 'paid', 'overdue', 'pending_verification'])->default('pending');
             $table->string('reference')->nullable();
             $table->foreignId('discount_id')->nullable()->constrained()->nullOnDelete();
             $table->text('notes')->nullable();

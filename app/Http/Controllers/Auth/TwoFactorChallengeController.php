@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
-use PragmaRX\Google2FA\Google2FA;
+use Illuminate\Support\Facades\RateLimiter;
 
 class TwoFactorChallengeController extends Controller
 {
@@ -43,16 +43,22 @@ class TwoFactorChallengeController extends Controller
             return redirect()->route('login');
         }
 
+        // Per-user lockout (S1): the route throttle is per IP; this stops a
+        // spread-out guess at one account's codes.
+        $lockKey = self::lockKey($user);
+        if (RateLimiter::tooManyAttempts($lockKey, self::MAX_FAILURES)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($lockKey) / 60);
+
+            return back()->withErrors(['code' => "Too many wrong codes. Try again in {$minutes} minute(s)."]);
+        }
+
         $usedRecoveryCode = false;
 
         // Try TOTP code first
         if ($request->filled('code')) {
-            $google2fa = new Google2FA();
-            $secret    = $user->getTwoFactorSecret();
-            $valid     = $secret && $google2fa->verifyKey($secret, $request->code);
-
-            if (! $valid) {
-                $this->writeAudit($request, $user, '2fa.failed', "Invalid TOTP code for '{$user->name}'.");
+            // verifyKeyNewer: a code (or an older one) that was already used is refused.
+            if (! $user->verifyTwoFactorCode((string) $request->code)) {
+                $this->fail($request, $user, "Invalid TOTP code for '{$user->name}'.");
                 return back()->withErrors(['code' => 'Invalid authentication code.']);
             }
         } elseif ($request->filled('recovery_code')) {
@@ -60,7 +66,7 @@ class TwoFactorChallengeController extends Controller
             $index = array_search($request->recovery_code, $codes, true);
 
             if ($index === false) {
-                $this->writeAudit($request, $user, '2fa.failed', "Invalid recovery code for '{$user->name}'.");
+                $this->fail($request, $user, "Invalid recovery code for '{$user->name}'.");
                 return back()->withErrors(['recovery_code' => 'Invalid recovery code.']);
             }
 
@@ -73,6 +79,8 @@ class TwoFactorChallengeController extends Controller
         } else {
             return back()->withErrors(['code' => 'Please enter an authentication code or recovery code.']);
         }
+
+        RateLimiter::clear($lockKey);
 
         // Log the user in and clear the pending 2FA session
         auth()->loginUsingId($userId);
@@ -87,6 +95,25 @@ class TwoFactorChallengeController extends Controller
         $this->writeAudit($request, $user, 'auth.login', "User '{$user->name}' logged in (2FA verified).");
 
         return redirect()->intended('/home');
+    }
+
+    /** Failures allowed before the account's 2FA challenge locks for LOCK_SECONDS. */
+    public const MAX_FAILURES = 5;
+
+    public const LOCK_SECONDS = 900;
+
+    public static function lockKey(User $user): string
+    {
+        return '2fa-lock:'.$user->id;
+    }
+
+    private function fail(Request $request, User $user, string $description): void
+    {
+        RateLimiter::hit(self::lockKey($user), self::LOCK_SECONDS);
+        $this->writeAudit($request, $user, '2fa.failed', $description);
+        if (RateLimiter::tooManyAttempts(self::lockKey($user), self::MAX_FAILURES)) {
+            $this->writeAudit($request, $user, '2fa.locked', "2FA challenge locked for '{$user->name}' after ".self::MAX_FAILURES.' wrong codes.');
+        }
     }
 
     private function writeAudit(Request $request, User $user, string $action, string $description): void

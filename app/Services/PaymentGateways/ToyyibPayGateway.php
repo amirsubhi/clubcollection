@@ -2,8 +2,12 @@
 
 namespace App\Services\PaymentGateways;
 
+use App\Contracts\ConfirmsWebhookPayments;
 use App\Contracts\PaymentGateway;
 use App\Models\Club;
+use App\Models\Payment;
+use App\Models\PaymentBill;
+use App\Support\Payments\GatewayConfirmation;
 use App\Support\Payments\GatewayFee;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
@@ -12,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class ToyyibPayGateway implements PaymentGateway
+class ToyyibPayGateway implements ConfirmsWebhookPayments, PaymentGateway
 {
     /**
      * `billChargeToCustomer` sent to createBill for each club gateway_fee_payer.
@@ -46,7 +50,7 @@ class ToyyibPayGateway implements PaymentGateway
     public function __construct()
     {
         $this->baseUrl = config('toyyibpay.base_url');
-        $this->webhookSecret = config('toyyibpay.webhook_secret');
+        $this->webhookSecret = (string) config('toyyibpay.webhook_secret');
         $this->globalSecretKey = config('toyyibpay.secret_key');
         $this->globalCategoryCode = config('toyyibpay.category_code');
     }
@@ -58,6 +62,12 @@ class ToyyibPayGateway implements PaymentGateway
 
     public function isConfiguredForClub(Club $club): bool
     {
+        // Without a usable webhook secret no callback can ever be verified, so a
+        // bill opened now could be paid but never settle (S1): refuse instead.
+        if (! WebhookSecret::isUsable($this->webhookSecret)) {
+            return false;
+        }
+
         if ($club->hasToyyibPayCredentials()) {
             return true;
         }
@@ -82,7 +92,8 @@ class ToyyibPayGateway implements PaymentGateway
         $payer = $fee instanceof GatewayFee ? $fee->payer : 'club';
 
         try {
-            $response = Http::asForm()->post("{$this->baseUrl}/index.php/api/createBill", [
+            // Bounded, so the 15 s per-fee pay lock always outlives the call.
+            $response = Http::asForm()->timeout(10)->post("{$this->baseUrl}/index.php/api/createBill", [
                 'userSecretKey' => $secretKey,
                 'categoryCode' => $categoryCode,
                 'billName' => $params['bill_name'],
@@ -91,7 +102,7 @@ class ToyyibPayGateway implements PaymentGateway
                 'billPayorInfo' => 1,
                 'billAmount' => (int) round($params['amount'] * 100),
                 'billReturnUrl' => $params['return_url'],
-                'billCallbackUrl' => $this->signedCallbackUrl($params['callback_url']),
+                'billCallbackUrl' => $this->signedCallbackUrl($params['callback_url'], (string) $params['reference_no']),
                 'billExternalReferenceNo' => $params['reference_no'],
                 'billTo' => $params['payer_name'],
                 'billEmail' => $params['payer_email'],
@@ -126,15 +137,75 @@ class ToyyibPayGateway implements PaymentGateway
         }
     }
 
-    public function verifyWebhookRequest(Request $request): bool
+    /**
+     * The callback token is a per-bill HMAC of the bill's reference (S1), so a
+     * token that leaks (logs, browser history) only ever works for that bill.
+     * The reference comes from our own records when the fee is found; only an
+     * unmatched callback is checked against the order_id it carries, so it
+     * can be audited without letting anyone forge one.
+     */
+    public function verifyWebhookRequest(Request $request, ?Payment $payment, ?PaymentBill $bill = null): bool
     {
         if (! WebhookSecret::isUsable($this->webhookSecret)) {
-            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is missing or still the placeholder value');
+            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is missing, too short (min '.WebhookSecret::MIN_LENGTH.' characters) or still the placeholder value');
 
             return false;
         }
 
-        return hash_equals($this->webhookSecret, (string) $request->query('webhook_token', ''));
+        $reference = $payment
+            ? ($bill?->reference ?? $payment->reference)
+            : $request->input('order_id');
+        if (! is_string($reference) || $reference === '') {
+            return false;
+        }
+
+        return hash_equals($this->callbackToken($reference), (string) $request->query('webhook_token', ''));
+    }
+
+    public function confirmsCallbacks(): bool
+    {
+        return (bool) config('toyyibpay.verify_callback', true);
+    }
+
+    /**
+     * Ask ToyyibPay itself (getBillTransactions) whether the bill was paid,
+     * and for how much. Any failure returns null: the caller does not settle
+     * and answers non-200 so the gateway retries the callback later.
+     */
+    public function confirmPayment(string $billCode): ?GatewayConfirmation
+    {
+        try {
+            $response = Http::asForm()->timeout(10)->post("{$this->baseUrl}/index.php/api/getBillTransactions", [
+                'billCode' => $billCode,
+                'billpaymentStatus' => '1',
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('ToyyibPay getBillTransactions unreachable', ['bill_code' => $billCode, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        $data = $response->successful() ? $response->json() : null;
+        if (! is_array($data)) {
+            Log::warning('ToyyibPay getBillTransactions gave no usable answer', ['bill_code' => $billCode, 'status' => $response->status()]);
+
+            return null;
+        }
+
+        $best = 0;
+        $count = 0;
+        foreach ($data as $txn) {
+            if (! is_array($txn) || (string) ($txn['billpaymentStatus'] ?? '') !== '1') {
+                continue;
+            }
+            $amount = $txn['billpaymentAmount'] ?? null;
+            if (is_numeric($amount) && (float) $amount > 0) {
+                $best = max($best, (int) round(((float) $amount) * 100));
+                $count++;
+            }
+        }
+
+        return new GatewayConfirmation($best, $count);
     }
 
     public function parseWebhook(Request $request): ?WebhookResult
@@ -163,17 +234,23 @@ class ToyyibPayGateway implements PaymentGateway
         return "{$this->baseUrl}/".rawurlencode($billCode);
     }
 
-    /**
-     * Append the shared secret token to the callback URL so the webhook
-     * handler can verify the request with hash_equals().
-     */
-    protected function signedCallbackUrl(string $url): string
+    /** The per-bill callback token: HMAC-SHA256 of the bill reference with the webhook secret. */
+    public function callbackToken(string $reference): string
     {
-        if (empty($this->webhookSecret)) {
+        return hash_hmac('sha256', $reference, $this->webhookSecret);
+    }
+
+    /**
+     * Append the bill's own token to the callback URL so the webhook handler
+     * can verify the request with hash_equals().
+     */
+    protected function signedCallbackUrl(string $url, string $reference): string
+    {
+        if (! WebhookSecret::isUsable($this->webhookSecret) || $reference === '') {
             return $url;
         }
         $sep = str_contains($url, '?') ? '&' : '?';
 
-        return $url.$sep.'webhook_token='.urlencode($this->webhookSecret);
+        return $url.$sep.'webhook_token='.$this->callbackToken($reference);
     }
 }

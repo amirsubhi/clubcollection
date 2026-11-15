@@ -5,6 +5,7 @@ namespace App\Services\PaymentGateways;
 use App\Contracts\PaymentGateway;
 use App\Models\Club;
 use App\Models\Payment;
+use App\Models\PaymentBill;
 use App\Support\Payments\BillplzSignature;
 use App\Support\Payments\GatewayFee;
 use App\Support\Payments\PaymentBillResult;
@@ -72,8 +73,10 @@ class BillplzGateway implements PaymentGateway
         }
 
         try {
+            // Bounded, so the 15 s per-fee pay lock always outlives the call.
             $response = Http::withBasicAuth($apiKey, '')
                 ->asForm()
+                ->timeout(10)
                 ->post("{$this->baseUrl}/api/v3/bills", [
                     'collection_id' => $collectionId,
                     'email' => $params['payer_email'],
@@ -112,10 +115,12 @@ class BillplzGateway implements PaymentGateway
         return rtrim($this->baseUrl, '/').'/bills/'.rawurlencode($billCode);
     }
 
-    public function verifyWebhookRequest(Request $request): bool
+    public function verifyWebhookRequest(Request $request, ?Payment $payment, ?PaymentBill $bill = null): bool
     {
-        $key = $this->resolveSignatureKey($request);
-        if (! WebhookSecret::isUsable($key)) {
+        $key = $this->signatureKeyFor($payment);
+        // The key is issued by Billplz in its own format: only blanks and
+        // placeholders are refused, not short keys.
+        if (! WebhookSecret::isUsable($key, 1)) {
             Log::error('Billplz webhook denied: x_signature_key is missing or still the placeholder value');
 
             return false;
@@ -154,32 +159,16 @@ class BillplzGateway implements PaymentGateway
     }
 
     /**
-     * Pick the per-club signature key when the bill belongs to a club whose
-     * id we can determine from `reference_1`. Otherwise use the global key.
-     *
-     * Note: Billplz delivers the signature key per-collection. The webhook
-     * payload identifies the bill, not the club; we look up the payment to
-     * find its club. Falling back to the global key keeps the global-config
-     * deployment path working.
-     *
-     * This runs one DB query per webhook request before the signature is
-     * verified — acceptable at this scale but worth noting if load increases.
+     * The club's own signature key when the fee belongs to a club with complete
+     * Billplz credentials (S1: a stray key on a club still using the global
+     * collection is ignored); otherwise the global key. The webhook controller
+     * looks the fee up from the bill id / reference_1 before verifying.
      */
-    protected function resolveSignatureKey(Request $request): string
+    protected function signatureKeyFor(?Payment $payment): string
     {
-        $billCode = $request->input('id');
-        $reference = $request->input('reference_1');
+        $club = $payment?->club;
 
-        $club = null;
-        if (! empty($billCode) || ! empty($reference)) {
-            $payment = Payment::query()
-                ->when($billCode, fn ($q) => $q->where('bill_code', $billCode))
-                ->when(! $billCode && $reference, fn ($q) => $q->where('reference', $reference))
-                ->first();
-            $club = $payment?->club;
-        }
-
-        if ($club instanceof Club && ! empty($club->billplz_x_signature_key)) {
+        if ($club instanceof Club && $club->hasBillplzCredentials()) {
             return (string) $club->billplz_x_signature_key;
         }
 

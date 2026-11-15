@@ -39,7 +39,9 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-3. Open the app in your browser and follow the installation wizard at `/install`.
+3. Set a random `INSTALL_TOKEN` (16+ characters) in `.env`, then open the app in your browser and follow the
+   installation wizard at `/install` straight away. The wizard asks for the token and is disabled without one;
+   it blanks the token when it finishes.
 
 The wizard will:
 - Check system requirements
@@ -56,7 +58,7 @@ php artisan migrate
 php artisan db:seed
 ```
 
-The seeder creates a super admin at `superadmin@clubportal.com` with password `Admin@123`. **Change this immediately after login.**
+The demo seeder only runs when `APP_ENV` is `local` or `testing`. It creates a super admin at `superadmin@clubportal.com` with the password from `SEED_SUPER_ADMIN_PASSWORD`, or a random one that it prints once. On a server, use the install wizard instead: the seeder refuses to run there.
 
 ## Financial Ledger & Exports
 
@@ -89,6 +91,9 @@ Required columns (in order): `name`, `email`, `job_level`, `role`, `joined_date`
 
 Valid `job_level` values: `gm`, `agm`, `manager`, `executive`, `non_exec`
 
+Only the super admin can make someone a club admin (`role` = `admin`), in the member form or by CSV. A club admin's
+import skips `admin` rows with a message, and club admins can't change or remove another club admin.
+
 A downloadable template is available on the import page.
 
 ## Payment Gateways
@@ -119,15 +124,18 @@ All user-supplied inputs (dates, amounts, IDs) are validated before use. Queries
 
 **You are responsible for securing your own deployment.** Before going live:
 
-- Set `APP_ENV=production` and `APP_DEBUG=false` in `.env`
+- Set `APP_ENV=production` and `APP_DEBUG=false` in `.env` (the install wizard does this for you)
 - Generate a strong `APP_KEY` with `php artisan key:generate`
-- Serve over HTTPS only
-- Set a strong `TOYYIBPAY_WEBHOOK_SECRET` — when empty, all ToyyibPay webhook calls are rejected (fail-closed)
+- Serve over HTTPS only, with `SESSION_SECURE_COOKIE=true` and `APP_URL` set to the https address
+- Set a random `INSTALL_TOKEN` before the first upload and run `/install` right away (the wizard is disabled without it)
+- Set a random `TOYYIBPAY_WEBHOOK_SECRET` of at least 32 characters — when empty, short or a placeholder, all ToyyibPay webhook calls are rejected (fail-closed)
 - Set a strong `BILLPLZ_X_SIGNATURE_KEY` — when empty, all Billplz webhook calls are rejected (fail-closed)
 - Set `TRUSTED_PROXIES` if the app sits behind a reverse proxy / load balancer (without it, rate limiting and audit-log IPs see the proxy address, not the client)
 - Keep PHP, Composer packages, and the OS up to date
 - Restrict file system permissions (`storage/` and `bootstrap/cache/` writable by web server only)
 - Regularly back up your database
+
+See `docs/RELEASE.md` for the full production `.env` block and the PHP upload limits.
 
 To report a security vulnerability, open a private issue or contact the maintainer directly.
 

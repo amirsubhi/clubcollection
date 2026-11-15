@@ -128,7 +128,7 @@
                             <tr>
                                 <td><code>role</code></td>
                                 <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">Yes</span></td>
-                                <td><code>member</code>, <code>admin</code></td>
+                                <td><code>member</code>, <code>admin</code><br><span class="small text-muted">Only the super admin can import <code>admin</code> rows; for club admins those rows are skipped with a message.</span></td>
                                 <td>member</td>
                             </tr>
                             <tr>

@@ -16,8 +16,9 @@ use RuntimeException;
  *
  *   php artisan db:seed --class=Database\\Seeders\\E2eSeeder
  *
- * Creates one club with fake ToyyibPay credentials, a member with one
- * pending RM 50.00 fee and two club admins (maker and checker). The
+ * Creates one club with fake ToyyibPay credentials and sample bank-transfer
+ * details, two members with one pending RM 50.00 fee each (one pays online,
+ * one by transfer slip) and two club admins (maker and checker). The
  * passwords are public, so it refuses to run outside local/testing.
  */
 class E2eSeeder extends Seeder
@@ -29,6 +30,9 @@ class E2eSeeder extends Seeder
     public const ADMIN_A_EMAIL = 'e2e.admin.a@clubportal.test';
 
     public const ADMIN_B_EMAIL = 'e2e.admin.b@clubportal.test';
+
+    /** Second member: pays by bank transfer with a slip (P2). */
+    public const TRANSFER_MEMBER_EMAIL = 'e2e.member.transfer@clubportal.test';
 
     public function run(): void
     {
@@ -46,6 +50,11 @@ class E2eSeeder extends Seeder
             // E2eFakeGatewayServiceProvider (local + E2E_FAKE_GATEWAY=1 only).
             'toyyibpay_secret_key' => 'e2e-fake-secret-key-not-real',
             'toyyibpay_category_code' => 'e2efakecat',
+            // Manual bank / DuitNow transfer with sample (not real) details.
+            'transfer_enabled' => true,
+            'bank_name' => 'Bank Contoh',
+            'bank_account_name' => 'Kelab Contoh',
+            'bank_account_no' => '1234 5678 9012',
         ]);
 
         FeeRate::create([
@@ -68,18 +77,23 @@ class E2eSeeder extends Seeder
             $club->members()->attach($admin, ['role' => 'admin', 'job_level' => 'manager', 'joined_date' => now()->subYear()->toDateString(), 'is_active' => true]);
         }
 
+        $transferMember = $this->user('E2E Ahli Pindahan', self::TRANSFER_MEMBER_EMAIL, 'member');
+        $club->members()->attach($transferMember, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->subYear()->toDateString(), 'is_active' => true]);
+
         $start = now()->startOfMonth();
-        Payment::create([
-            'club_id' => $club->id,
-            'user_id' => $member->id,
-            'recorded_by' => $member->id,
-            'amount' => 50.00,
-            'frequency' => 'monthly',
-            'period_start' => $start->toDateString(),
-            'period_end' => $start->copy()->endOfMonth()->toDateString(),
-            'due_date' => $start->copy()->addDays(14)->toDateString(),
-            'status' => 'pending',
-        ]);
+        foreach ([$member, $transferMember] as $payer) {
+            Payment::create([
+                'club_id' => $club->id,
+                'user_id' => $payer->id,
+                'recorded_by' => $payer->id,
+                'amount' => 50.00,
+                'frequency' => 'monthly',
+                'period_start' => $start->toDateString(),
+                'period_end' => $start->copy()->endOfMonth()->toDateString(),
+                'due_date' => $start->copy()->addDays(14)->toDateString(),
+                'status' => 'pending',
+            ]);
+        }
     }
 
     private function user(string $name, string $email, string $role): User

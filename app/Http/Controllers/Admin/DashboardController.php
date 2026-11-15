@@ -48,6 +48,15 @@ class DashboardController extends Controller
             ])
             ->values();
 
+        // Transfer slips waiting for an admin: count and the oldest five.
+        $slipQuery = $club->payments()->where('status', 'pending_verification');
+        $slips = [
+            'count' => (clone $slipQuery)->count(),
+            'items' => (clone $slipQuery)->with('user:id,name,email')->orderBy('transfer_submitted_at')->orderBy('id')->limit(5)->get()
+                ->map(fn ($p) => TransferVerificationController::card($p, false))->values(),
+            'transferReady' => $club->transferReady(),
+        ];
+
         return Inertia::render('Admin/Dashboard', [
             'nav' => AdminNav::props($club, $request->user(), $awaiting['mine']),
             'greetingName' => $request->user()->name,
@@ -72,6 +81,7 @@ class DashboardController extends Controller
             'monthly' => $stats->monthly(12),
             'categories' => $stats->byCategoryBetween($yearStart, $yearEnd),
             'queue' => $queue,
+            'slips' => $slips,
             'activity' => $this->recentActivity($club),
             'urls' => [
                 'fundUsage' => route('admin.clubs.fund-usage.index', $club),
@@ -81,6 +91,7 @@ class DashboardController extends Controller
                 'ledger' => route('admin.clubs.ledger', $club),
                 'auditLog' => route('admin.clubs.audit-logs', $club),
                 'billing' => route('admin.clubs.billing.edit', $club),
+                'verifications' => route('admin.clubs.verifications.index', $club),
             ],
         ]);
     }
@@ -105,7 +116,7 @@ class DashboardController extends Controller
                 'id' => 'p'.$p->id,
                 'kind' => 'fee',
                 'title' => 'Fee paid · '.($p->user?->name ?? 'Member'),
-                'who' => $p->gateway ? ucfirst($p->gateway) : 'Recorded by admin',
+                'who' => $p->gateway ? ucfirst($p->gateway) : ($p->paid_via === 'transfer' ? 'Bank transfer (slip checked)' : 'Recorded by admin'),
                 'at' => ($p->paid_date ?? $p->updated_at)->format('Y-m-d'),
                 'sort' => ($p->paid_date ?? $p->updated_at)->format('Y-m-d').' '.$p->updated_at->format('H:i:s'),
                 'amount' => P::sen($p->amount),
@@ -186,13 +197,15 @@ class DashboardController extends Controller
             ->selectRaw("
                 SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_count
+                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_count,
+                SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count
             ")
             ->first();
 
         $paidCount    = (int) ($statusStats->paid_count    ?? 0);
         $pendingCount = (int) ($statusStats->pending_count ?? 0);
         $overdueCount = (int) ($statusStats->overdue_count ?? 0);
+        $verifyingCount = (int) ($statusStats->verifying_count ?? 0);
 
         // ── Members paid vs unpaid this month ─────────────────────────────────
         // Two targeted queries instead of loading all members then filtering in PHP
@@ -240,7 +253,7 @@ class DashboardController extends Controller
             'expenseThisMonth', 'expenseThisYear', 'expenseAllTime',
             'balance',
             'monthlyIncome', 'monthlyExpense',
-            'paidCount', 'pendingCount', 'overdueCount',
+            'paidCount', 'pendingCount', 'overdueCount', 'verifyingCount',
             'paidMembers', 'unpaidMembers',
             'jobLevels', 'incomeByJobLevel',
             'expenseByCategory',

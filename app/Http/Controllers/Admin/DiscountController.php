@@ -43,7 +43,7 @@ class DiscountController extends Controller
             $club->id
         );
 
-        return redirect()->route('admin.discounts.index', $club)
+        return redirect()->route('admin.clubs.discounts.index', $club)
             ->with('success', 'Discount created.');
     }
 
@@ -77,7 +77,7 @@ class DiscountController extends Controller
             $discount->fresh()->only(['name', 'type', 'value', 'is_active'])
         );
 
-        return redirect()->route('admin.discounts.index', $discount->club)
+        return redirect()->route('admin.clubs.discounts.index', $discount->club)
             ->with('success', 'Discount updated.');
     }
 
@@ -91,7 +91,7 @@ class DiscountController extends Controller
 
         AuditService::log('discount.deleted', "Discount '{$old['name']}' deleted.", null, $clubId, $old);
 
-        return redirect()->route('admin.discounts.index', $club)
+        return redirect()->route('admin.clubs.discounts.index', $club)
             ->with('success', 'Discount deleted.');
     }
 }
