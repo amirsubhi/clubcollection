@@ -15,7 +15,10 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class Attachment extends Model
 {
-    public const KINDS = ['invoice', 'receipt', 'bank_slip', 'acknowledgement', 'other'];
+    public const KINDS = ['invoice', 'receipt', 'bank_slip', 'acknowledgement', 'other', 'proof_of_payment'];
+
+    /** Kinds an admin may pick for Fund Usage documents (proof_of_payment is a member's transfer slip). */
+    public const FUND_KINDS = ['invoice', 'receipt', 'bank_slip', 'acknowledgement', 'other'];
 
     public const MIMES = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
 

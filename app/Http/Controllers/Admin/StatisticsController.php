@@ -27,6 +27,7 @@ class StatisticsController extends Controller
             SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
             SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_count,
+            SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count,
             SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_revenue
         ")->first();
 
@@ -34,6 +35,8 @@ class StatisticsController extends Controller
         $paidCount     = (int)   ($paymentStats->paid_count ?? 0);
         $pendingCount  = (int)   ($paymentStats->pending_count ?? 0);
         $overdueCount  = (int)   ($paymentStats->overdue_count ?? 0);
+        // Transfer slips waiting for a club admin: not paid yet, shown on their own.
+        $verifyingCount = (int)  ($paymentStats->verifying_count ?? 0);
         $totalRevenue  = (float) ($paymentStats->total_revenue ?? 0);
         // Approved (counted) Fund Usage records only.
         $totalExpenses = (float) Expense::counted()->sum('amount');
@@ -98,7 +101,7 @@ class StatisticsController extends Controller
 
         return view('admin.statistics.index', compact(
             'totalClubs', 'activeClubs', 'totalMembers', 'totalPayments',
-            'totalRevenue', 'paidCount', 'pendingCount', 'overdueCount',
+            'totalRevenue', 'paidCount', 'pendingCount', 'overdueCount', 'verifyingCount',
             'totalExpenses', 'netBalance',
             'monthlyRevenue', 'monthlyExpenses',
             'clubStats', 'jobLevelLabels', 'jobLevelDistribution',

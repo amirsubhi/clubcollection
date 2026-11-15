@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Services\AuditService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -58,7 +59,8 @@ class PaymentController extends Controller
             ->selectRaw("
                 SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_paid,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending,
-                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as total_overdue
+                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as total_overdue,
+                SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as total_verifying
             ")
             ->first();
 
@@ -66,6 +68,7 @@ class PaymentController extends Controller
             'total_paid'    => (float) ($summaryStats->total_paid    ?? 0),
             'total_pending' => (int)   ($summaryStats->total_pending ?? 0),
             'total_overdue' => (int)   ($summaryStats->total_overdue ?? 0),
+            'total_verifying' => (int) ($summaryStats->total_verifying ?? 0),
         ];
 
         $jobLevels = FeeRate::jobLevelLabels();
@@ -161,8 +164,12 @@ class PaymentController extends Controller
     public function show(Payment $payment)
     {
         $this->authorizeClubAdmin($payment->club);
-        $payment->load(['user', 'club', 'discount', 'recordedBy']);
-        return view('admin.payments.show', compact('payment'));
+        $payment->load(['user', 'club', 'discount', 'recordedBy', 'verifiedBy']);
+        // Every transfer slip ever sent for this fee (rejected ones are kept), newest first.
+        $slips = $payment->attachments()->where('kind', 'proof_of_payment')->reorder()->orderByDesc('id')->get();
+        $currentSlipIds = $payment->transfer_submitted_at ? $payment->currentSlips()->pluck('id')->all() : [];
+
+        return view('admin.payments.show', compact('payment', 'slips', 'currentSlipIds'));
     }
 
     public function edit(Payment $payment)
@@ -180,7 +187,9 @@ class PaymentController extends Controller
         $data = $request->validate([
             'due_date'    => 'required|date',
             'amount'      => 'required|numeric|min:0',
-            'status'      => 'required|in:pending,paid,overdue',
+            // pending_verification is accepted so the edit form round-trips, but it
+            // can only be entered or left through the Verifications queue (below).
+            'status'      => 'required|in:pending,paid,overdue,pending_verification',
             'paid_date'   => 'nullable|date',
             'discount_id' => [
                 'nullable',
@@ -194,6 +203,25 @@ class PaymentController extends Controller
             'notes'       => 'nullable|string|max:500',
             'reference'   => 'nullable|string|max:255',
         ]);
+
+        $verifying = $payment->status === 'pending_verification';
+        if (($data['status'] === 'pending_verification') !== $verifying) {
+            return back()->withInput()->withErrors(['status' => $verifying
+                ? 'A transfer slip is waiting for verification. Approve or reject it in Verifications instead.'
+                : '"Awaiting verification" is set only when a member uploads a transfer slip.']);
+        }
+
+        // The member transferred this exact amount: while the slip is checked only the notes may change.
+        if ($verifying) {
+            $changed = (int) round(((float) $data['amount']) * 100) !== (int) round(((float) $payment->amount) * 100)
+                || (int) ($data['discount_id'] ?? 0) !== (int) ($payment->discount_id ?? 0)
+                || Carbon::parse($data['due_date'])->toDateString() !== $payment->due_date->toDateString()
+                || (empty($data['paid_date']) ? null : Carbon::parse($data['paid_date'])->toDateString()) !== $payment->paid_date?->toDateString()
+                || ($data['reference'] ?? null) !== $payment->reference;
+            if ($changed) {
+                return back()->withInput()->withErrors(['status' => 'A transfer slip is waiting for verification, so only the notes can be changed. Approve or reject it in Verifications first.']);
+            }
+        }
 
         if ($data['status'] === 'paid' && empty($data['paid_date'])) {
             $data['paid_date'] = now()->toDateString();
@@ -220,20 +248,38 @@ class PaymentController extends Controller
         $this->authorizeClubAdmin($payment->club);
         $request->validate(['reference' => 'nullable|string|max:255']);
 
-        $payment->update([
-            'status'    => 'paid',
-            'paid_date' => now()->toDateString(),
-            'reference' => $request->reference,
-        ]);
+        // Lock and re-check, so a slip approval or a webhook running at the same moment can't race this.
+        $refusal = DB::transaction(function () use ($request, $payment) {
+            $locked = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'paid') {
+                return back()->with('error', 'This payment is already paid.');
+            }
+            if ($locked->status === 'pending_verification') {
+                return redirect()->route('admin.clubs.verifications.index', $locked->club_id)
+                    ->with('error', "Payment #{$locked->id} has a transfer slip waiting. Approve or reject it here instead of marking it paid by hand.");
+            }
 
-        AuditService::log(
-            'payment.marked_paid',
-            "Payment #{$payment->id} marked as paid" . ($request->reference ? " (ref: {$request->reference})" : '') . '.',
-            $payment,
-            $payment->club_id,
-            ['status' => 'pending/overdue'],
-            ['status' => 'paid', 'paid_date' => now()->toDateString()]
-        );
+            $old = $locked->status;
+            $locked->update([
+                'status'    => 'paid',
+                'paid_date' => now()->toDateString(),
+                'reference' => $request->reference,
+            ]);
+
+            AuditService::log(
+                'payment.marked_paid',
+                "Payment #{$locked->id} marked as paid" . ($request->reference ? " (ref: {$request->reference})" : '') . '.',
+                $locked,
+                $locked->club_id,
+                ['status' => $old],
+                ['status' => 'paid', 'paid_date' => now()->toDateString()]
+            );
+
+            return null;
+        });
+        if ($refusal) {
+            return $refusal;
+        }
 
         return back()->with('success', 'Payment marked as paid.');
     }
@@ -245,6 +291,10 @@ class PaymentController extends Controller
         $clubId  = $club->id;
         $summary = "Payment #{$payment->id} (RM {$payment->amount}, {$payment->status}) deleted.";
         $old     = $payment->only(['status', 'amount', 'period_start', 'period_end', 'user_id']);
+        // Transfer slips are kept as evidence: a fee with slips can't be deleted.
+        if ($payment->status === 'pending_verification' || $payment->attachments()->exists()) {
+            return back()->with('error', 'This payment has transfer slips attached, so it is kept for the record and can\'t be deleted.');
+        }
         $payment->delete();
 
         AuditService::log('payment.deleted', $summary, null, $clubId, $old);

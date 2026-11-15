@@ -15,7 +15,10 @@ use Illuminate\Validation\Validator;
  */
 class ClubBillingController extends Controller
 {
-    private const FIELDS = ['allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan', 'gateway_fee_payer', 'gateway_fee_sen'];
+    private const FIELDS = [
+        'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan', 'gateway_fee_payer', 'gateway_fee_sen',
+        'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
+    ];
 
     public function edit(Club $club)
     {
@@ -37,11 +40,30 @@ class ClubBillingController extends Controller
             'gateway_fee_payer' => 'required|in:club,member',
             // Ringgit with at most 2 decimals; stored as sen. RM10 cap catches typos (e.g. 100 for RM1.00).
             'gateway_fee' => 'required|numeric|decimal:0,2|min:0|max:10',
-        ], [], [
+            // Manual bank / DuitNow transfer (P2). Members see these, so plain text.
+            'transfer_enabled' => 'boolean',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_account_name' => 'nullable|string|max:150',
+            'bank_account_no' => ['nullable', 'string', 'regex:/^[0-9][0-9 \-]{4,18}[0-9]$/'],
+            'duitnow_id' => 'nullable|string|max:100',
+        ], [
+            'bank_account_no.regex' => 'The account number may only have digits, spaces and dashes (6 to 20 characters).',
+        ], [
             'gateway_fee' => 'gateway fee',
             'default_plan' => 'default plan',
             'gateway_fee_payer' => 'who pays the gateway fee',
+            'bank_account_name' => 'account holder',
+            'bank_account_no' => 'account number',
+            'duitnow_id' => 'DuitNow ID',
         ]);
+
+        $bank = [
+            'transfer_enabled' => $request->boolean('transfer_enabled'),
+            'bank_name' => self::clean($data['bank_name'] ?? null),
+            'bank_account_name' => self::clean($data['bank_account_name'] ?? null),
+            'bank_account_no' => self::clean($data['bank_account_no'] ?? null),
+            'duitnow_id' => self::clean($data['duitnow_id'] ?? null),
+        ];
 
         $allowed = [
             'monthly' => $request->boolean('allow_monthly'),
@@ -49,7 +71,11 @@ class ClubBillingController extends Controller
             'yearly' => $request->boolean('allow_yearly'),
         ];
 
-        validator([], [])->after(function (Validator $v) use ($allowed, $data, $club) {
+        validator([], [])->after(function (Validator $v) use ($allowed, $data, $club, $bank) {
+            // Members can only be offered a transfer when they can see where to send it.
+            if ($bank['transfer_enabled'] && ! (new Club($bank))->transferDetailsComplete()) {
+                $v->errors()->add('transfer_enabled', 'To turn on bank transfer, fill in the bank name, account holder, and the account number or DuitNow ID.');
+            }
             // Until a sandbox run confirms billChargeToCustomer, a ToyyibPay club
             // cannot pass the fee on (config toyyibpay.charge_to_customer_verified).
             if ($data['gateway_fee_payer'] === 'member' && ! $club->memberFeeAllowed()) {
@@ -69,14 +95,14 @@ class ClubBillingController extends Controller
             'default_plan' => $data['default_plan'],
             'gateway_fee_payer' => $data['gateway_fee_payer'],
             'gateway_fee_sen' => (int) round(((float) $data['gateway_fee']) * 100),
-        ];
+        ] + $bank;
 
         $old = $club->only(self::FIELDS);
         $club->update($new);
 
         AuditService::log(
             'club.billing_updated',
-            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill).',
+            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; bank transfer '.($new['transfer_enabled'] ? 'on' : 'off').').',
             $club,
             $club->id,
             $old,
@@ -84,5 +110,13 @@ class ClubBillingController extends Controller
         );
 
         return redirect()->route('admin.clubs.billing.edit', $club)->with('success', 'Billing settings saved.');
+    }
+
+    /** Trim; an empty field is stored as null. Account numbers keep the spaces/dashes the admin typed. */
+    private static function clean(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

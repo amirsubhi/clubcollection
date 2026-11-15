@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// End-to-end smoke test for Option A (member pay flow + Fund Usage maker-checker).
+// End-to-end smoke test for Option A (member pay flow + Fund Usage maker-checker + transfer slip verification).
 // See tests/e2e/README.md for the database and server set-up. Exits non-zero on failure.
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -16,6 +16,7 @@ const SECRET = process.env.E2E_WEBHOOK_SECRET || "e2e-webhook-secret-local-only"
 const PASSWORD = process.env.E2E_PASSWORD || "E2e-Smoke-Pass-2026"; // Database\Seeders\E2eSeeder::PASSWORD
 const USERS = {
   member: "e2e.member@clubportal.test",
+  transferMember: "e2e.member.transfer@clubportal.test",
   adminA: "e2e.admin.a@clubportal.test",
   adminB: "e2e.admin.b@clubportal.test",
 };
@@ -284,6 +285,68 @@ try {
     await shot(b.page, "c4-admin-dashboard-after");
   });
   await b.ctx.close();
+
+  /* (d) a second member pays by bank transfer and uploads a slip */
+  const d = await newPage(browser, "transferMember", MEMBER_VIEW, true);
+  let transferPaymentId;
+  await step("transfer member opens Review & pay and picks bank transfer / DuitNow", async () => {
+    await login(d.page, USERS.transferMember);
+    await d.page.waitForURL(/\/my\/dashboard/);
+    await d.page.getByRole("link", { name: /Bayar\s+RM 50\.00/ }).first().click();
+    await d.page.waitForURL(/\/my\/payments\/\d+\/review/);
+    transferPaymentId = d.page.url().match(/payments\/(\d+)\/review/)[1];
+    await d.page.getByLabel(/Pindahan bank \/ DuitNow/).check();
+    await d.page.getByText("Bank Contoh").first().waitFor();
+    const ref = await d.page.getByTestId("transfer-ref").innerText();
+    if (ref.trim() !== `YURAN-${transferPaymentId}`) throw new Error(`reference shown is "${ref}", expected YURAN-${transferPaymentId}`);
+    await shot(d.page, "d1-review-transfer");
+  });
+  await step("transfer member uploads a slip and sees Menunggu pengesahan", async () => {
+    await d.page.locator('input[type="file"][multiple]').setInputFiles([pngPath]);
+    await d.page.fill("#transfer_ref", "E2E-BANK-REF-1");
+    await shot(d.page, "d2-review-transfer-filled");
+    await Promise.all([d.page.waitForURL(/\/my\/payments\/\d+\/invoice/), d.page.getByRole("button", { name: /Hantar slip/ }).click()]);
+    await d.page.getByText("Menunggu pengesahan").first().waitFor();
+    await d.page.getByTestId("invoice-verifying").waitFor();
+    await shot(d.page, "d3-invoice-verifying");
+    // Also the real 390×844 viewport (full-page shots can't show the sticky header over content).
+    await d.page.screenshot({ path: join(OUT, "d3-invoice-verifying-viewport.png"), animations: "disabled" });
+    await d.page.goto(`${BASE}/my/payments/${transferPaymentId}/review`);
+    await d.page.getByTestId("verifying").waitFor();
+    await shot(d.page, "d4-review-verifying");
+    await d.page.goto(`${BASE}/my/dashboard`);
+    await d.page.getByText("Menunggu pengesahan").first().waitFor();
+    await shot(d.page, "d5-member-home-verifying");
+  });
+
+  /* (e) admin B approves the slip in Verifications */
+  const e = await newPage(browser, "adminB-verify", ADMIN_VIEW, false);
+  await step("admin B approves the slip in Verifications", async () => {
+    await login(e.page, USERS.adminB);
+    await e.page.goto(`${BASE}/admin/clubs/${clubId}/verifications`);
+    await e.page.getByTestId("slip-card").first().waitFor();
+    await e.page.getByText("E2E Ahli Pindahan").first().waitFor();
+    await shot(e.page, "e1-verifications");
+    await e.page.getByTestId("slip-card").first().getByRole("button", { name: /^Approve/ }).click();
+    const dialog = e.page.getByRole("dialog");
+    await dialog.getByLabel(/Bank reference/).fill("E2E-STMT-0001");
+    await shot(e.page, "e2-approve-slip-dialog");
+    await dialog.getByRole("button", { name: /^Approve/ }).click();
+    await dialog.waitFor({ state: "detached" });
+    await e.page.getByText(/^Slip approved\./).first().waitFor();
+    await e.page.getByRole("tab", { name: /Recently handled/ }).click();
+    await e.page.getByText("Approved", { exact: true }).first().waitFor();
+    await shot(e.page, "e3-verifications-handled");
+  });
+  await e.ctx.close();
+
+  await step("transfer member's invoice now shows the receipt", async () => {
+    await d.page.goto(`${BASE}/my/payments/${transferPaymentId}/invoice`);
+    await d.page.getByText("Resit rasmi").first().waitFor();
+    await d.page.getByText("Pindahan bank / DuitNow").first().waitFor();
+    await shot(d.page, "d6-receipt-transfer");
+  });
+  await d.ctx.close();
 } catch {
   /* already recorded by step() */
 } finally {

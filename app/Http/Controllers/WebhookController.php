@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\PaymentGateway;
 use App\Mail\PaymentConfirmation;
+use App\Models\AuditLog;
 use App\Models\Payment;
 use App\Services\AuditService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
@@ -95,8 +96,15 @@ class WebhookController extends Controller
 
             // Idempotency: replays / concurrent retries must not re-process.
             if ($payment->status === 'paid') {
+                $this->flagPaidAfterTransfer($payment, $result);
+
                 return null;
             }
+
+            // A transfer slip is still being checked, but the gateway really took
+            // the money: settle it as paid via the gateway (ignoring it would lose
+            // track of real money) and flag it so the treasurer refunds the transfer.
+            $duringVerification = $payment->status === 'pending_verification';
 
             // Never mark a fee paid for less than it is worth: the gateway's
             // reported amount when it sends one, otherwise the amount the bill
@@ -154,8 +162,49 @@ class WebhookController extends Controller
                 $newAttrs
             );
 
+            if ($duringVerification) {
+                AuditService::log(
+                    'payment.gateway_paid_during_verification',
+                    "Payment #{$payment->id} was paid via {$label} while the member's transfer slip was still being checked. ".
+                        'If the bank transfer also arrived, refund it to the member.',
+                    $payment,
+                    $payment->club_id,
+                    ['status' => 'pending_verification', 'transfer_date' => $payment->transfer_date?->toDateString(), 'transfer_ref' => $payment->transfer_ref],
+                    ['status' => 'paid', 'gateway' => $result->gateway, 'transaction_id' => $result->transactionId]
+                );
+            }
+
             return $payment;
         });
+    }
+
+    /**
+     * A gateway payment for a fee the treasurer already settled from a transfer
+     * slip: the member paid twice. Record it once per transaction for a refund.
+     */
+    private function flagPaidAfterTransfer(Payment $payment, WebhookResult $result): void
+    {
+        if ($payment->paid_via !== 'transfer') {
+            return;
+        }
+        $txn = $result->transactionId ?? 'n/a';
+        $seen = AuditLog::where('action', 'payment.gateway_paid_during_verification')
+            ->where('auditable_type', Payment::class)
+            ->where('auditable_id', $payment->id)
+            ->get()
+            ->contains(fn (AuditLog $log) => ($log->new_values['transaction_id'] ?? 'n/a') === $txn);
+        if ($seen) {
+            return;
+        }
+
+        AuditService::log(
+            'payment.gateway_paid_during_verification',
+            "Payment #{$payment->id} was already settled by bank transfer, but {$this->gatewayLabel($result->gateway)} also reported a payment (txn: {$txn}). Refund one of them to the member.",
+            $payment,
+            $payment->club_id,
+            ['status' => 'paid', 'paid_via' => 'transfer'],
+            ['gateway' => $result->gateway, 'transaction_id' => $result->transactionId]
+        );
     }
 
     private function gatewayLabel(string $name): string

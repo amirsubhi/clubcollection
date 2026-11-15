@@ -81,6 +81,56 @@
                         @error('gateway_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
+                    <hr>
+
+                    <h2 class="h6 fw-semibold mb-1" id="transfer">Pindahan bank / DuitNow</h2>
+                    <p class="text-muted small mb-3">
+                        Let members pay by bank transfer or DuitNow with no gateway fee. They upload the slip, and an
+                        admin checks it in <strong>Verifications</strong> before the fee counts as paid. Members see
+                        these details, so use the club's own account.
+                    </p>
+                    <div class="form-check form-switch mb-3">
+                        <input type="hidden" name="transfer_enabled" value="0">
+                        <input class="form-check-input @error('transfer_enabled') is-invalid @enderror" type="checkbox" role="switch"
+                               name="transfer_enabled" value="1" id="transfer_enabled"
+                               {{ old('transfer_enabled', $club->transfer_enabled) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="transfer_enabled">Offer bank transfer / DuitNow to members</label>
+                    </div>
+                    @error('transfer_enabled')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="bank_name" class="form-label fw-semibold">Bank name</label>
+                            <input type="text" name="bank_name" id="bank_name" maxlength="100" autocomplete="off"
+                                   class="form-control @error('bank_name') is-invalid @enderror"
+                                   value="{{ old('bank_name', $club->bank_name) }}" placeholder="e.g. Bank Contoh">
+                            @error('bank_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bank_account_name" class="form-label fw-semibold">Account holder</label>
+                            <input type="text" name="bank_account_name" id="bank_account_name" maxlength="150" autocomplete="off"
+                                   class="form-control @error('bank_account_name') is-invalid @enderror"
+                                   value="{{ old('bank_account_name', $club->bank_account_name) }}" placeholder="e.g. Kelab Contoh">
+                            @error('bank_account_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bank_account_no" class="form-label fw-semibold">Account number</label>
+                            <input type="text" name="bank_account_no" id="bank_account_no" maxlength="20" inputmode="numeric" autocomplete="off"
+                                   class="form-control @error('bank_account_no') is-invalid @enderror"
+                                   value="{{ old('bank_account_no', $club->bank_account_no) }}" placeholder="e.g. 1234 5678 9012">
+                            <div class="form-text">Digits, spaces or dashes.</div>
+                            @error('bank_account_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-6">
+                            <label for="duitnow_id" class="form-label fw-semibold">DuitNow ID <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="text" name="duitnow_id" id="duitnow_id" maxlength="100" autocomplete="off"
+                                   class="form-control @error('duitnow_id') is-invalid @enderror"
+                                   value="{{ old('duitnow_id', $club->duitnow_id) }}" placeholder="Phone, business reg. no. or other ID">
+                            <div class="form-text">Needed only if there is no account number.</div>
+                            @error('duitnow_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg me-1"></i>Save billing settings

@@ -18,6 +18,7 @@ import {
   BookOpen,
   Coins,
   SlidersHorizontal,
+  BadgeCheck,
 } from "lucide-react";
 import { AdminShell, type AdminNavGroup } from "./AdminShell";
 import { Alert } from "@/components/ui/alert";
@@ -26,6 +27,7 @@ import type { AdminNavProps } from "@/types/admin";
 const icons: Record<string, typeof Menu> = {
   dashboard: LayoutDashboard,
   fund: ReceiptText,
+  verify: BadgeCheck,
   payments: Wallet,
   members: Users,
   rates: Coins,

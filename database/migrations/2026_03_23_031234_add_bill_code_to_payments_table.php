@@ -27,12 +27,26 @@ return new class extends Migration
             // member paid it). Null for fees settled by hand.
             $table->string('paid_via', 20)->nullable()->after('transaction_id');
             $table->unsignedInteger('fee_absorbed_sen')->nullable()->after('paid_via');
+            // Manual bank / DuitNow transfer (P2). What the member typed when
+            // uploading the slip, and who checked it. paid_via is 'transfer' once
+            // a club admin approves the slip.
+            $table->date('transfer_date')->nullable()->after('fee_absorbed_sen');
+            $table->string('transfer_ref', 60)->nullable()->after('transfer_date');
+            // The club's bank-statement reference the approving admin typed. Kept
+            // apart from `reference`, which the webhook uses to find gateway bills.
+            $table->string('transfer_bank_ref', 100)->nullable()->after('transfer_ref');
+            $table->timestamp('transfer_submitted_at')->nullable()->after('transfer_ref');
+            $table->foreignId('verified_by')->nullable()->after('transfer_submitted_at')->constrained('users')->nullOnDelete();
+            $table->timestamp('verified_at')->nullable()->after('verified_by');
+            $table->string('rejection_reason', 500)->nullable()->after('verified_at');
         });
     }
 
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
+            $table->dropConstrainedForeignId('verified_by');
+            $table->dropColumn(['transfer_date', 'transfer_ref', 'transfer_bank_ref', 'transfer_submitted_at', 'verified_at', 'rejection_reason']);
             $table->dropColumn(['bill_code', 'bill_amount', 'bill_fee_payer', 'bill_fee_sen', 'transaction_id', 'paid_via', 'fee_absorbed_sen']);
         });
     }

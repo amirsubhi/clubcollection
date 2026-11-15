@@ -16,13 +16,37 @@ export interface UploadItem {
   file?: File;
 }
 
+/** Visible strings, so member pages can pass BM/EN copy (admin pages use the English defaults). */
+export interface UploaderText {
+  dropPrefix: string;
+  browse: string;
+  limits: string;
+  takePhoto: string;
+  cameraHint: string;
+  remove: (name: string) => string;
+}
+
+const defaultText = (maxFiles: number): UploaderText => ({
+  dropPrefix: "Drag files here or",
+  browse: "browse",
+  limits: `PDF, JPG, PNG or WebP · up to 10 MB each · max ${maxFiles} files`,
+  takePhoto: "Take photo",
+  cameraHint: "On a phone this opens the camera.",
+  remove: (name) => `Remove ${name}`,
+});
+
 export interface FileUploaderProps {
   files: UploadItem[];
   onAdd: (files: UploadItem[]) => void;
   onRemove: (id: string) => void;
-  onKindChange: (id: string, kind: AttachmentKind) => void;
+  onKindChange?: (id: string, kind: AttachmentKind) => void;
   error?: string;
   maxFiles?: number;
+  /** Ask for the kind of each document (Fund Usage). Off for single-purpose uploads such as a transfer slip. */
+  showKind?: boolean;
+  text?: Partial<UploaderText>;
+  /** Larger type and touch targets for member pages. */
+  comfortable?: boolean;
 }
 
 function toItems(list: FileList | null): UploadItem[] {
@@ -38,8 +62,9 @@ function toItems(list: FileList | null): UploadItem[] {
 }
 
 /** Multi-file uploader: drag-drop or browse, camera capture on phones, per-file kind and remove. Upload is left to the parent form (e.g. Inertia useForm). */
-export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxFiles = 10 }: FileUploaderProps) {
+export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxFiles = 10, showKind = true, text, comfortable = false }: FileUploaderProps) {
   const inputId = useId();
+  const tx = { ...defaultText(maxFiles), ...text };
   const camRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   return (
@@ -63,10 +88,10 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
         )}
       >
         <UploadCloud className="h-8 w-8 text-muted-foreground" aria-hidden />
-        <span className="text-sm font-medium">
-          Drag files here or <span className="text-primary underline">browse</span>
+        <span className={comfortable ? "text-base font-medium" : "text-sm font-medium"}>
+          {tx.dropPrefix} <span className="text-primary underline">{tx.browse}</span>
         </span>
-        <span className="text-xs text-muted-foreground">PDF, JPG, PNG or WebP · up to 10 MB each · max {maxFiles} files</span>
+        <span className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{tx.limits}</span>
         <input
           id={inputId}
           type="file"
@@ -80,10 +105,10 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
         />
       </label>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => camRef.current?.click()}>
-          <Camera aria-hidden /> Take photo
+        <Button type="button" variant="outline" size={comfortable ? "lg" : "sm"} className={comfortable ? "h-11 rounded-full" : undefined} onClick={() => camRef.current?.click()}>
+          <Camera aria-hidden /> {tx.takePhoto}
         </Button>
-        <span className="text-xs text-muted-foreground">On a phone this opens the camera.</span>
+        <span className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{tx.cameraHint}</span>
         <input
           ref={camRef}
           type="file"
@@ -98,7 +123,7 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
           }}
         />
       </div>
-      {error && <p className="text-xs font-medium text-danger-foreground">{error}</p>}
+      {error && <p className={cn("font-medium text-danger-foreground", comfortable ? "text-sm" : "text-xs")}>{error}</p>}
       {files.length > 0 && (
         <ul className="flex flex-col divide-y rounded-lg border">
           {files.map((f) => (
@@ -108,27 +133,34 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
                   {f.isPdf ? <FileText className="h-5 w-5 text-danger" aria-hidden /> : <ImageIcon className="h-5 w-5 text-info" aria-hidden />}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{f.name}</div>
-                  <div className="text-xs text-muted-foreground">{f.sizeKb} KB</div>
+                  <div className={cn("truncate font-medium", comfortable ? "text-base" : "text-sm")}>{f.name}</div>
+                  <div className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{f.sizeKb} KB</div>
                 </div>
+                {!showKind && (
+                  <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={() => onRemove(f.id)} aria-label={tx.remove(f.name)}>
+                    <Trash2 className="text-danger" />
+                  </Button>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Select value={f.kind || undefined} onValueChange={(v) => onKindChange(f.id, v as AttachmentKind)}>
-                  <SelectTrigger className="h-9 w-full sm:w-44" aria-label={`Kind of ${f.name}`} invalid={!f.kind && !!error}>
-                    <SelectValue placeholder="Kind of document" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {attachmentKinds.map((k) => (
-                      <SelectItem key={k.value} value={k.value}>
-                        {k.label} · {k.bm}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => onRemove(f.id)} aria-label={`Remove ${f.name}`}>
-                  <Trash2 className="text-danger" />
-                </Button>
-              </div>
+              {showKind && (
+                <div className="flex items-center gap-2">
+                  <Select value={f.kind || undefined} onValueChange={(v) => onKindChange?.(f.id, v as AttachmentKind)}>
+                    <SelectTrigger className="h-9 w-full sm:w-44" aria-label={`Kind of ${f.name}`} invalid={!f.kind && !!error}>
+                      <SelectValue placeholder="Kind of document" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {attachmentKinds.map((k) => (
+                        <SelectItem key={k.value} value={k.value}>
+                          {k.label} · {k.bm}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => onRemove(f.id)} aria-label={tx.remove(f.name)}>
+                    <Trash2 className="text-danger" />
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

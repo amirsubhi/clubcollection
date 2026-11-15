@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, KeyRound, LogOut, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { InstallPrompt } from "@/components/app/InstallPrompt";
@@ -14,7 +14,8 @@ import type { HomeClub, MemberPaymentRow } from "@/types/member";
 
 interface Props {
   year: number;
-  outstanding: { total: number; count: number; overdueCount: number };
+  /** Fees still owed; fees whose transfer slip is being checked are only in verifyingCount. */
+  outstanding: { total: number; count: number; overdueCount: number; verifyingCount: number };
   upcoming: MemberPaymentRow[];
   recentPaid: MemberPaymentRow[];
   clubs: HomeClub[];
@@ -22,8 +23,36 @@ interface Props {
   account: { isAdmin: boolean; adminUrl: string | null; securityUrl: string; logoutUrl: string };
 }
 
+/** "1 menunggu pengesahan": fees whose slip the treasurer is still checking. */
+function VerifyingLine({ n }: { n: number }) {
+  const t = useT();
+  return (
+    <span className="inline-flex h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="verifying-line">
+      <Hourglass className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("verifyingN"), { n })}
+    </span>
+  );
+}
+
 function Hero({ outstanding, next }: { outstanding: Props["outstanding"]; next?: MemberPaymentRow }) {
   const t = useT();
+  if ((!next || outstanding.count === 0) && outstanding.verifyingCount > 0) {
+    return (
+      <section aria-labelledby="due-h" className="relative overflow-hidden rounded-[24px] bg-deep p-5 text-deep-foreground ring-1 ring-primary/10">
+        <NodePattern />
+        <div className="relative flex items-center gap-4">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning-foreground">
+            <Hourglass className="h-7 w-7" strokeWidth={2} aria-hidden />
+          </span>
+          <div>
+            <h2 id="due-h" className="font-display text-2xl font-extrabold leading-tight tracking-tight">
+              {t("heroVerifyingTitle")}
+            </h2>
+            <p className="mt-1 text-base text-deep-foreground/80">{t("heroVerifyingBody")}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
   if (!next || outstanding.count === 0) {
     return (
       <section aria-labelledby="due-h" className="relative overflow-hidden rounded-[24px] bg-deep p-5 text-deep-foreground ring-1 ring-primary/10">
@@ -65,6 +94,11 @@ function Hero({ outstanding, next }: { outstanding: Props["outstanding"]; next?:
             {fill(t("openN"), { n: outstanding.count })}
             {outstanding.count > 1 && <span className="block">{t("payOldestFirst")}</span>}
           </div>
+          {outstanding.verifyingCount > 0 && (
+            <div className="mt-2 flex">
+              <VerifyingLine n={outstanding.verifyingCount} />
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Link

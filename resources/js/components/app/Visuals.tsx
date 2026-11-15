@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Tone = "accent" | "mint" | "info" | "danger" | "neutral";
+export type Tone = "accent" | "mint" | "info" | "danger" | "neutral" | "warning";
 
 const toneCls: Record<Tone, string> = {
   accent: "bg-accent text-accent-foreground",
   mint: "bg-mint text-mint-foreground",
   info: "bg-info-soft text-info-foreground",
   danger: "bg-danger-soft text-danger-foreground",
+  warning: "bg-warning-soft text-warning-foreground",
   neutral: "bg-secondary text-foreground",
 };
 

@@ -8,7 +8,7 @@ import { attachmentKinds } from "@/lib/fund-meta";
 import type { Attachment } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
-const kindLabel = (k: Attachment["kind"]) => attachmentKinds.find((x) => x.value === k)?.label ?? k;
+const kindLabel = (k: Attachment["kind"]) => (k === "proof_of_payment" ? "Transfer slip" : (attachmentKinds.find((x) => x.value === k)?.label ?? k));
 const isPdf = (a: Attachment) => a.mime === "application/pdf" || a.name.toLowerCase().endsWith(".pdf");
 const isImage = (a: Attachment) => !!a.mime?.startsWith("image/");
 

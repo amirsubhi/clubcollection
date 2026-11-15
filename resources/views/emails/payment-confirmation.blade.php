@@ -48,13 +48,25 @@
           <td>Paid On</td>
           <td>{{ $payment->paid_date->format('d M Y') }}</td>
         </tr>
+        @if($payment->paid_via === 'transfer')
+        <tr>
+          <td>Method</td>
+          <td>Bank transfer / DuitNow (verified by the club)</td>
+        </tr>
+        @if($payment->transfer_bank_ref || $payment->transfer_ref)
+        <tr>
+          <td>Bank reference</td>
+          <td>{{ $payment->transfer_bank_ref ?? $payment->transfer_ref }}</td>
+        </tr>
+        @endif
+        @endif
         @if($payment->transaction_id)
         <tr>
           <td>Transaction ID</td>
           <td>{{ $payment->transaction_id }}</td>
         </tr>
         @endif
-        @if($payment->reference)
+        @if($payment->reference && $payment->paid_via !== 'transfer')
         <tr>
           <td>Reference</td>
           <td>{{ $payment->reference }}</td>

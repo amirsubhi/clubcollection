@@ -41,6 +41,11 @@ class DatabaseSeeder extends Seeder
             'name'      => 'Recreation Club',
             'email'     => 'recreation@company.com',
             'is_active' => true,
+            // Sample (not real) details so members see the bank-transfer option.
+            'transfer_enabled'  => true,
+            'bank_name'         => 'Bank Contoh',
+            'bank_account_name' => 'Kelab Contoh',
+            'bank_account_no'   => '1234 5678 9012',
         ]);
 
         // Default fee rates

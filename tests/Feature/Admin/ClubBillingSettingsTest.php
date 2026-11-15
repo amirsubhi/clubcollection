@@ -135,4 +135,78 @@ class ClubBillingSettingsTest extends TestCase
         $this->put(route('admin.clubs.billing.update', $club), $this->valid())->assertSessionHasNoErrors();
         $this->assertSame('member', $club->fresh()->gatewayFeePayer());
     }
+
+    // ── P2: bank / DuitNow transfer details ──────────────────────────────
+
+    private function bank(array $overrides = []): array
+    {
+        return $this->valid(array_merge([
+            'gateway_fee_payer' => 'club',
+            'transfer_enabled' => '1',
+            'bank_name' => 'Bank Contoh',
+            'bank_account_name' => 'Kelab Contoh',
+            'bank_account_no' => '1234 5678 9012',
+            'duitnow_id' => '',
+        ], $overrides));
+    }
+
+    public function test_transfer_details_are_saved_and_audited(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+
+        $this->put(route('admin.clubs.billing.update', $club), $this->bank())->assertSessionHasNoErrors();
+
+        $club->refresh();
+        $this->assertTrue($club->transferReady());
+        $this->assertSame('1234 5678 9012', $club->bank_account_no);
+        $this->assertNull($club->duitnow_id);
+        $log = AuditLog::where('action', 'club.billing_updated')->latest('id')->firstOrFail();
+        $this->assertFalse($log->old_values['transfer_enabled']);
+        $this->assertSame('Bank Contoh', $log->new_values['bank_name']);
+    }
+
+    public function test_transfer_cannot_be_enabled_without_complete_details(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+
+        $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_no' => '', 'duitnow_id' => '']))
+            ->assertSessionHasErrors('transfer_enabled');
+        $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_name' => '']))
+            ->assertSessionHasErrors('transfer_enabled');
+        $this->assertFalse((bool) $club->fresh()->transfer_enabled);
+
+        // A DuitNow ID alone is enough; details may be saved while switched off.
+        $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_no' => '', 'duitnow_id' => '0123456789']))
+            ->assertSessionHasNoErrors();
+        $this->assertTrue($club->fresh()->transferReady());
+        $this->put(route('admin.clubs.billing.update', $club), $this->bank(['transfer_enabled' => '0', 'bank_name' => '']))
+            ->assertSessionHasNoErrors();
+        $this->assertFalse($club->fresh()->transferReady());
+    }
+
+    public function test_account_number_must_be_digits_spaces_or_dashes(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+
+        foreach (['12345', 'ABC123456', '123456789012345678901', '1234 5678 90X'] as $bad) {
+            $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_no' => $bad]))
+                ->assertSessionHasErrors('bank_account_no');
+        }
+        foreach (['123456', '1234-5678-9012', '12345678901234567890'] as $good) {
+            $this->put(route('admin.clubs.billing.update', $club), $this->bank(['bank_account_no' => $good]))
+                ->assertSessionHasNoErrors();
+        }
+    }
+
+    public function test_another_clubs_admin_cannot_change_bank_details(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin(Club::factory()->create());
+
+        $this->put(route('admin.clubs.billing.update', $club), $this->bank())->assertForbidden();
+        $this->assertNull($club->fresh()->bank_name);
+    }
 }

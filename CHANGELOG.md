@@ -8,6 +8,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.2] — Unreleased
 
+### Payments (P2: manual DuitNow transfer with slip upload)
+- Clubs can publish bank / DuitNow details (Billing settings). Members then choose "Pindahan DuitNow (tiada caj)"
+  on Review & pay, transfer with the reference `YURAN-{id}` and upload 1–3 slips (stored encrypted, private).
+- The fee waits as "Menunggu pengesahan" (`pending_verification`) until a club admin approves or rejects it on the
+  new **Verifications** page (nav badge + dashboard panel). Approve marks it paid by transfer and emails the
+  receipt; reject needs a reason, emails the member (BM/EN) and lets them send a new slip. All steps audited.
+- Admins can't approve their own fee; online pay, manual mark-paid and status edits are refused while a slip is
+  being checked; a gateway payment that still arrives is settled and flagged for a refund.
+- Payments, ledger (screen/CSV/PDF) and statistics show "Awaiting verification" as its own status.
+
 ### Payments (P1: billing frequency and gateway fee)
 - ToyyibPay `billChargeToCustomer` now follows the club's gateway-fee setting. "Club absorbs" (the default) keeps
   the previous value `1` until a sandbox run confirms how ToyyibPay reads each value; "member pays" (`0`) stays

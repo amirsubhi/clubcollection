@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LedgerController;
 use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\TransferVerificationController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboard;
@@ -99,6 +100,10 @@ Route::middleware('check_installed')->group(function () {
             Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
             Route::get('payments/{payment}/status', [MemberPayment::class, 'status'])->name('payments.status');
             Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
+            // Manual bank / DuitNow transfer: upload a slip; a club admin approves it.
+            Route::post('payments/{payment}/transfer', [MemberPayment::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer');
+            // The member's own slip (owner only, audited, no-cache).
+            Route::get('slips/{attachment}', [MemberPayment::class, 'slip'])->middleware('throttle:60,1')->name('payments.slip');
         });
 
         // ── Super Admin ──────────────────────────────────────────────
@@ -145,6 +150,13 @@ Route::middleware('check_installed')->group(function () {
                 Route::post('fund-usage/{expense}/void-request', [FundUsageController::class, 'voidRequest'])->name('fund-usage.void-request');
                 Route::post('fund-usage/{expense}/void-confirm', [FundUsageController::class, 'voidConfirm'])->name('fund-usage.void-confirm');
             });
+            // ── Payment verifications (member transfer slips) ─────────────
+            Route::get('clubs/{club}/verifications', [TransferVerificationController::class, 'index'])->name('clubs.verifications.index');
+            Route::middleware('throttle:20,1')->group(function () {
+                Route::post('verifications/{payment}/approve', [TransferVerificationController::class, 'approve'])->name('verifications.approve');
+                Route::post('verifications/{payment}/reject', [TransferVerificationController::class, 'reject'])->name('verifications.reject');
+            });
+
             // Private documents: club admins of the owning club only, audited.
             Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->middleware('throttle:60,1')->name('attachments.show');
             // Gallery thumbnails (images only): authorized, not audited, looser limit.

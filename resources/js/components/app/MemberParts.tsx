@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Mail } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Hourglass, Mail } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
 import { Money } from "./Money";
 import { PaymentStatusBadge } from "./StatusBadges";
@@ -18,17 +18,22 @@ export function useFeeLabel() {
 }
 
 export function statusLabelKey(s: PaymentStatus): DictKey {
-  return s === "overdue" ? "overdueBadge" : s;
+  return s === "overdue" ? "overdueBadge" : s === "verifying" ? "verifyingBadge" : s;
+}
+
+/** Translate a "member.*" code from the server (flash or validation error); anything else is returned as-is. */
+export function useServerText() {
+  const t = useT();
+  return (msg: string) => {
+    const key = `flash_${msg.replace(/^member\./, "")}`;
+    return msg.startsWith("member.") && isDictKey(key) ? t(key) : msg;
+  };
 }
 
 /** Session flash from the controllers: "member.*" codes are translated, anything else is shown as-is. */
 export function FlashBanner() {
-  const t = useT();
+  const text = useServerText();
   const { flash, errors } = usePage<{ errors?: Record<string, string> }>().props;
-  const text = (msg: string) => {
-    const key = `flash_${msg.replace(/^member\./, "")}`;
-    return msg.startsWith("member.") && isDictKey(key) ? t(key) : msg;
-  };
   const firstError = errors ? Object.values(errors)[0] : undefined;
   return (
     <>
@@ -48,10 +53,11 @@ export function FlashBanner() {
   );
 }
 
-const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "mint" | "danger" | "info" }> = {
+const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "mint" | "danger" | "info" | "warning" }> = {
   paid: { Icon: CheckCircle2, tone: "mint" },
   overdue: { Icon: AlertTriangle, tone: "danger" },
   pending: { Icon: CalendarClock, tone: "info" },
+  verifying: { Icon: Hourglass, tone: "warning" },
 };
 
 /** One fee as a tappable row: open fees go to Review & pay, paid ones to the receipt. */
@@ -70,7 +76,11 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
       <div className="min-w-0 flex-1">
         <div className="line-clamp-2 text-base font-semibold leading-snug">{feeLabel(p)}</div>
         <div className="text-sm text-muted-foreground">
-          {p.status === "paid" && p.paidDate ? `${t("paidOn")} ${fmtDate(p.paidDate, lang)}` : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
+          {p.status === "paid" && p.paidDate
+            ? `${t("paidOn")} ${fmtDate(p.paidDate, lang)}`
+            : p.status === "verifying"
+              ? t("slipBeingChecked")
+              : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
           {showClub && p.clubName ? ` · ${p.clubName}` : ""}
         </div>
       </div>

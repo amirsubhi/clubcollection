@@ -192,4 +192,37 @@ class WebhookTest extends TestCase
         $this->assertSame('pending', $payment->fresh()->status);
         $this->assertDatabaseHas('audit_logs', ['action' => 'payment.underpaid_webhook', 'auditable_id' => $payment->id]);
     }
+
+    // ── P2: a gateway payment while a transfer slip is being checked ──────
+
+    public function test_webhook_during_verification_settles_and_flags_for_refund(): void
+    {
+        $payment = $this->makePendingPayment();
+        $payment->forceFill(['status' => 'pending_verification', 'transfer_date' => now()->toDateString(), 'transfer_submitted_at' => now()])->save();
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $this->payload($payment))
+            ->assertOk();
+
+        // The money was really taken by the gateway: settle it, never ignore it.
+        $fresh = $payment->fresh();
+        $this->assertSame('paid', $fresh->status);
+        $this->assertSame('toyyibpay', $fresh->paid_via);
+        Mail::assertSent(PaymentConfirmation::class);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.paid_via_webhook', 'auditable_id' => $payment->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.gateway_paid_during_verification', 'auditable_id' => $payment->id]);
+    }
+
+    public function test_webhook_after_an_approved_transfer_is_flagged_once(): void
+    {
+        $payment = $this->makePendingPayment();
+        $payment->forceFill(['status' => 'paid', 'paid_via' => 'transfer', 'paid_date' => now()->toDateString()])->save();
+        $payload = $this->payload($payment, ['transaction_id' => 'TXN-DUP-1']);
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $payload)->assertOk();
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->secret, $payload)->assertOk();
+
+        $this->assertSame('transfer', $payment->fresh()->paid_via);
+        Mail::assertNothingSent();
+        $this->assertSame(1, \App\Models\AuditLog::where('action', 'payment.gateway_paid_during_verification')->where('auditable_id', $payment->id)->count());
+    }
 }

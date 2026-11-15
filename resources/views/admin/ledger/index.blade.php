@@ -136,12 +136,15 @@
                     @if($pendingPayments->isNotEmpty())
                     <span class="badge bg-warning text-dark">{{ $pendingPayments->count() }} pending</span>
                     @endif
-                    @if($overduePayments->isEmpty() && $pendingPayments->isEmpty())
+                    @if($verifyingPayments->isNotEmpty())
+                    <span class="badge bg-info text-dark">{{ $verifyingPayments->count() }} awaiting verification</span>
+                    @endif
+                    @if($overduePayments->isEmpty() && $pendingPayments->isEmpty() && $verifyingPayments->isEmpty())
                     <span class="badge bg-success">All clear</span>
                     @endif
                 </div>
             </div>
-            @if($overduePayments->isNotEmpty() || $pendingPayments->isNotEmpty())
+            @if($overduePayments->isNotEmpty() || $pendingPayments->isNotEmpty() || $verifyingPayments->isNotEmpty())
             <div class="table-responsive" style="max-height:280px;overflow-y:auto">
                 <table class="table table-sm mb-0 small">
                     <thead class="table-light sticky-top">
@@ -172,11 +175,20 @@
                         <td class="text-end pe-3"><span class="badge bg-warning text-dark">Pending</span></td>
                     </tr>
                     @endforeach
+                    @foreach($verifyingPayments as $p)
+                    <tr>
+                        <td class="ps-3">{{ $p->user->name }}</td>
+                        <td>{{ $p->period_start->format('M Y') }}</td>
+                        <td>{{ $p->due_date->format('d M Y') }}</td>
+                        <td class="text-end">RM {{ number_format($p->amount, 2) }}</td>
+                        <td class="text-end pe-3"><span class="badge bg-info text-dark">Awaiting verification</span></td>
+                    </tr>
+                    @endforeach
                     </tbody>
                     <tfoot class="table-light fw-semibold">
                         <tr>
                             <td class="ps-3" colspan="3">Total Outstanding</td>
-                            <td class="text-end">RM {{ number_format($overduePayments->sum('amount') + $pendingPayments->sum('amount'), 2) }}</td>
+                            <td class="text-end">RM {{ number_format($overduePayments->sum('amount') + $pendingPayments->sum('amount') + $verifyingPayments->sum('amount'), 2) }}</td>
                             <td class="pe-3"></td>
                         </tr>
                     </tfoot>

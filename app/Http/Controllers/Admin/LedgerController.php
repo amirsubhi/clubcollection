@@ -93,7 +93,7 @@ class LedgerController extends Controller
             fputcsv($h, []);
 
             // ── Outstanding ───────────────────────────────────────────────
-            $hasOutstanding = $data['overduePayments']->isNotEmpty() || $data['pendingPayments']->isNotEmpty();
+            $hasOutstanding = $data['overduePayments']->isNotEmpty() || $data['pendingPayments']->isNotEmpty() || $data['verifyingPayments']->isNotEmpty();
             if ($hasOutstanding) {
                 fputcsv($h, ['OUTSTANDING PAYMENTS (all time)']);
 
@@ -114,6 +114,16 @@ class LedgerController extends Controller
                         fputcsv($h, [$i + 1, $p->user->name, $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
                     }
                     fputcsv($h, ['', '', '', 'TOTAL PENDING (RM)', number_format($data['pendingPayments']->sum('amount'), 2)]);
+                    fputcsv($h, []);
+                }
+
+                if ($data['verifyingPayments']->isNotEmpty()) {
+                    fputcsv($h, ['AWAITING VERIFICATION (transfer slip not checked yet)']);
+                    fputcsv($h, ['#', 'Member', 'Period', 'Due Date', 'Amount (RM)']);
+                    foreach ($data['verifyingPayments'] as $i => $p) {
+                        fputcsv($h, [$i + 1, $p->user->name, $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
+                    }
+                    fputcsv($h, ['', '', '', 'TOTAL AWAITING VERIFICATION (RM)', number_format($data['verifyingPayments']->sum('amount'), 2)]);
                 }
             }
 
@@ -284,6 +294,10 @@ class LedgerController extends Controller
         $overduePayments = $club->payments()->with('user')
             ->where('status', 'overdue')->orderBy('due_date')->get();
 
+        // Transfer slip uploaded, not checked yet: still outstanding until approved.
+        $verifyingPayments = $club->payments()->with('user')
+            ->where('status', 'pending_verification')->orderBy('due_date')->get();
+
         $transactions = $rows->all();
 
         return compact(
@@ -294,6 +308,7 @@ class LedgerController extends Controller
             'monthlySummary',
             'pendingPayments',
             'overduePayments',
+            'verifyingPayments',
         );
     }
 

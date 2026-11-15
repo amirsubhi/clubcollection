@@ -94,6 +94,25 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Follow-ups:** confirm `billChargeToCustomer` and whether ToyyibPay's callback `amount` includes the charge (P3 sandbox); the configured fee is what members are shown, ToyyibPay applies its own.
 
+## P2 — Manual DuitNow transfer with slip upload
+
+**Built:** club bank details (`transfer_enabled`, bank name, holder, account number 6–20 digits/spaces/dashes, DuitNow ID) in Billing settings; can only be switched on when complete (`Club::transferReady()`), audited. ReviewPay offers "Pindahan bank / DuitNow" next to FPX: bank details with copy buttons, the reference `YURAN-{id}`, 1–3 slips (camera allowed), transfer date, optional bank ref. Slips are encrypted private `proof_of_payment` attachments, frozen on submit; the fee becomes `pending_verification` (member sees "Menunggu pengesahan"; excluded from the amount due on Home). `TransferVerificationService` (row lock + status guard + audit) handles submit/approve/reject; only an active club admin approves or rejects, never for their own fee (super admin may). Approve → paid, `paid_via='transfer'`, receipt email; reject (reason ≥ 5) → back to `pending`, BM/EN `TransferRejected` email, member can resubmit. New Inertia page `Admin/Verifications/Index` (waiting + recently handled from the audit log), nav badge and a dashboard panel. Payments, ledger (screen, CSV, PDF) and statistics show "Awaiting verification" separately; manual mark-paid/status edit refuse it; a fee with slips can't be deleted.
+
+**Deviation (correctness):** online pay is refused while a slip is being checked, but if a real gateway payment still arrives for a `pending_verification` fee (an earlier open bill) it is settled as paid and flagged `payment.gateway_paid_during_verification` (also when it arrives after an approved transfer) so the treasurer can refund the duplicate; ignoring it would lose track of real money. Reminders already skip it (only `pending` is matched).
+
+**Review gate:** checker found no blockers; 2 majors (slip cap locked members out after rejections; handled slips not viewable) and 6 minors (amount editable while verifying, approve overwrote `reference`, copy button kept spaces, verifying missing from summaries, paid date before transfer date, unlocked `markPaid`) were fixed. Fable: **GO**.
+
+**Fable follow-ups (non-blocking):**
+- 🔴 Before go-live: set PHP `upload_max_filesize` ≥ 12M and `post_max_size` ≥ 32M on cPanel (defaults are often 2M/8M while the form allows 3 × 10 MB); add a client-side size check in `FileUploader` and a translated message for `PostTooLargeException`.
+- Render the `method`/`status` errors in the ReviewPay transfer form (today they are silently dropped).
+- Lock `Admin\PaymentController::update` like `markPaid`.
+- Show the open-bill warning on the transfer option too.
+- Clear `paid_via`/`verified_*` when a fee leaves `paid`.
+- Consider blocking admins from marking their own fee paid (pre-existing).
+- Tag slips with a submission number instead of the one-second `created_at` split in `currentSlips()`.
+
+**Follow-ups:** no in-app notification to admins when a slip arrives (badge + dashboard only); slips have no virus scan beyond the type/size checks. Deleting a club now also removes its encrypted attachment files; deleting a user whose fees cascade away (or who uploaded documents, `uploaded_by` is restrict-on-delete) is not handled yet and needs a "deactivate instead of delete" rule for users with financial records.
+
 ## A5 — Verification and decision summary
 
 ### What was verified

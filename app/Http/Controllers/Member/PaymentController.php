@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Member;
 
 use App\Contracts\PaymentGateway;
 use App\Http\Controllers\Controller;
+use App\Models\Attachment;
 use App\Models\Club;
 use App\Models\Payment;
+use App\Services\AttachmentService;
 use App\Services\AuditService;
+use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
 use App\Support\Payments\GatewayFee;
@@ -17,6 +20,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
  * Member pay flow. Flash messages are short codes (member.*) that the React
@@ -57,6 +62,7 @@ class PaymentController extends Controller
                 SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as paid,
                 SUM(CASE WHEN status = 'pending' AND due_date >= ? THEN amount ELSE 0 END) as pending,
                 SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < ?) THEN amount ELSE 0 END) as overdue,
+                SUM(CASE WHEN status = 'pending_verification' THEN amount ELSE 0 END) as verifying,
                 SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
                 SUM(amount) as total
             ", [today()->toDateString(), today()->toDateString()])
@@ -70,6 +76,8 @@ class PaymentController extends Controller
                 'paid' => P::sen($annualStats->paid ?? 0),
                 'pending' => P::sen($annualStats->pending ?? 0),
                 'overdue' => P::sen($annualStats->overdue ?? 0),
+                // Slip sent, treasurer still checking: neither paid nor owed.
+                'verifying' => P::sen($annualStats->verifying ?? 0),
                 'paidCount' => (int) ($annualStats->paid_count ?? 0),
                 'total' => P::sen($annualStats->total ?? 0),
             ],
@@ -145,8 +153,140 @@ class PaymentController extends Controller
             // A bill was already opened for this fee: warn before paying again.
             'hasOpenBill' => $hasOpenBill,
             'payUrl' => route('member.payments.pay', $payment),
+            // Manual bank / DuitNow transfer (P2): null when the club doesn't accept it.
+            'transfer' => $this->transferProps($payment),
+            // A slip is waiting for the treasurer: shown instead of the pay buttons.
+            'verification' => $this->verificationProps($payment),
+            // The last slip was rejected: the reason, so the member can fix it.
+            'rejection' => $payment->status !== 'paid' && ! $payment->isVerifying() && $payment->rejection_reason ? [
+                'reason' => $payment->rejection_reason,
+                'at' => $payment->verified_at?->toDateString(),
+            ] : null,
             ...$this->context($payment),
         ]);
+    }
+
+    /**
+     * Member uploads a bank / DuitNow transfer slip (1–3 files). The fee waits
+     * for a club admin to approve it; it is never marked paid here.
+     */
+    public function transfer(Request $request, Payment $payment, TransferVerificationService $service)
+    {
+        $this->authorizePayment($payment);
+
+        if ($payment->status === 'paid') {
+            return redirect()->route('member.payments.invoice', $payment)->with('error', 'member.already_paid');
+        }
+
+        $data = $request->validate([
+            'files' => ['required', 'array', 'min:1', 'max:'.TransferVerificationService::MAX_SLIPS],
+            'files.*' => AttachmentService::fileRules(),
+            'transfer_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:'.today()->subYear()->toDateString()],
+            'transfer_ref' => ['nullable', 'string', 'max:60'],
+        ], [
+            'files.required' => 'member.slip_required',
+            'files.min' => 'member.slip_required',
+            'files.max' => 'member.slip_count',
+            'files.*.file' => 'member.slip_type',
+            'files.*.mimes' => 'member.slip_type',
+            'files.*.max' => 'member.slip_size',
+            'files.*.uploaded' => 'member.slip_size',
+            'transfer_date.required' => 'member.transfer_date_invalid',
+            'transfer_date.date_format' => 'member.transfer_date_invalid',
+            'transfer_date.before_or_equal' => 'member.transfer_date_invalid',
+            'transfer_date.after_or_equal' => 'member.transfer_date_invalid',
+            'transfer_ref.max' => 'member.transfer_ref_long',
+        ]);
+
+        $service->submit($payment, $request->user(), array_values($data['files']), $data['transfer_date'], $data['transfer_ref'] ?? null);
+
+        return redirect()->route('member.payments.invoice', $payment)->with('success', 'member.slip_sent');
+    }
+
+    /**
+     * The member's own transfer slip, opened inline (images and PDF). Owner
+     * only; audited like the admin document route; never cached.
+     */
+    public function slip(Attachment $attachment, AttachmentService $service): HttpResponse
+    {
+        $payment = $attachment->attachable;
+        abort_unless($payment instanceof Payment && $attachment->kind === 'proof_of_payment', 404);
+        $this->authorizePayment($payment);
+
+        $contents = $service->contents($attachment);
+        $inline = in_array($attachment->mime, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], true);
+
+        AuditService::log(
+            'attachment.viewed',
+            "Member viewed their transfer slip \"{$attachment->original_name}\".",
+            $attachment,
+            $attachment->club_id,
+            [],
+            ['name' => $attachment->original_name, 'attachable_id' => $attachment->attachable_id, 'sha256' => $attachment->sha256]
+        );
+
+        $ext = preg_replace('/[^A-Za-z0-9]/', '', (string) pathinfo($attachment->original_name, PATHINFO_EXTENSION));
+
+        return response($contents, 200, [
+            'Content-Type' => $inline ? $attachment->mime : 'application/octet-stream',
+            'Content-Length' => (string) strlen($contents),
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                $inline ? HeaderUtils::DISPOSITION_INLINE : HeaderUtils::DISPOSITION_ATTACHMENT,
+                $attachment->original_name,
+                'slip'.($ext ? '.'.$ext : '')
+            ),
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+        ]);
+    }
+
+    /**
+     * Bank details and limits for the transfer option, or null when the club
+     * doesn't accept transfers (or the fee is paid or being checked).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function transferProps(Payment $payment): ?array
+    {
+        $club = $payment->club;
+        if (! $club->transferReady() || $payment->status === 'paid') {
+            return null;
+        }
+
+        return [
+            'bankName' => $club->bank_name,
+            'accountName' => $club->bank_account_name,
+            'accountNo' => $club->bank_account_no,
+            'duitnowId' => $club->duitnow_id,
+            'reference' => $payment->transferReference(),
+            'submitUrl' => route('member.payments.transfer', $payment),
+            'today' => today()->toDateString(),
+            'minDate' => today()->subYear()->toDateString(),
+            'maxFiles' => TransferVerificationService::MAX_SLIPS,
+            'maxMb' => (int) (Attachment::MAX_KB / 1024),
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function verificationProps(Payment $payment): ?array
+    {
+        if (! $payment->isVerifying()) {
+            return null;
+        }
+
+        return [
+            'submittedAt' => $payment->transfer_submitted_at?->format('Y-m-d\TH:i'),
+            'transferDate' => $payment->transfer_date?->toDateString(),
+            'transferRef' => $payment->transfer_ref,
+            'slips' => $payment->currentSlips()->get()
+                ->map(fn (Attachment $a) => [
+                    'id' => $a->id,
+                    'name' => $a->original_name,
+                    'isPdf' => $a->mime === 'application/pdf',
+                    'url' => route('member.payments.slip', $a),
+                ])->values(),
+        ];
     }
 
     public function pay(Payment $payment)
@@ -156,6 +296,12 @@ class PaymentController extends Controller
         if ($payment->status === 'paid') {
             return redirect()->route('member.payments.invoice', $payment)
                 ->with('error', 'member.already_paid');
+        }
+
+        // A slip is being checked: paying online now could take the money twice.
+        if ($payment->isVerifying()) {
+            return redirect()->route('member.payments.review', $payment)
+                ->with('error', 'member.verifying');
         }
 
         $club = $payment->club;
@@ -410,8 +556,9 @@ class PaymentController extends Controller
     {
         $this->authorizePayment($payment);
 
-        // No bill was ever opened: there is nothing to report on yet.
-        if ($payment->status !== 'paid' && empty($payment->bill_code)) {
+        // No bill was ever opened, or a transfer slip is being checked: the
+        // review page shows the right state.
+        if ($payment->status !== 'paid' && (empty($payment->bill_code) || $payment->isVerifying())) {
             return redirect()->route('member.payments.review', $payment);
         }
 
@@ -460,7 +607,7 @@ class PaymentController extends Controller
         // The fee mode is deliberately not compared: a later change to the club's
         // fee setting must not orphan a bill the member may already be paying
         // (its webhook would no longer match). The bill keeps its stored mode.
-        if ($payment->status === 'paid' || empty($payment->bill_code) || $payment->gateway !== $gateway->name()
+        if ($payment->status === 'paid' || $payment->isVerifying() || empty($payment->bill_code) || $payment->gateway !== $gateway->name()
             || ! $payment->billMatchesAmount()) {
             return null;
         }

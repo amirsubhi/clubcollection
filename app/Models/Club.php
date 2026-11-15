@@ -18,6 +18,7 @@ class Club extends Model
         'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
         'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan',
         'gateway_fee_payer', 'gateway_fee_sen',
+        'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
     /** Billing plans and how many months each covers. */
@@ -37,6 +38,7 @@ class Club extends Model
             'allow_quarterly'          => 'boolean',
             'allow_yearly'             => 'boolean',
             'gateway_fee_sen'          => 'integer',
+            'transfer_enabled'         => 'boolean',
         ];
     }
 
@@ -96,6 +98,19 @@ class Club extends Model
     public function gatewayFeeSen(): int
     {
         return max(0, (int) ($this->gateway_fee_sen ?? 100));
+    }
+
+    /** Bank details are complete enough to show (bank, holder, and account number or DuitNow ID). */
+    public function transferDetailsComplete(): bool
+    {
+        return filled($this->bank_name) && filled($this->bank_account_name)
+            && (filled($this->bank_account_no) || filled($this->duitnow_id));
+    }
+
+    /** Members may pay by manual bank / DuitNow transfer with a slip (P2). */
+    public function transferReady(): bool
+    {
+        return (bool) $this->transfer_enabled && $this->transferDetailsComplete();
     }
 
     /**

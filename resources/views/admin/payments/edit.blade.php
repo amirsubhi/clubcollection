@@ -31,7 +31,14 @@
                             <option value="pending" {{ old('status', $payment->status) == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="paid" {{ old('status', $payment->status) == 'paid' ? 'selected' : '' }}>Paid</option>
                             <option value="overdue" {{ old('status', $payment->status) == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                            @if($payment->status === 'pending_verification')
+                            <option value="pending_verification" selected>Awaiting verification (set by the member's slip)</option>
+                            @endif
                         </select>
+                        @if($payment->status === 'pending_verification')
+                        <div class="form-text text-info-emphasis">A transfer slip is waiting. Approve or reject it in <a href="{{ route('admin.clubs.verifications.index', $payment->club) }}">Verifications</a>.</div>
+                        @endif
+                        @error('status')<div class="text-danger small">{{ $message }}</div>@enderror
                         <div class="form-text">Pending = awaiting payment. Paid = received. Overdue = past due date without payment.</div>
                     </div>
                     <div class="mb-3">
