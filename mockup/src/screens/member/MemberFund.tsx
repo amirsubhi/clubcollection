@@ -13,12 +13,12 @@ export function MemberFund() {
   const out = ytd.spent + ytd.welfarePaid + ytd.bankCharges;
   return (
     <MemberShell tab="fund" title={t("fundTitle")}>
-      <section className="relative overflow-hidden rounded-[24px] bg-deep p-5 text-deep-foreground shadow-[0_22px_44px_-22px_rgba(6,61,50,0.75)]">
+      <section className="relative overflow-hidden rounded-[24px] bg-deep p-5 text-deep-foreground shadow-[0_18px_40px_-24px_rgb(var(--primary)/0.45)] ring-1 ring-primary/10">
         <NodePattern className="opacity-80" />
         <div className="relative">
-          <h1 className="font-sans text-base font-semibold text-white/85">{t("fundBalance")}</h1>
-          <Money sen={ytd.balance} className="figure mt-1 block font-display text-[44px] font-extrabold leading-none tracking-tight text-white" />
-          <p className="mt-2 text-base text-white/85">{t("fundSub")}</p>
+          <h1 className="font-sans text-base font-semibold text-deep-foreground/80">{t("fundBalance")}</h1>
+          <Money sen={ytd.balance} className="figure mt-1 block font-display text-[44px] font-extrabold leading-none tracking-tight text-deep-foreground" />
+          <p className="mt-2 text-base text-deep-foreground/80">{t("fundSub")}</p>
         </div>
       </section>
 

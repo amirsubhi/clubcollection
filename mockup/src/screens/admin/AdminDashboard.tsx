@@ -63,10 +63,10 @@ export function AdminDashboard() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Fund balance" value={rm(ytd.balance)} delta="+RM 27,348" deltaGood hint="since 1 Jan" Icon={Landmark} tone="pine" />
-        <KpiTile label="Collected this year" value={rm(ytd.collected)} delta="+6.8%" deltaGood hint="vs Jan–Nov 2025" Icon={Wallet} tone="info" />
-        <KpiTile label="Spent this year" value={rm(totalOut)} delta="+12.4%" deltaGood={false} hint="vs Jan–Nov 2025" Icon={TrendingDown} tone="clay" />
-        <KpiTile label="Awaiting approval" value={`${submitted.length} records`} hint={`${rm(waitingSum)} · ${mine.length} need you`} Icon={Clock} tone="marigold" />
+        <KpiTile label="Fund balance" value={rm(ytd.balance)} delta="+RM 27,348" deltaGood hint="since 1 Jan" Icon={Landmark} tone="accent" />
+        <KpiTile label="Collected this year" value={rm(ytd.collected)} delta="+6.8%" deltaGood hint="vs Jan–Nov 2025" Icon={Wallet} tone="accent" />
+        <KpiTile label="Spent this year" value={rm(totalOut)} delta="+12.4%" deltaGood={false} hint="vs Jan–Nov 2025" Icon={TrendingDown} tone="accent" />
+        <KpiTile label="Awaiting approval" value={`${submitted.length} records`} hint={`${rm(waitingSum)} · ${mine.length} need you`} Icon={Clock} tone="accent" />
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
@@ -102,7 +102,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between gap-2 pl-12">
                   <FundStatusBadge status={i.status} />
                   {i.awaitingMe ? (
-                    <Button asChild size="sm" variant="marigold" className="h-8">
+                    <Button asChild size="sm" variant="default" className="h-8">
                       <a href={i.type === "welfare" ? "#fund-approve" : "#fund-item"}>Review</a>
                     </Button>
                   ) : (

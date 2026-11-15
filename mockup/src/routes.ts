@@ -10,7 +10,7 @@ export interface ScreenDef {
 /** Hash names are plain ASCII words with hyphens (e.g. #member-home). */
 export const screens: ScreenDef[] = [
   { hash: "overview", title: "Overview", description: "Index of every screen.", area: "index" },
-  { hash: "member-home", title: "Member home", description: "Deep Pine balance card with one Bayar button, quick actions, what's due, recent activity and a fund teaser.", area: "member" },
+  { hash: "member-home", title: "Member home", description: "Pastel lavender balance card with one Bayar button, quick actions, what's due, recent activity and a fund teaser.", area: "member" },
   { hash: "member-invoice", title: "Invoice", description: "What is being paid for, before paying.", area: "member" },
   { hash: "member-pay", title: "Review & pay sheet", description: "Summary with Change link, popular banks first, trust cues, amount on the button.", area: "member" },
   { hash: "pay-success", title: "Result: success", description: "Animated tick and a light-paper receipt to download or share.", area: "member" },

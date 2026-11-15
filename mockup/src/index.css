@@ -3,209 +3,219 @@
 @tailwind utilities;
 
 /*
- * "Buku Tunai" theme. Every colour is defined for light first, then dark.
+ * "Lavender Ledger" theme (pastel). Every colour is defined for light first, then dark.
+ * Lavender = everything interactive; mint = money in / paid / positive only; amber + rose = status chips only.
  * Values are RGB triplets so Tailwind can apply alpha (bg-primary/10). Hex in comments.
  * Dark applies when the OS prefers dark and the viewer hasn't forced light, or when data-theme="dark".
  */
 :root {
   color-scheme: light;
-  --background: 247 245 239; /* #F7F5EF */
-  --foreground: 22 33 29; /* #16211D */
+  --background: 246 245 251; /* #F6F5FB */
+  --foreground: 30 27 58; /* #1E1B3A */
   --card: 255 255 255; /* #FFFFFF */
-  --card-foreground: 22 33 29; /* #16211D */
+  --card-foreground: 30 27 58; /* #1E1B3A */
   --popover: 255 255 255; /* #FFFFFF */
-  --popover-foreground: 22 33 29; /* #16211D */
-  --primary: 11 93 75; /* #0B5D4B */
+  --popover-foreground: 30 27 58; /* #1E1B3A */
+  --primary: 91 79 207; /* #5B4FCF */
   --primary-foreground: 255 255 255; /* #FFFFFF */
-  --deep: 6 61 50; /* #063D32 */
-  --deep-foreground: 255 255 255; /* #FFFFFF */
-  --marigold: 244 182 63; /* #F4B63F */
-  --marigold-foreground: 42 30 0; /* #2A1E00 */
-  --secondary: 238 235 226; /* #EEEBE2 */
-  --secondary-foreground: 22 33 29; /* #16211D */
-  --muted: 241 238 231; /* #F1EEE7 */
-  --muted-foreground: 91 102 95; /* #5B665F */
-  --accent: 226 240 234; /* #E2F0EA */
-  --accent-foreground: 11 93 75; /* #0B5D4B */
-  --border: 217 213 202; /* #D9D5CA */
-  --input: 140 148 141; /* #8C948D */
-  --ring: 11 93 75; /* #0B5D4B */
-  --success: 23 115 74; /* #17734A */
-  --success-soft: 228 244 234; /* #E4F4EA */
-  --success-foreground: 19 95 61; /* #135F3D */
+  --deep: 227 223 252; /* #E3DFFC */
+  --deep-foreground: 36 28 107; /* #241C6B */
+  --mint: 191 235 221; /* #BFEBDD */
+  --mint-foreground: 11 74 58; /* #0B4A3A */
+  --secondary: 236 234 247; /* #ECEAF7 */
+  --secondary-foreground: 30 27 58; /* #1E1B3A */
+  --muted: 240 239 248; /* #F0EFF8 */
+  --muted-foreground: 95 92 122; /* #5F5C7A */
+  --accent: 233 230 251; /* #E9E6FB */
+  --accent-foreground: 67 56 168; /* #4338A8 */
+  --border: 222 220 236; /* #DEDCEC */
+  --input: 138 135 166; /* #8A87A6 */
+  --ring: 91 79 207; /* #5B4FCF */
+  --success: 31 122 85; /* #1F7A55 */
+  --success-soft: 221 244 233; /* #DDF4E9 */
+  --success-foreground: 20 96 63; /* #14603F */
   --on-success: 255 255 255; /* #FFFFFF */
   --warning: 138 90 0; /* #8A5A00 */
-  --warning-soft: 255 243 214; /* #FFF3D6 */
-  --warning-foreground: 122 79 0; /* #7A4F00 */
-  --danger: 179 38 30; /* #B3261E */
-  --danger-soft: 253 236 234; /* #FDECEA */
-  --danger-foreground: 154 31 24; /* #9A1F18 */
+  --warning-soft: 255 240 207; /* #FFF0CF */
+  --warning-foreground: 122 78 0; /* #7A4E00 */
+  --danger: 180 50 74; /* #B4324A */
+  --danger-soft: 253 228 232; /* #FDE4E8 */
+  --danger-foreground: 153 36 59; /* #99243B */
   --on-danger: 255 255 255; /* #FFFFFF */
-  --info: 31 95 168; /* #1F5FA8 */
-  --info-soft: 232 241 251; /* #E8F1FB */
-  --info-foreground: 26 82 145; /* #1A5291 */
-  --clay: 162 72 47; /* #A2482F */
-  --clay-soft: 248 233 227; /* #F8E9E3 */
-  --sidebar: 251 250 246; /* #FBFAF6 */
-  --strip: 22 33 29; /* #16211D */
-  --strip-foreground: 247 245 239; /* #F7F5EF */
-  --chart-1: 15 122 92; /* #0F7A5C */
-  --chart-2: 217 154 28; /* #D99A1C */
-  --chart-3: 47 111 184; /* #2F6FB8 */
-  --chart-4: 181 82 58; /* #B5523A */
-  --on-chart-1: 255 255 255; /* #FFFFFF */
-  --on-chart-2: 22 33 29; /* #16211D */
-  --on-chart-3: 255 255 255; /* #FFFFFF */
-  --on-chart-4: 255 255 255; /* #FFFFFF */
-  --chart-grid: 230 226 216; /* #E6E2D8 */
-  --chart-axis: 91 102 95; /* #5B665F */
+  --info: 91 79 207; /* #5B4FCF */
+  --info-soft: 233 230 251; /* #E9E6FB */
+  --info-foreground: 67 56 168; /* #4338A8 */
+  --sidebar: 251 250 254; /* #FBFAFE */
+  --strip: 30 27 58; /* #1E1B3A */
+  --strip-foreground: 246 245 251; /* #F6F5FB */
+  --chart-1: 201 195 247; /* #C9C3F7 */
+  --chart-2: 191 235 221; /* #BFEBDD */
+  --chart-3: 197 221 248; /* #C5DDF8 */
+  --chart-4: 249 203 211; /* #F9CBD3 */
+  --chart-1-stroke: 91 79 207; /* #5B4FCF */
+  --chart-2-stroke: 31 138 100; /* #1F8A64 */
+  --chart-3-stroke: 47 111 184; /* #2F6FB8 */
+  --chart-4-stroke: 184 64 90; /* #B8405A */
+  --on-chart-1: 30 27 58; /* #1E1B3A */
+  --on-chart-2: 30 27 58; /* #1E1B3A */
+  --on-chart-3: 30 27 58; /* #1E1B3A */
+  --on-chart-4: 30 27 58; /* #1E1B3A */
+  --chart-grid: 232 230 243; /* #E8E6F3 */
+  --chart-axis: 95 92 122; /* #5F5C7A */
   --mock: 91 33 182; /* #5B21B6 */
   --mock-soft: 243 238 255; /* #F3EEFF */
   --mock-border: 167 139 250; /* #A78BFA */
+  --overlay: 18 17 28; /* #12111C */
   --radius: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --background: 14 21 19; /* #0E1513 */
-    --foreground: 232 237 234; /* #E8EDEA */
-    --card: 22 32 29; /* #16201D */
-    --card-foreground: 232 237 234; /* #E8EDEA */
-    --popover: 27 39 35; /* #1B2723 */
-    --popover-foreground: 232 237 234; /* #E8EDEA */
-    --primary: 63 181 143; /* #3FB58F */
-    --primary-foreground: 4 36 27; /* #04241B */
-    --deep: 10 69 55; /* #0A4537 */
-    --deep-foreground: 255 255 255; /* #FFFFFF */
-    --marigold: 244 182 63; /* #F4B63F */
-    --marigold-foreground: 42 30 0; /* #2A1E00 */
-    --secondary: 34 48 43; /* #22302B */
-    --secondary-foreground: 232 237 234; /* #E8EDEA */
-    --muted: 28 40 36; /* #1C2824 */
-    --muted-foreground: 167 179 173; /* #A7B3AD */
-    --accent: 23 58 48; /* #173A30 */
-    --accent-foreground: 143 224 193; /* #8FE0C1 */
-    --border: 46 61 56; /* #2E3D38 */
-    --input: 107 123 116; /* #6B7B74 */
-    --ring: 63 181 143; /* #3FB58F */
-    --success: 76 195 138; /* #4CC38A */
-    --success-soft: 19 48 31; /* #13301F */
-    --success-foreground: 125 217 168; /* #7DD9A8 */
-    --on-success: 5 38 26; /* #05261A */
-    --warning: 240 181 74; /* #F0B54A */
-    --warning-soft: 58 44 14; /* #3A2C0E */
-    --warning-foreground: 246 199 109; /* #F6C76D */
-    --danger: 240 133 123; /* #F0857B */
-    --danger-soft: 61 23 20; /* #3D1714 */
-    --danger-foreground: 247 163 154; /* #F7A39A */
-    --on-danger: 42 7 5; /* #2A0705 */
-    --info: 116 169 236; /* #74A9EC */
-    --info-soft: 19 37 57; /* #132539 */
-    --info-foreground: 156 195 242; /* #9CC3F2 */
-    --clay: 224 138 108; /* #E08A6C */
-    --clay-soft: 58 32 24; /* #3A2018 */
-    --sidebar: 17 26 23; /* #111A17 */
-    --strip: 34 48 43; /* #22302B */
-    --strip-foreground: 232 237 234; /* #E8EDEA */
-    --chart-1: 46 158 123; /* #2E9E7B */
-    --chart-2: 192 138 30; /* #C08A1E */
-    --chart-3: 90 143 214; /* #5A8FD6 */
-    --chart-4: 208 112 90; /* #D0705A */
-    --on-chart-1: 14 21 19; /* #0E1513 */
-    --on-chart-2: 14 21 19; /* #0E1513 */
-    --on-chart-3: 14 21 19; /* #0E1513 */
-    --on-chart-4: 14 21 19; /* #0E1513 */
-    --chart-grid: 38 51 46; /* #26332E */
-    --chart-axis: 167 179 173; /* #A7B3AD */
+    --background: 18 17 28; /* #12111C */
+    --foreground: 236 234 247; /* #ECEAF7 */
+    --card: 27 26 41; /* #1B1A29 */
+    --card-foreground: 236 234 247; /* #ECEAF7 */
+    --popover: 34 33 52; /* #222134 */
+    --popover-foreground: 236 234 247; /* #ECEAF7 */
+    --primary: 179 171 245; /* #B3ABF5 */
+    --primary-foreground: 26 20 71; /* #1A1447 */
+    --deep: 43 37 102; /* #2B2566 */
+    --deep-foreground: 241 239 255; /* #F1EFFF */
+    --mint: 20 58 46; /* #143A2E */
+    --mint-foreground: 168 235 208; /* #A8EBD0 */
+    --secondary: 38 36 56; /* #262438 */
+    --secondary-foreground: 236 234 247; /* #ECEAF7 */
+    --muted: 32 31 48; /* #201F30 */
+    --muted-foreground: 169 166 194; /* #A9A6C2 */
+    --accent: 42 39 80; /* #2A2750 */
+    --accent-foreground: 201 195 250; /* #C9C3FA */
+    --border: 51 49 74; /* #33314A */
+    --input: 124 121 155; /* #7C799B */
+    --ring: 179 171 245; /* #B3ABF5 */
+    --success: 111 211 166; /* #6FD3A6 */
+    --success-soft: 19 48 38; /* #133026 */
+    --success-foreground: 143 224 188; /* #8FE0BC */
+    --on-success: 11 42 31; /* #0B2A1F */
+    --warning: 237 190 106; /* #EDBE6A */
+    --warning-soft: 55 41 15; /* #37290F */
+    --warning-foreground: 243 206 138; /* #F3CE8A */
+    --danger: 240 154 168; /* #F09AA8 */
+    --danger-soft: 61 24 32; /* #3D1820 */
+    --danger-foreground: 246 179 189; /* #F6B3BD */
+    --on-danger: 42 10 18; /* #2A0A12 */
+    --info: 179 171 245; /* #B3ABF5 */
+    --info-soft: 42 39 80; /* #2A2750 */
+    --info-foreground: 201 195 250; /* #C9C3FA */
+    --sidebar: 22 21 35; /* #161523 */
+    --strip: 38 36 56; /* #262438 */
+    --strip-foreground: 236 234 247; /* #ECEAF7 */
+    --chart-1: 142 132 222; /* #8E84DE */
+    --chart-2: 65 168 125; /* #41A87D */
+    --chart-3: 98 150 206; /* #6296CE */
+    --chart-4: 201 118 133; /* #C97685 */
+    --chart-1-stroke: 142 132 222; /* #8E84DE */
+    --chart-2-stroke: 65 168 125; /* #41A87D */
+    --chart-3-stroke: 98 150 206; /* #6296CE */
+    --chart-4-stroke: 201 118 133; /* #C97685 */
+    --on-chart-1: 18 17 28; /* #12111C */
+    --on-chart-2: 18 17 28; /* #12111C */
+    --on-chart-3: 18 17 28; /* #12111C */
+    --on-chart-4: 18 17 28; /* #12111C */
+    --chart-grid: 43 41 64; /* #2B2940 */
+    --chart-axis: 169 166 194; /* #A9A6C2 */
     --mock: 196 181 253; /* #C4B5FD */
     --mock-soft: 35 27 56; /* #231B38 */
     --mock-border: 124 107 196; /* #7C6BC4 */
+    --overlay: 5 4 10; /* #05040A */
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: 14 21 19; /* #0E1513 */
-  --foreground: 232 237 234; /* #E8EDEA */
-  --card: 22 32 29; /* #16201D */
-  --card-foreground: 232 237 234; /* #E8EDEA */
-  --popover: 27 39 35; /* #1B2723 */
-  --popover-foreground: 232 237 234; /* #E8EDEA */
-  --primary: 63 181 143; /* #3FB58F */
-  --primary-foreground: 4 36 27; /* #04241B */
-  --deep: 10 69 55; /* #0A4537 */
-  --deep-foreground: 255 255 255; /* #FFFFFF */
-  --marigold: 244 182 63; /* #F4B63F */
-  --marigold-foreground: 42 30 0; /* #2A1E00 */
-  --secondary: 34 48 43; /* #22302B */
-  --secondary-foreground: 232 237 234; /* #E8EDEA */
-  --muted: 28 40 36; /* #1C2824 */
-  --muted-foreground: 167 179 173; /* #A7B3AD */
-  --accent: 23 58 48; /* #173A30 */
-  --accent-foreground: 143 224 193; /* #8FE0C1 */
-  --border: 46 61 56; /* #2E3D38 */
-  --input: 107 123 116; /* #6B7B74 */
-  --ring: 63 181 143; /* #3FB58F */
-  --success: 76 195 138; /* #4CC38A */
-  --success-soft: 19 48 31; /* #13301F */
-  --success-foreground: 125 217 168; /* #7DD9A8 */
-  --on-success: 5 38 26; /* #05261A */
-  --warning: 240 181 74; /* #F0B54A */
-  --warning-soft: 58 44 14; /* #3A2C0E */
-  --warning-foreground: 246 199 109; /* #F6C76D */
-  --danger: 240 133 123; /* #F0857B */
-  --danger-soft: 61 23 20; /* #3D1714 */
-  --danger-foreground: 247 163 154; /* #F7A39A */
-  --on-danger: 42 7 5; /* #2A0705 */
-  --info: 116 169 236; /* #74A9EC */
-  --info-soft: 19 37 57; /* #132539 */
-  --info-foreground: 156 195 242; /* #9CC3F2 */
-  --clay: 224 138 108; /* #E08A6C */
-  --clay-soft: 58 32 24; /* #3A2018 */
-  --sidebar: 17 26 23; /* #111A17 */
-  --strip: 34 48 43; /* #22302B */
-  --strip-foreground: 232 237 234; /* #E8EDEA */
-  --chart-1: 46 158 123; /* #2E9E7B */
-  --chart-2: 192 138 30; /* #C08A1E */
-  --chart-3: 90 143 214; /* #5A8FD6 */
-  --chart-4: 208 112 90; /* #D0705A */
-  --on-chart-1: 14 21 19; /* #0E1513 */
-  --on-chart-2: 14 21 19; /* #0E1513 */
-  --on-chart-3: 14 21 19; /* #0E1513 */
-  --on-chart-4: 14 21 19; /* #0E1513 */
-  --chart-grid: 38 51 46; /* #26332E */
-  --chart-axis: 167 179 173; /* #A7B3AD */
+  --background: 18 17 28; /* #12111C */
+  --foreground: 236 234 247; /* #ECEAF7 */
+  --card: 27 26 41; /* #1B1A29 */
+  --card-foreground: 236 234 247; /* #ECEAF7 */
+  --popover: 34 33 52; /* #222134 */
+  --popover-foreground: 236 234 247; /* #ECEAF7 */
+  --primary: 179 171 245; /* #B3ABF5 */
+  --primary-foreground: 26 20 71; /* #1A1447 */
+  --deep: 43 37 102; /* #2B2566 */
+  --deep-foreground: 241 239 255; /* #F1EFFF */
+  --mint: 20 58 46; /* #143A2E */
+  --mint-foreground: 168 235 208; /* #A8EBD0 */
+  --secondary: 38 36 56; /* #262438 */
+  --secondary-foreground: 236 234 247; /* #ECEAF7 */
+  --muted: 32 31 48; /* #201F30 */
+  --muted-foreground: 169 166 194; /* #A9A6C2 */
+  --accent: 42 39 80; /* #2A2750 */
+  --accent-foreground: 201 195 250; /* #C9C3FA */
+  --border: 51 49 74; /* #33314A */
+  --input: 124 121 155; /* #7C799B */
+  --ring: 179 171 245; /* #B3ABF5 */
+  --success: 111 211 166; /* #6FD3A6 */
+  --success-soft: 19 48 38; /* #133026 */
+  --success-foreground: 143 224 188; /* #8FE0BC */
+  --on-success: 11 42 31; /* #0B2A1F */
+  --warning: 237 190 106; /* #EDBE6A */
+  --warning-soft: 55 41 15; /* #37290F */
+  --warning-foreground: 243 206 138; /* #F3CE8A */
+  --danger: 240 154 168; /* #F09AA8 */
+  --danger-soft: 61 24 32; /* #3D1820 */
+  --danger-foreground: 246 179 189; /* #F6B3BD */
+  --on-danger: 42 10 18; /* #2A0A12 */
+  --info: 179 171 245; /* #B3ABF5 */
+  --info-soft: 42 39 80; /* #2A2750 */
+  --info-foreground: 201 195 250; /* #C9C3FA */
+  --sidebar: 22 21 35; /* #161523 */
+  --strip: 38 36 56; /* #262438 */
+  --strip-foreground: 236 234 247; /* #ECEAF7 */
+  --chart-1: 142 132 222; /* #8E84DE */
+  --chart-2: 65 168 125; /* #41A87D */
+  --chart-3: 98 150 206; /* #6296CE */
+  --chart-4: 201 118 133; /* #C97685 */
+  --chart-1-stroke: 142 132 222; /* #8E84DE */
+  --chart-2-stroke: 65 168 125; /* #41A87D */
+  --chart-3-stroke: 98 150 206; /* #6296CE */
+  --chart-4-stroke: 201 118 133; /* #C97685 */
+  --on-chart-1: 18 17 28; /* #12111C */
+  --on-chart-2: 18 17 28; /* #12111C */
+  --on-chart-3: 18 17 28; /* #12111C */
+  --on-chart-4: 18 17 28; /* #12111C */
+  --chart-grid: 43 41 64; /* #2B2940 */
+  --chart-axis: 169 166 194; /* #A9A6C2 */
   --mock: 196 181 253; /* #C4B5FD */
   --mock-soft: 35 27 56; /* #231B38 */
   --mock-border: 124 107 196; /* #7C6BC4 */
+  --overlay: 5 4 10; /* #05040A */
 }
 
-/* Receipts and the AGM sheet stay light "paper" in both themes (people print and share them). */
+/* Receipts and the AGM sheet stay white "paper" in both themes (people print and share them). */
 .paper {
   color-scheme: light;
-  --background: 255 253 248; /* #FFFDF8 */
-  --foreground: 22 33 29; /* #16211D */
-  --card: 255 253 248; /* #FFFDF8 */
-  --card-foreground: 22 33 29; /* #16211D */
-  --muted: 241 238 231; /* #F1EEE7 */
-  --muted-foreground: 91 102 95; /* #5B665F */
-  --secondary: 238 235 226; /* #EEEBE2 */
-  --secondary-foreground: 22 33 29; /* #16211D */
-  --border: 207 201 186; /* #CFC9BA */
-  --primary: 11 93 75; /* #0B5D4B */
+  --background: 255 255 255; /* #FFFFFF */
+  --foreground: 30 27 58; /* #1E1B3A */
+  --card: 255 255 255; /* #FFFFFF */
+  --card-foreground: 30 27 58; /* #1E1B3A */
+  --muted: 240 239 248; /* #F0EFF8 */
+  --muted-foreground: 95 92 122; /* #5F5C7A */
+  --secondary: 236 234 247; /* #ECEAF7 */
+  --secondary-foreground: 30 27 58; /* #1E1B3A */
+  --border: 214 211 230; /* #D6D3E6 */
+  --primary: 91 79 207; /* #5B4FCF */
   --primary-foreground: 255 255 255; /* #FFFFFF */
-  --success: 23 115 74; /* #17734A */
-  --success-soft: 228 244 234; /* #E4F4EA */
-  --success-foreground: 19 95 61; /* #135F3D */
-  --warning-soft: 255 243 214; /* #FFF3D6 */
-  --warning-foreground: 122 79 0; /* #7A4F00 */
-  --danger-soft: 253 236 234; /* #FDECEA */
-  --danger-foreground: 154 31 24; /* #9A1F18 */
-  --info-soft: 232 241 251; /* #E8F1FB */
-  --info-foreground: 26 82 145; /* #1A5291 */
-  --accent: 226 240 234; /* #E2F0EA */
-  --accent-foreground: 11 93 75; /* #0B5D4B */
+  --success: 31 122 85; /* #1F7A55 */
+  --success-soft: 221 244 233; /* #DDF4E9 */
+  --success-foreground: 20 96 63; /* #14603F */
+  --warning-soft: 255 240 207; /* #FFF0CF */
+  --warning-foreground: 122 78 0; /* #7A4E00 */
+  --danger-soft: 253 228 232; /* #FDE4E8 */
+  --danger-foreground: 153 36 59; /* #99243B */
+  --info-soft: 233 230 251; /* #E9E6FB */
+  --info-foreground: 67 56 168; /* #4338A8 */
+  --accent: 233 230 251; /* #E9E6FB */
+  --accent-foreground: 67 56 168; /* #4338A8 */
   background-color: rgb(var(--card));
   color: rgb(var(--foreground));
 }
@@ -223,7 +233,7 @@
   }
   h1, h2, h3, h4 { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.015em; }
   *:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; }
-  ::selection { background: rgb(var(--marigold) / 0.45); }
+  ::selection { background: rgb(var(--primary) / 0.28); }
 }
 
 @layer utilities {

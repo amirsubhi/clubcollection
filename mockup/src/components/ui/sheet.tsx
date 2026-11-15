@@ -12,7 +12,7 @@ export const SheetContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & { side?: "left" | "right" }
 >(({ className, children, side = "left", ...props }, ref) => (
   <SheetPrimitive.Portal>
-    <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-[#06120e]/60" />
+    <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay/60" />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(

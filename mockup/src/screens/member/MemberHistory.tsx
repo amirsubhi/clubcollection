@@ -8,8 +8,8 @@ import type { PaymentStatus } from "@/data/types";
 import { fmtDate } from "@/lib/format";
 import { useLang, useT } from "@/i18n";
 
-const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "pine" | "danger" | "info" }> = {
-  paid: { Icon: CheckCircle2, tone: "pine" },
+const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "mint" | "danger" | "info" }> = {
+  paid: { Icon: CheckCircle2, tone: "mint" },
   overdue: { Icon: AlertTriangle, tone: "danger" },
   pending: { Icon: CalendarClock, tone: "info" },
 };

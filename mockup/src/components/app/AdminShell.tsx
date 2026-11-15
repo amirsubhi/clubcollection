@@ -78,18 +78,18 @@ const groups: { title: string; items: NavItem[] }[] = [
 
 function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-deep", className)} aria-hidden>
+    <span className={cn("relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-primary", className)} aria-hidden>
       <svg viewBox="0 0 36 36" className="h-9 w-9">
-        <g stroke="#FFFFFF" strokeOpacity="0.45" strokeWidth="1.5">
+        <g stroke="rgb(var(--primary-foreground))" strokeOpacity="0.5" strokeWidth="1.5">
           <line x1="10" y1="12" x2="24" y2="10" />
           <line x1="10" y1="12" x2="14" y2="25" />
           <line x1="24" y1="10" x2="26" y2="24" />
           <line x1="14" y1="25" x2="26" y2="24" />
         </g>
-        <circle cx="10" cy="12" r="3" fill="#FFFFFF" />
-        <circle cx="24" cy="10" r="2.5" fill="#FFFFFF" />
-        <circle cx="14" cy="25" r="2.5" fill="#FFFFFF" />
-        <circle cx="26" cy="24" r="3.5" fill="#F4B63F" />
+        <circle cx="10" cy="12" r="3" fill="rgb(var(--primary-foreground))" fillOpacity="0.8" />
+        <circle cx="24" cy="10" r="2.5" fill="rgb(var(--primary-foreground))" fillOpacity="0.8" />
+        <circle cx="14" cy="25" r="2.5" fill="rgb(var(--primary-foreground))" fillOpacity="0.8" />
+        <circle cx="26" cy="24" r="3.5" fill="rgb(var(--primary-foreground))" />
       </svg>
     </span>
   );
@@ -136,9 +136,9 @@ function NavList({ active, collapsed }: { active: string; collapsed?: boolean })
                   {!collapsed && it.disabled && <span className="ml-auto text-[11px]">not in mockup</span>}
                   {it.badge ? (
                     collapsed ? (
-                      <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-marigold" aria-label={`${it.badge} waiting`} />
+                      <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" aria-label={`${it.badge} waiting`} />
                     ) : (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-marigold px-1.5 text-[11px] font-bold text-marigold-foreground">{it.badge}</span>
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">{it.badge}</span>
                     )
                   ) : null}
                 </>
@@ -300,12 +300,9 @@ export function AdminShell({ active, children, wide = true }: { active: string; 
         </div>
       </div>
       <div className="bleed-x-flush flex flex-1">
-        <aside
-          className={cn(
-            "sticky top-8 hidden h-[calc(100vh-2rem)] shrink-0 flex-col gap-6 border-r bg-sidebar py-4 transition-[width] duration-200 lg:flex",
-            collapsed ? "w-[68px] px-2" : "w-64 px-3",
-          )}
-        >
+        {/* Outer aside stretches to the full page height (so the sidebar colour never stops short); inner column stays sticky. */}
+        <aside className={cn("hidden shrink-0 self-stretch border-r bg-sidebar transition-[width] duration-200 lg:block", collapsed ? "w-[68px]" : "w-64")}>
+          <div className={cn("sticky top-8 flex h-[calc(100vh-2rem)] flex-col gap-6 py-4", collapsed ? "px-2" : "px-3")}>
           <div className={cn(collapsed ? "flex justify-center" : "px-1")}>
             <Brand collapsed={collapsed} />
           </div>
@@ -318,6 +315,7 @@ export function AdminShell({ active, children, wide = true }: { active: string; 
               <div className="mt-0.5 text-muted-foreground">Maker-checker on. Every action is logged.</div>
             </div>
           )}
+          </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="safe-x sticky top-0 z-20 flex h-14 lg:top-8 items-center gap-2 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">

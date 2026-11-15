@@ -47,7 +47,7 @@ export const spendSlices: CategorySlice[] = [
 
 export const outstanding = { members: 17, amount: 107500 as Sen };
 
-export type ActivityTone = "pine" | "marigold" | "info" | "clay" | "neutral";
+export type ActivityTone = "accent" | "mint" | "info" | "neutral";
 export interface Activity {
   id: string;
   at: string;
@@ -62,9 +62,9 @@ export interface Activity {
 }
 
 export const recentActivity: Activity[] = [
-  { id: "r1", at: "2026-11-13T21:42", title: "Fee paid online (FPX)", who: "Muhammad Haziq bin Azman", amount: 5000, direction: "in", tone: "pine", kind: "fee", hash: "member-receipt" },
-  { id: "r2", at: "2026-11-10T16:12", title: "FU-2026-0031 submitted", who: "Wong Kah Hoe", amount: 689500, direction: "out", tone: "marigold", kind: "expense", hash: "fund-item", pending: true },
+  { id: "r1", at: "2026-11-13T21:42", title: "Fee paid online (FPX)", who: "Muhammad Haziq bin Azman", amount: 5000, direction: "in", tone: "mint", kind: "fee", hash: "member-receipt" },
+  { id: "r2", at: "2026-11-10T16:12", title: "FU-2026-0031 submitted", who: "Wong Kah Hoe", amount: 689500, direction: "out", tone: "accent", kind: "expense", hash: "fund-item", pending: true },
   { id: "r3", at: "2026-11-08T10:20", title: "Welfare case submitted", who: "Priya a/p Subramaniam", amount: 100000, direction: "out", tone: "info", kind: "welfare", hash: "fund-approve", pending: true },
-  { id: "r4", at: "2026-11-07T13:05", title: "Cash fee recorded", who: "Faridah binti Ismail", amount: 2500, direction: "in", tone: "pine", kind: "cash", hash: "fund-usage" },
-  { id: "r5", at: "2026-10-05T11:40", title: "FU-2026-0027 approved", who: "Lim Siew Ling", amount: 58800, direction: "out", tone: "clay", kind: "approved", hash: "fund-item" },
+  { id: "r4", at: "2026-11-07T13:05", title: "Cash fee recorded", who: "Faridah binti Ismail", amount: 2500, direction: "in", tone: "mint", kind: "cash", hash: "fund-usage" },
+  { id: "r5", at: "2026-10-05T11:40", title: "FU-2026-0027 approved", who: "Lim Siew Ling", amount: 58800, direction: "out", tone: "accent", kind: "approved", hash: "fund-item" },
 ];

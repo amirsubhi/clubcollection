@@ -11,10 +11,10 @@ import { fmtDate, rm } from "@/lib/format";
 import { useLang, useT, type DictKey } from "@/i18n";
 
 const quick: { hash: string; label: DictKey; Icon: typeof Wallet; tone: Tone }[] = [
-  { hash: "member-pay", label: "qaPay", Icon: Wallet, tone: "marigold" },
-  { hash: "member-history", label: "qaReceipts", Icon: ReceiptText, tone: "pine" },
-  { hash: "member-fund", label: "qaFund", Icon: PieChart, tone: "info" },
-  { hash: "member-fund", label: "qaWelfare", Icon: HandHeart, tone: "clay" },
+  { hash: "member-pay", label: "qaPay", Icon: Wallet, tone: "accent" },
+  { hash: "member-history", label: "qaReceipts", Icon: ReceiptText, tone: "accent" },
+  { hash: "member-fund", label: "qaFund", Icon: PieChart, tone: "accent" },
+  { hash: "member-fund", label: "qaWelfare", Icon: HandHeart, tone: "accent" },
 ];
 
 export function MemberHome() {
@@ -24,33 +24,33 @@ export function MemberHome() {
   return (
     <MemberShell tab="home" title={`${lang === "bm" ? "Hai" : "Hi"}, ${first}`}>
       {/* Hero: the one number that matters */}
-      <section aria-labelledby="due-h" className="relative overflow-hidden rounded-[24px] bg-deep p-5 text-deep-foreground shadow-[0_22px_44px_-22px_rgba(6,61,50,0.75)]">
+      <section aria-labelledby="due-h" className="relative overflow-hidden rounded-[24px] bg-deep p-5 text-deep-foreground shadow-[0_18px_40px_-24px_rgb(var(--primary)/0.45)] ring-1 ring-primary/10">
         <NodePattern />
         <div className="relative flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 id="due-h" className="font-sans text-base font-semibold text-white/85">
+            <h2 id="due-h" className="font-sans text-base font-semibold text-deep-foreground/80">
               {t("amountDue")}
             </h2>
-            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-marigold px-2.5 text-sm font-bold text-marigold-foreground">
+            <span className="inline-flex h-7 items-center gap-1 rounded-full bg-danger-soft px-2.5 text-sm font-bold text-danger-foreground ring-1 ring-danger/25">
               <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden /> {t("lateCount")}
             </span>
           </div>
           <div>
-            <div className="figure font-display text-[52px] font-extrabold leading-none tracking-tight text-white">{rm(amountDue)}</div>
-            <div className="mt-2 text-base text-white/85">
+            <div className="figure font-display text-[52px] font-extrabold leading-none tracking-tight text-deep-foreground">{rm(amountDue)}</div>
+            <div className="mt-2 text-base text-deep-foreground/80">
               {t("includes")}: {t("forMonths")}
             </div>
           </div>
           <div className="flex gap-2">
             <a
               href="#member-pay"
-              className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-marigold px-5 text-lg font-bold text-marigold-foreground shadow-[0_6px_16px_-6px_rgba(244,182,63,0.8)] transition-transform hover:brightness-105 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-deep"
+              className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-lg font-bold text-primary-foreground shadow-[0_8px_18px_-8px_rgb(var(--primary)/0.7)] transition-transform hover:bg-primary/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-deep"
             >
               {t("payNow")} {rm(amountDue)}
             </a>
             <a
               href="#member-invoice"
-              className="inline-flex h-14 items-center justify-center rounded-full border border-white/35 px-4 text-base font-semibold text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex h-14 items-center justify-center rounded-full border border-primary/45 bg-card/40 px-4 text-base font-semibold text-deep-foreground hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {t("viewInvoice")}
             </a>
@@ -119,7 +119,7 @@ export function MemberHome() {
           {paidHistory.slice(0, 3).map((p) => (
             <li key={p.id}>
               <a href="#member-receipt" className="flex min-h-14 items-center gap-3 rounded-[18px] bg-card px-3 py-2.5 ring-1 ring-border hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <IconBubble Icon={CheckCircle2} tone="pine" />
+                <IconBubble Icon={CheckCircle2} tone="mint" />
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-2 text-base font-semibold leading-snug">{lang === "bm" ? p.descriptionBm : p.description}</div>
                   <div className="text-sm text-muted-foreground">
@@ -161,7 +161,7 @@ export function MemberHome() {
         href="https://wa.me/60167789012"
         className="flex min-h-14 items-center gap-3 rounded-[18px] border border-dashed bg-transparent px-3 py-2.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <IconBubble Icon={MessageCircle} tone="pine" />
+        <IconBubble Icon={MessageCircle} tone="accent" />
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold">{t("helpTitle")}</span>
           <span className="block text-sm text-muted-foreground">{t("helpBody")}</span>

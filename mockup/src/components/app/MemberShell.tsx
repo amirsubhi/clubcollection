@@ -39,18 +39,18 @@ export function LangToggle() {
 
 export function ClubMark({ className }: { className?: string }) {
   return (
-    <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-deep", className)} aria-hidden>
+    <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-primary", className)} aria-hidden>
       <svg viewBox="0 0 36 36" className="h-9 w-9">
-        <g stroke="#FFFFFF" strokeOpacity="0.45" strokeWidth="1.5">
+        <g stroke="rgb(var(--primary-foreground))" strokeOpacity="0.5" strokeWidth="1.5">
           <line x1="10" y1="12" x2="24" y2="10" />
           <line x1="10" y1="12" x2="14" y2="25" />
           <line x1="24" y1="10" x2="26" y2="24" />
           <line x1="14" y1="25" x2="26" y2="24" />
         </g>
-        <circle cx="10" cy="12" r="3" fill="#FFFFFF" />
-        <circle cx="24" cy="10" r="2.5" fill="#FFFFFF" />
-        <circle cx="14" cy="25" r="2.5" fill="#FFFFFF" />
-        <circle cx="26" cy="24" r="3.5" fill="#F4B63F" />
+        <circle cx="10" cy="12" r="3" fill="rgb(var(--primary-foreground))" fillOpacity="0.8" />
+        <circle cx="24" cy="10" r="2.5" fill="rgb(var(--primary-foreground))" fillOpacity="0.8" />
+        <circle cx="14" cy="25" r="2.5" fill="rgb(var(--primary-foreground))" fillOpacity="0.8" />
+        <circle cx="26" cy="24" r="3.5" fill="rgb(var(--primary-foreground))" />
       </svg>
     </span>
   );

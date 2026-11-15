@@ -34,7 +34,7 @@ export function MemberPay() {
         <Money sen={amountDue} className="figure font-display text-[44px] font-extrabold leading-none tracking-tight" />
       </div>
 
-      <section aria-labelledby="sheet-h" className="relative flex animate-sheet-up flex-col gap-5 rounded-[28px] border bg-card p-5 shadow-[0_-12px_40px_-24px_rgba(6,61,50,0.45)]">
+      <section aria-labelledby="sheet-h" className="relative flex animate-sheet-up flex-col gap-5 rounded-[28px] border bg-card p-5 shadow-[0_-12px_40px_-24px_rgba(30,27,58,0.45)]">
         <div className="mx-auto -mt-2 h-1.5 w-12 rounded-full bg-border" aria-hidden />
         <h1 id="sheet-h" className="font-display text-2xl font-bold tracking-tight">
           {t("reviewPay")}

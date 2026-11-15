@@ -183,10 +183,10 @@ export function FundUsageList() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Collected (YTD)" value={rm(ytd.collected)} hint="Fees, drives, other" Icon={Wallet} tone="info" />
-        <KpiTile label="Spent (approved)" value={rm(ytd.spent)} hint="Expenses only" Icon={TrendingDown} tone="clay" />
-        <KpiTile label="Welfare paid" value={rm(ytd.welfarePaid)} hint={`${ytd.welfareCount} cases`} Icon={HandHeart} tone="pine" />
-        <KpiTile label="Awaiting approval" value={`${submitted.length}`} hint="Menunggu kelulusan" Icon={Clock} tone="marigold" />
+        <KpiTile label="Collected (YTD)" value={rm(ytd.collected)} hint="Fees, drives, other" Icon={Wallet} tone="accent" />
+        <KpiTile label="Spent (approved)" value={rm(ytd.spent)} hint="Expenses only" Icon={TrendingDown} tone="accent" />
+        <KpiTile label="Welfare paid" value={rm(ytd.welfarePaid)} hint={`${ytd.welfareCount} cases`} Icon={HandHeart} tone="accent" />
+        <KpiTile label="Awaiting approval" value={`${submitted.length}`} hint="Menunggu kelulusan" Icon={Clock} tone="accent" />
       </div>
 
       <section className="flex min-w-0 flex-col gap-3">

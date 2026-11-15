@@ -16,7 +16,7 @@ export function KpiTile({
   deltaGood,
   hint,
   Icon,
-  tone = "pine",
+  tone = "accent",
   className,
 }: {
   label: string;
@@ -59,8 +59,8 @@ const compact = (sen: number) => {
 
 export function CollectedSpentChart({ lang = "en", height = 260, className }: { lang?: "bm" | "en"; height?: number; className?: string }) {
   const config: ChartConfig = {
-    collected: { label: lang === "bm" ? "Dikutip" : "Collected", color: "rgb(var(--chart-1))" },
-    spent: { label: lang === "bm" ? "Dibelanjakan" : "Spent", color: "rgb(var(--chart-2))", dashed: true },
+    collected: { label: lang === "bm" ? "Dikutip" : "Collected", color: "rgb(var(--chart-1-stroke))" },
+    spent: { label: lang === "bm" ? "Dibelanjakan" : "Spent", color: "rgb(var(--chart-4-stroke))", dashed: true },
   };
   const data = monthly.map((m) => ({ month: lang === "bm" ? m.month : m.monthEn, collected: m.collected, spent: m.spent }));
   const totalIn = monthly.reduce((s, m) => s + m.collected, 0);
@@ -97,7 +97,7 @@ export function CollectedSpentChart({ lang = "en", height = 260, className }: { 
             stroke="var(--color-collected)"
             strokeWidth={2}
             fill="var(--color-collected)"
-            fillOpacity={0.1}
+            fillOpacity={0.12}
             dot={false}
             activeDot={{ r: 5, strokeWidth: 2, className: "stroke-card" }}
             label={endLabel("collected")}
@@ -110,7 +110,7 @@ export function CollectedSpentChart({ lang = "en", height = 260, className }: { 
             strokeWidth={2}
             strokeDasharray="6 4"
             fill="var(--color-spent)"
-            fillOpacity={0.1}
+            fillOpacity={0.06}
             dot={false}
             activeDot={{ r: 5, strokeWidth: 2, className: "stroke-card" }}
             label={endLabel("spent")}
@@ -171,7 +171,7 @@ export function CategoryBar({ lang = "en", total: totalProp, interactive = true,
               tabIndex={interactive ? 0 : undefined}
               title={`${name(c)} · ${rm(c.amount)} · ${p.toFixed(1)}%`}
               className="flex h-full min-w-0 items-center rounded-[4px] px-2 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-              style={{ width: `${p}%`, background: `rgb(var(${c.colorVar}))`, color: `rgb(var(${c.onVar}))` }}
+              style={{ width: `${p}%`, background: `rgb(var(${c.colorVar}))`, color: `rgb(var(${c.onVar}))`, boxShadow: `inset 0 0 0 1.5px rgb(var(${c.colorVar}-stroke))` }}
             >
               {p >= 11 ? `${Math.round(p)}%` : ""}
             </div>
@@ -181,7 +181,7 @@ export function CategoryBar({ lang = "en", total: totalProp, interactive = true,
       <ul className={cn("grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm", wideLegend && "sm:grid-cols-2")}>
         {spendSlices.map((c) => (
           <li key={c.key} className="flex min-w-0 items-center gap-2">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: `rgb(var(${c.colorVar}))` }} aria-hidden />
+            <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: `rgb(var(${c.colorVar}))`, boxShadow: `inset 0 0 0 1.5px rgb(var(${c.colorVar}-stroke))` }} aria-hidden />
             <span className="min-w-0 truncate">{name(c)}</span>
             <span className="money ml-auto font-semibold">{rm(c.amount)}</span>
           </li>

@@ -5,7 +5,7 @@ export function AttachmentArt({ art, className, title }: { art: Attachment["art"
   const line = (y: number, w: number, x = 20, o = 1) => <rect key={`${x}-${y}`} x={x} y={y} width={w} height="5" rx="2.5" fill="#94a3b8" opacity={o} />;
   return (
     <svg viewBox="0 0 160 200" role="img" aria-label={title ?? `${art} placeholder`} className={className}>
-      <rect width="160" height="200" fill={art === "slip" ? "#eef6f7" : "#f8fafc"} />
+      <rect width="160" height="200" fill={art === "slip" ? "#F0EFF8" : "#f8fafc"} />
       {art === "receipt" && (
         <g>
           <path d="M35 14h90v168l-7-5-8 5-8-5-7 5-8-5-7 5-8-5-8 5-7-5-8 5-7-5-7 5z" fill="#fff" stroke="#cbd5e1" />
@@ -26,7 +26,7 @@ export function AttachmentArt({ art, className, title }: { art: Attachment["art"
       {art === "invoice" && (
         <g>
           <rect x="18" y="12" width="124" height="176" fill="#fff" stroke="#cbd5e1" />
-          <rect x="28" y="24" width="22" height="22" rx="4" fill="#0f766e" opacity="0.8" />
+          <rect x="28" y="24" width="22" height="22" rx="4" fill="#5B4FCF" opacity="0.8" />
           <text x="132" y="36" textAnchor="end" fontSize="11" fontWeight="700" fill="#334155" fontFamily="sans-serif">INVOICE</text>
           {line(54, 50, 28, 0.6)}
           {line(62, 40, 28, 0.6)}
@@ -44,7 +44,7 @@ export function AttachmentArt({ art, className, title }: { art: Attachment["art"
       {art === "slip" && (
         <g>
           <rect x="22" y="40" width="116" height="120" rx="8" fill="#fff" stroke="#cbd5e1" />
-          <circle cx="80" cy="66" r="12" fill="#16a34a" opacity="0.85" />
+          <circle cx="80" cy="66" r="12" fill="#1F8A64" opacity="0.85" />
           <path d="M74 66l4 4 8-8" stroke="#fff" strokeWidth="3" fill="none" strokeLinecap="round" />
           <text x="80" y="94" textAnchor="middle" fontSize="8" fill="#334155" fontFamily="sans-serif">Transfer successful</text>
           {line(104, 76, 42, 0.6)}
@@ -57,7 +57,7 @@ export function AttachmentArt({ art, className, title }: { art: Attachment["art"
           <rect x="18" y="12" width="124" height="176" fill="#fff" stroke="#cbd5e1" />
           {line(28, 60, 28, 0.8)}
           {[48, 58, 68, 78, 88, 98, 108].map((y, i) => line(y, i % 3 === 2 ? 70 : 100, 28, 0.5))}
-          <path d="M34 150c10-14 18 8 26-4s14 6 24-2" stroke="#1e3a8a" strokeWidth="2" fill="none" />
+          <path d="M34 150c10-14 18 8 26-4s14 6 24-2" stroke="#241C6B" strokeWidth="2" fill="none" />
           {line(160, 50, 28, 0.6)}
           <text x="132" y="180" textAnchor="end" fontSize="7" fill="#64748b" fontFamily="sans-serif">Akuan terima</text>
         </g>

@@ -2,19 +2,18 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Tone = "pine" | "marigold" | "info" | "clay" | "danger" | "neutral";
+export type Tone = "accent" | "mint" | "info" | "danger" | "neutral";
 
 const toneCls: Record<Tone, string> = {
-  pine: "bg-accent text-primary",
-  marigold: "bg-marigold/25 text-warning-foreground",
-  info: "bg-info-soft text-info",
-  clay: "bg-clay-soft text-clay",
-  danger: "bg-danger-soft text-danger",
+  accent: "bg-accent text-accent-foreground",
+  mint: "bg-mint text-mint-foreground",
+  info: "bg-info-soft text-info-foreground",
+  danger: "bg-danger-soft text-danger-foreground",
   neutral: "bg-secondary text-foreground",
 };
 
-/** lucide icon at 1.75 stroke inside a 36px tinted circle (one tint per category). */
-export function IconBubble({ Icon, tone = "pine", size = 36, className }: { Icon: LucideIcon; tone?: Tone; size?: 36 | 44 | 48; className?: string }) {
+/** lucide icon at 1.75 stroke inside a 36px tinted circle (lavender by default; mint only for money in / paid). */
+export function IconBubble({ Icon, tone = "accent", size = 36, className }: { Icon: LucideIcon; tone?: Tone; size?: 36 | 44 | 48; className?: string }) {
   const s = size === 36 ? "h-9 w-9 [&_svg]:h-[18px] [&_svg]:w-[18px]" : size === 44 ? "h-11 w-11 [&_svg]:h-5 [&_svg]:w-5" : "h-12 w-12 [&_svg]:h-6 [&_svg]:w-6";
   return (
     <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full", s, toneCls[tone], className)} aria-hidden>
@@ -33,11 +32,11 @@ const edges: [number, number][] = [
 ];
 const hot = new Set([4, 9, 16]);
 
-/** Subtle network-node pattern for the Deep Pine hero surfaces. Decorative. */
+/** Subtle network-node pattern for the pastel lavender hero surfaces. Decorative. */
 export function NodePattern({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" className={cn("pointer-events-none absolute inset-0 h-full w-full", className)} aria-hidden>
-      <g stroke="#FFFFFF" strokeOpacity="0.11" strokeWidth="1">
+    <svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" className={cn("pointer-events-none absolute inset-0 h-full w-full text-primary", className)} aria-hidden>
+      <g stroke="currentColor" strokeOpacity="0.16" strokeWidth="1">
         {edges.map(([a, b]) => (
           <line key={`${a}-${b}`} x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]} />
         ))}
@@ -45,18 +44,18 @@ export function NodePattern({ className }: { className?: string }) {
       {nodes.map(([x, y], i) =>
         hot.has(i) ? (
           <g key={i}>
-            <circle cx={x} cy={y} r="7" fill="#F4B63F" fillOpacity="0.14" />
-            <circle cx={x} cy={y} r="3" fill="#F4B63F" fillOpacity="0.75" />
+            <circle cx={x} cy={y} r="7" fill="currentColor" fillOpacity="0.12" />
+            <circle cx={x} cy={y} r="3" fill="currentColor" fillOpacity="0.45" />
           </g>
         ) : (
-          <circle key={i} cx={x} cy={y} r="2.4" fill="#FFFFFF" fillOpacity="0.22" />
+          <circle key={i} cx={x} cy={y} r="2.4" fill="currentColor" fillOpacity="0.22" />
         ),
       )}
     </svg>
   );
 }
 
-const avatarTones = ["bg-accent text-accent-foreground", "bg-marigold/30 text-warning-foreground", "bg-info-soft text-info-foreground", "bg-clay-soft text-clay"];
+const avatarTones = ["bg-accent text-accent-foreground", "bg-secondary text-foreground"];
 
 export function initials(name: string) {
   const parts = name.replace(/\b(bin|binti|a\/l|a\/p)\b/gi, "").split(/\s+/).filter(Boolean);

@@ -14,7 +14,6 @@ export const buttonVariants = cva(
         ghost: "hover:bg-muted",
         destructive: "bg-danger text-danger-on hover:bg-danger/90",
         success: "bg-success text-success-on hover:bg-success/90",
-        marigold: "bg-marigold text-marigold-foreground font-semibold hover:bg-marigold/90",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -17,7 +17,7 @@ export function PhoneFrame({ children, onExit }: { children: ReactNode; onExit: 
         </a>
       </div>
       <div
-        className="relative w-[390px] overflow-hidden rounded-[2.5rem] border-[10px] border-[#0b1210] bg-background shadow-2xl"
+        className="relative w-[390px] overflow-hidden rounded-[2.5rem] border-[10px] border-overlay bg-background shadow-2xl"
         style={{ height: "min(844px, calc(100vh - 80px))", transform: "translateZ(0)" }}
       >
         <div id="phone-scroll" className="h-full overflow-y-auto overflow-x-hidden">

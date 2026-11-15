@@ -95,7 +95,7 @@ export function FundApproveMobile() {
           </div>
         </div>
       </main>
-      <div className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card pt-3 shadow-[0_-8px_24px_-12px_rgba(6,61,50,0.25)]">
+      <div className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card pt-3 shadow-[0_-8px_24px_-12px_rgba(30,27,58,0.25)]">
         <div className="mx-auto max-w-md">
           {result ? (
             <div className="flex min-h-12 items-center gap-2 pb-2 text-base font-semibold">

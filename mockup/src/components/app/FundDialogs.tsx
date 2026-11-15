@@ -21,7 +21,7 @@ export function ApproveDialog({ item, onConfirm, triggerProps }: BaseProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => (setOpen(o), setDeclared(false))}>
       <DialogTrigger asChild>
-        <Button variant="success" {...triggerProps}>
+        <Button variant="default" {...triggerProps}>
           <Check aria-hidden /> Approve <Money sen={item.amount} />
         </Button>
       </DialogTrigger>
@@ -54,7 +54,7 @@ export function ApproveDialog({ item, onConfirm, triggerProps }: BaseProps) {
             Cancel
           </Button>
           <Button
-            variant="success"
+            variant="default"
             disabled={!declared}
             onClick={() => {
               setOpen(false);

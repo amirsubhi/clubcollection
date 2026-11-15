@@ -4,7 +4,7 @@ export function MockupStrip({ showIndexLink = true }: { showIndexLink?: boolean 
   return (
     <div className="bleed-x flex min-h-8 items-center justify-between gap-3 bg-strip py-0 text-xs text-strip-foreground">
       <span className="inline-flex items-center gap-2 font-medium">
-        <span className="h-1.5 w-1.5 rounded-full bg-marigold" aria-hidden />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
         Mockup — sample data <span className="hidden opacity-80 sm:inline">· not live, nothing is saved</span>
       </span>
       {showIndexLink && (

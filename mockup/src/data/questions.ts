@@ -70,7 +70,7 @@ export const questions: Question[] = [
   {
     id: "q7",
     topic: "Brand colours",
-    question: "This mockup uses the “Buku Tunai” theme: Pine green and Marigold, with light and dark modes. What should the real one use?",
-    options: ["Keep Pine & Marigold as shown", "Club logo colours (please send the logo file)", "Committee to choose from 2–3 options"],
+    question: "This mockup uses the pastel “Lavender Ledger” theme: lavender for everything you can tap, mint only for money in, with light and deep indigo-grey dark modes. What should the real one use?",
+    options: ["Keep Lavender & Mint as shown", "Club logo colours (please send the logo file)", "Committee to choose from 2–3 options"],
   },
 ];

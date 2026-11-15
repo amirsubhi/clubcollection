@@ -87,9 +87,9 @@ export function AgmReport() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile label="Total receipts" value={rm(totalReceipts)} hint="Jumlah penerimaan" Icon={Wallet} tone="info" />
-        <KpiTile label="Total payments" value={rm(totalPayments)} hint="Jumlah pembayaran" Icon={TrendingDown} tone="clay" />
-        <KpiTile label="Closing balance" value={rm(closingBalance)} hint="Baki akhir, cash + bank" Icon={Landmark} tone="pine" />
+        <KpiTile label="Total receipts" value={rm(totalReceipts)} hint="Jumlah penerimaan" Icon={Wallet} tone="accent" />
+        <KpiTile label="Total payments" value={rm(totalPayments)} hint="Jumlah pembayaran" Icon={TrendingDown} tone="accent" />
+        <KpiTile label="Closing balance" value={rm(closingBalance)} hint="Baki akhir, cash + bank" Icon={Landmark} tone="accent" />
       </div>
       <section className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:p-5">
         <div>
@@ -99,7 +99,7 @@ export function AgmReport() {
         <CategoryBar lang="en" wideLegend />
       </section>
 
-      <div className="paper mx-auto w-full rounded-[6px] border p-4 shadow-[0_1px_0_rgb(0_0_0/0.04),0_18px_40px_-24px_rgba(22,33,29,0.45)] sm:p-10">
+      <div className="paper mx-auto w-full rounded-[6px] border p-4 shadow-[0_1px_0_rgb(0_0_0/0.04),0_18px_40px_-24px_rgba(30,27,58,0.4)] sm:p-10">
         <div className="flex flex-col gap-6">
           <header className="text-center">
             <ClubMark className="mx-auto mb-2" />

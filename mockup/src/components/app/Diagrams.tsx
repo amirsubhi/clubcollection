@@ -50,15 +50,15 @@ export function MoneyFlowDiagram({ lang = "bm", className }: { lang?: "bm" | "en
           <text x="254" y="47" textAnchor="middle" fontSize="12.5" fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>{rmShort(otherIncome)}</text>
         </g>
         {/* in-arrows */}
-        <g className="text-primary" stroke="currentColor" fill="none" strokeLinecap="round">
+        <g className="text-chart-2-stroke" stroke="currentColor" fill="none" strokeLinecap="round">
           <path d="M86 62 C86 84 130 84 132 104" strokeWidth={w(fees)} markerEnd={`url(#${id}-a)`} />
           <path d="M254 62 C254 84 210 84 208 104" strokeWidth={w(otherIncome)} markerEnd={`url(#${id}-a)`} />
         </g>
         <text x="170" y="86" textAnchor="middle" fontSize="11.5" fill="currentColor" className="opacity-80">{bm ? "dikutip" : "collected"}</text>
         {/* fund */}
-        <rect x="70" y="110" width="200" height="62" rx="14" className="fill-deep" />
-        <text x="170" y="134" textAnchor="middle" fontSize="13.5" fontWeight="800" fill="#FFFFFF" style={{ fontFamily: '"Bricolage Grotesque", system-ui, sans-serif' }}>{bm ? "Dana kelab" : "Club fund"}</text>
-        <text x="170" y="156" textAnchor="middle" fontSize="12.5" fontWeight="600" fill="#FFFFFF" style={{ fontVariantNumeric: "tabular-nums" }}>{bm ? "Masuk " : "In "}{rmShort(totalReceipts)}</text>
+        <rect x="70" y="110" width="200" height="62" rx="14" className="fill-deep stroke-primary/40" strokeWidth="1.5" />
+        <text x="170" y="134" textAnchor="middle" fontSize="13.5" fontWeight="800" className="fill-deep-foreground" style={{ fontFamily: '"Bricolage Grotesque", system-ui, sans-serif' }}>{bm ? "Dana kelab" : "Club fund"}</text>
+        <text x="170" y="156" textAnchor="middle" fontSize="12.5" fontWeight="600" className="fill-deep-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>{bm ? "Masuk " : "In "}{rmShort(totalReceipts)}</text>
         {/* out-arrows */}
         <g className="text-primary" stroke="currentColor" fill="none" strokeLinecap="round">
           {outs.map((o) => {
