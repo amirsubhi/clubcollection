@@ -21,9 +21,11 @@ trait AuthorizesClubResource
             return;
         }
 
-        $manages = $club->members()
+        // Only an active admin of an active club (same rule as FundUsageService::isClubAdmin).
+        $manages = $club->is_active && $club->members()
             ->where('users.id', $user->id)
             ->wherePivot('role', 'admin')
+            ->wherePivot('is_active', true)
             ->exists();
 
         if (!$manages) {

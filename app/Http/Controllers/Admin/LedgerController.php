@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Club;
+use App\Support\Admin\FundUsageStats;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -190,17 +191,18 @@ class LedgerController extends Controller
         $payments = $club->payments()
             ->with('user')
             ->where('status', 'paid')
-            ->whereDate('paid_date', '>=', $from->toDateString())
-            ->whereDate('paid_date', '<=', $to->toDateString())
+            ->tap(fn ($q) => FundUsageStats::inRange($q, 'paid_date', $from, $to))
             ->orderBy('paid_date')->orderBy('id')
             ->get();
 
-        // ── Expenses within the date range ────────────────────────────────
+        // ── Approved (counted) expenses within the date range ─────────────
+        // Drafts, items awaiting approval and voided items never reach the ledger.
         $expenses = $club->expenses()
+            ->counted()
             ->with('category')
-            ->whereDate('expense_date', '>=', $from->toDateString())
-            ->whereDate('expense_date', '<=', $to->toDateString())
-            ->orderBy('expense_date')->orderBy('id')
+            // Cash date: paid_date, else the invoice date (FundUsageStats::cashDate).
+            ->tap(fn ($q) => FundUsageStats::inRange($q, FundUsageStats::cashDate(), $from, $to))
+            ->orderByRaw(FundUsageStats::cashDate())->orderBy('id')
             ->get();
 
         // ── Merge into chronological rows ─────────────────────────────────
@@ -221,13 +223,14 @@ class LedgerController extends Controller
         }
 
         foreach ($expenses as $e) {
+            $cashDate = ($e->paid_date ?? $e->expense_date)->format('Y-m-d');
             $rows->push([
-                'sort_key'   => $e->expense_date->format('Y-m-d') . 'B' . str_pad($e->id, 10, '0', STR_PAD_LEFT),
-                'date'       => $e->expense_date->format('Y-m-d'),
+                'sort_key'   => $cashDate . 'B' . str_pad($e->id, 10, '0', STR_PAD_LEFT),
+                'date'       => $cashDate,
                 'type'       => 'Expense',
-                'description'=> $e->description,
+                'description'=> ($e->isWelfare() ? 'Welfare: ' : '') . $e->description,
                 'party'      => $e->category->name,
-                'reference'  => '',
+                'reference'  => $e->reference(),
                 'amount_in'  => null,
                 'amount_out' => (float) $e->amount,
                 'balance'    => 0.0,
@@ -301,7 +304,7 @@ class LedgerController extends Controller
             return;
         }
         abort_unless(
-            $user->clubs()->wherePivot('role', 'admin')->where('clubs.id', $club->id)->exists(),
+            $club->is_active && $user->clubs()->wherePivot('role', 'admin')->wherePivot('is_active', true)->where('clubs.id', $club->id)->exists(),
             403
         );
     }

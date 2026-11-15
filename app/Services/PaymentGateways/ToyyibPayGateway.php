@@ -4,14 +4,37 @@ namespace App\Services\PaymentGateways;
 
 use App\Contracts\PaymentGateway;
 use App\Models\Club;
+use App\Support\Payments\GatewayFee;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
+use App\Support\Payments\WebhookSecret;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ToyyibPayGateway implements PaymentGateway
 {
+    /**
+     * `billChargeToCustomer` sent to createBill for each club gateway_fee_payer.
+     * This is the ONLY place the mapping lives.
+     *
+     * Our reading of the ToyyibPay createBill docs (not yet verified):
+     *   ''  (blank) = bill owner pays the FPX and card charges  → 'club'
+     *   '0'         = FPX charge to the customer, card to owner → 'member'
+     *   '1'         = FPX charge to the owner, card to customer (the old hard-coded value)
+     *   '2'         = both FPX and card charges to the customer
+     *
+     * TODO: confirm semantics in sandbox (go-live item P3): create one bill per
+     * value and check what the FPX payer is shown and what the callback
+     * `amount` contains. Until confirmed, clubs should keep payer = 'club'.
+     * With 'member' we rely on this flag alone and never add the fee to
+     * billAmount, so the member is not charged twice.
+     */
+    public const BILL_CHARGE_TO_CUSTOMER = [
+        'club' => 1, // pre-P1 value, kept until the sandbox confirms how ToyyibPay reads blank vs 1
+        'member' => '0',
+    ];
+
     protected string $baseUrl;
 
     protected string $webhookSecret;
@@ -55,6 +78,9 @@ class ToyyibPayGateway implements PaymentGateway
                             ? $club->toyyibpay_category_code
                             : $this->globalCategoryCode;
 
+        $fee = $params['fee'] ?? null;
+        $payer = $fee instanceof GatewayFee ? $fee->payer : 'club';
+
         try {
             $response = Http::asForm()->post("{$this->baseUrl}/index.php/api/createBill", [
                 'userSecretKey' => $secretKey,
@@ -74,7 +100,8 @@ class ToyyibPayGateway implements PaymentGateway
                 'billSplitPaymentArgs' => '',
                 'billPaymentChannel' => 0,
                 'billContentEmail' => "Thank you for your payment to {$params['club_name']}.",
-                'billChargeToCustomer' => 1,
+                // Fee amount only: a member-borne charge comes from the flag below.
+                'billChargeToCustomer' => self::BILL_CHARGE_TO_CUSTOMER[$payer] ?? self::BILL_CHARGE_TO_CUSTOMER['club'],
             ]);
 
             $data = $response->json();
@@ -101,8 +128,8 @@ class ToyyibPayGateway implements PaymentGateway
 
     public function verifyWebhookRequest(Request $request): bool
     {
-        if (empty($this->webhookSecret)) {
-            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is not configured');
+        if (! WebhookSecret::isUsable($this->webhookSecret)) {
+            Log::error('ToyyibPay webhook denied: TOYYIBPAY_WEBHOOK_SECRET is missing or still the placeholder value');
 
             return false;
         }
@@ -123,15 +150,17 @@ class ToyyibPayGateway implements PaymentGateway
             transactionId: $payload['transaction_id'] ?? null,
             gateway: $this->name(),
             rawPayload: $payload,
+            // ToyyibPay's callback `amount` is in ringgit (e.g. "10.00").
+            paidAmountSen: isset($payload['amount']) && is_numeric($payload['amount']) ? (int) round(((float) $payload['amount']) * 100) : null,
         );
     }
 
     /**
      * Build the public payment URL for a bill code.
      */
-    protected function paymentUrl(string $billCode): string
+    public function paymentUrl(string $billCode): string
     {
-        return "{$this->baseUrl}/{$billCode}";
+        return "{$this->baseUrl}/".rawurlencode($billCode);
     }
 
     /**

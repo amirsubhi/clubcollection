@@ -57,6 +57,18 @@ class AuditLog extends Model
             'expense.created'       => 'Expense Created',
             'expense.updated'       => 'Expense Updated',
             'expense.deleted'       => 'Expense Deleted',
+            'fund_usage.created'        => 'Fund Usage Recorded',
+            'fund_usage.updated'        => 'Fund Usage Edited',
+            'fund_usage.submitted'      => 'Fund Usage Submitted',
+            'fund_usage.approved'       => 'Fund Usage Approved',
+            'fund_usage.returned'       => 'Fund Usage Returned',
+            'fund_usage.void_requested' => 'Fund Usage Void Requested',
+            'fund_usage.voided'         => 'Fund Usage Voided',
+            'fund_usage.deleted'        => 'Fund Usage Draft Deleted',
+            'attachment.added'          => 'Document Attached',
+            'attachment.removed'        => 'Document Removed',
+            'attachment.viewed'         => 'Document Viewed',
+            'attachment.downloaded'     => 'Document Downloaded',
             'discount.created'      => 'Discount Created',
             'discount.updated'      => 'Discount Updated',
             'discount.deleted'      => 'Discount Deleted',
@@ -80,7 +92,9 @@ class AuditLog extends Model
                 => 'success',
             str_starts_with($this->action, 'auth.')
                 => 'secondary',
-            str_ends_with($this->action, '.marked_paid')
+            str_ends_with($this->action, '.voided') || str_ends_with($this->action, '.void_requested')
+                => 'danger',
+            str_ends_with($this->action, '.marked_paid') || str_ends_with($this->action, '.approved')
                 => 'primary',
             default
                 => 'warning',

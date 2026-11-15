@@ -41,7 +41,7 @@ class ExpenseCategoryController extends Controller
             return back()->with('error', 'Cannot delete category with existing expenses.');
         }
         $expenseCategory->delete();
-        return redirect()->route('admin.expense-categories.index', $club)
+        return redirect()->route('admin.clubs.expense-categories.index', $club)
             ->with('success', 'Category deleted.');
     }
 }

@@ -6,8 +6,10 @@ use App\Contracts\PaymentGateway;
 use App\Models\Club;
 use App\Models\Payment;
 use App\Support\Payments\BillplzSignature;
+use App\Support\Payments\GatewayFee;
 use App\Support\Payments\PaymentBillResult;
 use App\Support\Payments\WebhookResult;
+use App\Support\Payments\WebhookSecret;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -59,6 +61,16 @@ class BillplzGateway implements PaymentGateway
                             ? $club->billplz_collection_id
                             : $this->globalCollectionId;
 
+        // Billplz has no "charge the customer" flag: when the member bears the
+        // gateway fee, add it to the bill amount explicitly.
+        $fee = $params['fee'] ?? null;
+        $amountSen = (int) round($params['amount'] * 100);
+        $description = $params['description'];
+        if ($fee instanceof GatewayFee && $fee->memberPays() && $fee->feeSen > 0) {
+            $amountSen += $fee->feeSen;
+            $description = mb_substr($description.' (incl. RM'.number_format($fee->feeSen / 100, 2).' gateway charge)', 0, 200);
+        }
+
         try {
             $response = Http::withBasicAuth($apiKey, '')
                 ->asForm()
@@ -67,10 +79,10 @@ class BillplzGateway implements PaymentGateway
                     'email' => $params['payer_email'],
                     'mobile' => $params['payer_phone'] ?? null,
                     'name' => $params['payer_name'],
-                    'amount' => (int) round($params['amount'] * 100),
+                    'amount' => $amountSen,
                     'callback_url' => $params['callback_url'],
                     'redirect_url' => $params['return_url'],
-                    'description' => $params['description'],
+                    'description' => $description,
                     'reference_1_label' => 'PaymentRef',
                     'reference_1' => $params['reference_no'],
                 ]);
@@ -95,11 +107,16 @@ class BillplzGateway implements PaymentGateway
         }
     }
 
+    public function paymentUrl(string $billCode): string
+    {
+        return rtrim($this->baseUrl, '/').'/bills/'.rawurlencode($billCode);
+    }
+
     public function verifyWebhookRequest(Request $request): bool
     {
         $key = $this->resolveSignatureKey($request);
-        if (empty($key)) {
-            Log::error('Billplz webhook denied: x_signature_key is not configured');
+        if (! WebhookSecret::isUsable($key)) {
+            Log::error('Billplz webhook denied: x_signature_key is missing or still the placeholder value');
 
             return false;
         }
@@ -132,6 +149,7 @@ class BillplzGateway implements PaymentGateway
             transactionId: $request->input('transaction_id'),
             gateway: $this->name(),
             rawPayload: $payload,
+            paidAmountSen: is_numeric($request->input('paid_amount')) ? (int) $request->input('paid_amount') : null,
         );
     }
 

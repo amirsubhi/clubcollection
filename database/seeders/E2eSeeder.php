@@ -1,0 +1,94 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Club;
+use App\Models\ExpenseCategory;
+use App\Models\FeeRate;
+use App\Models\Payment;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use RuntimeException;
+
+/**
+ * Fixed fixtures for the end-to-end smoke test (tests/e2e/smoke.mjs).
+ *
+ *   php artisan db:seed --class=Database\\Seeders\\E2eSeeder
+ *
+ * Creates one club with fake ToyyibPay credentials, a member with one
+ * pending RM 50.00 fee and two club admins (maker and checker). The
+ * passwords are public, so it refuses to run outside local/testing.
+ */
+class E2eSeeder extends Seeder
+{
+    public const PASSWORD = 'E2e-Smoke-Pass-2026';
+
+    public const MEMBER_EMAIL = 'e2e.member@clubportal.test';
+
+    public const ADMIN_A_EMAIL = 'e2e.admin.a@clubportal.test';
+
+    public const ADMIN_B_EMAIL = 'e2e.admin.b@clubportal.test';
+
+    public function run(): void
+    {
+        if (! app()->environment('local', 'testing')) {
+            throw new RuntimeException('E2eSeeder only runs when APP_ENV is local or testing.');
+        }
+
+        $club = Club::create([
+            'name' => 'E2E Smoke Club',
+            'email' => 'e2e.club@clubportal.test',
+            'is_active' => true,
+            'payment_gateway' => 'toyyibpay',
+            // Obviously fake but not the .env.example placeholder, so the club
+            // counts as configured. Bill creation is faked by
+            // E2eFakeGatewayServiceProvider (local + E2E_FAKE_GATEWAY=1 only).
+            'toyyibpay_secret_key' => 'e2e-fake-secret-key-not-real',
+            'toyyibpay_category_code' => 'e2efakecat',
+        ]);
+
+        FeeRate::create([
+            'club_id' => $club->id,
+            'job_level' => 'executive',
+            'monthly_amount' => 50.00,
+            'effective_from' => now()->startOfMonth()->toDateString(),
+            'effective_to' => null,
+        ]);
+
+        foreach (['Event', 'Supplies', 'Miscellaneous'] as $name) {
+            ExpenseCategory::create(['club_id' => $club->id, 'name' => $name]);
+        }
+
+        $member = $this->user('E2E Ahli Ujian', self::MEMBER_EMAIL, 'member');
+        $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->subYear()->toDateString(), 'is_active' => true]);
+
+        foreach ([['E2E Admin A (maker)', self::ADMIN_A_EMAIL], ['E2E Admin B (checker)', self::ADMIN_B_EMAIL]] as [$name, $email]) {
+            $admin = $this->user($name, $email, 'admin');
+            $club->members()->attach($admin, ['role' => 'admin', 'job_level' => 'manager', 'joined_date' => now()->subYear()->toDateString(), 'is_active' => true]);
+        }
+
+        $start = now()->startOfMonth();
+        Payment::create([
+            'club_id' => $club->id,
+            'user_id' => $member->id,
+            'recorded_by' => $member->id,
+            'amount' => 50.00,
+            'frequency' => 'monthly',
+            'period_start' => $start->toDateString(),
+            'period_end' => $start->copy()->endOfMonth()->toDateString(),
+            'due_date' => $start->copy()->addDays(14)->toDateString(),
+            'status' => 'pending',
+        ]);
+    }
+
+    private function user(string $name, string $email, string $role): User
+    {
+        return User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make(self::PASSWORD),
+            'role' => $role,
+        ]);
+    }
+}

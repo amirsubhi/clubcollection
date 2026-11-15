@@ -28,7 +28,10 @@ class PaymentControllerTest extends TestCase
         $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
 
         Payment::factory()->forClub($club)->forMember($member)->overdue()->create();
-        Payment::factory()->forClub($club)->forMember($member)->pending()->create();
+        Payment::factory()->forClub($club)->forMember($member)->pending()->create([
+            'period_start' => now()->addMonthNoOverflow()->startOfMonth()->toDateString(),
+            'period_end' => now()->addMonthNoOverflow()->endOfMonth()->toDateString(),
+        ]);
 
         $response = $this->get(route('admin.clubs.payments.index', $club) . '?status=overdue');
         $response->assertOk();
@@ -98,6 +101,31 @@ class PaymentControllerTest extends TestCase
             'due_date'     => '2025-01-31',
             'amount'       => 100.00,
         ])->assertSessionHasErrors('user_id');
+    }
+
+    public function test_store_rejects_a_period_overlapping_an_existing_fee(): void
+    {
+        $club   = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+        $member = User::factory()->create();
+        $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
+        // e.g. a member's yearly pay-ahead fee for Jan–Dec 2027.
+        Payment::factory()->forClub($club)->forMember($member)->pending()->create([
+            'frequency' => 'yearly', 'period_start' => '2027-01-01', 'period_end' => '2027-12-31',
+        ]);
+        $post = fn (string $start, string $frequency = 'monthly') => $this->post(route('admin.clubs.payments.store', $club), [
+            'user_id' => $member->id, 'frequency' => $frequency, 'period_start' => $start,
+            'due_date' => $start, 'amount' => 10.00,
+        ]);
+
+        $post('2027-01-01')->assertSessionHasErrors('period_start');            // same start
+        $post('2027-06-01')->assertSessionHasErrors('period_start');            // inside
+        $post('2026-12-01', 'quarterly')->assertSessionHasErrors('period_start'); // runs into it
+        $this->assertSame(1, Payment::count());
+
+        $post('2026-12-01')->assertSessionHasNoErrors();                         // just before
+        $post('2028-01-01')->assertSessionHasNoErrors();                         // just after
+        $this->assertSame(3, Payment::count());
     }
 
     public function test_store_rejects_discount_from_another_club(): void

@@ -204,4 +204,16 @@ class BillplzWebhookTest extends TestCase
         $this->assertSame($firstTxn, $fresh->transaction_id);
         Mail::assertSentCount(1);
     }
+
+    public function test_webhook_with_a_lower_paid_amount_leaves_the_fee_unpaid(): void
+    {
+        $payment = $this->makePendingPayment(['amount' => 50.00]);
+
+        $this->post(route('webhook.billplz'), $this->payload($payment, ['paid_amount' => '100']))
+            ->assertOk();
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        Mail::assertNothingSent();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment.underpaid_webhook', 'auditable_id' => $payment->id]);
+    }
 }

@@ -33,7 +33,10 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Never serve the private disk over HTTP: attachments are streamed only through
+            // AttachmentController (authorized + audited). This also removes Laravel's
+            // signed storage.local / storage.local.upload routes.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

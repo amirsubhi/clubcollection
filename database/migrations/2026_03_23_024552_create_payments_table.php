@@ -27,6 +27,11 @@ return new class extends Migration
             $table->foreignId('discount_id')->nullable()->constrained()->nullOnDelete();
             $table->text('notes')->nullable();
             $table->timestamps();
+
+            // At most one fee record per member per period start. Overlapping
+            // periods are refused in code (pay-ahead and admin create); this index
+            // only backs up the same-start case against races and double submits.
+            $table->unique(['club_id', 'user_id', 'period_start'], 'payments_club_user_period_unique');
         });
     }
 

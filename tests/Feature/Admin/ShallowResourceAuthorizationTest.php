@@ -128,7 +128,7 @@ class ShallowResourceAuthorizationTest extends TestCase
         $this->actingAsClubAdmin($clubA);
         $expenseB = Expense::factory()->forClub($clubB)->create();
 
-        $this->delete(route('admin.expenses.destroy', $expenseB))
+        $this->delete(route('admin.fund-usage.destroy', $expenseB))
             ->assertForbidden();
 
         $this->assertDatabaseHas('expenses', ['id' => $expenseB->id]);

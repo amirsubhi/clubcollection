@@ -16,7 +16,14 @@ class Club extends Model
         'payment_gateway',
         'toyyibpay_secret_key', 'toyyibpay_category_code',
         'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
+        'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan',
+        'gateway_fee_payer', 'gateway_fee_sen',
     ];
+
+    /** Billing plans and how many months each covers. */
+    public const PLAN_MONTHS = ['monthly' => 1, 'quarterly' => 3, 'yearly' => 12];
+
+    public const FEE_PAYERS = ['club', 'member'];
 
     protected function casts(): array
     {
@@ -26,6 +33,10 @@ class Club extends Model
             'toyyibpay_secret_key'     => 'encrypted',
             'billplz_api_key'          => 'encrypted',
             'billplz_x_signature_key'  => 'encrypted',
+            'allow_monthly'            => 'boolean',
+            'allow_quarterly'          => 'boolean',
+            'allow_yearly'             => 'boolean',
+            'gateway_fee_sen'          => 'integer',
         ];
     }
 
@@ -36,6 +47,55 @@ class Club extends Model
     public function activeGateway(): string
     {
         return $this->payment_gateway ?: 'toyyibpay';
+    }
+
+    /**
+     * Plans members may pick when paying ahead, in PLAN_MONTHS order.
+     * Rows created before the columns existed (null) count as allowed.
+     *
+     * @return list<string>
+     */
+    public function allowedPlans(): array
+    {
+        return array_values(array_filter(
+            array_keys(self::PLAN_MONTHS),
+            fn (string $plan) => $this->getAttribute("allow_{$plan}") !== false
+        ));
+    }
+
+    /** The default plan, falling back to the first allowed one. */
+    public function defaultPlan(): string
+    {
+        $allowed = $this->allowedPlans();
+        $plan = $this->default_plan ?: 'yearly';
+
+        return in_array($plan, $allowed, true) ? $plan : ($allowed[0] ?? 'monthly');
+    }
+
+    /**
+     * 'club' (absorbs the gateway fee) or 'member' (pays it on top). A ToyyibPay
+     * club falls back to 'club' until the customer-charge flag is verified
+     * (config toyyibpay.charge_to_customer_verified), whatever is stored.
+     */
+    public function gatewayFeePayer(): string
+    {
+        if ($this->gateway_fee_payer !== 'member') {
+            return 'club';
+        }
+
+        return $this->memberFeeAllowed() ? 'member' : 'club';
+    }
+
+    /** Whether this club's gateway may pass its fee on to members. */
+    public function memberFeeAllowed(): bool
+    {
+        return $this->activeGateway() !== 'toyyibpay' || (bool) config('toyyibpay.charge_to_customer_verified');
+    }
+
+    /** Expected gateway fee per bill, in sen. */
+    public function gatewayFeeSen(): int
+    {
+        return max(0, (int) ($this->gateway_fee_sen ?? 100));
     }
 
     /**

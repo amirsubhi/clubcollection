@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\PaymentGateways\PaymentGatewayManager;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Views use Bootstrap 5; the default Tailwind pagination renders unstyled.
+        Paginator::useBootstrapFive();
     }
 }

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @include('partials.pwa-head')
     <title>@yield('title', config('app.name', 'Club Portal'))</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -163,14 +164,17 @@
         @endphp
         @foreach($adminClubs as $club)
         <div class="nav-section">{{ $club->name }}</div>
-        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.dashboard') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.dashboard*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-graph-up"></i> Dashboard
         </a>
         <a href="{{ route('admin.clubs.payments.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.payments.*', 'admin.payments.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-wallet2"></i> Payments
         </a>
-        <a href="{{ route('admin.clubs.expenses.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.expenses.*', 'admin.expenses.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
-            <i class="bi bi-receipt"></i> Expenses
+        <a href="{{ route('admin.clubs.fund-usage.index', $club) }}" class="nav-link">
+            <i class="bi bi-receipt"></i> Fund Usage
+        </a>
+        <a href="{{ route('admin.clubs.expense-categories.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.expense-categories.*', 'admin.expense-categories.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-tags"></i> Expense Categories
         </a>
         <a href="{{ route('admin.clubs.discounts.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.discounts.*', 'admin.discounts.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-tag"></i> Discounts
@@ -180,6 +184,9 @@
         </a>
         <a href="{{ route('admin.clubs.fee-rates.index', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.fee-rates.*', 'admin.fee-rates.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-cash-stack"></i> Fee Rates
+        </a>
+        <a href="{{ route('admin.clubs.billing.edit', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.billing.*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
+            <i class="bi bi-sliders"></i> Billing settings
         </a>
         <a href="{{ route('admin.clubs.ledger', $club) }}" class="nav-link {{ request()->routeIs('admin.clubs.ledger*') && request()->route('club')?->id == $club->id ? 'active' : '' }}">
             <i class="bi bi-journal-bookmark"></i> Ledger

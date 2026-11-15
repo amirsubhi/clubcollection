@@ -179,7 +179,7 @@ class LedgerTest extends TestCase
 
         $this->actingAsClubAdmin($club);
 
-        $expense = Expense::factory()->create([
+        $expense = Expense::factory()->approved()->create([
             'club_id'             => $club->id,
             'expense_category_id' => $category->id,
             'recorded_by'         => $recorder->id,
@@ -215,7 +215,7 @@ class LedgerTest extends TestCase
             'amount'    => 50.00,
         ]);
 
-        Expense::factory()->create([
+        Expense::factory()->approved()->create([
             'club_id'             => $club->id,
             'expense_category_id' => $category->id,
             'recorded_by'         => $recorder->id,

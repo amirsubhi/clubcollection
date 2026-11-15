@@ -1,0 +1,293 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * "Lavender Ledger" theme (pastel). Every colour is defined for light first, then dark.
+ * Lavender = everything interactive; mint = money in / paid / positive only; amber + rose = status chips only.
+ * Values are RGB triplets so Tailwind can apply alpha (bg-primary/10). Hex in comments.
+ * Dark applies when the OS prefers dark and the viewer hasn't forced light, or when data-theme="dark".
+ */
+:root {
+  color-scheme: light;
+  --background: 246 245 251; /* #F6F5FB */
+  --foreground: 30 27 58; /* #1E1B3A */
+  --card: 255 255 255; /* #FFFFFF */
+  --card-foreground: 30 27 58; /* #1E1B3A */
+  --popover: 255 255 255; /* #FFFFFF */
+  --popover-foreground: 30 27 58; /* #1E1B3A */
+  --primary: 91 79 207; /* #5B4FCF */
+  --primary-foreground: 255 255 255; /* #FFFFFF */
+  --deep: 227 223 252; /* #E3DFFC */
+  --deep-foreground: 36 28 107; /* #241C6B */
+  --mint: 191 235 221; /* #BFEBDD */
+  --mint-foreground: 11 74 58; /* #0B4A3A */
+  --secondary: 236 234 247; /* #ECEAF7 */
+  --secondary-foreground: 30 27 58; /* #1E1B3A */
+  --muted: 240 239 248; /* #F0EFF8 */
+  --muted-foreground: 95 92 122; /* #5F5C7A */
+  --accent: 233 230 251; /* #E9E6FB */
+  --accent-foreground: 67 56 168; /* #4338A8 */
+  --border: 222 220 236; /* #DEDCEC */
+  --input: 138 135 166; /* #8A87A6 */
+  --ring: 91 79 207; /* #5B4FCF */
+  --success: 31 122 85; /* #1F7A55 */
+  --success-soft: 221 244 233; /* #DDF4E9 */
+  --success-foreground: 20 96 63; /* #14603F */
+  --on-success: 255 255 255; /* #FFFFFF */
+  --warning: 138 90 0; /* #8A5A00 */
+  --warning-soft: 255 240 207; /* #FFF0CF */
+  --warning-foreground: 122 78 0; /* #7A4E00 */
+  --danger: 180 50 74; /* #B4324A */
+  --danger-soft: 253 228 232; /* #FDE4E8 */
+  --danger-foreground: 153 36 59; /* #99243B */
+  --on-danger: 255 255 255; /* #FFFFFF */
+  --info: 91 79 207; /* #5B4FCF */
+  --info-soft: 233 230 251; /* #E9E6FB */
+  --info-foreground: 67 56 168; /* #4338A8 */
+  --sidebar: 251 250 254; /* #FBFAFE */
+  --strip: 30 27 58; /* #1E1B3A */
+  --strip-foreground: 246 245 251; /* #F6F5FB */
+  --chart-1: 201 195 247; /* #C9C3F7 */
+  --chart-2: 191 235 221; /* #BFEBDD */
+  --chart-3: 197 221 248; /* #C5DDF8 */
+  --chart-4: 249 203 211; /* #F9CBD3 */
+  --chart-1-stroke: 91 79 207; /* #5B4FCF */
+  --chart-2-stroke: 31 138 100; /* #1F8A64 */
+  --chart-3-stroke: 47 111 184; /* #2F6FB8 */
+  --chart-4-stroke: 184 64 90; /* #B8405A */
+  --on-chart-1: 30 27 58; /* #1E1B3A */
+  --on-chart-2: 30 27 58; /* #1E1B3A */
+  --on-chart-3: 30 27 58; /* #1E1B3A */
+  --on-chart-4: 30 27 58; /* #1E1B3A */
+  --chart-grid: 232 230 243; /* #E8E6F3 */
+  --chart-axis: 95 92 122; /* #5F5C7A */
+  --mock: 91 33 182; /* #5B21B6 */
+  --mock-soft: 243 238 255; /* #F3EEFF */
+  --mock-border: 167 139 250; /* #A78BFA */
+  --overlay: 18 17 28; /* #12111C */
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: 30 31 35; /* #1E1F23 */
+    --foreground: 241 241 244; /* #F1F1F4 */
+    --card: 38 39 44; /* #26272C */
+    --card-foreground: 241 241 244; /* #F1F1F4 */
+    --popover: 46 47 53; /* #2E2F35 */
+    --popover-foreground: 241 241 244; /* #F1F1F4 */
+    --primary: 155 140 250; /* #9B8CFA */
+    --primary-foreground: 20 17 46; /* #14112E */
+    --deep: 59 47 138; /* #3B2F8A */
+    --deep-foreground: 243 241 255; /* #F3F1FF */
+    --mint: 31 59 51; /* #1F3B33 */
+    --mint-foreground: 168 235 208; /* #A8EBD0 */
+    --secondary: 48 49 55; /* #303137 */
+    --secondary-foreground: 241 241 244; /* #F1F1F4 */
+    --muted: 42 43 48; /* #2A2B30 */
+    --muted-foreground: 179 180 190; /* #B3B4BE */
+    --accent: 53 44 110; /* #352C6E */
+    --accent-foreground: 206 198 255; /* #CEC6FF */
+    --border: 58 59 66; /* #3A3B42 */
+    --input: 111 112 122; /* #6F707A */
+    --ring: 155 140 250; /* #9B8CFA */
+    --success: 116 211 169; /* #74D3A9 */
+    --success-soft: 30 50 41; /* #1E3229 */
+    --success-foreground: 147 226 191; /* #93E2BF */
+    --on-success: 11 42 31; /* #0B2A1F */
+    --warning: 237 193 110; /* #EDC16E */
+    --warning-soft: 58 48 32; /* #3A3020 */
+    --warning-foreground: 243 208 142; /* #F3D08E */
+    --danger: 242 160 173; /* #F2A0AD */
+    --danger-soft: 62 37 42; /* #3E252A */
+    --danger-foreground: 246 182 192; /* #F6B6C0 */
+    --on-danger: 42 10 18; /* #2A0A12 */
+    --info: 155 140 250; /* #9B8CFA */
+    --info-soft: 53 44 110; /* #352C6E */
+    --info-foreground: 206 198 255; /* #CEC6FF */
+    --sidebar: 34 35 39; /* #222327 */
+    --strip: 42 43 48; /* #2A2B30 */
+    --strip-foreground: 241 241 244; /* #F1F1F4 */
+    --chart-1: 155 140 250; /* #9B8CFA */
+    --chart-2: 65 168 125; /* #41A87D */
+    --chart-3: 98 150 206; /* #6296CE */
+    --chart-4: 201 118 133; /* #C97685 */
+    --chart-1-stroke: 155 140 250; /* #9B8CFA */
+    --chart-2-stroke: 65 168 125; /* #41A87D */
+    --chart-3-stroke: 98 150 206; /* #6296CE */
+    --chart-4-stroke: 201 118 133; /* #C97685 */
+    --on-chart-1: 30 31 35; /* #1E1F23 */
+    --on-chart-2: 30 31 35; /* #1E1F23 */
+    --on-chart-3: 30 31 35; /* #1E1F23 */
+    --on-chart-4: 30 31 35; /* #1E1F23 */
+    --chart-grid: 52 53 59; /* #34353B */
+    --chart-axis: 179 180 190; /* #B3B4BE */
+    --mock: 196 181 253; /* #C4B5FD */
+    --mock-soft: 46 42 63; /* #2E2A3F */
+    --mock-border: 124 107 196; /* #7C6BC4 */
+    --overlay: 11 11 13; /* #0B0B0D */
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: 30 31 35; /* #1E1F23 */
+  --foreground: 241 241 244; /* #F1F1F4 */
+  --card: 38 39 44; /* #26272C */
+  --card-foreground: 241 241 244; /* #F1F1F4 */
+  --popover: 46 47 53; /* #2E2F35 */
+  --popover-foreground: 241 241 244; /* #F1F1F4 */
+  --primary: 155 140 250; /* #9B8CFA */
+  --primary-foreground: 20 17 46; /* #14112E */
+  --deep: 59 47 138; /* #3B2F8A */
+  --deep-foreground: 243 241 255; /* #F3F1FF */
+  --mint: 31 59 51; /* #1F3B33 */
+  --mint-foreground: 168 235 208; /* #A8EBD0 */
+  --secondary: 48 49 55; /* #303137 */
+  --secondary-foreground: 241 241 244; /* #F1F1F4 */
+  --muted: 42 43 48; /* #2A2B30 */
+  --muted-foreground: 179 180 190; /* #B3B4BE */
+  --accent: 53 44 110; /* #352C6E */
+  --accent-foreground: 206 198 255; /* #CEC6FF */
+  --border: 58 59 66; /* #3A3B42 */
+  --input: 111 112 122; /* #6F707A */
+  --ring: 155 140 250; /* #9B8CFA */
+  --success: 116 211 169; /* #74D3A9 */
+  --success-soft: 30 50 41; /* #1E3229 */
+  --success-foreground: 147 226 191; /* #93E2BF */
+  --on-success: 11 42 31; /* #0B2A1F */
+  --warning: 237 193 110; /* #EDC16E */
+  --warning-soft: 58 48 32; /* #3A3020 */
+  --warning-foreground: 243 208 142; /* #F3D08E */
+  --danger: 242 160 173; /* #F2A0AD */
+  --danger-soft: 62 37 42; /* #3E252A */
+  --danger-foreground: 246 182 192; /* #F6B6C0 */
+  --on-danger: 42 10 18; /* #2A0A12 */
+  --info: 155 140 250; /* #9B8CFA */
+  --info-soft: 53 44 110; /* #352C6E */
+  --info-foreground: 206 198 255; /* #CEC6FF */
+  --sidebar: 34 35 39; /* #222327 */
+  --strip: 42 43 48; /* #2A2B30 */
+  --strip-foreground: 241 241 244; /* #F1F1F4 */
+  --chart-1: 155 140 250; /* #9B8CFA */
+  --chart-2: 65 168 125; /* #41A87D */
+  --chart-3: 98 150 206; /* #6296CE */
+  --chart-4: 201 118 133; /* #C97685 */
+  --chart-1-stroke: 155 140 250; /* #9B8CFA */
+  --chart-2-stroke: 65 168 125; /* #41A87D */
+  --chart-3-stroke: 98 150 206; /* #6296CE */
+  --chart-4-stroke: 201 118 133; /* #C97685 */
+  --on-chart-1: 30 31 35; /* #1E1F23 */
+  --on-chart-2: 30 31 35; /* #1E1F23 */
+  --on-chart-3: 30 31 35; /* #1E1F23 */
+  --on-chart-4: 30 31 35; /* #1E1F23 */
+  --chart-grid: 52 53 59; /* #34353B */
+  --chart-axis: 179 180 190; /* #B3B4BE */
+  --mock: 196 181 253; /* #C4B5FD */
+  --mock-soft: 46 42 63; /* #2E2A3F */
+  --mock-border: 124 107 196; /* #7C6BC4 */
+  --overlay: 11 11 13; /* #0B0B0D */
+}
+
+/* Receipts and the AGM sheet stay white "paper" in both themes (people print and share them). */
+.paper {
+  color-scheme: light;
+  --background: 255 255 255; /* #FFFFFF */
+  --foreground: 30 27 58; /* #1E1B3A */
+  --card: 255 255 255; /* #FFFFFF */
+  --card-foreground: 30 27 58; /* #1E1B3A */
+  --muted: 240 239 248; /* #F0EFF8 */
+  --muted-foreground: 95 92 122; /* #5F5C7A */
+  --secondary: 236 234 247; /* #ECEAF7 */
+  --secondary-foreground: 30 27 58; /* #1E1B3A */
+  --border: 214 211 230; /* #D6D3E6 */
+  --primary: 91 79 207; /* #5B4FCF */
+  --primary-foreground: 255 255 255; /* #FFFFFF */
+  --success: 31 122 85; /* #1F7A55 */
+  --success-soft: 221 244 233; /* #DDF4E9 */
+  --success-foreground: 20 96 63; /* #14603F */
+  --warning-soft: 255 240 207; /* #FFF0CF */
+  --warning-foreground: 122 78 0; /* #7A4E00 */
+  --danger-soft: 253 228 232; /* #FDE4E8 */
+  --danger-foreground: 153 36 59; /* #99243B */
+  --info-soft: 233 230 251; /* #E9E6FB */
+  --info-foreground: 67 56 168; /* #4338A8 */
+  --accent: 233 230 251; /* #E9E6FB */
+  --accent-foreground: 67 56 168; /* #4338A8 */
+  background-color: rgb(var(--card));
+  color: rgb(var(--foreground));
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  #root { min-height: 100vh; display: flex; flex-direction: column; }
+  #root > * { flex: 1 0 auto; }
+  body {
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.015em; }
+  *:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; }
+  ::selection { background: rgb(var(--primary) / 0.28); }
+}
+
+@layer utilities {
+  .money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .figure { font-variant-numeric: proportional-nums; white-space: nowrap; }
+  .safe-x {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  /* Full-bleed bar inside .app-shell: cancels the shell gutter, then re-applies it as padding. */
+  .bleed-x {
+    margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .bleed-x-flush {
+    margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  }
+  .pb-safe-nav { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+/* Member area: 20px radius; admin keeps the 10px default. */
+.member-scope { --radius: 20px; }
+
+/* Outer app wrapper: side gutters respect notches / safe areas. */
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+}
+.app-shell > * { flex: 1 0 auto; }
+
+/* Perforated receipt edge (pure CSS, no images). */
+.perforated-b {
+  -webkit-mask: radial-gradient(circle 6px at 50% 100%, transparent 98%, #000) 0 0 / 18px 100% repeat-x;
+  mask: radial-gradient(circle 6px at 50% 100%, transparent 98%, #000) 0 0 / 18px 100% repeat-x;
+}
+
+/* Recharts: keep focus rings off the SVG surface; hover layer is the tooltip. */
+.recharts-wrapper .recharts-surface:focus { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

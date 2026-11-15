@@ -19,9 +19,10 @@ class ClubAdmin
         // is actually an admin OF that specific club (not just any club).
         $club = $request->route('club');
         if ($club instanceof Club && !auth()->user()->isSuperAdmin()) {
-            $manages = $club->members()
+            $manages = $club->is_active && $club->members()
                 ->where('users.id', auth()->id())
                 ->wherePivot('role', 'admin')
+                ->wherePivot('is_active', true)
                 ->exists();
 
             if (!$manages) {

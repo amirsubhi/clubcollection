@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class LoginController extends Controller
 {
@@ -82,5 +83,14 @@ class LoginController extends Controller
         }
 
         return $this->loggedOut($request) ?: redirect('/');
+    }
+
+    /**
+     * Inertia pages (the member portal) log out with an XHR; tell the client
+     * to do a full visit so the Blade login page is not shown in a modal.
+     */
+    protected function loggedOut(Request $request)
+    {
+        return $request->header('X-Inertia') ? Inertia::location(url('/')) : null;
     }
 }

@@ -1,3 +1,13 @@
+# PWA: browsers must always revalidate the service worker and manifest so a new release is picked up.
+<IfModule mod_headers.c>
+    <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

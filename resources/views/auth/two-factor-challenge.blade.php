@@ -45,7 +45,7 @@
     </div>
 
     {{-- Recovery code --}}
-    <div id="recoverySection" style="display:none">
+    <div id="recoverySection" class="d-none">
         <div class="mb-3">
             <label for="recovery_code" class="form-label">Recovery Code</label>
             <input type="text" name="recovery_code" id="recovery_code"
@@ -76,11 +76,12 @@
 
 <script nonce="{{ $cspNonce ?? '' }}">
 function toggleRecovery() {
+    // Toggle classes, not inline styles: the CSP blocks style attributes.
     const code     = document.getElementById('codeSection');
     const recovery = document.getElementById('recoverySection');
-    const isCode   = code.style.display !== 'none';
-    code.style.display     = isCode ? 'none' : '';
-    recovery.style.display = isCode ? '' : 'none';
+    const isCode   = ! code.classList.contains('d-none');
+    code.classList.toggle('d-none', isCode);
+    recovery.classList.toggle('d-none', ! isCode);
     // Clear both inputs when switching
     document.getElementById('code').value = '';
     document.getElementById('recovery_code').value = '';
