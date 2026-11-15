@@ -10,7 +10,8 @@ import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
-import type { HomeClub, MemberPaymentRow } from "@/types/member";
+import { cn } from "@/lib/utils";
+import type { HomeClub, MemberPaymentRow, PayAllOffer } from "@/types/member";
 
 interface Props {
   year: number;
@@ -18,6 +19,8 @@ interface Props {
   outstanding: { total: number; count: number; overdueCount: number; verifyingCount: number };
   upcoming: MemberPaymentRow[];
   recentPaid: MemberPaymentRow[];
+  /** "Bayar semua": every fee owed in the club of the oldest one; null with fewer than two. */
+  payAll: PayAllOffer | null;
   clubs: HomeClub[];
   dashboardUrl: string;
   account: { isAdmin: boolean; adminUrl: string | null; securityUrl: string; logoutUrl: string };
@@ -54,7 +57,26 @@ function MemberCard({ clubName, memberName, children }: { clubName: string; memb
   );
 }
 
-function Hero({ outstanding, next, clubName, memberName }: { outstanding: Props["outstanding"]; next?: MemberPaymentRow; clubName: string; memberName: string }) {
+const heroPrimary =
+  "inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-center text-lg font-bold leading-tight text-primary-foreground shadow-[0_8px_18px_-8px_rgb(var(--primary)/0.7)] transition-transform hover:bg-primary/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-deep";
+const heroSecondary =
+  "inline-flex min-h-14 flex-wrap items-center justify-center gap-x-1 rounded-full border border-primary/45 bg-card/40 px-4 py-3 text-center text-base font-semibold leading-snug text-deep-foreground hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+function Hero({
+  outstanding,
+  next,
+  payAll,
+  multi,
+  clubName,
+  memberName,
+}: {
+  outstanding: Props["outstanding"];
+  next?: MemberPaymentRow;
+  payAll: PayAllOffer | null;
+  multi: boolean;
+  clubName: string;
+  memberName: string;
+}) {
   const t = useT();
   if (!next || outstanding.count === 0) {
     const verifying = outstanding.verifyingCount > 0;
@@ -99,7 +121,8 @@ function Hero({ outstanding, next, clubName, memberName }: { outstanding: Props[
         </div>
         <div className="mt-2 text-base text-deep-foreground/80">
           {fill(t("openN"), { n: outstanding.count })}
-          {outstanding.count > 1 && <span className="block">{t("payOldestFirst")}</span>}
+          {outstanding.count > 1 && !payAll && <span className="block">{t("payOldestFirst")}</span>}
+          {payAll && <span className="block">{fill(t("payAllHint"), { n: payAll.count })}</span>}
         </div>
         {outstanding.verifyingCount > 0 && (
           <div className="mt-2 flex">
@@ -107,20 +130,36 @@ function Hero({ outstanding, next, clubName, memberName }: { outstanding: Props[
           </div>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={next.urls.review ?? next.urls.invoice}
-          className="inline-flex min-h-14 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-center text-lg font-bold leading-tight text-primary-foreground shadow-[0_8px_18px_-8px_rgb(var(--primary)/0.7)] transition-transform hover:bg-primary/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-deep"
-        >
-          {t("payNow")} {rm(next.amount)}
-        </Link>
-        <Link
-          href={next.urls.invoice}
-          className="inline-flex min-h-14 flex-[1_0_auto] items-center justify-center rounded-full border border-primary/45 bg-card/40 px-4 py-3 text-base font-semibold text-deep-foreground hover:bg-card/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {t("viewInvoice")}
-        </Link>
-      </div>
+      {payAll ? (
+        // Several fees: pay them all with one bill (one gateway charge), or just the oldest.
+        <div className="flex flex-col gap-2">
+          <Link
+            href={payAll.url}
+            className={heroPrimary}
+            data-testid="pay-all"
+            aria-describedby={multi ? "pay-all-club" : undefined}
+          >
+            {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
+          </Link>
+          {multi && (
+            <p id="pay-all-club" className="text-center text-sm text-deep-foreground/80">
+              {fill(t("payAllInClub"), { c: payAll.clubName })}
+            </p>
+          )}
+          <Link href={next.urls.review ?? next.urls.invoice} className={heroSecondary} data-testid="pay-one">
+            {t("payOneOldest")} <span className="whitespace-nowrap">· {rm(next.amount)}</span>
+          </Link>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Link href={next.urls.review ?? next.urls.invoice} className={cn(heroPrimary, "flex-[1_1_12rem]")}>
+            {t("payNow")} {rm(next.amount)}
+          </Link>
+          <Link href={next.urls.invoice} className={cn(heroSecondary, "flex-[1_0_auto]")}>
+            {t("viewInvoice")}
+          </Link>
+        </div>
+      )}
     </MemberCard>
   );
 }
@@ -196,7 +235,7 @@ function ClubCard({ club, year, multi }: { club: HomeClub; year: number; multi: 
   );
 }
 
-export default function Home({ year, outstanding, upcoming, recentPaid, clubs, dashboardUrl, account }: Props) {
+export default function Home({ year, outstanding, upcoming, recentPaid, payAll, clubs, dashboardUrl, account }: Props) {
   const t = useT();
   const { lang } = useLang();
   const { auth } = usePage().props;
@@ -223,7 +262,7 @@ export default function Home({ year, outstanding, upcoming, recentPaid, clubs, d
         </>
       ) : (
         <>
-          <Hero outstanding={outstanding} next={upcoming[0]} clubName={payClub?.name ?? ""} memberName={auth.user?.name ?? ""} />
+          <Hero outstanding={outstanding} next={upcoming[0]} payAll={payAll} multi={multi} clubName={payClub?.name ?? ""} memberName={auth.user?.name ?? ""} />
           <InstallPrompt />
 
           <SectionCard

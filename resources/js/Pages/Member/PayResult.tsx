@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Loader2, MailCheck, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { Clock, FileText, Hourglass, ImageIcon, Loader2, MailCheck, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { Head, Link, router } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
-import { HelpLine, useFeeLabel } from "@/components/app/MemberParts";
+import { FlashBanner, HelpLine, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { ReceiptCard } from "@/components/app/ReceiptCard";
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n";
-import type { MemberPaymentRow, MemberReceipt, PaymentContext } from "@/types/member";
+import { fmtDate } from "@/lib/format";
+import { fill, useLang, useT } from "@/lib/i18n";
+import type { GroupReceipt, MemberPaymentRow, MemberReceipt, PaymentContext, PaymentGroup, TransferVerification } from "@/types/member";
 
-type Outcome = "paid" | "pending" | "failed";
+/** "verifying": a "Bayar semua" slip the treasurer is still checking. */
+type Outcome = "paid" | "pending" | "failed" | "verifying";
 
 interface Props extends PaymentContext {
   outcome: Outcome;
-  payment: MemberPaymentRow;
-  receipt: MemberReceipt | null;
+  /** The fee; null for "Bayar semua", which sends `group`. */
+  payment: MemberPaymentRow | null;
+  group?: PaymentGroup | null;
+  /** A group receipt carries one line per fee. */
+  receipt: MemberReceipt | GroupReceipt | null;
+  /** "Bayar semua" by transfer: what was sent. */
+  verification?: TransferVerification | null;
   gateway: string | null;
   reference: string | null;
   statusUrl: string;
@@ -48,17 +55,27 @@ function AnimatedTick() {
   );
 }
 
-function Details({ payment, gateway, reference }: Pick<Props, "payment" | "gateway" | "reference">) {
+function Details({ payment, group, gateway, reference }: Pick<Props, "payment" | "group" | "gateway" | "reference">) {
   const t = useT();
   const feeLabel = useFeeLabel();
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 rounded-[20px] border bg-card p-4 text-base">
       <dt className="text-muted-foreground">{t("amount")}</dt>
       <dd className="text-right font-semibold">
-        <Money sen={payment.amount} />
+        <Money sen={group ? group.sumSen : (payment?.amount ?? 0)} />
       </dd>
       <dt className="text-muted-foreground">{t("paidFor")}</dt>
-      <dd className="text-right">{feeLabel(payment)}</dd>
+      <dd className="text-right">
+        {group ? (
+          <ul className="flex flex-col gap-1" data-testid="group-fees">
+            {group.fees.map((f) => (
+              <li key={f.id}>{feeLabel(f)}</li>
+            ))}
+          </ul>
+        ) : (
+          payment && feeLabel(payment)
+        )}
+      </dd>
       {gateway && (
         <>
           <dt className="text-muted-foreground">{t("method")}</dt>
@@ -117,13 +134,79 @@ function usePaymentStatusPoll(statusUrl: string, enabled: boolean) {
   return { check, checking, checkedAt, gaveUp: checks >= POLL_MAX };
 }
 
-export default function PayResult({ outcome, payment, receipt, gateway, reference, statusUrl, reviewUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function PayResult({ outcome, payment, group, receipt, verification, gateway, reference, statusUrl, reviewUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
+  const { lang } = useLang();
   const feeLabel = useFeeLabel();
   const nav = { home: dashboardUrl, payments: paymentsUrl };
   const poll = usePaymentStatusPoll(statusUrl, outcome === "pending");
 
+  if (outcome === "verifying" && group) {
+    return (
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("paymentStatus")}>
+        <Head title={t("paymentStatus")} />
+        <h1 className="sr-only">{t("paymentStatus")}</h1>
+        <FlashBanner />
+        <section aria-labelledby="vf-h" className="flex flex-col gap-4 rounded-2xl bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30" data-testid="verifying">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-card text-warning-foreground ring-1 ring-warning/30">
+              <Hourglass className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <h2 id="vf-h" className="font-display text-xl font-bold leading-tight tracking-tight">
+                {t("verifyingTitle")}
+              </h2>
+              <p className="mt-1 text-base">{fill(t("sentTogether"), { n: group.fees.length })}</p>
+              <p className="mt-1 text-base">{t("verifyingBody")}</p>
+            </div>
+          </div>
+          {verification && (
+            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-card/70 p-3 text-foreground">
+              {verification.transferDate && (
+                <div className="min-w-0">
+                  <dt className="text-sm text-muted-foreground">{t("transferDateLbl")}</dt>
+                  <dd className="text-base font-semibold">{fmtDate(verification.transferDate, lang)}</dd>
+                </div>
+              )}
+              {reference && (
+                <div className="min-w-0">
+                  <dt className="text-sm text-muted-foreground">{t("reference")}</dt>
+                  <dd className="break-words font-mono text-base">{reference}</dd>
+                </div>
+              )}
+            </dl>
+          )}
+          {verification && verification.slips.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {verification.slips.map((sl) => (
+                <li key={sl.id}>
+                  <a
+                    href={sl.url}
+                    target="_blank"
+                    rel="noopener"
+                    className="flex min-h-11 items-center gap-2 rounded-xl bg-card px-3 py-2 text-base font-semibold text-foreground ring-1 ring-border hover:bg-muted"
+                    aria-label={fill(t("openFile"), { f: sl.name })}
+                  >
+                    {sl.isPdf ? <FileText className="h-5 w-5 shrink-0 text-danger" aria-hidden /> : <ImageIcon className="h-5 w-5 shrink-0 text-info" aria-hidden />}
+                    <span className="min-w-0 break-all">{sl.name}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <Details payment={null} group={group} gateway={null} reference={null} />
+        <Button asChild size="xl" className="w-full rounded-full">
+          <Link href={dashboardUrl}>{t("backHome")}</Link>
+        </Button>
+        <HelpLine email={payClub.email} />
+      </MemberShell>
+    );
+  }
+
   if (outcome === "paid" && receipt) {
+    const lines = "lines" in receipt ? receipt.lines : null;
+    const viaTransfer = receipt.method === "transfer";
     return (
       <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("successChip")}>
         <Head title={t("successTitle")} />
@@ -135,6 +218,7 @@ export default function PayResult({ outcome, payment, receipt, gateway, referenc
           <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("receiptEmailed")}</p>
         </div>
+        {lines && <p className="-mt-2 text-center text-base font-semibold">{fill(t("paidTogether"), { n: lines.length })}</p>}
         <ReceiptCard
           club={{ name: payClub.name }}
           member={{ name: member.name }}
@@ -142,13 +226,35 @@ export default function PayResult({ outcome, payment, receipt, gateway, referenc
             receiptNo: receipt.receiptNo,
             amount: receipt.amount,
             paidAt: receipt.paidAt,
-            method: receipt.gateway ? "FPX" : t("recordedByTreasurer"),
-            bank: receipt.gateway ?? undefined,
+            method: viaTransfer ? t("methodTransferReceipt") : receipt.gateway ? "FPX" : t("recordedByTreasurer"),
+            bank: viaTransfer ? undefined : (receipt.gateway ?? undefined),
             fpxTxn: receipt.transactionId ?? undefined,
             gatewayRef: receipt.reference ?? undefined,
-            items: [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }],
+            // A group lists every fee with its own receipt number.
+            items: lines
+              ? lines.map((l) => ({ id: l.id, description: feeLabel(l), note: l.receiptNo, amount: l.amount }))
+              : payment
+                ? [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }]
+                : [],
           }}
         />
+        {"paidOnline" in receipt && receipt.paidOnline.length > 0 && (
+          <section className="rounded-[20px] border bg-card p-4 text-base" data-testid="paid-online-note">
+            <p>{t("paidOnlineNote")}</p>
+            <ul className="mt-2 flex flex-col gap-1">
+              {receipt.paidOnline.map((f) => (
+                <li key={f.id} className="flex flex-wrap justify-between gap-x-3">
+                  <Link href={f.invoiceUrl} className="font-semibold text-primary underline-offset-4 hover:underline">
+                    {feeLabel(f)}
+                  </Link>
+                  <span className="text-muted-foreground">
+                    <Money sen={f.amount} /> · {t("paidOnlineInstead")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className="rounded-[20px] bg-accent p-4 text-accent-foreground">
           <h2 className="font-display text-lg font-bold">{t("whatsNext")}</h2>
           <p className="mt-1 text-base">{t("whatsNextBody")}</p>
@@ -157,9 +263,15 @@ export default function PayResult({ outcome, payment, receipt, gateway, referenc
           <Button asChild size="xl" className="w-full rounded-full">
             <Link href={dashboardUrl}>{t("backHome")}</Link>
           </Button>
-          <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
-            <Link href={payment.urls.invoice}>{t("viewReceipt")}</Link>
-          </Button>
+          {payment ? (
+            <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
+              <Link href={payment.urls.invoice}>{t("viewReceipt")}</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
+              <Link href={paymentsUrl}>{t("viewPayments")}</Link>
+            </Button>
+          )}
         </div>
       </MemberShell>
     );
@@ -187,7 +299,7 @@ export default function PayResult({ outcome, payment, receipt, gateway, referenc
             <p className="mt-1 text-base text-foreground">{t("failedMoneyLeftAdvice")}</p>
           </div>
         </div>
-        <Details payment={payment} gateway={gateway} reference={reference} />
+        <Details payment={payment} group={group} gateway={gateway} reference={reference} />
         <div className="flex flex-col gap-2">
           <Button asChild size="xl" className="w-full rounded-full">
             <Link href={reviewUrl}>
@@ -232,7 +344,7 @@ export default function PayResult({ outcome, payment, receipt, gateway, referenc
           <p className="text-base">{t("stillWaiting")}</p>
         </div>
       )}
-      <Details payment={payment} gateway={gateway} reference={reference} />
+      <Details payment={payment} group={group} gateway={gateway} reference={reference} />
       <div className="flex flex-col gap-2">
         <Button size="xl" className="w-full rounded-full" type="button" onClick={() => void poll.check()} disabled={poll.checking}>
           {poll.checking ? <Loader2 className="animate-spin" aria-hidden /> : <RefreshCw aria-hidden />}

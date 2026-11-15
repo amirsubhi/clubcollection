@@ -9,7 +9,7 @@ import { FieldError, Label } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtDate, fmtMonth, rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
-import type { MemberPaymentRow } from "@/types/member";
+import type { MemberPaymentRow, PayAllOffer } from "@/types/member";
 
 interface Props {
   club: { id: number; name: string };
@@ -30,9 +30,15 @@ interface Props {
     feePayer: "club" | "member";
     feeSen: number;
   };
+  /** "Bayar semua": every fee still owed in the club (any year); null with fewer than two. */
+  payAll: PayAllOffer | null;
   paymentsUrl: string;
   dashboardUrl: string;
 }
+
+/** Oldest first: due date, then period start, then invoice number. */
+const oldestFirst = (a: MemberPaymentRow, b: MemberPaymentRow) =>
+  a.dueDate.localeCompare(b.dueDate) || a.periodStart.localeCompare(b.periodStart) || a.id - b.id;
 
 type Plan = "monthly" | "quarterly" | "yearly";
 const PLAN_MONTHS: Record<Plan, 1 | 3 | 12> = { monthly: 1, quarterly: 3, yearly: 12 };
@@ -169,9 +175,10 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
   );
 }
 
-export default function Payments({ club, selectedYear, years, summary, payments, pagination, futureForm, paymentsUrl, dashboardUrl }: Props) {
+export default function Payments({ club, selectedYear, years, summary, payments, pagination, futureForm, payAll, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
-  const open = payments.filter((p) => p.status === "pending" || p.status === "overdue");
+  // Fees still owed, oldest first (the order to pay them in); history stays newest first.
+  const open = payments.filter((p) => p.status === "pending" || p.status === "overdue").sort(oldestFirst);
   const verifying = payments.filter((p) => p.status === "verifying");
   const paid = payments.filter((p) => p.status === "paid");
   const groups = [
@@ -224,6 +231,14 @@ export default function Payments({ club, selectedYear, years, summary, payments,
           <h2 id={`h-${g.key}`} className="px-1 font-display text-xl font-bold tracking-tight">
             {g.title}
           </h2>
+          {g.key === "open" && payAll && (
+            <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
+              <Link href={payAll.url} data-testid="payments-pay-all">
+                {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
+                <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
+              </Link>
+            </Button>
+          )}
           <ul className="divide-y rounded-[20px] border bg-card">
             {g.items.map((p) => (
               <li key={p.id}>

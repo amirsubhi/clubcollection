@@ -320,3 +320,8 @@ Follow-ups (non-blocking):
 - Add a feature test for the sign-in fallback style when `public/build/manifest.json` is missing.
 - Translate the 429 "too many attempts" page (still Laravel's English default).
 
+### R1b follow-ups (non-blocking)
+- Group result page reads "paid" from the bill even if an admin later reverts one fee (cosmetic).
+- `flagGroup` refund-flag dedupe scans the latest 500 flag rows per club; revisit if volume grows.
+- Admin dashboard slips panel still lists one row per fee; only the Verifications page groups pay-all slips.
+

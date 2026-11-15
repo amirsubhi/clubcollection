@@ -167,7 +167,14 @@ class PaymentController extends Controller
         $this->authorizeClubAdmin($payment->club);
         $payment->load(['user', 'club', 'discount', 'recordedBy', 'verifiedBy']);
         // Every transfer slip ever sent for this fee (rejected ones are kept), newest first.
-        $slips = $payment->attachments()->where('kind', 'proof_of_payment')->reorder()->orderByDesc('id')->get();
+        // Slips sent for several fees at once ("Bayar semua") are kept on the group.
+        $slips = \App\Models\Attachment::query()->where('kind', 'proof_of_payment')
+            ->where(function ($q) use ($payment) {
+                $q->where(fn ($q) => $q->where('attachable_type', Payment::class)->where('attachable_id', $payment->id))
+                    ->orWhere(fn ($q) => $q->where('attachable_type', \App\Models\PaymentBill::class)
+                        ->whereIn('attachable_id', $payment->groupBills()->where('method', 'transfer')->select('payment_bills.id')));
+            })
+            ->orderByDesc('id')->get();
         $currentSlipIds = $payment->transfer_submitted_at ? $payment->currentSlips()->pluck('id')->all() : [];
 
         return view('admin.payments.show', compact('payment', 'slips', 'currentSlipIds'));
@@ -259,7 +266,8 @@ class PaymentController extends Controller
             $payment->fill($data);
             // No longer paid: how and by whom it was settled no longer applies.
             if ($old['status'] === 'paid' && $data['status'] !== 'paid') {
-                $payment->forceFill(['paid_via' => null, 'gateway' => null, 'verified_by' => null, 'verified_at' => null]);
+                // ...nor does a group slip it was settled with.
+                $payment->forceFill(['paid_via' => null, 'gateway' => null, 'verified_by' => null, 'verified_at' => null, 'transfer_group_id' => null]);
             }
             $payment->save();
 
@@ -337,7 +345,8 @@ class PaymentController extends Controller
             return back()->with('error', $own);
         }
         // Transfer slips are kept as evidence: a fee with slips can't be deleted.
-        if ($payment->status === 'pending_verification' || $payment->attachments()->exists()) {
+        // A slip sent for several fees at once ("Bayar semua") covers this one too.
+        if ($payment->status === 'pending_verification' || $payment->attachments()->exists() || $payment->inAnyTransferGroup()) {
             return back()->with('error', 'This payment has transfer slips attached, so it is kept for the record and can\'t be deleted.');
         }
         $payment->delete();

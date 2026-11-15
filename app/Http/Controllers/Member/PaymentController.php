@@ -7,12 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Attachment;
 use App\Models\Club;
 use App\Models\Payment;
+use App\Models\PaymentBill;
 use App\Services\AttachmentService;
 use App\Services\AuditService;
 use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
 use App\Support\Payments\GatewayFee;
+use App\Support\Payments\OpenFeeSet;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -91,6 +93,8 @@ class PaymentController extends Controller
                 'nextUrl' => $payments->nextPageUrl(),
             ],
             'futureForm' => $this->futureFormProps($club, $user),
+            // "Bayar semua": every fee still owed in the club (any year), from two on.
+            'payAll' => $this->payAllProps($club, $user),
             'paymentsUrl' => route('member.payments.index', $club),
             'dashboardUrl' => route('member.dashboard'),
         ]);
@@ -132,6 +136,8 @@ class PaymentController extends Controller
         $payment->load(['club', 'user']);
         $gateway = $this->gateways->for($payment->club);
         $hasOpenBill = $this->openBillFor($payment, $gateway) !== null;
+        $openGroup = $payment->status === 'paid' || $payment->isVerifying() ? null
+            : PaymentBill::openGatewayGroupsContaining($payment->id)->whereNotNull('bill_code')->latest('id')->first();
         // An open bill is reused as it is, so show the fee mode it was created
         // with; otherwise the club's current setting (what a new bill will use).
         $fee = $hasOpenBill ? self::storedFee($payment) : GatewayFee::forClub($payment->club);
@@ -151,8 +157,10 @@ class PaymentController extends Controller
                 'label' => P::gatewayLabel($gateway->name()),
                 'available' => $gateway->isConfiguredForClub($payment->club),
             ],
-            // A bill was already opened for this fee: warn before paying again.
-            'hasOpenBill' => $hasOpenBill,
+            // A bill was already opened for this fee, on its own or in a "Bayar
+            // semua" bill: warn before paying again, and link to the group's status.
+            'hasOpenBill' => $hasOpenBill || $openGroup !== null,
+            'openBillUrl' => $openGroup ? route('member.payments.group-result', $openGroup) : null,
             'payUrl' => route('member.payments.pay', $payment),
             // Manual bank / DuitNow transfer (P2): null when the club doesn't accept it.
             'transfer' => $this->transferProps($payment),
@@ -179,12 +187,28 @@ class PaymentController extends Controller
             return redirect()->route('member.payments.invoice', $payment)->with('error', 'member.already_paid');
         }
 
-        $data = $request->validate([
+        $data = $request->validate(self::transferRules(), self::transferMessages());
+
+        $service->submit($payment, $request->user(), array_values($data['files']), $data['transfer_date'], $data['transfer_ref'] ?? null);
+
+        return redirect()->route('member.payments.invoice', $payment)->with('success', 'member.slip_sent');
+    }
+
+    /** Rules for a transfer slip submission (single fee or "Bayar semua"). */
+    public static function transferRules(): array
+    {
+        return [
             'files' => ['required', 'array', 'min:1', 'max:'.TransferVerificationService::MAX_SLIPS],
             'files.*' => AttachmentService::fileRules(),
             'transfer_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:'.today()->subYear()->toDateString()],
             'transfer_ref' => ['nullable', 'string', 'max:60'],
-        ], [
+        ];
+    }
+
+    /** member.* codes the pages translate. */
+    public static function transferMessages(): array
+    {
+        return [
             'files.required' => 'member.slip_required',
             'files.min' => 'member.slip_required',
             'files.max' => 'member.slip_count',
@@ -197,11 +221,7 @@ class PaymentController extends Controller
             'transfer_date.before_or_equal' => 'member.transfer_date_invalid',
             'transfer_date.after_or_equal' => 'member.transfer_date_invalid',
             'transfer_ref.max' => 'member.transfer_ref_long',
-        ]);
-
-        $service->submit($payment, $request->user(), array_values($data['files']), $data['transfer_date'], $data['transfer_ref'] ?? null);
-
-        return redirect()->route('member.payments.invoice', $payment)->with('success', 'member.slip_sent');
+        ];
     }
 
     /**
@@ -210,9 +230,14 @@ class PaymentController extends Controller
      */
     public function slip(Attachment $attachment, AttachmentService $service): HttpResponse
     {
-        $payment = $attachment->attachable;
-        abort_unless($payment instanceof Payment && $attachment->kind === 'proof_of_payment', 404);
-        $this->authorizePayment($payment);
+        $owner = $attachment->attachable;
+        abort_unless(($owner instanceof Payment || ($owner instanceof PaymentBill && $owner->isGroup())) && $attachment->kind === 'proof_of_payment', 404);
+        if ($owner instanceof Payment) {
+            $this->authorizePayment($owner);
+        } else {
+            // A slip sent for several fees at once ("Bayar semua") is kept on the group.
+            PayAllController::authorizeGroup($owner);
+        }
 
         $contents = $service->contents($attachment);
         $inline = in_array($attachment->mime, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], true);
@@ -514,6 +539,23 @@ class PaymentController extends Controller
             ->with('success', 'member.future_created');
     }
 
+    /** @return array<string, mixed>|null */
+    private function payAllProps(Club $club, $user): ?array
+    {
+        $active = $club->is_active && $club->members()->where('users.id', $user->id)->where('club_user.is_active', true)->exists();
+        $open = $active ? OpenFeeSet::query($club->id, $user->id)->get(['id', 'amount']) : collect();
+        if ($open->count() < 2) {
+            return null;
+        }
+
+        return [
+            'url' => route('member.payments.review-all', $club),
+            'totalSen' => $open->sum(fn (Payment $p) => $p->amountSen()),
+            'count' => $open->count(),
+            'clubName' => $club->name,
+        ];
+    }
+
     /** The fee mode an existing bill was created with (legacy bills: club absorbed). */
     private static function storedFee(Payment $payment): GatewayFee
     {
@@ -603,7 +645,7 @@ class PaymentController extends Controller
 
         $outcome = match (true) {
             $payment->status === 'paid' => 'paid',
-            $this->gatewayReportsFailure($request) => 'failed',
+            self::gatewayReportsFailure($request) => 'failed',
             default => 'pending',
         };
 
@@ -623,7 +665,7 @@ class PaymentController extends Controller
      * ToyyibPay returns ?status_id=3 for a failed/cancelled payment; Billplz
      * returns billplz[paid]=false. Anything else is treated as still pending.
      */
-    private function gatewayReportsFailure(Request $request): bool
+    public static function gatewayReportsFailure(Request $request): bool
     {
         if ($request->query('status_id') === '3') {
             return true;

@@ -35,6 +35,7 @@ class Payment extends Model
             'bill_fee_sen' => 'integer',
             'fee_absorbed_sen' => 'integer',
             'transfer_date' => 'date',
+            'transfer_group_id' => 'integer',
             'transfer_submitted_at' => 'datetime',
             'verified_at' => 'datetime',
         ];
@@ -62,6 +63,24 @@ class Payment extends Model
             if ($payment->wasChanged('bill_code') && $payment->bill_code === null) {
                 $payment->bills()->whereNull('superseded_at')->update(['superseded_at' => now()]);
             }
+
+            // "Bayar semua" (R1b): a group bill is for a fixed set of fees at fixed
+            // amounts. When one of them changes amount, is settled, or goes to a
+            // transfer check outside the group, the group bill is superseded, so
+            // it is not reused; a late payment of it is settled only if every fee
+            // is still open at its billed amount, otherwise flagged for a refund.
+            if ($payment->wasChanged('amount')
+                || ($payment->wasChanged('status') && in_array($payment->status, ['paid', 'pending_verification'], true))) {
+                PaymentBill::openGatewayGroupsContaining($payment->id)->update(['superseded_at' => now()]);
+            }
+        });
+
+        static::deleting(function (Payment $payment) {
+            // A group slip covers this fee: the set is evidence, like a slip of its own.
+            if ($payment->inAnyTransferGroup()) {
+                throw new \LogicException('Cannot delete a fee that is part of a group transfer slip.');
+            }
+            PaymentBill::openGatewayGroupsContaining($payment->id)->update(['superseded_at' => now()]);
         });
     }
 
@@ -82,17 +101,50 @@ class Payment extends Model
         return $this->status === 'pending_verification';
     }
 
-    /** Slips of the latest submission (earlier, rejected slips are kept as history). */
+    /**
+     * Slips of the latest submission (earlier, rejected slips are kept as
+     * history). A slip sent for several fees at once lives on the group.
+     */
     public function currentSlips()
     {
-        return $this->attachments()->where('kind', 'proof_of_payment')
+        $owner = $this->transferGroup() ?? $this;
+
+        return $owner->attachments()->where('kind', 'proof_of_payment')
             ->when($this->transfer_submitted_at, fn ($q) => $q->where('created_at', '>=', $this->transfer_submitted_at));
     }
 
-    /** The reference a member types in their bank transfer: YURAN-{id}. */
+    /**
+     * The group transfer ("Bayar semua" by slip) this fee's current slip
+     * submission belongs to (payments.transfer_group_id), while the fee is
+     * being checked or paid. Null for a fee sent or paid on its own.
+     */
+    public function transferGroup(): ?PaymentBill
+    {
+        if ($this->transfer_group_id === null || ! in_array($this->status, ['pending_verification', 'paid'], true)) {
+            return null;
+        }
+
+        return PaymentBill::find($this->transfer_group_id);
+    }
+
+    /** Whether the fee was ever part of a group slip (kept as evidence: never deleted). */
+    public function inAnyTransferGroup(): bool
+    {
+        return $this->groupBills()->where('method', 'transfer')->exists();
+    }
+
+    /** The open transfer group (slip still being checked) this fee is in, if any. */
+    public function openTransferGroup(): ?PaymentBill
+    {
+        $group = $this->isVerifying() ? $this->transferGroup() : null;
+
+        return $group && $group->isOpen() ? $group : null;
+    }
+
+    /** The reference a member types in their bank transfer: YURAN-{id}, or YURAN-G{id} for a group. */
     public function transferReference(): string
     {
-        return 'YURAN-'.$this->id;
+        return $this->transferGroup()?->reference ?? 'YURAN-'.$this->id;
     }
 
     /** True when the open bill was created for the current amount (or predates bill_amount). */
@@ -100,6 +152,12 @@ class Payment extends Model
     {
         return $this->bill_amount === null
             || (int) round(((float) $this->bill_amount) * 100) === (int) round(((float) $this->amount) * 100);
+    }
+
+    /** Group bills ("Bayar semua") that cover this fee. */
+    public function groupBills()
+    {
+        return $this->belongsToMany(PaymentBill::class, 'payment_bill_items')->withPivot('amount_sen');
     }
 
     /** Every gateway bill opened for this fee, the current one included. */

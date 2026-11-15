@@ -8,6 +8,7 @@ use App\Models\Attachment;
 use App\Models\AuditLog;
 use App\Models\Club;
 use App\Models\Payment;
+use App\Models\PaymentBill;
 use App\Services\TransferVerificationService;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundUsagePresenter;
@@ -41,19 +42,37 @@ class TransferVerificationController extends Controller
     {
         $user = $request->user();
 
-        $pending = $club->payments()->where('status', 'pending_verification')
+        $waiting = $club->payments()->where('status', 'pending_verification')
             ->with(['user:id,name,email'])
             ->orderBy('transfer_submitted_at')
             ->orderBy('id')
-            ->get()
-            ->map(fn (Payment $p) => self::card($p) + [
-                'blocker' => $this->service->blocker($p, $user),
-                'urls' => [
-                    'approve' => route('admin.verifications.approve', $p),
-                    'reject' => route('admin.verifications.reject', $p),
-                    'payment' => route('admin.payments.show', $p),
-                ],
-            ])
+            ->get();
+
+        // "Bayar semua": fees sent with one slip are checked, approved and
+        // rejected as one card (payments.transfer_group_id, open groups only).
+        $groups = PaymentBill::whereIn('id', $waiting->pluck('transfer_group_id')->filter()->unique())
+            ->where('method', 'transfer')->whereNull('paid_at')->whereNull('superseded_at')
+            ->get()->keyBy('id');
+        $groupOf = $waiting->filter(fn (Payment $p) => isset($groups[$p->transfer_group_id]))
+            ->mapWithKeys(fn (Payment $p) => [$p->id => $p->transfer_group_id]);
+
+        $pending = $waiting
+            ->groupBy(fn (Payment $p) => isset($groupOf[$p->id]) ? 'g'.$groupOf[$p->id] : 'p'.$p->id)
+            ->map(function ($fees) use ($groupOf, $groups, $user) {
+                $lead = $fees->sortBy(fn (Payment $p) => [$p->due_date->toDateString(), $p->id])->first();
+                $group = isset($groupOf[$lead->id]) ? $groups[$groupOf[$lead->id]] ?? null : null;
+
+                return self::card($lead) + [
+                    'group' => $group ? self::groupCard($group) : null,
+                    'blocker' => $this->service->blocker($lead, $user),
+                    'urls' => [
+                        'approve' => route('admin.verifications.approve', $lead),
+                        'reject' => route('admin.verifications.reject', $lead),
+                        'payment' => route('admin.payments.show', $lead),
+                    ],
+                ];
+            })
+            ->sortBy('submittedAt')
             ->values();
 
         return Inertia::render('Admin/Verifications/Index', [
@@ -83,7 +102,7 @@ class TransferVerificationController extends Controller
                 'paid_date.after_or_equal' => 'The paid date must be within the last year.',
             ]);
             $this->service->approve($payment, $request->user(), $data['paid_date'], $data['reference'] ?? null);
-        }, 'Slip approved. '.$this->who($payment).'\'s fee is now paid and a receipt was emailed.');
+        }, 'Slip approved. '.$this->who($payment).'\'s '.$this->fees($payment).' now paid and a receipt was emailed.');
     }
 
     public function reject(Request $request, Payment $payment): RedirectResponse
@@ -117,6 +136,39 @@ class TransferVerificationController extends Controller
             'expectedRef' => $p->transferReference(),
             'submittedAt' => $p->transfer_submitted_at?->format('Y-m-d\TH:i'),
             'slips' => $withSlips ? $p->currentSlips()->get()->map(fn (Attachment $a) => FundUsagePresenter::attachment($a))->values() : [],
+        ];
+    }
+
+    /**
+     * The fees of a group slip ("Bayar semua") with the total, for the card:
+     * one line per fee, as billed, and its current status.
+     *
+     * @return array<string, mixed>
+     */
+    public static function groupCard(PaymentBill $group): array
+    {
+        $amounts = $group->itemAmounts();
+        $fees = $group->orderedPayments()->get();
+
+        $waiting = $fees->filter(fn (Payment $p) => $p->status === 'pending_verification');
+
+        return [
+            'id' => $group->id,
+            'reference' => $group->reference,
+            'totalSen' => array_sum($amounts),
+            // What approving marks paid: fees paid online meanwhile are left out (their share is flagged for a refund).
+            'approveSen' => $waiting->sum(fn (Payment $p) => $amounts[$p->id] ?? $p->amountSen()),
+            'paidOnlineSen' => $fees->filter(fn (Payment $p) => $p->status === 'paid')->sum(fn (Payment $p) => $amounts[$p->id] ?? $p->amountSen()),
+            'fees' => $fees->map(fn (Payment $p) => [
+                'id' => $p->id,
+                'invoiceNo' => P::invoiceNo($p),
+                'periodStart' => $p->period_start->toDateString(),
+                'periodEnd' => $p->period_end->toDateString(),
+                'frequency' => $p->frequency,
+                'amount' => $amounts[$p->id] ?? P::sen($p->amount),
+                'status' => $p->status,
+                'url' => route('admin.payments.show', $p),
+            ])->values()->all(),
         ];
     }
 
@@ -156,6 +208,15 @@ class TransferVerificationController extends Controller
                 'url' => $p ? route('admin.payments.show', $p) : null,
             ];
         })->values()->all();
+    }
+
+    /** "fee is" or "3 fees are", for a group slip. */
+    private function fees(Payment $payment): string
+    {
+        $group = $payment->openTransferGroup();
+        $n = $group ? Payment::whereIn('id', array_keys($group->itemAmounts()))->where('status', 'pending_verification')->count() : 0;
+
+        return $n > 1 ? "{$n} fees are" : 'fee is';
     }
 
     private function who(Payment $payment): string

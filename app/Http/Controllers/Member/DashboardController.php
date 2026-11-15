@@ -94,6 +94,8 @@ class DashboardController extends Controller
             ->whereIn('club_id', $clubIds)
             ->where('status', '!=', 'paid')
             ->orderBy('due_date')
+            ->orderBy('period_start')
+            ->orderBy('id')
             ->get();
 
         $recentPaid = Payment::where('user_id', $user->id)
@@ -109,6 +111,22 @@ class DashboardController extends Controller
         // the amount due and counted on its own line.
         $owing = $open->reject(fn (Payment $p) => $p->isVerifying());
 
+        // "Bayar semua" (R1b): every fee owed in the club of the oldest one, with
+        // one bill or slip. Offered from two fees on, to active members only.
+        $payAll = null;
+        if ($first = $owing->first()) {
+            $club = $clubs->firstWhere('id', $first->club_id);
+            $inClub = $owing->where('club_id', $first->club_id);
+            if ($club && $club->pivot->is_active && $inClub->count() > 1) {
+                $payAll = [
+                    'url' => route('member.payments.review-all', $club),
+                    'totalSen' => $inClub->sum(fn (Payment $p) => P::sen($p->amount)),
+                    'count' => $inClub->count(),
+                    'clubName' => $club->name,
+                ];
+            }
+        }
+
         return Inertia::render('Member/Home', [
             'year' => $year,
             'outstanding' => [
@@ -121,6 +139,7 @@ class DashboardController extends Controller
             // then fees whose slip is being checked.
             'upcoming' => $owing->concat($open->filter(fn (Payment $p) => $p->isVerifying()))->take(5)->map($withClub)->values(),
             'recentPaid' => $recentPaid->map($withClub)->values(),
+            'payAll' => $payAll,
             'clubs' => $clubCards,
             'dashboardUrl' => route('member.dashboard'),
             'account' => [

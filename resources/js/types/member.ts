@@ -59,7 +59,7 @@ export interface TransferOption {
   accountName: string;
   accountNo: string | null;
   duitnowId: string | null;
-  /** What the member types as the transfer reference: YURAN-{id}. */
+  /** What the member types as the transfer reference: YURAN-{id}, or YURAN-G{id} for "Bayar semua". */
   reference: string;
   submitUrl: string;
   today: string;
@@ -74,4 +74,29 @@ export interface TransferVerification {
   transferDate: string | null;
   transferRef: string | null;
   slips: { id: number; name: string; isPdf: boolean; url: string }[];
+}
+
+/** "Bayar semua" (R1b): every fee still owed in one club, offered from two fees on. */
+export interface PayAllOffer {
+  url: string;
+  totalSen: Sen;
+  count: number;
+  clubName: string;
+}
+
+/** PayAllController::groupProps(): the fees of a "Bayar semua" set, oldest first. */
+export interface PaymentGroup {
+  fees: MemberPaymentRow[];
+  paymentIds: number[];
+  /** Sum of the fees, without any gateway charge. */
+  sumSen: Sen;
+  /** Set on the result page: how the group was paid. */
+  method: "gateway" | "transfer" | null;
+}
+
+/** MemberPaymentPresenter::groupReceipt(): one receipt, one line per fee (each with its own receipt no.). */
+export interface GroupReceipt extends MemberReceipt {
+  lines: { id: number; receiptNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
+  /** Slip receipt only: fees of the slip paid online instead (not in the total). */
+  paidOnline: { id: number; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
 }

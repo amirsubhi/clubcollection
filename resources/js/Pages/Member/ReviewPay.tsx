@@ -13,14 +13,19 @@ import { fmtDate, rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useStickyFit } from "@/lib/useStickyFit";
-import type { MemberPaymentRow, PaymentContext, TransferOption, TransferVerification } from "@/types/member";
+import type { MemberPaymentRow, PaymentContext, PaymentGroup, TransferOption, TransferVerification } from "@/types/member";
 
 interface Props extends PaymentContext {
-  payment: MemberPaymentRow;
+  /** The fee being paid; null for "Bayar semua", which sends `group` instead. */
+  payment: MemberPaymentRow | null;
+  /** "Bayar semua": every open fee in the club, paid with one bill or one slip. */
+  group?: PaymentGroup | null;
   gateway: { name: string; label: string; available: boolean };
   /** feeSen is the gateway charge the member pays on top (0 when the club absorbs it). */
   charges: { payer: "club" | "member"; feeSen: number; totalSen: number };
   hasOpenBill: boolean;
+  /** "Bayar semua": the result page of the bill already opened for this set. */
+  openBillUrl?: string | null;
   payUrl: string;
   /** Bank / DuitNow transfer details; null when the club doesn't take transfers. */
   transfer: TransferOption | null;
@@ -115,7 +120,19 @@ function MethodOption({
 }
 
 /** Bank details, the reference to type, and the slip form. */
-function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOption; amount: number; hasOpenBill: boolean }) {
+function TransferForm({
+  transfer,
+  amount,
+  hasOpenBill,
+  openBillUrl,
+  group,
+}: {
+  transfer: TransferOption;
+  amount: number;
+  hasOpenBill: boolean;
+  openBillUrl?: string | null;
+  group?: PaymentGroup | null;
+}) {
   const t = useT();
   const { lang } = useLang();
   const text = useServerText();
@@ -144,6 +161,8 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (form.processing || items.length === 0) return;
+    // "Bayar semua": the exact set and total the member saw, so the server can refuse a stale page.
+    if (group) form.transform((d) => ({ ...d, payment_ids: group.paymentIds, total_sen: group.sumSen }));
     form.post(transfer.submitUrl, {
       forceFormData: true,
       preserveScroll: true,
@@ -159,7 +178,14 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
       {hasOpenBill && (
         <Alert variant="warning" className="text-base" data-testid="transfer-open-bill">
           <AlertTriangle aria-hidden />
-          <p>{t("openBillTransferWarn")}</p>
+          <div>
+            <p>{t("openBillTransferWarn")}</p>
+            {openBillUrl && (
+              <Link href={openBillUrl} className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
+                {t("checkEarlierPayment")}
+              </Link>
+            )}
+          </div>
         </Alert>
       )}
 
@@ -170,6 +196,7 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
           </span>
           {fill(t("transferStep1"), { x: rm(amount) })}
         </h2>
+        {group && <p className="text-sm text-muted-foreground">{t("payAllTransferNote")}</p>}
         <dl className="-mx-4 flex flex-col divide-y border-y">
           <DetailRow label={t("bank")} value={transfer.bankName} />
           <DetailRow label={t("accountName")} value={transfer.accountName} />
@@ -397,8 +424,40 @@ function StickyBar({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** "Bayar semua": each fee on its own line, oldest first, then the fees total. */
+function GroupLines({ group }: { group: PaymentGroup }) {
+  const t = useT();
+  const { lang } = useLang();
+  const feeLabel = useFeeLabel();
+  return (
+    <div className="px-4 py-3" data-testid="group-fees">
+      <dt className="text-sm text-muted-foreground">{fill(t("feesN"), { n: group.fees.length })}</dt>
+      <dd>
+        <ul className="mt-1 flex flex-col divide-y divide-dashed">
+          {group.fees.map((f) => (
+            <li key={f.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-2 text-base">
+              <span className="min-w-0 flex-[1_1_10rem] break-words">
+                {feeLabel(f)}
+                <span className="block text-sm text-muted-foreground">
+                  {f.invoiceNo} · {t("due")} {fmtDate(f.dueDate, lang)}
+                  {f.status === "overdue" && <span className="font-semibold text-danger-foreground"> · {t("overdueBadge")}</span>}
+                </span>
+              </span>
+              <Money sen={f.amount} className="font-semibold" />
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap justify-between gap-x-3 border-t pt-2 text-base">
+          <span className="text-muted-foreground">{t("subtotal")}</span>
+          <Money sen={group.sumSen} className="font-semibold" />
+        </div>
+      </dd>
+    </div>
+  );
+}
+
 /** Review & pay: a confirm step that is clearly not a receipt. The amount is in the summary and on the one pay button. */
-export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payUrl, transfer, verification, rejection, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function ReviewPay({ payment, group, gateway, charges, hasOpenBill, openBillUrl, payUrl, transfer, verification, rejection, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -410,40 +469,49 @@ export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payU
   // FPX costs the member a charge: only then is "no charge" worth saying on the transfer option.
   const fpxCharge = charges.payer === "member" && charges.feeSen > 0;
   const memberCharge = !isTransfer && fpxCharge;
-  const total = verification || isTransfer ? payment.amount : charges.totalSen;
+  const feesSen = group ? group.sumSen : (payment?.amount ?? 0);
+  const total = verification || isTransfer ? feesSen : charges.totalSen;
   // A slip is with the treasurer: this page is now about where the payment stands, not paying.
-  const title = verification ? t("paymentStatus") : t("reviewPay");
+  const title = verification ? t("paymentStatus") : group ? t("reviewPayAll") : t("reviewPay");
 
   const pay = () => {
     if (sent || !gateway.available) return;
     setSent(true);
     // The server answers with an external redirect (X-Inertia-Location) to the gateway,
     // or back here with a flash error, in which case the button is enabled again.
-    router.post(payUrl, {}, { onError: () => setSent(false), onSuccess: () => setSent(false) });
+    // "Bayar semua" sends the exact set and total shown, so a stale page is refused.
+    const data = group ? { payment_ids: group.paymentIds, total_sen: group.sumSen } : {};
+    router.post(payUrl, data, { onError: () => setSent(false), onSuccess: () => setSent(false) });
   };
 
   return (
-    <MemberShell tab="payments" navHrefs={{ home: dashboardUrl, payments: paymentsUrl }} clubName={payClub.name} title={title} backHref={payment.urls.invoice} hideNav>
+    <MemberShell tab="payments" navHrefs={{ home: dashboardUrl, payments: paymentsUrl }} clubName={payClub.name} title={title} backHref={payment ? payment.urls.invoice : dashboardUrl} hideNav>
       <Head title={title} />
       {/* The header already shows the title; this is the page heading for screen readers. */}
       <h1 className="sr-only">{title}</h1>
 
       <FlashBanner />
 
-      <section aria-label={t("paidFor")} className="flex flex-col">
+      <section aria-label={group ? t("feesInSet") : t("paidFor")} className="flex flex-col">
         <dl className="flex flex-col divide-y rounded-[20px] border bg-card">
-          <div className="px-4 py-3">
-            <dt className="text-sm text-muted-foreground">{t("paidFor")}</dt>
-            <dd className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-base">
-              <span className="min-w-0 flex-[1_1_10rem] break-words">
-                {feeLabel(payment)}
-                <span className="block text-sm text-muted-foreground">
-                  {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
-                </span>
-              </span>
-              <Money sen={payment.amount} className="font-semibold" />
-            </dd>
-          </div>
+          {group ? (
+            <GroupLines group={group} />
+          ) : (
+            payment && (
+              <div className="px-4 py-3">
+                <dt className="text-sm text-muted-foreground">{t("paidFor")}</dt>
+                <dd className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-base">
+                  <span className="min-w-0 flex-[1_1_10rem] break-words">
+                    {feeLabel(payment)}
+                    <span className="block text-sm text-muted-foreground">
+                      {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
+                    </span>
+                  </span>
+                  <Money sen={payment.amount} className="font-semibold" />
+                </dd>
+              </div>
+            )
+          )}
           <div className="px-4 py-3">
             <dt className="text-sm text-muted-foreground">{t("member")}</dt>
             <dd className="break-words text-base font-semibold">{member.name}</dd>
@@ -456,21 +524,23 @@ export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payU
             <div className="px-4 py-3" data-testid="fee-line">
               <dt className="text-sm text-muted-foreground">{t("gatewayCharge")}</dt>
               <dd className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-base">
-                <span className="min-w-0 flex-[1_1_10rem] text-sm text-muted-foreground">{t("chargeByMember")}</span>
+                <span className="min-w-0 flex-[1_1_10rem] text-sm text-muted-foreground">{group ? t("payAllOneCharge") : t("chargeByMember")}</span>
                 <Money sen={charges.feeSen} className="font-semibold" />
               </dd>
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-b-[20px] bg-muted/60 px-4 py-3">
             <dt className="text-base font-semibold">{t("total")}</dt>
-            <dd>
+            <dd data-testid="review-total">
               <Money sen={total} className="font-display text-2xl font-bold" />
             </dd>
           </div>
         </dl>
-        <Link href={payment.urls.invoice} className="inline-flex min-h-11 items-center self-start px-1 text-base font-semibold text-primary underline-offset-4 hover:underline">
-          {t("invoice")} {payment.invoiceNo}
-        </Link>
+        {payment && (
+          <Link href={payment.urls.invoice} className="inline-flex min-h-11 items-center self-start px-1 text-base font-semibold text-primary underline-offset-4 hover:underline">
+            {t("invoice")} {payment.invoiceNo}
+          </Link>
+        )}
       </section>
 
       {verification ? (
@@ -515,7 +585,7 @@ export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payU
           )}
 
           {isTransfer && transfer ? (
-            <TransferForm transfer={transfer} amount={payment.amount} hasOpenBill={hasOpenBill} />
+            <TransferForm transfer={transfer} amount={feesSen} hasOpenBill={hasOpenBill} openBillUrl={openBillUrl} group={group} />
           ) : (
             <>
               <div className="flex flex-col gap-3 rounded-[20px] border bg-card p-4">
@@ -534,7 +604,14 @@ export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payU
               {hasOpenBill && (
                 <Alert variant="warning" className="text-base">
                   <AlertTriangle aria-hidden />
-                  <p>{t("openBillWarn")}</p>
+                  <div>
+                    <p>{t("openBillWarn")}</p>
+                    {openBillUrl && (
+                      <Link href={openBillUrl} className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" data-testid="open-bill-status">
+                        {t("checkEarlierPayment")}
+                      </Link>
+                    )}
+                  </div>
                 </Alert>
               )}
               {!gateway.available && (

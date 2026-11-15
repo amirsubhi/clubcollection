@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboard;
 use App\Http\Controllers\Member\PaymentController as MemberPayment;
+use App\Http\Controllers\Member\PayAllController as MemberPayAll;
 
 // ── Installation wizard (only accessible when NOT installed) ────────────────
 Route::middleware('redirect_if_installed')->group(function () {
@@ -120,6 +121,12 @@ Route::middleware('check_installed')->group(function () {
             Route::post('payments/{payment}/transfer', [MemberPayment::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer');
             // The member's own slip (owner only, audited, no-cache).
             Route::get('slips/{attachment}', [MemberPayment::class, 'slip'])->middleware('throttle:60,1')->name('payments.slip');
+            // "Bayar semua": every open fee in a club with one bill or one slip (R1b).
+            Route::get('clubs/{club}/pay-all', [MemberPayAll::class, 'review'])->name('payments.review-all');
+            Route::post('clubs/{club}/pay-all', [MemberPayAll::class, 'pay'])->name('payments.pay-all');
+            Route::post('clubs/{club}/pay-all/transfer', [MemberPayAll::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer-all');
+            Route::get('pay-all/{paymentBill}', [MemberPayAll::class, 'result'])->name('payments.group-result');
+            Route::get('pay-all/{paymentBill}/status', [MemberPayAll::class, 'status'])->name('payments.group-status');
         });
 
         // ── Super Admin ──────────────────────────────────────────────

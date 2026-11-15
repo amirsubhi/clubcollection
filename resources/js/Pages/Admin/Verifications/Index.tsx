@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { router } from "@inertiajs/react";
-import { AlertTriangle, BadgeCheck, CheckCircle2, Clock, ExternalLink, Inbox, Landmark, XCircle } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CheckCircle2, Clock, ExternalLink, Inbox, Landmark, Layers, XCircle } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
@@ -28,8 +28,30 @@ export interface PendingSlip {
   expectedRef: string;
   submittedAt: string | null;
   slips: FundAttachment[];
+  /** "Bayar semua": one slip for several fees, approved or rejected as a set. */
+  group: SlipGroup | null;
   blocker: string | null;
   urls: { approve: string; reject: string; payment: string };
+}
+
+/** TransferVerificationController::groupCard(). */
+export interface SlipGroup {
+  id: number;
+  reference: string;
+  totalSen: number;
+  /** What approving marks paid: totalSen minus fees paid online while the slip was checked. */
+  approveSen: number;
+  paidOnlineSen: number;
+  fees: {
+    id: number;
+    invoiceNo: string;
+    periodStart: string;
+    periodEnd: string;
+    frequency: "monthly" | "quarterly" | "yearly";
+    amount: number;
+    status: string;
+    url: string;
+  }[];
 }
 
 /** TransferVerificationController::history(). */
@@ -74,11 +96,16 @@ function Fact({ label, children, mono = false }: { label: string; children: Reac
 
 function SlipCard({ s, today }: { s: PendingSlip; today: string }) {
   const post = (url: string, data: Record<string, string>) => router.post(url, data, { preserveScroll: true });
+  const g = s.group;
+  const amount = g ? g.totalSen : s.amount;
+  // Fees paid online meanwhile are left out of the approval (their share is flagged for a refund).
+  const approveAmount = g ? g.approveSen : s.amount;
+  const label = g ? `${g.fees.length} fees: ${fmtPeriod(g.fees[0].periodStart, g.fees[g.fees.length - 1].periodEnd, "en")}` : feeLabel(s);
   const summary: SlipSummary = {
     id: s.id,
     member: s.member,
-    amount: s.amount,
-    feeLabel: feeLabel(s),
+    amount: approveAmount,
+    feeLabel: label,
     transferDate: s.transferDate,
     transferRef: s.transferRef,
     expectedRef: s.expectedRef,
@@ -92,13 +119,83 @@ function SlipCard({ s, today }: { s: PendingSlip; today: string }) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h3 className="truncate font-display text-lg font-bold tracking-tight">{s.member.name}</h3>
-              <Money sen={s.amount} className="font-display text-2xl font-bold" />
+              <Money sen={amount} className="font-display text-2xl font-bold" />
             </div>
-            <div className="truncate text-sm text-muted-foreground">
-              {feeLabel(s)} · {freq[s.frequency]} · {s.invoiceNo}
+            <div className="text-sm text-muted-foreground">
+              {g ? (
+                <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <StatusChip Icon={Layers} tone="info">
+                    Pay all · {g.fees.length} fees
+                  </StatusChip>
+                  <span>One slip for the whole set: approve or reject them together.</span>
+                </span>
+              ) : (
+                <span className="block truncate">
+                  {feeLabel(s)} · {freq[s.frequency]} · {s.invoiceNo}
+                </span>
+              )}
             </div>
           </div>
         </div>
+
+        {g && (
+          <div className="overflow-hidden rounded-md border" data-testid="slip-group">
+            <table className="w-full text-sm">
+              <caption className="sr-only">Fees covered by this slip</caption>
+              <thead className="bg-muted/60 text-left text-xs text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-3 py-2 font-medium">Fee</th>
+                  <th scope="col" className="hidden px-3 py-2 font-medium sm:table-cell">Invoice</th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {g.fees.map((f) => (
+                  <tr key={f.id}>
+                    <td className="px-3 py-2">
+                      <a href={f.url} className="hover:underline">
+                        {feeLabel(f)}
+                      </a>
+                      <span className="block text-xs text-muted-foreground">
+                        {freq[f.frequency]}
+                        <span className="sm:hidden"> · {f.invoiceNo}</span>
+                        {f.status !== "pending_verification" && <span className="font-semibold text-danger-foreground"> · now {f.status.replace("_", " ")}</span>}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-2 font-mono text-xs sm:table-cell">{f.invoiceNo}</td>
+                    <td className="px-3 py-2 text-right">
+                      <Money sen={f.amount} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t bg-muted/40">
+                <tr>
+                  <th scope="row" colSpan={2} className="hidden px-3 py-2 text-left font-semibold sm:table-cell">
+                    Total
+                  </th>
+                  <th scope="row" className="px-3 py-2 text-left font-semibold sm:hidden">
+                    Total
+                  </th>
+                  <td className="px-3 py-2 text-right font-bold">
+                    <Money sen={g.totalSen} />
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {g && g.paidOnlineSen > 0 && (
+          <Alert variant="warning" data-testid="slip-group-paid-online">
+            <AlertTriangle aria-hidden />
+            <AlertTitle>Part of this set was paid online while the slip was being checked</AlertTitle>
+            <AlertDescription>
+              Approving marks the remaining fees paid (<Money sen={g.approveSen} />). If the transfer of <Money sen={g.totalSen} /> arrived, refund{" "}
+              <Money sen={g.paidOnlineSen} /> to the member: it is flagged in the audit log.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-muted/60 p-3 sm:grid-cols-4">
           <Fact label="Transfer date">{s.transferDate ? fmtDate(s.transferDate) : "—"}</Fact>
@@ -232,7 +329,7 @@ function HandledList({ items }: { items: HandledSlip[] }) {
 
 export default function VerificationsIndex({ nav, club, tab: initialTab, pending, handled, today, urls }: Props) {
   const [tab, setTab] = useState(initialTab);
-  const total = pending.reduce((s, p) => s + p.amount, 0);
+  const total = pending.reduce((s, p) => s + (p.group ? p.group.totalSen : p.amount), 0);
   return (
     <AdminLayout nav={nav} active="verifications" title="Payment verifications">
       <PageHeader

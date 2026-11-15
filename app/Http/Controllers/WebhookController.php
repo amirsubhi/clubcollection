@@ -108,6 +108,21 @@ class WebhookController extends Controller
             $result = $result->withPaidAmountSen($result->paidAmountSen === null ? $confirmation->amountSen : min($result->paidAmountSen, $confirmation->amountSen));
         }
 
+        if ($bill?->isGroup()) {
+            $fees = $this->markGroupPaid($bill->id, $result, $confirmation);
+            if ($fees) {
+                $lead = $fees->first();
+                try {
+                    Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $bill));
+                } catch (\Exception $e) {
+                    Log::error('Payment confirmation email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
+                }
+                Log::info("Group bill #{$bill->id}: {$fees->count()} payments marked as paid via {$gateway->name()} callback");
+            }
+
+            return response('ok', 200);
+        }
+
         $payment = $this->markPaymentPaid($payment->id, $bill?->id, $result, $confirmation);
 
         if ($payment) {
@@ -140,7 +155,14 @@ class WebhookController extends Controller
         }
         $value = $column === 'bill_code' ? $result->billCode : $result->reference;
 
-        $bill = PaymentBill::where('gateway', $result->gateway)->where($column, $value)->latest('id')->first();
+        $bill = PaymentBill::where('gateway', $result->gateway)->where('method', 'gateway')->where($column, $value)->latest('id')->first();
+        if ($bill?->isGroup()) {
+            // A "Bayar semua" bill: its oldest fee stands for the group when the
+            // request is verified (same club, so the same gateway credentials).
+            $lead = $bill->orderedPayments()->first();
+
+            return [$lead, $lead ? $bill : null];
+        }
         $payment = $bill?->payment ?? Payment::where($column, $value)->first();
 
         return [$payment, $payment ? $bill : null];
@@ -217,6 +239,7 @@ class WebhookController extends Controller
             // the money: settle it as paid via the gateway (ignoring it would lose
             // track of real money) and flag it so the treasurer refunds the transfer.
             $duringVerification = $payment->status === 'pending_verification';
+            $verifyingGroup = $duringVerification ? $payment->openTransferGroup() : null;
 
             // Never mark a fee paid for less than it is worth: the gateway's
             // reported amount when it sends one, otherwise the amount the bill
@@ -285,19 +308,167 @@ class WebhookController extends Controller
             );
 
             if ($duringVerification) {
+                // A "Bayar semua" slip covering this fee: name the set and this fee's
+                // share, which is what to refund. The rest of the set stays approvable.
+                $group = $verifyingGroup;
+                $share = $group ? ($group->itemAmounts()[$payment->id] ?? $payment->amountSen()) : null;
                 AuditService::log(
                     'payment.gateway_paid_during_verification',
                     "Payment #{$payment->id} was paid via {$label} while the member's transfer slip was still being checked. ".
-                        'If the bank transfer also arrived, refund it to the member.',
+                        ($group
+                            ? 'If the bank transfer also arrived, refund RM '.number_format($share / 100, 2)." to the member (this fee's share of group slip {$group->reference}, RM ".number_format($group->amount_sen / 100, 2).'). The other fees of the slip can still be approved.'
+                            : 'If the bank transfer also arrived, refund it to the member.'),
                     $payment,
                     $payment->club_id,
                     ['status' => 'pending_verification', 'transfer_date' => $payment->transfer_date?->toDateString(), 'transfer_ref' => $payment->transfer_ref],
                     ['status' => 'paid', 'gateway' => $result->gateway, 'transaction_id' => $result->transactionId]
+                        + ($group ? ['group' => $group->reference, 'refund_sen' => $share] : [])
                 );
             }
 
             return $payment;
         });
+    }
+
+    /**
+     * Settle a "Bayar semua" bill: every fee it covers is marked paid in one
+     * transaction, or none is. Same rules as a single bill: the amount paid
+     * must cover the bill, a transaction settles once, and the request was
+     * already verified and confirmed with the gateway.
+     *
+     * The set must still be intact: every fee still owed (pending/overdue) at
+     * the amount it was billed for. Otherwise (a fee was edited, paid another
+     * way, or its slip is being checked) nothing is applied and the payment is
+     * flagged once for a refund. A settled bill paid again is flagged the same
+     * way. The club absorbs at most one gateway fee per bill, recorded on the
+     * oldest fee.
+     *
+     * @return \Illuminate\Support\Collection<int, Payment>|null the fees settled
+     */
+    private function markGroupPaid(int $billId, WebhookResult $result, ?GatewayConfirmation $confirmation)
+    {
+        return DB::transaction(function () use ($billId, $result, $confirmation) {
+            // Fee rows first, then the bill: the same order as markPaymentPaid
+            // (fee, then bill), so the two paths can't deadlock.
+            $ids = DB::table('payment_bill_items')->where('payment_bill_id', $billId)->pluck('payment_id')->all();
+            $fees = Payment::whereIn('id', $ids)->with('user')
+                ->orderBy('id')->lockForUpdate()->get()
+                ->sortBy(fn (Payment $p) => [$p->due_date->toDateString(), $p->period_start->toDateString(), $p->id])->values();
+            $bill = PaymentBill::whereKey($billId)->lockForUpdate()->first();
+            if (! $bill) {
+                return null;
+            }
+            $amounts = $bill->itemAmounts();
+            $lead = $fees->first();
+            $label = $this->gatewayLabel($result->gateway);
+            $txn = $result->transactionId ?? 'n/a';
+
+            if ($bill->paid_at !== null) {
+                if ($txn !== 'n/a' && $txn === $bill->transaction_id) {
+                    return null; // the payment that settled it
+                }
+                $this->flagGroup($bill, $lead, $result, $confirmation, 'payment.gateway_paid_twice',
+                    "Group bill {$bill->bill_code} was already paid via {$label} (txn: ".($bill->transaction_id ?? 'n/a')."), but {$label} reported another payment (txn: {$txn}). The member paid twice: refund one of them.");
+
+                return null;
+            }
+            if ($this->transactionAlreadyUsed($result)) {
+                return null;
+            }
+
+            $note = $bill->isSuperseded() ? ' (superseded bill)' : '';
+            if ($result->paidAmountSen !== null && $result->paidAmountSen < $bill->amount_sen) {
+                Log::warning("{$result->gateway}: paid amount below group bill; nothing marked paid", ['bill_id' => $bill->id, 'paid_amount_sen' => $result->paidAmountSen, 'bill_amount_sen' => $bill->amount_sen]);
+                AuditService::log(
+                    'payment.underpaid_webhook',
+                    "Group bill {$bill->bill_code}{$note}: {$label} reported a payment below the bill amount (RM ".number_format($bill->amount_sen / 100, 2).' for '.count($amounts)." fees); none marked paid (txn: {$txn}).",
+                    $lead,
+                    $bill->club_id,
+                    ['amount_sen' => $bill->amount_sen, 'payment_ids' => array_keys($amounts)],
+                    ['paid_amount_sen' => $result->paidAmountSen, 'transaction_id' => $result->transactionId, 'bill_code' => $bill->bill_code]
+                );
+
+                return null;
+            }
+
+            $intact = $lead !== null && $fees->count() === count($amounts)
+                && array_sum($amounts) === $bill->amount_sen
+                && $fees->every(fn (Payment $p) => in_array($p->status, ['pending', 'overdue'], true) && $p->amountSen() === $amounts[$p->id]);
+            if (! $intact) {
+                $why = $fees->reject(fn (Payment $p) => in_array($p->status, ['pending', 'overdue'], true) && $p->amountSen() === ($amounts[$p->id] ?? -1))
+                    ->map(fn (Payment $p) => "#{$p->id} is now {$p->status}".($p->amountSen() !== ($amounts[$p->id] ?? -1) ? ' at RM '.number_format($p->amountSen() / 100, 2) : ''))
+                    ->implode('; ') ?: 'a fee was removed';
+                $this->flagGroup($bill, $lead, $result, $confirmation, 'payment.group_bill_refund',
+                    "Group bill {$bill->bill_code}{$note} was paid via {$label} (txn: {$txn}, RM ".number_format(($result->paidAmountSen ?? $bill->amount_sen) / 100, 2)."), but its fees changed since it was opened ({$why}). Nothing was marked paid: refund the member, or record the fees by hand.");
+
+                return null;
+            }
+
+            // The bill first: once it is paid the Payment hook no longer supersedes it.
+            $bill->forceFill(['transaction_id' => $result->transactionId, 'paid_at' => now()])->save();
+            $absorbed = $bill->fee_payer === 'member' ? 0 : (int) ($bill->fee_sen ?? 0);
+
+            foreach ($fees->values() as $i => $payment) {
+                $oldStatus = $payment->status;
+                $newAttrs = [
+                    'status' => 'paid',
+                    'paid_date' => now()->toDateString(),
+                    'transaction_id' => $result->transactionId,
+                    'gateway' => $result->gateway,
+                    'paid_via' => $result->gateway,
+                    // One bill, one gateway fee: counted once, on the oldest fee.
+                    'fee_absorbed_sen' => $i === 0 ? $absorbed : 0,
+                ];
+                $payment->update($newAttrs);
+
+                AuditService::log(
+                    'payment.paid_via_webhook',
+                    "Payment #{$payment->id} marked paid via {$label} with group bill {$bill->bill_code}{$note} ({$fees->count()} fees, RM ".number_format($bill->amount_sen / 100, 2)."; txn: {$txn}).",
+                    $payment,
+                    $payment->club_id,
+                    ['status' => $oldStatus],
+                    $newAttrs + ['bill_code' => $bill->bill_code, 'group_payment_ids' => $fees->pluck('id')->all()]
+                );
+            }
+
+            return $fees;
+        });
+    }
+
+    /**
+     * A group payment that settles nothing (paid twice, or its fees changed):
+     * audited once per transaction on the oldest fee, for a refund. With a
+     * confirm step, flags for one bill never exceed the successful payments
+     * the gateway reports for it (minus the one that settled it).
+     */
+    private function flagGroup(PaymentBill $bill, ?Payment $lead, WebhookResult $result, ?GatewayConfirmation $confirmation, string $action, string $message): void
+    {
+        $txn = $result->transactionId ?? 'n/a';
+        $flags = AuditLog::whereIn('action', ['payment.gateway_paid_twice', 'payment.group_bill_refund'])
+            ->where('club_id', $bill->club_id)
+            ->latest('id')->limit(500)->get()
+            ->filter(fn (AuditLog $log) => ($log->new_values['bill_code'] ?? null) === $bill->bill_code);
+        if ($flags->contains(fn (AuditLog $log) => ($log->new_values['transaction_id'] ?? 'n/a') === $txn)) {
+            return;
+        }
+        if ($confirmation) {
+            $allowed = $confirmation->successCount - ($bill->paid_at !== null ? 1 : 0);
+            if ($flags->count() >= $allowed) {
+                Log::warning("{$result->gateway}: extra group payment not confirmed by the gateway; not flagged", $result->logContext() + ['bill_id' => $bill->id]);
+
+                return;
+            }
+        }
+        Log::warning("{$result->gateway}: group bill payment needs a refund", $result->logContext() + ['bill_id' => $bill->id]);
+
+        AuditService::log(
+            $action,
+            $message,
+            $lead,
+            $bill->club_id,
+            ['amount_sen' => $bill->amount_sen, 'payment_ids' => array_keys($bill->itemAmounts())],
+            ['gateway' => $result->gateway, 'transaction_id' => $result->transactionId, 'bill_code' => $bill->bill_code, 'paid_amount_sen' => $result->paidAmountSen]
+        );
     }
 
     private function confirms(PaymentGateway $gateway): bool

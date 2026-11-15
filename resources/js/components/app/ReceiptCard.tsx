@@ -16,7 +16,8 @@ export interface ReceiptData {
   bank?: string;
   fpxTxn?: string;
   gatewayRef?: string;
-  items: { id: number; description: string; descriptionBm?: string; amount: Sen }[];
+  /** note: a second, smaller line (e.g. the fee's own receipt no. on a "Bayar semua" receipt). */
+  items: { id: number; description: string; descriptionBm?: string; note?: string; amount: Sen }[];
 }
 
 export function ReceiptCard({
@@ -81,7 +82,10 @@ export function ReceiptCard({
           <tbody>
             {r.items.map((p) => (
               <tr key={p.id} className="border-t border-dashed">
-                <td className="py-2 pr-2">{lang === "bm" ? (p.descriptionBm ?? p.description) : p.description}</td>
+                <td className="py-2 pr-2">
+                  {lang === "bm" ? (p.descriptionBm ?? p.description) : p.description}
+                  {p.note && <span className="block font-mono text-xs text-muted-foreground">{p.note}</span>}
+                </td>
                 <td className="py-2 text-right">
                   <Money sen={p.amount} className="font-mono" />
                 </td>

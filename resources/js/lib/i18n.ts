@@ -335,6 +335,33 @@ const dict = {
     bm: "Fail yang dihantar terlalu besar. Setiap fail mesti 10 MB atau kurang; cuba lagi dengan fail yang lebih kecil.",
     en: "What you sent was too large. Each file must be 10 MB or smaller; try again with smaller files.",
   },
+  // ── "Bayar semua": every open fee with one bill or one slip (R1b) ──
+  payAllAmt: { bm: "Bayar semua {x}", en: "Pay all {x}" },
+  payOneOldest: { bm: "Bayar satu sahaja (yang paling lama)", en: "Pay just one (the oldest)" },
+  payAllHint: { bm: "Bayar {n} yuran dengan satu bayaran.", en: "Pay all {n} fees in one go." },
+  payAllInClub: { bm: "Untuk {c}", en: "For {c}" },
+  reviewPayAll: { bm: "Semak & bayar semua", en: "Review & pay all" },
+  feesN: { bm: "{n} yuran", en: "{n} fees" },
+  subtotal: { bm: "Jumlah yuran", en: "Fees total" },
+  payAllOneCharge: { bm: "Satu caj untuk semua yuran", en: "One charge for all the fees" },
+  payAllTransferNote: {
+    bm: "Satu pindahan dan satu slip untuk semua yuran di atas. Bendahari akan mengesahkan semuanya sekali.",
+    en: "One transfer and one slip for all the fees above. The treasurer confirms them all at once.",
+  },
+  paidTogether: { bm: "{n} yuran dibayar sekali gus", en: "{n} fees paid together" },
+  sentTogether: { bm: "{n} yuran dalam satu slip", en: "{n} fees in one slip" },
+  paidOnlineInstead: { bm: "dibayar dalam talian", en: "paid online" },
+  paidOnlineNote: {
+    bm: "Yuran ini termasuk dalam slip tetapi telah dibayar dalam talian, jadi ia tidak termasuk dalam resit ini:",
+    en: "These fees were in the slip but were paid online, so they are not on this receipt:",
+  },
+  checkEarlierPayment: { bm: "Semak status bayaran tadi", en: "Check that payment's status" },
+  feesInSet: { bm: "Yuran yang dibayar", en: "Fees being paid" },
+  flash_set_changed: {
+    bm: "Senarai yuran anda telah berubah. Sila semak jumlah baharu sebelum membayar.",
+    en: "Your list of fees has changed. Please check the new total before paying.",
+  },
+  flash_nothing_to_pay: { bm: "Tiada yuran perlu dibayar sekarang.", en: "Nothing to pay right now." },
   installTitle: { bm: "Pasang di skrin utama", en: "Add to home screen" },
   installBody: {
     bm: "Buka Club Portal terus dari skrin telefon anda, seperti aplikasi.",
