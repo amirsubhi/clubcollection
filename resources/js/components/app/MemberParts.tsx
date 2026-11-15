@@ -72,23 +72,27 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
       href={href}
       className="flex min-h-[68px] items-center gap-3 px-4 py-3 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
-      <IconBubble Icon={b.Icon} tone={b.tone} />
-      <div className="min-w-0 flex-1">
-        <div className="line-clamp-2 text-base font-semibold leading-snug">{feeLabel(p)}</div>
-        <div className="text-sm text-muted-foreground">
-          {p.status === "paid" && p.paidDate
-            ? `${t("paidOn")} ${fmtDate(p.paidDate, lang)}`
-            : p.status === "verifying"
-              ? t("slipBeingChecked")
-              : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
-          {showClub && p.clubName ? ` · ${p.clubName}` : ""}
+      {/* Decorative icons stay icon-sized (px) so large text gets the room. */}
+      <IconBubble Icon={b.Icon} tone={b.tone} className="h-[36px] w-[36px]" />
+      {/* Label and amount share a line when there is room; with large text the amount wraps below instead of squeezing the label. */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="min-w-0 flex-[1_1_8rem]">
+          <div className="break-words text-base font-semibold leading-snug">{feeLabel(p)}</div>
+          <div className="text-sm text-muted-foreground">
+            {p.status === "paid" && p.paidDate
+              ? `${t("paidOn")} ${fmtDate(p.paidDate, lang)}`
+              : p.status === "verifying"
+                ? t("slipBeingChecked")
+                : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
+            {showClub && p.clubName ? ` · ${p.clubName}` : ""}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <Money sen={p.amount} className="text-base font-bold" />
+          <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" />
         </div>
       </div>
-      <div className="flex flex-col items-end gap-1">
-        <Money sen={p.amount} className="text-base font-bold" />
-        <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" />
-      </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+      <ChevronRight className="h-[20px] w-[20px] shrink-0 text-muted-foreground" aria-hidden />
     </Link>
   );
 }

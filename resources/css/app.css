@@ -206,7 +206,10 @@
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  /* --sticky-top / --sticky-bottom: heights of the pinned header and action bar (useStickyFit), so focus scrolls clear of them. */
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: var(--sticky-top, 0px); scroll-padding-bottom: var(--sticky-bottom, 0px); }
+  /* Preflight paints every border gray-200 (#E5E7EB), which glares in dark mode: use the theme's border token. */
+  *, ::before, ::after { border-color: rgb(var(--border)); }
   #root { min-height: 100vh; display: flex; flex-direction: column; }
   #root > * { flex: 1 0 auto; }
   body {
@@ -214,7 +217,6 @@
     color: rgb(var(--foreground));
     font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
   }
   h1, h2, h3, h4 { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.015em; }
   *:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; }
@@ -242,6 +244,38 @@
   .pb-safe-nav { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
   .scrollbar-none { scrollbar-width: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+/* Sign-in pages (resources/views/layouts/auth.blade.php): plain Blade forms on the same tokens. */
+@layer components {
+  .auth-page {
+    background-image: linear-gradient(180deg, rgb(var(--deep) / 0.55), rgb(var(--background)) 22rem);
+    background-repeat: no-repeat;
+  }
+  .auth-page [hidden] { display: none !important; }
+  .auth-card {
+    @apply rounded-[20px] border bg-card p-6 text-card-foreground shadow-[0_18px_40px_-28px_rgb(var(--primary)/0.45)] min-[400px]:p-7;
+  }
+  .auth-label { @apply mb-1.5 block text-base font-semibold; }
+  .auth-input {
+    @apply block min-h-12 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-base text-foreground transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+  .auth-input[aria-invalid="true"] { @apply border-danger; }
+  .auth-code { @apply text-center text-2xl font-semibold tracking-[0.3em]; font-variant-numeric: tabular-nums; }
+  .auth-check { @apply h-5 w-5 shrink-0 rounded accent-[rgb(var(--primary))]; }
+  .auth-btn {
+    @apply inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-center text-base font-bold text-primary-foreground shadow-[0_8px_18px_-10px_rgb(var(--primary)/0.7)] transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card;
+  }
+  .auth-link {
+    @apply inline-flex min-h-11 items-center rounded font-semibold text-primary underline-offset-4 hover:underline;
+  }
+  .auth-lang {
+    @apply inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 text-muted-foreground hover:text-foreground;
+  }
+  .auth-lang.is-active { @apply bg-primary text-primary-foreground hover:text-primary-foreground; }
+  .auth-alert { @apply flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-base ring-1; }
+  .auth-alert-danger { @apply bg-danger-soft text-danger-foreground ring-danger/25; }
+  .auth-alert-success { @apply bg-success-soft text-success-foreground ring-success/25; }
 }
 
 /* Member area: 20px radius; admin keeps the 10px default. */

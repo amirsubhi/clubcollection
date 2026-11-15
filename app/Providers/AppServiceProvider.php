@@ -40,6 +40,11 @@ class AppServiceProvider extends ServiceProvider
 
         self::configureTrustedProxies();
 
+        // A fresh install still says APP_NAME=Laravel: members should see the product name instead.
+        if (in_array(config('app.name'), [null, '', 'Laravel'], true)) {
+            config(['app.name' => 'Club Portal']);
+        }
+
         if ($this->app->isProduction()) {
             self::pinRootUrl();
         }

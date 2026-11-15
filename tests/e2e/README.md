@@ -19,7 +19,7 @@ running `php artisan serve`:
 
 Every step is screenshotted in light and dark (member 390×844, admin 1366×860). The run fails on any
 console error, uncaught page error, failed request, CSP violation or horizontal overflow, and exits
-non-zero. Ignored on purpose: Google Fonts and the Bootstrap CDN used by the legacy Blade login/home
+non-zero. Ignored on purpose: Google Fonts and the Bootstrap CDN still used by the remaining legacy Blade
 pages (unreachable in some sandboxes), and the 409 Chrome logs for Inertia's external redirect to the
 gateway (that is how `Inertia::location` works).
 

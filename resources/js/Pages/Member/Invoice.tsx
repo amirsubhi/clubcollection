@@ -61,18 +61,22 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
       <Head title={t("invoice")} />
       <FlashBanner />
       <section aria-label={t("invoice")} className="flex flex-col gap-5 rounded-[20px] border bg-card p-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <div className="text-sm text-muted-foreground">{payClub.name}</div>
-            <div className="font-mono text-lg">{payment.invoiceNo}</div>
+            <div className="break-words text-sm text-muted-foreground">{payClub.name}</div>
+            <div className="break-all font-mono text-lg">{payment.invoiceNo}</div>
           </div>
-          <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))} size="sm" />
+          <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))}
+            size="sm"
+            className="h-auto min-h-6 whitespace-normal py-0.5"
+          />
         </div>
-        <dl className="grid grid-cols-2 gap-3 text-base">
+        {/* Two columns while they fit; one under the other with large text. */}
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 text-base">
           <div className="min-w-0">
             <dt className="text-sm text-muted-foreground">{t("billedTo")}</dt>
-            <dd className="font-semibold">{member.name}</dd>
-            <dd className="truncate text-sm text-muted-foreground">{member.email}</dd>
+            <dd className="break-words font-semibold">{member.name}</dd>
+            <dd className="break-all text-sm text-muted-foreground">{member.email}</dd>
           </div>
           <div>
             <dt className="text-sm text-muted-foreground">{t("due")}</dt>
@@ -119,7 +123,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             <tr>
               <td className="pt-3 font-semibold">{t("total")}</td>
               <td className="pt-3 text-right">
-                <Money sen={payment.amount} className="font-display text-2xl font-bold" />
+                <Money sen={payment.amount} className="font-display text-2xl font-bold !whitespace-normal" />
               </td>
             </tr>
           </tfoot>
@@ -140,7 +144,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
         </section>
       )}
       {payment.urls.review && payment.status !== "verifying" && (
-        <Button asChild size="xl" className="w-full rounded-full text-lg print:hidden">
+        <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg print:hidden">
           <Link href={payment.urls.review}>
             <Lock aria-hidden /> {t("reviewPay")} {rm(payment.amount)}
           </Link>

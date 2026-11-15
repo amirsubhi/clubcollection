@@ -313,3 +313,10 @@ Follow-ups (non-blocking):
 - Enable GitHub private vulnerability reporting so the `SECURITY.md` link works.
 - Licence script strictness: append the GPL-3.0 text (incorporated by LGPL-3.0), pick up the DejaVu font and `sRGB2014.icc` licence files under `vendor/dompdf/dompdf/lib/res/`, and add fallback copyright notices for `react-remove-scroll-bar` and `victory-vendor` (no licence file upstream).
 - Link `/licenses.txt` from the app footer or an About page.
+
+### R1a follow-ups (non-blocking)
+- ReviewPay StickyBar: keep padding/border identical pinned vs unpinned (or measure inner height) so it cannot flip near the 18% threshold on notch phones.
+- `authLangChosen` should use the normalised `cp_lang` value; guard `__($message)` in `auth/partials/alerts.blade.php` with `is_string`.
+- Add a feature test for the sign-in fallback style when `public/build/manifest.json` is missing.
+- Translate the 429 "too many attempts" page (still Laravel's English default).
+

@@ -354,7 +354,7 @@ The upload is bigger than PHP's `post_max_size`. Raise the limits as in [step 10
 
 ### Blank page, or the page has no styling
 
-- `public/build/` is missing or out of date: build it (`npm ci && npm run build`) and upload `public/build/`.
+- `public/build/` is missing or out of date: build it (`npm ci && npm run build`) and upload `public/build/`. Until then the sign-in page still works with a plain fallback style, but the pages after it do not.
 - A leftover `public/hot` file on the server: delete it.
 - After an upgrade, hard-refresh the page; if it persists, check that `CACHE_VERSION` in `public/sw.js` was bumped
   (see [RELEASE.md](RELEASE.md#pwa-service-worker-publicswjs)).

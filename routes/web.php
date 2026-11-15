@@ -59,35 +59,38 @@ Route::middleware('check_installed')->group(function () {
         return redirect()->route('login');
     });
 
-    // Register disabled; login throttled to 5 attempts / minute per IP+email
-    Auth::routes(['register' => false]);
+    // Sign-in pages: BM by default, EN via the page's switch (AuthPageLocale).
+    Route::middleware('auth_locale')->group(function () {
+        // Register disabled; login throttled to 5 attempts / minute per IP+email
+        Auth::routes(['register' => false]);
 
-    // Override login POST with explicit rate limiting
-    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
-        ->middleware('throttle:5,1')
-        ->name('login');  // overrides the one from Auth::routes()
+        // Override login POST with explicit rate limiting
+        Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
+            ->middleware('throttle:5,1')
+            ->name('login');  // overrides the one from Auth::routes()
 
-    // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
-    // on their own named limiter (AppServiceProvider).
-    Route::post('password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
-        ->middleware('throttle:password-reset')->name('password.email');
-    Route::post('password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
-        ->middleware('throttle:password-reset')->name('password.update');
-    Route::post('password/confirm', [\App\Http\Controllers\Auth\ConfirmPasswordController::class, 'confirm'])
-        ->middleware(['auth', 'throttle:password-reset']);
+        // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
+        // on their own named limiter (AppServiceProvider).
+        Route::post('password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
+            ->middleware('throttle:password-reset')->name('password.email');
+        Route::post('password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
+            ->middleware('throttle:password-reset')->name('password.update');
+        Route::post('password/confirm', [\App\Http\Controllers\Auth\ConfirmPasswordController::class, 'confirm'])
+            ->middleware(['auth', 'throttle:password-reset']);
 
-    // ── Two-factor challenge — no `auth` middleware ───────────────────────────
-    // LoginController::authenticated() calls auth()->logout() and pins the
-    // user id in the session under 'two_factor_user_id'. If we required `auth`
-    // here, the redirect after login would bounce back to /login. The
-    // controller itself gates on session('two_factor_user_id') and redirects
-    // already-authenticated users home.
-    Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
-    // Throttle the verify POST to defend against brute-forcing TOTP codes
-    // (10**6 search space) and recovery codes (8 codes, alphanumeric).
-    Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])
-        ->middleware('throttle:5,1')
-        ->name('two-factor.verify');
+        // ── Two-factor challenge — no `auth` middleware ───────────────────────────
+        // LoginController::authenticated() calls auth()->logout() and pins the
+        // user id in the session under 'two_factor_user_id'. If we required `auth`
+        // here, the redirect after login would bounce back to /login. The
+        // controller itself gates on session('two_factor_user_id') and redirects
+        // already-authenticated users home.
+        Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
+        // Throttle the verify POST to defend against brute-forcing TOTP codes
+        // (10**6 search space) and recovery codes (8 codes, alphanumeric).
+        Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])
+            ->middleware('throttle:5,1')
+            ->name('two-factor.verify');
+    }); // auth_locale
 
     // auth.session (AuthenticateSession) ends every other session of a user
     // whose password changed, e.g. after a password reset (S1).

@@ -29,7 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // this check in local and in tests.
         $middleware->trustHosts();
 
+        // cp_lang only holds "bm" or "en" and is written by the member app's JavaScript too.
+        $middleware->encryptCookies(except: [\App\Http\Middleware\AuthPageLocale::COOKIE]);
+
         $middleware->alias([
+            'auth_locale'           => \App\Http\Middleware\AuthPageLocale::class,
             'super_admin'           => \App\Http\Middleware\SuperAdmin::class,
             'club_admin'            => \App\Http\Middleware\ClubAdmin::class,
             'member'                => \App\Http\Middleware\MemberOnly::class,

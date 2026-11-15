@@ -22,7 +22,7 @@ const USERS = {
   adminB: "e2e.admin.b@clubportal.test",
 };
 const GATEWAY_HOST = "dev.toyyibpay.com"; // TOYYIBPAY_SANDBOX=true
-// Sandbox-only network noise: Google Fonts, and the Bootstrap CDN used by the legacy Blade login/home pages.
+// Sandbox-only network noise: Google Fonts, and the Bootstrap CDN still used by the remaining legacy Blade pages.
 const IGNORED_HOSTS = (process.env.E2E_IGNORE_HOSTS || "fonts.googleapis.com,fonts.gstatic.com,cdn.jsdelivr.net").split(",").filter(Boolean);
 const EXPENSE_SEN = 1234; // RM 12.34
 

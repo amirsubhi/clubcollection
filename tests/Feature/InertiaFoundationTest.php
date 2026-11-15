@@ -90,6 +90,8 @@ class InertiaFoundationTest extends TestCase
 
     public function test_existing_blade_login_page_still_renders(): void
     {
+        $this->withoutVite();
+
         $this->get('/login')
             ->assertOk()
             ->assertHeader('Content-Security-Policy')

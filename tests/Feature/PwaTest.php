@@ -59,6 +59,7 @@ class PwaTest extends TestCase
 
     public function test_csp_allows_same_origin_worker_and_manifest(): void
     {
+        $this->withoutVite();
         $csp = $this->get('/login')->headers->get('Content-Security-Policy');
 
         $this->assertStringContainsString("worker-src 'self'", $csp);

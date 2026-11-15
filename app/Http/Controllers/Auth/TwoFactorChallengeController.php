@@ -49,7 +49,7 @@ class TwoFactorChallengeController extends Controller
         if (RateLimiter::tooManyAttempts($lockKey, self::MAX_FAILURES)) {
             $minutes = (int) ceil(RateLimiter::availableIn($lockKey) / 60);
 
-            return back()->withErrors(['code' => "Too many wrong codes. Try again in {$minutes} minute(s)."]);
+            return back()->withErrors(['code' => __('Too many wrong codes. Try again in :minutes minute(s).', ['minutes' => $minutes])]);
         }
 
         $usedRecoveryCode = false;
@@ -59,7 +59,7 @@ class TwoFactorChallengeController extends Controller
             // verifyKeyNewer: a code (or an older one) that was already used is refused.
             if (! $user->verifyTwoFactorCode((string) $request->code)) {
                 $this->fail($request, $user, "Invalid TOTP code for '{$user->name}'.");
-                return back()->withErrors(['code' => 'Invalid authentication code.']);
+                return back()->withErrors(['code' => __('Invalid authentication code.')]);
             }
         } elseif ($request->filled('recovery_code')) {
             $codes = $user->getTwoFactorRecoveryCodes();
@@ -67,7 +67,7 @@ class TwoFactorChallengeController extends Controller
 
             if ($index === false) {
                 $this->fail($request, $user, "Invalid recovery code for '{$user->name}'.");
-                return back()->withErrors(['recovery_code' => 'Invalid recovery code.']);
+                return back()->withErrors(['recovery_code' => __('Invalid recovery code.')]);
             }
 
             // Invalidate used recovery code
@@ -77,7 +77,7 @@ class TwoFactorChallengeController extends Controller
             ])->save();
             $usedRecoveryCode = true;
         } else {
-            return back()->withErrors(['code' => 'Please enter an authentication code or recovery code.']);
+            return back()->withErrors(['code' => __('Please enter an authentication code or recovery code.')]);
         }
 
         RateLimiter::clear($lockKey);

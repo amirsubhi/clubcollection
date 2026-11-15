@@ -1,9 +1,10 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 const v = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
 
 export default {
-  content: ["./resources/views/app.blade.php", "./resources/js/**/*.{ts,tsx}"],
+  content: ["./resources/views/app.blade.php", "./resources/views/layouts/auth.blade.php", "./resources/views/auth/{login,two-factor-challenge}.blade.php", "./resources/views/auth/passwords/{email,reset,confirm}.blade.php", "./resources/views/auth/partials/*.blade.php", "./resources/js/**/*.{ts,tsx}"],
   theme: {
     container: { center: true, padding: "1rem" },
     extend: {
@@ -51,5 +52,11 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // touch: phones and tablets (primary pointer is a finger); no-touch: mouse or trackpad.
+    plugin(({ addVariant }) => {
+      addVariant("touch", "@media (pointer: coarse)");
+      addVariant("no-touch", "@media not all and (pointer: coarse)");
+    }),
+  ],
 } satisfies Config;

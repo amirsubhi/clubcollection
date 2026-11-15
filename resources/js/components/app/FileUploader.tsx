@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { Camera, FileText, ImageIcon, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +23,8 @@ export interface UploaderText {
   limits: string;
   takePhoto: string;
   cameraHint: string;
+  /** Touch screens, comfortable mode: the button that opens the file picker (no drag and drop there). */
+  chooseFile: string;
   remove: (name: string) => string;
   /** Shown when picked files are over maxKb (they are not added). */
   tooLarge: (names: string, mb: number) => string;
@@ -34,6 +36,7 @@ const defaultText = (maxFiles: number): UploaderText => ({
   limits: `PDF, JPG, PNG or WebP · up to 10 MB each · max ${maxFiles} files`,
   takePhoto: "Take photo",
   cameraHint: "On a phone this opens the camera.",
+  chooseFile: "Choose a file",
   remove: (name) => `Remove ${name}`,
   tooLarge: (names, mb) => `${names}: larger than ${mb} MB, so not added. Choose a smaller file.`,
 });
@@ -48,7 +51,7 @@ export interface FileUploaderProps {
   /** Ask for the kind of each document (Fund Usage). Off for single-purpose uploads such as a transfer slip. */
   showKind?: boolean;
   text?: Partial<UploaderText>;
-  /** Larger type and touch targets for member pages. */
+  /** Larger type and touch targets for member pages. On touch screens the camera is the main control and there is no drop zone. */
   comfortable?: boolean;
   /** Per-file size limit (KB). Bigger files are refused here, before any upload, with text.tooLarge. */
   maxKb?: number;
@@ -71,6 +74,7 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
   const inputId = useId();
   const tx = { ...defaultText(maxFiles), ...text };
   const camRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [sizeError, setSizeError] = useState<string | null>(null);
   // Refuse oversize files on the device: a slow upload that the server then
@@ -84,8 +88,46 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
   const shownError = error ?? sizeError ?? undefined;
   return (
     <div className="flex flex-col gap-3">
+      <input
+        ref={fileRef}
+        id={inputId}
+        type="file"
+        multiple
+        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+        // Comfortable mode: the drop zone (desktop) or the buttons (touch) are the tab stops, not this hidden input.
+        tabIndex={comfortable ? -1 : undefined}
+        className={cn("peer sr-only", comfortable && "touch:hidden")}
+        onChange={(e) => {
+          onAdd(toItems(e.target.files));
+          e.target.value = "";
+        }}
+      />
+      {comfortable && (
+        // Phones: no dragging, so the camera is the main way in and the picker sits under it.
+        <div className="hidden flex-col gap-2 touch:flex" data-testid="uploader-touch">
+          <Button type="button" size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg" onClick={() => camRef.current?.click()}>
+            <Camera aria-hidden /> {tx.takePhoto}
+          </Button>
+          <Button type="button" variant="outline" size="lg" className="h-auto min-h-12 w-full whitespace-normal rounded-full py-2.5" onClick={() => fileRef.current?.click()}>
+            <UploadCloud aria-hidden /> {tx.chooseFile}
+          </Button>
+          <span className="text-center text-sm text-muted-foreground">{tx.limits}</span>
+        </div>
+      )}
       <label
         htmlFor={inputId}
+        {...(comfortable
+          ? {
+              tabIndex: 0,
+              role: "button",
+              onKeyDown: (e: KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileRef.current?.click();
+                }
+              },
+            }
+          : {})}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
@@ -97,9 +139,10 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
           onAdd(toItems(e.dataTransfer.files));
         }}
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/50 px-4 py-7 text-center transition-colors focus-within:ring-2 focus-within:ring-ring",
+          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/50 px-4 py-7 text-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           over ? "border-primary bg-accent" : "border-input hover:bg-muted",
           shownError && "border-danger bg-danger-soft/50",
+          comfortable && "touch:hidden",
         )}
       >
         <UploadCloud className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -107,37 +150,26 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
           {tx.dropPrefix} <span className="text-primary underline">{tx.browse}</span>
         </span>
         <span className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{tx.limits}</span>
-        <input
-          id={inputId}
-          type="file"
-          multiple
-          accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-          className="sr-only"
-          onChange={(e) => {
-            onAdd(toItems(e.target.files));
-            e.target.value = "";
-          }}
-        />
       </label>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size={comfortable ? "lg" : "sm"} className={comfortable ? "h-11 rounded-full" : undefined} onClick={() => camRef.current?.click()}>
+      <div className={cn("flex flex-wrap items-center gap-2", comfortable && "touch:hidden")}>
+        <Button type="button" variant="outline" size={comfortable ? "lg" : "sm"} className={comfortable ? "h-auto min-h-11 whitespace-normal rounded-full py-2" : undefined} onClick={() => camRef.current?.click()}>
           <Camera aria-hidden /> {tx.takePhoto}
         </Button>
         <span className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{tx.cameraHint}</span>
-        <input
-          ref={camRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          tabIndex={-1}
-          aria-hidden
-          onChange={(e) => {
-            onAdd(toItems(e.target.files));
-            e.target.value = "";
-          }}
-        />
       </div>
+      <input
+        ref={camRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(e) => {
+          onAdd(toItems(e.target.files));
+          e.target.value = "";
+        }}
+      />
       {shownError && (
         <p role="alert" className={cn("font-medium text-danger-foreground", comfortable ? "text-sm" : "text-xs")}>
           {shownError}

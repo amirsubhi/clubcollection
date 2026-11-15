@@ -77,10 +77,10 @@ const payMeta: Record<PaymentStatus, { Icon: LucideIcon; tone: ChipTone }> = {
   verifying: { Icon: Hourglass, tone: "warning" },
 };
 
-export function PaymentStatusBadge({ status, label, size = "md" }: { status: PaymentStatus; label: string; size?: "sm" | "md" }) {
+export function PaymentStatusBadge({ status, label, size = "md", className }: { status: PaymentStatus; label: string; size?: "sm" | "md"; className?: string }) {
   const { Icon, tone } = payMeta[status];
   return (
-    <StatusChip Icon={Icon} tone={tone} size={size}>
+    <StatusChip Icon={Icon} tone={tone} size={size} className={className}>
       {label}
     </StatusChip>
   );
