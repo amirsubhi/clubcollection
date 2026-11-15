@@ -44,7 +44,7 @@ export const questions: Question[] = [
     question: "Which Bahasa Melayu words should we use for statuses?",
     options: [
       "Draf / Menunggu kelulusan / Diluluskan / Dibatalkan",
-      "Draf / Dihantar / Lulus / Batal",
+      "Draf / Dihantar / Diluluskan / Dikembalikan / Batal (as in the diagram)",
       "Committee to suggest",
     ],
   },
@@ -70,7 +70,7 @@ export const questions: Question[] = [
   {
     id: "q7",
     topic: "Brand colours",
-    question: "This mockup uses a neutral placeholder theme. What should the real one use?",
-    options: ["Club logo colours (please send the logo file)", "Keep this neutral theme", "Committee to choose from 2–3 options"],
+    question: "This mockup uses the “Buku Tunai” theme: Pine green and Marigold, with light and dark modes. What should the real one use?",
+    options: ["Keep Pine & Marigold as shown", "Club logo colours (please send the logo file)", "Committee to choose from 2–3 options"],
   },
 ];

@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PhoneFrame } from "@/components/app/PhoneFrame";
 import { LangContext, type Lang } from "@/i18n";
 import { readPref, writePref } from "@/lib/storage";
+import { ThemeProvider } from "@/lib/theme";
 import { screenByHash } from "@/routes";
 import { Overview } from "@/screens/Overview";
 import { MemberHome } from "@/screens/member/MemberHome";
@@ -14,6 +15,7 @@ import { MemberReceipt } from "@/screens/member/MemberReceipt";
 import { MemberFund } from "@/screens/member/MemberFund";
 import { MemberAccount } from "@/screens/member/MemberAccount";
 import { FundUsageList } from "@/screens/admin/FundUsageList";
+import { AdminDashboard } from "@/screens/admin/AdminDashboard";
 import { FundForm } from "@/screens/admin/FundForm";
 import { FundItemDetail } from "@/screens/admin/FundItemDetail";
 import { FundApproveMobile } from "@/screens/admin/FundApproveMobile";
@@ -79,6 +81,7 @@ export default function App() {
     case "member-receipt": view = <MemberReceipt />; break;
     case "member-fund": view = <MemberFund />; break;
     case "member-account": view = <MemberAccount />; break;
+    case "admin-dashboard": view = <AdminDashboard />; break;
     case "fund-usage": view = <FundUsageList />; break;
     case "fund-new": view = <FundForm key="e" type="expense" />; break;
     case "fund-new-errors": view = <FundForm key="err" type="expense" showErrors />; break;
@@ -99,10 +102,12 @@ export default function App() {
   );
 
   return (
-    <LangContext.Provider value={{ lang, setLang }}>
-      <TooltipProvider delayDuration={200}>
-        {framed ? <PhoneFrame onExit={() => setPhoneFrame(false)}>{shell}</PhoneFrame> : shell}
-      </TooltipProvider>
-    </LangContext.Provider>
+    <ThemeProvider>
+      <LangContext.Provider value={{ lang, setLang }}>
+        <TooltipProvider delayDuration={200}>
+          {framed ? <PhoneFrame onExit={() => setPhoneFrame(false)}>{shell}</PhoneFrame> : shell}
+        </TooltipProvider>
+      </LangContext.Provider>
+    </ThemeProvider>
   );
 }

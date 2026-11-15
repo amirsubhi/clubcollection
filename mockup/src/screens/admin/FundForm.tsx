@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, HandHeart, Receipt, ShieldCheck } from "lucide-react";
+import { AlertCircle, HandHeart, Receipt, ShieldCheck, Undo2 } from "lucide-react";
 import { AdminShell } from "@/components/app/AdminShell";
 import { PageHeader } from "@/components/app/PageHeader";
 import { MockControl } from "@/components/app/MockControl";
@@ -29,7 +29,7 @@ const sampleWelfareFiles: UploadItem[] = [{ id: "w1", name: "duitnow-transfer-12
 
 function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: React.ReactNode }[]; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex w-full rounded-md border bg-secondary p-1 sm:w-auto">
+    <div role="radiogroup" aria-label={label} className="inline-flex w-full rounded-md bg-secondary p-1 sm:w-auto">
       {options.map((o) => (
         <button
           key={o.value}
@@ -38,8 +38,8 @@ function Segmented<T extends string>({ value, onChange, options, label }: { valu
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none [&_svg]:size-4",
-            value === o.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            "inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none [&_svg]:size-4",
+            value === o.value ? "bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {o.icon}
@@ -56,6 +56,7 @@ export function FundForm({ type, showErrors = false }: FundFormProps) {
   const [files, setFiles] = useState<UploadItem[]>(err ? [] : isWelfare ? sampleWelfareFiles : sampleExpenseFiles);
   const [account, setAccount] = useState<AccountKind>(isWelfare ? "bank" : "cash");
   const [beneficiary, setBeneficiary] = useState(isWelfare ? "6" : "");
+  const [returned, setReturned] = useState(false);
 
   return (
     <AdminShell active={isWelfare ? "welfare-new" : "fund-new"} wide={false}>
@@ -68,13 +69,33 @@ export function FundForm({ type, showErrors = false }: FundFormProps) {
       {!isWelfare && (
         <MockControl
           label="Form state"
-          value={showErrors ? "errors" : "filled"}
+          value={showErrors ? "errors" : returned ? "returned" : "filled"}
           options={[
             { value: "filled", label: "Being filled in" },
             { value: "errors", label: "After submit with errors" },
+            { value: "returned", label: "Returned by checker" },
           ]}
-          onChange={(v) => (window.location.hash = v === "errors" ? "fund-new-errors" : "fund-new")}
+          onChange={(v) => {
+            if (v === "errors") window.location.hash = "fund-new-errors";
+            else {
+              setReturned(v === "returned");
+              if (showErrors) window.location.hash = "fund-new";
+            }
+          }}
         />
+      )}
+
+      {returned && !err && (
+        <Alert variant="warning">
+          <Undo2 aria-hidden />
+          <div>
+            <AlertTitle>Returned by Ahmad Faizal bin Rahman · 12 Nov 2026, 9:05 am</AlertTitle>
+            <AlertDescription className="text-foreground">
+              “The bill PDF is for RM 168.50 but the amount says RM 186.50. Please check and re-upload the right bill.” Fix it and submit again; the reason stays on the
+              audit trail.
+            </AlertDescription>
+          </div>
+        </Alert>
       )}
 
       {err && (

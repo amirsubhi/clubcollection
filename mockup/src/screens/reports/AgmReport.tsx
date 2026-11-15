@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
-import { CheckCircle2, Download, FileSpreadsheet } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, Landmark, TrendingDown, Wallet } from "lucide-react";
+import { CategoryBar, KpiTile } from "@/components/app/Charts";
+import { ClubMark } from "@/components/app/MemberShell";
+import { rm } from "@/lib/format";
 import { AdminShell } from "@/components/app/AdminShell";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { club } from "@/data/club";
 import {
   bankCharges,
@@ -31,7 +33,7 @@ import { cn } from "@/lib/utils";
 function Section({ title, bm, children }: { title: string; bm: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-1">
-      <h2 className="border-b-2 border-foreground/80 pb-1 font-display text-sm font-semibold uppercase tracking-wide">
+      <h2 className="border-b-2 border-foreground/80 pb-1 font-display text-sm font-bold uppercase tracking-[0.08em]">
         {bm} <span className="font-normal normal-case text-muted-foreground">· {title}</span>
       </h2>
       <table className="w-full text-sm">
@@ -50,9 +52,9 @@ function L({ label, sub, amount, indent = 0, strong, rule, sign }: { label: Reac
       </td>
       <td
         className={cn(
-          "money w-[112px] py-1 text-right align-top sm:w-[150px]",
+          "money w-[112px] py-1 text-right align-top font-mono text-[13px] sm:w-[150px]",
           rule === "single" && "border-t border-foreground/60",
-          rule === "double" && "border-b-[3px] border-double border-t border-foreground/80",
+          rule === "double" && "border-b-4 border-double border-t border-foreground/80 font-bold",
         )}
       >
         {amount === undefined ? "" : sign === "less" ? `(${num(amount)})` : num(amount)}
@@ -84,12 +86,26 @@ export function AgmReport() {
         }
       />
 
-      <Card className="mx-auto w-full p-4 sm:p-8">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiTile label="Total receipts" value={rm(totalReceipts)} hint="Jumlah penerimaan" Icon={Wallet} tone="info" />
+        <KpiTile label="Total payments" value={rm(totalPayments)} hint="Jumlah pembayaran" Icon={TrendingDown} tone="clay" />
+        <KpiTile label="Closing balance" value={rm(closingBalance)} hint="Baki akhir, cash + bank" Icon={Landmark} tone="pine" />
+      </div>
+      <section className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:p-5">
+        <div>
+          <h2 className="font-display text-lg font-bold tracking-tight">Where the money went</h2>
+          <p className="text-sm text-muted-foreground">Share of total payments; the statement below lists every line.</p>
+        </div>
+        <CategoryBar lang="en" wideLegend />
+      </section>
+
+      <div className="paper mx-auto w-full rounded-[6px] border p-4 shadow-[0_1px_0_rgb(0_0_0/0.04),0_18px_40px_-24px_rgba(22,33,29,0.45)] sm:p-10">
         <div className="flex flex-col gap-6">
           <header className="text-center">
-            <div className="font-display text-lg font-semibold">{club.name}</div>
+            <ClubMark className="mx-auto mb-2" />
+            <div className="font-display text-lg font-bold">{club.name}</div>
             <div className="text-xs text-muted-foreground">No. pendaftaran {club.regNo}</div>
-            <h1 className="mt-3 font-display text-base font-bold uppercase tracking-wide sm:text-lg">Penyata Penerimaan dan Pembayaran</h1>
+            <h1 className="mt-3 font-display text-lg font-extrabold uppercase tracking-[0.06em] sm:text-xl">Penyata Penerimaan dan Pembayaran</h1>
             <div className="text-sm text-muted-foreground">Statement of Receipts and Payments</div>
             <div className="mt-1 text-sm">bagi tempoh {fy.periodBm}</div>
             <div className="mt-2 inline-block rounded bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning-foreground">DRAF · sample figures</div>
@@ -173,7 +189,7 @@ export function AgmReport() {
             Lampiran (appendices, in the PDF): index of voucher and receipt numbers, attachment index with SHA-256 hashes.
           </p>
         </div>
-      </Card>
+      </div>
     </AdminShell>
   );
 }

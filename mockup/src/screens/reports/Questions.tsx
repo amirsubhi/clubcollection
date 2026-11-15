@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/app/AdminShell";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { ApprovalFlowDiagram } from "@/components/app/Diagrams";
 import { questions } from "@/data/questions";
 import { cn } from "@/lib/utils";
 
@@ -21,13 +22,18 @@ export function Questions() {
           <li key={q.id}>
             <Card>
               <CardHeader className="pb-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-primary">
+                <div className="font-mono text-xs font-medium uppercase tracking-wide text-primary">
                   {n + 1}. {q.topic}
                 </div>
                 <CardTitle className="text-lg">{q.question}</CardTitle>
                 {q.context && <CardDescription>{q.context}</CardDescription>}
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
+                {q.id === "q4" && (
+                  <div className="rounded-lg border bg-muted/40 p-3">
+                    <ApprovalFlowDiagram current="submitted" />
+                  </div>
+                )}
                 <div role="radiogroup" aria-label={q.topic} className="flex flex-col gap-2">
                   {q.options.map((o, i) => {
                     const on = picked[q.id] === i;
@@ -39,7 +45,7 @@ export function Questions() {
                         aria-checked={on}
                         onClick={() => setPicked({ ...picked, [q.id]: i })}
                         className={cn(
-                          "flex items-start gap-3 rounded-md border p-3 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          "flex min-h-11 items-start gap-3 rounded-md border p-3 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           on ? "border-primary bg-accent" : "hover:bg-muted",
                         )}
                       >

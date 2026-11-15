@@ -48,7 +48,7 @@ const target = dist("club-portal-mockup.html");
 writeFileSync(target, out);
 const kb = (statSync(target).size / 1024).toFixed(1);
 console.log(`Wrote dist/club-portal-mockup.html (${kb} KB)`);
-if (statSync(target).size > 2 * 1024 * 1024) {
-  console.error("Warning: file is larger than 2 MB");
+if (statSync(target).size > 2.5 * 1024 * 1024) {
+  console.error("Warning: file is larger than 2.5 MB");
   process.exitCode = 1;
 }

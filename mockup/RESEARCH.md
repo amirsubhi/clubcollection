@@ -72,3 +72,21 @@ Scope: a mobile-first portal where staff-club members pay fees by FPX (ToyyibPay
 | Record detail / approval | 4.1–4.5, 7.2 (attachments) |
 | Mobile approval | 4.3, 4.5, 5.1, 1.2 (amount on Approve button) |
 | AGM statement | 3.1–3.4, 6.3, 2.2 |
+
+## Applied in mockup v2
+
+| Screen | Rules applied, and how |
+|---|---|
+| Member home (`#member-home`) | 2.1 one hero number (Deep Pine card, 52px amount); 2.4 four labelled quick actions; 2.3 recent activity, newest first; 5.1 44px+ targets, 56px+ rows; 5.2 16px body; 5.4 BM first with BM/EN toggle; 5.5 WhatsApp help row; 6.1–6.3 dark base #0E1513, system theme by default. |
+| Review & pay (`#member-pay`) | 1.1 bottom-sheet review step with "Tukar" link; 1.2 "Bayar RM 50.00" on the button, disabled after first tap; 1.4 popular banks first, A–Z list, offline bank greyed with reason; 1.5 trust card (FPX via ToyyibPay, payee, no extra charge); 5.3 home → Bayar → bank → pay (3 taps); 5.5 help link. |
+| Pay result (`#pay-success/-pending/-failed`) | 1.3 three distinct outcomes; pending says "Jangan bayar sekali lagi" + "Semak status semula", failed says "Tiada wang diambil" + reason + "Cuba lagi"; 1.6 success shows a paper receipt (receipt no., FPX transaction ID, date, items, download / WhatsApp, "Apa seterusnya"); 4.1 status chips with icon + text; animated tick respects reduced motion. |
+| History / receipt | 1.6, 2.3 grouped "Belum selesai / Sudah dibayar" rows; 4.1 chips; 6.3 receipt stays light paper in dark mode. |
+| Member fund (`#member-fund`) | 2.1 fund balance hero; 3.1–3.5 validated chart colours per theme, dashed second series + direct end labels + legend, text summary and "Lihat sebagai jadual" table; "Where your money goes" flow diagram with RM amounts; 5.2. |
+| Admin dashboard (`#admin-dashboard`) | 2.1–2.2 four KPI tiles with change vs last period; 3.1–3.5 area chart + 100% category bar (labels inside, legend, table view); 2.3 recent activity with signed amounts and "Money in/out" words; 4.1 chips in approvals queue; 6.1–6.4 dark tokens, borders not shadows. |
+| Fund usage list | 2.3, 4.1 chips, 3.2 signed "−RM" amounts; data table with faceted filters, sort and pagination. |
+| New expense / welfare form | 7.1–7.5 unchanged uploader; 4.4 new "Returned by checker" state shows the reason at the top of the form. |
+| Record detail (`#fund-item`) | 4.1 chips; 4.2 audit trail newest first, latest highlighted, maker/checker roles; 4.3 maker cannot approve; 4.5 dialog titles restate amount and payee; Disediakan → Diluluskan rail, LULUS / BATAL stamp, maker-checker diagram. |
+| Mobile approval | 1.2 "Approve RM 6,895.00"; 4.3, 4.5; 5.1 48px buttons. |
+| AGM statement | 3.1–3.4 category bar with legend and the full statement as the table; 6.3 paper sheet stays light, mono figures, double-rule totals; 2.2 three KPI tiles. |
+
+Chart colours (validated with the dataviz palette script, adjacent pairs): light `#0F7A5C, #D99A1C, #2F6FB8, #B5523A` on `#FFFFFF`, all checks pass (marigold 2.4:1 → relief via direct labels + table); dark `#2E9E7B, #C08A1E, #5A8FD6, #D0705A` on `#16201D`, all checks pass.

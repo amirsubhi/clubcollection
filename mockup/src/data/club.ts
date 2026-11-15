@@ -35,13 +35,28 @@ export const members: Member[] = [
   { id: 12, name: "Faridah binti Ismail", memberNo: "DEMO-0170", email: "faridah.i@example.my", phone: "+60 19-332 1180" },
 ];
 
-export const fpxBanks = [
-  "Maybank2u",
-  "CIMB Clicks",
-  "Public Bank",
-  "RHB Now",
-  "Hong Leong Connect",
-  "Bank Islam",
-  "AmOnline",
-  "Bank Rakyat",
+export interface FpxBank {
+  name: string;
+  /** Short text mark drawn as inline SVG (no real logos). */
+  mark: string;
+  popular?: boolean;
+  offline?: boolean;
+}
+
+/** Most-used banks first, then A–Z. Marks are plain text, not brand artwork. */
+export const fpxBanks: FpxBank[] = [
+  { name: "Maybank2u", mark: "M2U", popular: true },
+  { name: "CIMB Clicks", mark: "CIMB", popular: true },
+  { name: "Bank Islam", mark: "BIMB", popular: true },
+  { name: "RHB Now", mark: "RHB", popular: true },
+  { name: "Public Bank", mark: "PBe", popular: true, offline: true },
+  { name: "Affin Bank", mark: "AFF" },
+  { name: "Alliance Bank", mark: "ALL" },
+  { name: "AmOnline", mark: "AMB" },
+  { name: "Bank Muamalat", mark: "BMMB" },
+  { name: "Bank Rakyat", mark: "BKR" },
+  { name: "BSN", mark: "BSN" },
+  { name: "Hong Leong Connect", mark: "HLB" },
+  { name: "OCBC", mark: "OCBC" },
+  { name: "UOB", mark: "UOB" },
 ];

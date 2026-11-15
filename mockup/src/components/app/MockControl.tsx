@@ -23,12 +23,7 @@ export function MockControl<T extends string>({
   children?: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-violet-400 bg-violet-50 p-2 text-xs text-violet-900",
-        className,
-      )}
-    >
+    <div className={cn("flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-mock-border bg-mock-soft p-2 text-xs text-mock", className)}>
       <span className="font-semibold uppercase tracking-wide">Mockup control · {label}</span>
       <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1">
         {options.map((o) => (
@@ -39,8 +34,8 @@ export function MockControl<T extends string>({
             aria-checked={value === o.value}
             onClick={() => onChange(o.value)}
             className={cn(
-              "rounded-md border px-2 py-1 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-              value === o.value ? "border-violet-600 bg-violet-600 text-white" : "border-violet-300 bg-white hover:bg-violet-100",
+              "min-h-8 rounded-md border px-2 py-1 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mock",
+              value === o.value ? "border-mock bg-mock text-mock-soft" : "border-mock-border bg-card hover:bg-mock-soft",
             )}
           >
             {o.label}

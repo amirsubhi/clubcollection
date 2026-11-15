@@ -7,13 +7,16 @@ import { Money } from "@/components/app/Money";
 import { FundStatusBadge, FundTypeBadge } from "@/components/app/StatusBadges";
 import { AttachmentGallery } from "@/components/app/AttachmentGallery";
 import { AuditTimeline } from "@/components/app/AuditTimeline";
+import { ApprovalRail } from "@/components/app/ApprovalRail";
+import { ApprovalFlowDiagram } from "@/components/app/Diagrams";
+import { Stamp } from "@/components/app/Visuals";
 import { ApproveDialog, ReturnDialog, VoidDialog } from "@/components/app/FundDialogs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auditTrail, fundItems } from "@/data/fund";
 import type { AuditEvent, FundItem, FundStatus } from "@/data/types";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDateTime } from "@/lib/format";
 import { currentAdmin } from "@/data/club";
 
 type Which = "expense" | "welfare";
@@ -38,7 +41,7 @@ function trailFor(item: FundItem, extra: AuditEvent[]): AuditEvent[] {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 gap-0.5 py-2 sm:grid-cols-[180px_1fr] sm:gap-3">
+    <div className="grid grid-cols-1 gap-0.5 py-2.5 sm:grid-cols-[180px_1fr] sm:gap-3">
       <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="min-w-0 text-sm">{children}</dd>
     </div>
@@ -122,12 +125,12 @@ export function FundItemDetail() {
     <AdminShell active="fund-item">
       <PageHeader
         eyebrow={<a href="#fund-usage" className="hover:underline">Fund Usage</a>}
-        title={item.ref}
+        title={<span className="font-mono text-[26px] font-medium tracking-normal sm:text-[30px]">{item.ref}</span>}
         description={item.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <FundTypeBadge type={item.type} />
-            <FundStatusBadge status={item.status} showBm />
+            <FundStatusBadge status={item.status} showBm returned={item.status === "draft" && returnedReason !== null} />
           </div>
         }
       />
@@ -207,26 +210,37 @@ export function FundItemDetail() {
         </Alert>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-5">
-          <Card>
-            <CardHeader className="pb-1">
-              <CardTitle>Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="relative overflow-hidden">
+            <CardContent className="flex flex-col gap-5 p-4 pt-5 sm:p-6">
+              <div className="flex flex-col gap-1 pr-24 sm:pr-36">
+                <span className="text-sm text-muted-foreground">{item.type === "welfare" ? "Welfare payout" : "Amount paid"}</span>
+                <Money sen={item.amount} className="figure font-display text-[40px] font-extrabold leading-none tracking-tight" />
+                <span className="text-sm">
+                  to <span className="font-semibold">{item.payee}</span> · {item.category}
+                </span>
+              </div>
+              {(item.status === "approved" || item.status === "void") && (
+                <Stamp key={item.status} tone={item.status === "void" ? "danger" : "success"} className="absolute right-4 top-6 sm:right-8 sm:top-8 sm:text-3xl">
+                  {item.status === "void" ? "Batal" : "Lulus"}
+                </Stamp>
+              )}
+              <div className="rounded-lg border bg-muted/40 p-3 sm:p-4">
+                <ApprovalRail item={item} preparedAt={fmtDateTime(events.find((e) => e.action === "submitted")?.at ?? "2026-11-10T16:12")} approvedAt={fmtDateTime(events.find((e) => e.action === "approved")?.at ?? now)} />
+              </div>
               <dl className="divide-y">
-                <Row label="Amount">
-                  <Money sen={item.amount} className="font-display text-xl font-semibold" />
-                </Row>
                 <Row label="Category">{item.category}</Row>
                 <Row label="Paid to">{item.payee}</Row>
-                {item.invoiceNo && <Row label="Invoice no.">{item.invoiceNo}</Row>}
+                {item.invoiceNo && (
+                  <Row label="Invoice no.">
+                    <span className="font-mono text-[13px]">{item.invoiceNo}</span>
+                  </Row>
+                )}
                 <Row label={item.type === "welfare" ? "Committee approval date" : "Invoice date"}>{fmtDate(item.invoiceDate)}</Row>
                 <Row label="Date paid">{item.paidDate ? fmtDate(item.paidDate) : "—"}</Row>
                 <Row label="Paid from">{item.account === "bank" ? "Bank (Maybank current account)" : "Cash in hand"}</Row>
                 <Row label="Minute ref.">{item.minuteRef ?? "—"}</Row>
-                <Row label="Recorded by">{item.recordedBy}</Row>
-                <Row label="Approved by">{item.approvedBy ?? "—"}</Row>
               </dl>
             </CardContent>
           </Card>
@@ -266,7 +280,7 @@ export function FundItemDetail() {
         </div>
 
         <div className="flex flex-col gap-5">
-          <Card className="lg:sticky lg:top-5">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle>Actions</CardTitle>
             </CardHeader>
@@ -278,6 +292,14 @@ export function FundItemDetail() {
             </CardHeader>
             <CardContent>
               <AuditTimeline events={events} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>How approval works</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ApprovalFlowDiagram current={item.status === "draft" && returnedReason !== null ? "returned" : item.status} />
             </CardContent>
           </Card>
         </div>

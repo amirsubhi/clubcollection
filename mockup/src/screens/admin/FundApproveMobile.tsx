@@ -4,6 +4,7 @@ import { MockupStrip } from "@/components/app/MockupStrip";
 import { Money } from "@/components/app/Money";
 import { FundStatusBadge, FundTypeBadge } from "@/components/app/StatusBadges";
 import { AttachmentGallery } from "@/components/app/AttachmentGallery";
+import { Avatar, Stamp } from "@/components/app/Visuals";
 import { ApproveDialog, ReturnDialog } from "@/components/app/FundDialogs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,16 +21,16 @@ export function FundApproveMobile() {
   const left = awaitingMyApproval.filter((i) => !done[i.id]).length;
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="member-scope flex min-h-full flex-col">
       <MockupStrip />
-      <header className="bleed-x sticky top-0 z-20 border-b bg-card py-2.5">
+      <header className="bleed-x sticky top-0 z-20 border-b bg-background/90 py-2.5 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center gap-2">
-          <a href="#fund-usage" className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted" aria-label="Back to Fund Usage">
+          <a href="#fund-usage" className="-ml-1.5 inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-muted" aria-label="Back to Fund Usage">
             <ChevronLeft className="h-5 w-5" />
           </a>
           <div className="min-w-0 flex-1">
-            <div className="font-display text-base font-semibold leading-tight">Awaiting my approval</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="font-display text-lg font-bold leading-tight">Awaiting my approval</div>
+            <div className="text-sm text-muted-foreground">
               {left} left · item {idx + 1} of {awaitingMyApproval.length}
             </div>
           </div>
@@ -37,16 +38,24 @@ export function FundApproveMobile() {
       </header>
       <main className="flex-1 py-4 pb-40">
         <div className="mx-auto flex max-w-md flex-col gap-4">
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-4 sm:p-4">
+          <Card className="relative overflow-hidden">
+            <CardContent className="flex flex-col gap-3 p-5 sm:p-5">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-sm font-semibold">{item.ref}</span>
+                <span className="font-mono text-sm">{item.ref}</span>
                 <FundTypeBadge type={item.type} />
-                <FundStatusBadge status={result === "approved" ? "approved" : result === "returned" ? "draft" : item.status} />
+                <FundStatusBadge status={result === "approved" ? "approved" : item.status} returned={result === "returned"} />
               </div>
-              <Money sen={item.amount} className="font-display text-3xl font-semibold" />
-              <p className="text-sm">{item.description}</p>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+              <Money sen={item.amount} className="figure font-display text-[44px] font-extrabold leading-none tracking-tight" />
+              {result === "approved" && <Stamp className="absolute right-4 top-14">Lulus</Stamp>}
+              <p className="text-base">{item.description}</p>
+              <div className="flex items-center gap-2.5 rounded-2xl bg-muted/60 p-2.5 text-sm">
+                <Avatar name={item.recordedBy} />
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Disediakan · Maker</span>
+                  <span className="block truncate font-semibold">{item.recordedBy}</span>
+                </span>
+              </div>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-base">
                 <dt className="text-muted-foreground">Paid to</dt>
                 <dd className="text-right">{item.payee}</dd>
                 <dt className="text-muted-foreground">Category</dt>
@@ -57,8 +66,6 @@ export function FundApproveMobile() {
                 <dd className="text-right">{item.account === "bank" ? "Bank" : "Cash"}</dd>
                 <dt className="text-muted-foreground">Minute</dt>
                 <dd className="text-right">{item.minuteRef ?? "—"}</dd>
-                <dt className="text-muted-foreground">Recorded by</dt>
-                <dd className="text-right">{item.recordedBy}</dd>
                 {item.welfare && (
                   <>
                     <dt className="text-muted-foreground">Beneficiary</dt>
@@ -73,25 +80,25 @@ export function FundApproveMobile() {
             </CardContent>
           </Card>
           <div>
-            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+            <h2 className="mb-2 flex items-center gap-1.5 text-base font-semibold">
               <Paperclip className="h-4 w-4" aria-hidden /> Documents ({item.attachments.length}) · tap to enlarge
             </h2>
             <AttachmentGallery items={item.attachments} frozen />
           </div>
           <div className="flex justify-between">
-            <Button variant="ghost" size="sm" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>
+            <Button variant="ghost" className="h-11" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>
               <ChevronLeft aria-hidden /> Previous
             </Button>
-            <Button variant="ghost" size="sm" disabled={idx === awaitingMyApproval.length - 1} onClick={() => setIdx(idx + 1)}>
+            <Button variant="ghost" className="h-11" disabled={idx === awaitingMyApproval.length - 1} onClick={() => setIdx(idx + 1)}>
               Next <ChevronRight aria-hidden />
             </Button>
           </div>
         </div>
       </main>
-      <div className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card pt-3 shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
+      <div className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card pt-3 shadow-[0_-8px_24px_-12px_rgba(6,61,50,0.25)]">
         <div className="mx-auto max-w-md">
           {result ? (
-            <div className="flex items-center gap-2 pb-2 text-sm font-medium">
+            <div className="flex min-h-12 items-center gap-2 pb-2 text-base font-semibold">
               {result === "approved" ? (
                 <>
                   <CheckCircle2 className="h-5 w-5 text-success" aria-hidden /> Approved. It now counts in the balance.
@@ -103,7 +110,7 @@ export function FundApproveMobile() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-[1fr_2fr] gap-2 pb-2">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 pb-2 [&_button]:h-12 [&_button]:rounded-full [&_button]:px-4">
               <ReturnDialog item={item} triggerProps={{ size: "lg", className: "w-full" }} onConfirm={() => setDone({ ...done, [item.id]: "returned" })} />
               <ApproveDialog item={item} triggerProps={{ size: "lg", className: "w-full" }} onConfirm={() => setDone({ ...done, [item.id]: "approved" })} />
             </div>

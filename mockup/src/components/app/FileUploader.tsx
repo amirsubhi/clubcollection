@@ -54,7 +54,7 @@ export function FileUploader({ files, onAdd, onRemove, onKindChange, error, maxF
           onAdd(toItems(e.dataTransfer.files));
         }}
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/40 px-4 py-6 text-center transition-colors focus-within:ring-2 focus-within:ring-ring",
+          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/50 px-4 py-7 text-center transition-colors focus-within:ring-2 focus-within:ring-ring",
           over ? "border-primary bg-accent" : "border-input hover:bg-muted",
           error && "border-danger bg-danger-soft/50",
         )}

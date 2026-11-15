@@ -22,13 +22,16 @@ export function ApproveDialog({ item, onConfirm, triggerProps }: BaseProps) {
     <Dialog open={open} onOpenChange={(o) => (setOpen(o), setDeclared(false))}>
       <DialogTrigger asChild>
         <Button variant="success" {...triggerProps}>
-          <Check aria-hidden /> Approve
+          <Check aria-hidden /> Approve <Money sen={item.amount} />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Approve {item.ref}?</DialogTitle>
-          <DialogDescription>Once approved it counts in balances and reports and can't be edited. It can only be voided by two admins.</DialogDescription>
+          <DialogTitle>
+            Approve <Money sen={item.amount} /> to {item.welfare ? item.welfare.recipientName : item.payee}?
+          </DialogTitle>
+          <DialogDescription>
+            {item.ref}. Once approved it counts in balances and reports and can't be edited. It can only be voided by two admins.</DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-between gap-3 rounded-md bg-muted p-3 text-sm">
           <div className="min-w-0">
@@ -37,7 +40,7 @@ export function ApproveDialog({ item, onConfirm, triggerProps }: BaseProps) {
               {item.category} · {item.attachments.length} document(s)
             </div>
           </div>
-          <Money sen={item.amount} className="font-display text-lg font-semibold" />
+          <Money sen={item.amount} className="font-display text-xl font-bold" />
         </div>
         <div className="flex items-start gap-3">
           <Checkbox id="coi" checked={declared} onCheckedChange={(c) => setDeclared(c === true)} />
@@ -46,7 +49,7 @@ export function ApproveDialog({ item, onConfirm, triggerProps }: BaseProps) {
             <span className="mt-1 block text-xs text-muted-foreground">Saya mengisytiharkan tiada konflik kepentingan. This declaration is logged.</span>
           </Label>
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
@@ -112,13 +115,15 @@ export function VoidDialog({ item, onConfirm, triggerProps }: BaseProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => (setOpen(o), setReason(""))}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="text-danger-foreground" {...triggerProps}>
+        <Button variant="outline" className="border-danger/40 text-danger-foreground hover:bg-danger-soft" {...triggerProps}>
           <Ban aria-hidden /> Void
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Void {item.ref}?</DialogTitle>
+          <DialogTitle>
+            Void {item.ref} (<Money sen={item.amount} />)?
+          </DialogTitle>
           <DialogDescription>Approved records are never deleted. Voiding keeps the record and its documents but removes it from all totals.</DialogDescription>
         </DialogHeader>
         <Alert variant="warning">
