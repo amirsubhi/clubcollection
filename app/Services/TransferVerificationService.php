@@ -203,6 +203,7 @@ class TransferVerificationService
                 throw ValidationException::withMessages(['paid_date' => 'The date received can\'t be before the member\'s transfer date ('.$payment->transfer_date->format('j M Y').').']);
             }
 
+            $slips = $this->slipRefs($payment); // before any change
             $old = $this->snapshot($payment);
             $payment->forceFill([
                 'status' => 'paid',
@@ -223,7 +224,7 @@ class TransferVerificationService
                 $payment,
                 $payment->club_id,
                 $old,
-                $this->snapshot($payment)
+                $this->snapshot($payment) + ['slips' => $slips]
             );
 
             return $payment;
@@ -254,6 +255,7 @@ class TransferVerificationService
             $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             $this->assertVerifying($payment);
 
+            $slips = $this->slipRefs($payment); // before any change
             $old = $this->snapshot($payment);
             // Slips stay frozen as history; the member may upload new ones.
             $payment->forceFill([
@@ -269,7 +271,7 @@ class TransferVerificationService
                 $payment,
                 $payment->club_id,
                 $old,
-                $this->snapshot($payment) + ['reason' => $reason]
+                $this->snapshot($payment) + ['reason' => $reason, 'slips' => $slips]
             );
 
             return $payment;
@@ -292,6 +294,8 @@ class TransferVerificationService
 
         $fees = DB::transaction(function () use ($group, $admin, $paidDate, $bankRef) {
             [$group, $fees] = $this->lockGroup($group, $admin);
+            // Before any change: the slips hang off the group bill through the fees' transfer_group_id.
+            $slips = $fees->isEmpty() ? [] : $this->slipRefs($fees->first());
             $date = Carbon::parse($paidDate);
             foreach ($fees as $payment) {
                 if ($payment->transfer_date && $date->lt($payment->transfer_date)) {
@@ -325,7 +329,7 @@ class TransferVerificationService
                     $payment,
                     $payment->club_id,
                     $old,
-                    $this->snapshot($payment) + ['group' => $group->reference]
+                    $this->snapshot($payment) + ['group' => $group->reference, 'slips' => $slips]
                 );
             }
             $group->forceFill(['paid_at' => now()])->save();
@@ -356,6 +360,8 @@ class TransferVerificationService
             // A set where a fee changed meanwhile (e.g. paid online) can still be
             // rejected: the fees still being checked go back to pending.
             [$group, $fees] = $this->lockGroup($group, $admin, requireIntact: false);
+            // Before any change: rejecting clears transfer_group_id, which is how a fee finds the group's slips.
+            $slips = $fees->isEmpty() ? [] : $this->slipRefs($fees->first());
             foreach ($fees as $payment) {
                 $old = $this->snapshot($payment);
                 $payment->forceFill([
@@ -373,7 +379,7 @@ class TransferVerificationService
                     $payment,
                     $payment->club_id,
                     $old,
-                    $this->snapshot($payment) + ['reason' => $reason, 'group' => $group->reference]
+                    $this->snapshot($payment) + ['reason' => $reason, 'group' => $group->reference, 'slips' => $slips]
                 );
             }
             $group->forceFill(['superseded_at' => now()])->save();
@@ -496,6 +502,18 @@ class TransferVerificationService
         if ($payment->status !== 'pending_verification') {
             throw ValidationException::withMessages(['status' => 'This slip was already handled by another admin.']);
         }
+    }
+
+    /**
+     * The slip files the decision was made on (id and SHA-256), so the audit row ties the
+     * approval or rejection to the exact files even though the queue previews them unaudited.
+     *
+     * @return list<array{id: int, sha256: ?string}>
+     */
+    private function slipRefs(Payment $payment): array
+    {
+        return $payment->currentSlips()->get(['id', 'sha256'])
+            ->map(fn ($a) => ['id' => (int) $a->id, 'sha256' => $a->sha256])->values()->all();
     }
 
     /** Fields for the audit log. */

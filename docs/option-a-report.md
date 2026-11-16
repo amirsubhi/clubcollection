@@ -376,3 +376,8 @@ Follow-ups (non-blocking):
 - Add a "simpan di tempat selamat" hint next to the recovery-codes download.
 - Encrypted history needs HTTPS in production (Inertia stores plain history over http).
 
+### R3b follow-ups (non-blocking)
+- The thumb route serves full-size originals (no-store); add real resized thumbnails later.
+- Add a 300% zoom step for dense bank slips.
+- "Start reviewing" and the shortcut hint show from md up only.
+

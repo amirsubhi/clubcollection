@@ -155,6 +155,8 @@ class AttachmentTest extends TestCase
         $res->assertOk();
         $this->assertSame($this->original, $res->getContent());
         $this->assertSame('image/jpeg', $res->headers->get('Content-Type'));
+        // Unaudited, so never cached either (same as the audited view).
+        $this->assertStringContainsString('no-store', (string) $res->headers->get('Cache-Control'));
         $this->assertFalse(AuditLog::whereIn('action', ['attachment.viewed', 'attachment.downloaded'])->exists());
 
         $this->actingAsClubAdmin(Club::factory()->create());

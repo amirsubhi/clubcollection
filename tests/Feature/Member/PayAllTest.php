@@ -589,10 +589,24 @@ class PayAllTest extends TestCase
         }
         $this->assertNotNull($group->fresh()->paid_at);
         $this->assertSame(3, AuditLog::where('action', 'payment.transfer_approved')->count());
+        $this->assertAuditNamesGroupSlips('payment.transfer_approved', $group);
         Mail::assertSent(PaymentConfirmation::class, 1);
 
         $this->actingAs($this->member)->get(route('member.payments.group-result', $group))
             ->assertInertia(fn (Assert $page) => $page->where('outcome', 'paid')->where('receipt.method', 'transfer')->has('receipt.lines', 3));
+    }
+
+    /** Every fee's audit row names the group slip files (they live on the PaymentBill). */
+    private function assertAuditNamesGroupSlips(string $action, PaymentBill $group): void
+    {
+        $expected = $group->attachments()->where('kind', 'proof_of_payment')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->assertNotEmpty($expected);
+        $rows = AuditLog::where('action', $action)->get();
+        $this->assertCount(3, $rows);
+        foreach ($rows as $row) {
+            $this->assertSame($expected, array_column($row->new_values['slips'], 'id'));
+            $this->assertNotEmpty($row->new_values['slips'][0]['sha256']);
+        }
     }
 
     public function test_admin_rejects_the_whole_set_at_once(): void
@@ -608,6 +622,8 @@ class PayAllTest extends TestCase
             $this->assertSame('Amaun pada slip tidak sama', $fee->fresh()->rejection_reason);
         }
         $this->assertTrue($group->fresh()->isSuperseded());
+        // Rejecting clears transfer_group_id: the slips must still be named (read before the change).
+        $this->assertAuditNamesGroupSlips('payment.transfer_rejected', $group);
         Mail::assertSent(TransferRejected::class, 1);
 
         // The member sees the reason and can pay the set again.

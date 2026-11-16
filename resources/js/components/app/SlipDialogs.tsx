@@ -22,10 +22,12 @@ interface BaseProps {
   slip: SlipSummary;
   today: string;
   triggerProps?: ButtonProps;
+  /** Verifications queue: the confirm button says "… and next" / "… and continue" (the page then moves to another slip). */
+  after?: "next" | "continue";
 }
 
 /** Approve: the paid date (pre-filled from the member's transfer date) and the bank reference. Same pattern as FundDialogs. */
-export function ApproveSlipDialog({ slip, today, triggerProps, onConfirm }: BaseProps & { onConfirm: (paidDate: string, reference: string) => void }) {
+export function ApproveSlipDialog({ slip, today, triggerProps, after, onConfirm }: BaseProps & { onConfirm: (paidDate: string, reference: string) => void }) {
   const initialDate = slip.transferDate && slip.transferDate <= today ? slip.transferDate : today;
   const [open, setOpen] = useState(false);
   const [paidDate, setPaidDate] = useState(initialDate);
@@ -40,7 +42,7 @@ export function ApproveSlipDialog({ slip, today, triggerProps, onConfirm }: Base
   return (
     <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger asChild>
-        <Button variant="default" {...triggerProps}>
+        <Button variant="default" data-slip-action="approve" {...triggerProps}>
           <Check aria-hidden /> Approve
         </Button>
       </DialogTrigger>
@@ -81,7 +83,11 @@ export function ApproveSlipDialog({ slip, today, triggerProps, onConfirm }: Base
             />
             <DateHint value={paidDate} className="-mt-0.5" />
             <p id={`paid-${slip.id}-note`} className={beforeTransfer ? "text-xs font-medium text-danger-foreground" : "text-xs text-muted-foreground"}>
-              {beforeTransfer && slip.transferDate ? `Can't be before the transfer date (${fmtDate(slip.transferDate)}).` : "When the money reached the club's account."}
+              {beforeTransfer && slip.transferDate
+                ? `Can't be before the transfer date (${fmtDate(slip.transferDate)}).`
+                : slip.transferDate && initialDate === slip.transferDate
+                  ? "Filled in from the member's transfer date. Change it if the money arrived later."
+                  : "When the money reached the club's account."}
             </p>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -102,6 +108,7 @@ export function ApproveSlipDialog({ slip, today, triggerProps, onConfirm }: Base
             }}
           >
             <Check aria-hidden /> Approve <Money sen={slip.amount} />
+            {after && ` and ${after}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -110,13 +117,13 @@ export function ApproveSlipDialog({ slip, today, triggerProps, onConfirm }: Base
 }
 
 /** Reject with a reason (at least 5 characters); the member is emailed it and can send a new slip. */
-export function RejectSlipDialog({ slip, triggerProps, onConfirm }: Omit<BaseProps, "today"> & { onConfirm: (reason: string) => void }) {
+export function RejectSlipDialog({ slip, triggerProps, after, onConfirm }: Omit<BaseProps, "today"> & { onConfirm: (reason: string) => void }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   return (
     <Dialog open={open} onOpenChange={(o) => (setOpen(o), setReason(""))}>
       <DialogTrigger asChild>
-        <Button variant="outline" {...triggerProps}>
+        <Button variant="outline" data-slip-action="reject" {...triggerProps}>
           <X aria-hidden /> Reject
         </Button>
       </DialogTrigger>
@@ -150,7 +157,7 @@ export function RejectSlipDialog({ slip, triggerProps, onConfirm }: Omit<BasePro
               onConfirm(reason.trim());
             }}
           >
-            <X aria-hidden /> Reject slip
+            <X aria-hidden /> Reject slip{after && ` and ${after}`}
           </Button>
         </DialogFooter>
       </DialogContent>
