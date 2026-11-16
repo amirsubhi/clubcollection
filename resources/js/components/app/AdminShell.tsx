@@ -163,17 +163,17 @@ export function ThemeMenu() {
   );
 }
 
-function UserMenu({ user, memberHref, onLogout }: { user: { name: string; roleLabel?: string }; memberHref?: string; onLogout?: () => void }) {
+function UserMenu({ user, initials, memberHref, onLogout }: { user: { name: string; roleLabel?: string }; initials?: string; memberHref?: string; onLogout?: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Account menu">
-          <Avatar name={user.name} />
+          <Avatar name={user.name} initials={initials} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <div className="flex items-center gap-2.5 px-2 py-2">
-          <Avatar name={user.name} />
+          <Avatar name={user.name} initials={initials} />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{user.name}</div>
             {user.roleLabel && <div className="truncate text-xs text-muted-foreground">{user.roleLabel}</div>}
@@ -207,6 +207,8 @@ export interface AdminShellProps {
   active: string;
   nav: AdminNavGroup[];
   user: { name: string; roleLabel?: string };
+  /** Server-made initials (App\Support\Initials), so Blade and React show the same letters. */
+  userInitials?: string;
   /** Where the logo links to (admin landing). */
   homeHref: string;
   /** Second line under "Club Portal", e.g. "KSR · Bendahari". */
@@ -221,7 +223,7 @@ export interface AdminShellProps {
   wide?: boolean;
 }
 
-export function AdminShell({ active, nav, user, homeHref, brandSubtitle, search, sidebarFooter, memberHref, onLogout, children, wide = true }: AdminShellProps) {
+export function AdminShell({ active, nav, user, userInitials, homeHref, brandSubtitle, search, sidebarFooter, memberHref, onLogout, children, wide = true }: AdminShellProps) {
   const [collapsed, setCollapsed] = useState(() => readPref("cp-sidebar") === "collapsed");
   const toggle = () => {
     setCollapsed((c) => {
@@ -231,6 +233,12 @@ export function AdminShell({ active, nav, user, homeHref, brandSubtitle, search,
   };
   return (
     <div className="flex min-h-full flex-col">
+      <a
+        href="#main"
+        className="sr-only z-[60] rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        Skip to content
+      </a>
       <div className="bleed-x-flush flex flex-1">
         {/* Outer aside stretches to the full page height (so the sidebar colour never stops short); inner column stays sticky. */}
         <aside className={cn("hidden shrink-0 self-stretch border-r bg-sidebar transition-[width] duration-200 lg:block", collapsed ? "w-[68px]" : "w-64")}>
@@ -238,7 +246,8 @@ export function AdminShell({ active, nav, user, homeHref, brandSubtitle, search,
             <div className={cn(collapsed ? "flex justify-center" : "px-1")}>
               <Brand collapsed={collapsed} href={homeHref} subtitle={brandSubtitle} />
             </div>
-            <div className="-mr-1 flex-1 overflow-y-auto pr-1">
+            {/* Padded out to the sidebar edge so the active item's bar (at -left-3) is not clipped by the scroll box. */}
+            <div className={cn("-mr-1 flex-1 overflow-y-auto pr-1", collapsed ? "-ml-2 pl-2" : "-ml-3 pl-3")}>
               <NavList groups={nav} active={active} collapsed={collapsed} />
             </div>
             {!collapsed && sidebarFooter}
@@ -270,10 +279,10 @@ export function AdminShell({ active, nav, user, homeHref, brandSubtitle, search,
             {search ?? <div className="flex-1" />}
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <ThemeMenu />
-              <UserMenu user={user} memberHref={memberHref} onLogout={onLogout} />
+              <UserMenu user={user} initials={userInitials} memberHref={memberHref} onLogout={onLogout} />
             </div>
           </header>
-          <main className="safe-x flex-1 py-6 lg:py-8">
+          <main id="main" tabIndex={-1} className="safe-x flex-1 py-6 focus:outline-none lg:py-8">
             <div className={cn("mx-auto flex flex-col gap-6", wide ? "max-w-7xl" : "max-w-3xl")}>{children}</div>
           </main>
         </div>

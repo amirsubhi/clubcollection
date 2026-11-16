@@ -44,7 +44,7 @@ export function CategoryBar({
         {spendSlices.map((c) => (
           <li key={c.key} className="flex min-w-0 flex-wrap items-center gap-x-2">
             <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: `rgb(var(${c.colorVar}))`, boxShadow: `inset 0 0 0 1.5px rgb(var(${c.colorVar}-stroke))` }} aria-hidden />
-            <span className="min-w-0 flex-1 break-words">{name(c)}</span>
+            <span className="min-w-0 flex-[1_1_7rem] break-words">{name(c)}</span>
             <span className="money ml-auto font-semibold">{rm(c.amount)}</span>
           </li>
         ))}

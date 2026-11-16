@@ -73,18 +73,13 @@
     <div class="col-lg-4">
         <section class="card shadow-sm h-100" aria-labelledby="statusTitle">
             <div class="card-header"><h2 id="statusTitle" class="h6 m-0 fw-semibold">Fee status, all time</h2></div>
-            <div class="card-body d-flex flex-column align-items-center">
-                <div style="position:relative;width:180px;height:180px">
-                    <canvas id="statusChart" role="img" aria-label="Doughnut chart of fee records by status" aria-describedby="statusList"></canvas>
-                </div>
-                <ul class="list-unstyled w-100 mt-3 mb-0 small" id="statusList">
-                    @foreach([['Paid', $paidCount, 'success'], ['Due', $pendingCount, 'secondary'], ['Overdue', $overdueCount, 'warning'], ['FPX in progress', $processingCount, 'primary'], ['Awaiting verification', $verifyingCount, 'info']] as [$label, $count, $tone])
-                    <li class="d-flex justify-content-between align-items-center py-1">
-                        <span class="d-inline-flex align-items-center gap-2"><span class="legend-dot legend-{{ $tone }}" aria-hidden="true"></span>{{ $label }}</span>
-                        <strong>{{ $count }}</strong>
-                    </li>
-                    @endforeach
-                </ul>
+            <div class="card-body">
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Fee records by status',
+                    'testid' => 'status-bars',
+                    'rows' => collect([['Paid', $paidCount], ['Due', $pendingCount], ['Overdue', $overdueCount], ['FPX in progress', $processingCount], ['Awaiting verification', $verifyingCount]])
+                        ->map(fn ($r) => ['label' => $r[0], 'value' => $r[1], 'display' => number_format($r[1])])->all(),
+                ])
             </div>
         </section>
     </div>
@@ -95,27 +90,23 @@
         <section class="card shadow-sm h-100" aria-labelledby="clubChartTitle">
             <div class="card-header"><h2 id="clubChartTitle" class="h6 m-0 fw-semibold">Collected by club, all time</h2></div>
             <div class="card-body">
-                <div style="position:relative;height:{{ max(160, 44 * $clubStats->count()) }}px">
-                    <canvas id="clubRevenueChart" role="img" aria-label="Bar chart of money collected by each club. The same figures are in the Club breakdown table."></canvas>
-                </div>
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Money collected by each club',
+                    'testid' => 'club-bars',
+                    'rows' => $clubStats->map(fn ($c) => ['label' => $c->name, 'value' => $c->collected_sen, 'display' => $rm($c->collected_sen)])->values()->all(),
+                ])
             </div>
         </section>
     </div>
     <div class="col-lg-5">
         <section class="card shadow-sm h-100" aria-labelledby="levelTitle">
             <div class="card-header"><h2 id="levelTitle" class="h6 m-0 fw-semibold">Members by job level</h2></div>
-            <div class="card-body d-flex flex-column align-items-center">
-                <div style="position:relative;width:180px;height:180px">
-                    <canvas id="jobLevelChart" role="img" aria-label="Doughnut chart of members by job level" aria-describedby="levelList"></canvas>
-                </div>
-                <ul class="list-unstyled w-100 mt-3 mb-0 small" id="levelList">
-                    @foreach($jobLevelLabels as $key => $label)
-                    <li class="d-flex justify-content-between align-items-center py-1">
-                        <span class="d-inline-flex align-items-center gap-2"><span class="legend-dot legend-c{{ $loop->index % 5 }}" aria-hidden="true"></span>{{ $label }}</span>
-                        <strong>{{ $jobLevelDistribution[$key] }}</strong>
-                    </li>
-                    @endforeach
-                </ul>
+            <div class="card-body">
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Members by job level',
+                    'testid' => 'level-bars',
+                    'rows' => collect($jobLevelLabels)->map(fn ($label, $key) => ['label' => $label, 'value' => (int) $jobLevelDistribution[$key], 'display' => number_format($jobLevelDistribution[$key])])->values()->all(),
+                ])
             </div>
         </section>
     </div>
@@ -202,30 +193,13 @@
 </section>
 @endsection
 
-@push('styles')
-<style nonce="{{ $cspNonce }}">
-    .legend-dot { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 3px; background: var(--dot, #888); }
-    .legend-success { --dot: rgb(var(--chart-2-stroke, 31 138 100)); }
-    .legend-warning { --dot: rgb(var(--warning, 138 90 0)); }
-    .legend-danger { --dot: rgb(var(--chart-4-stroke, 184 64 90)); }
-    .legend-secondary { --dot: rgb(var(--muted-foreground, 100 100 110)); }
-    .legend-primary { --dot: rgb(var(--chart-3-stroke, 47 111 184)); }
-    .legend-info { --dot: rgb(var(--chart-1-stroke, 91 79 207)); }
-    .legend-c0 { --dot: rgb(var(--chart-1-stroke, 91 79 207)); }
-    .legend-c1 { --dot: rgb(var(--chart-2-stroke, 31 138 100)); }
-    .legend-c2 { --dot: rgb(var(--chart-3-stroke, 47 111 184)); }
-    .legend-c3 { --dot: rgb(var(--chart-4-stroke, 184 64 90)); }
-    .legend-c4 { --dot: rgb(var(--warning, 138 90 0)); }
-</style>
-@endpush
-
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" integrity="sha384-G436+Z2nlA8+PNoeRvWdxKbvOf8E/y+lYxqht2iBwNHTQDV5CJr3+AGVj8fGZi5t" crossorigin="anonymous"></script>
 <script nonce="{{ $cspNonce }}">
 (function () {
     if (!window.Chart) return;
     // Colours come from the theme tokens (tokens.css), so the charts follow light / dark.
-    const fallback = { '--chart-1-stroke': '91 79 207', '--chart-2-stroke': '31 138 100', '--chart-3-stroke': '47 111 184', '--chart-4-stroke': '184 64 90', '--warning': '138 90 0', '--chart-grid': '232 230 243', '--chart-axis': '95 92 122', '--card': '255 255 255' };
+    const fallback = { '--chart-1-stroke': '91 79 207', '--chart-4': '249 203 211', '--chart-4-stroke': '184 64 90', '--chart-grid': '232 230 243', '--chart-axis': '95 92 122' };
     function tok(name, alpha) {
         const v = (getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback[name]).split(/\s+/).join(', ');
         return alpha === undefined ? `rgb(${v})` : `rgba(${v}, ${alpha})`;
@@ -249,40 +223,11 @@
             scales: { y: { beginAtZero: true } },
         },
     }), (c) => {
-        c.data.datasets[0].backgroundColor = tok('--chart-2-stroke');
-        c.data.datasets[1].backgroundColor = tok('--chart-4-stroke');
-    }]);
-
-    charts.push([new Chart(document.getElementById('statusChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Paid', 'Due', 'Overdue', 'FPX in progress', 'Awaiting verification'],
-            datasets: [{ data: @js([$paidCount, $pendingCount, $overdueCount, $processingCount, $verifyingCount]), borderWidth: 2 }],
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '65%' },
-    }), (c) => {
-        c.data.datasets[0].backgroundColor = [tok('--chart-2-stroke'), tok('--muted-foreground'), tok('--warning'), tok('--chart-3-stroke'), tok('--chart-1-stroke')];
-        c.data.datasets[0].borderColor = tok('--card');
-    }]);
-
-    const clubs = @js($clubStats->map(fn ($c) => ['name' => $c->name, 'collected' => $c->collected_sen])->values());
-    charts.push([new Chart(document.getElementById('clubRevenueChart'), {
-        type: 'bar',
-        data: { labels: clubs.map(c => c.name), datasets: [{ label: 'Collected', data: clubs.map(c => c.collected / 100), borderRadius: 4 }] },
-        options: {
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => rm(c.parsed.x) } } },
-            scales: { x: { beginAtZero: true } },
-        },
-    }), (c) => { c.data.datasets[0].backgroundColor = tok('--chart-1-stroke'); }]);
-
-    charts.push([new Chart(document.getElementById('jobLevelChart'), {
-        type: 'doughnut',
-        data: { labels: @json($jobLevelChartLabels), datasets: [{ data: @json($jobLevelChartCounts), borderWidth: 2 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '60%' },
-    }), (c) => {
-        c.data.datasets[0].backgroundColor = ['--chart-1-stroke', '--chart-2-stroke', '--chart-3-stroke', '--chart-4-stroke', '--warning'].map(n => tok(n));
-        c.data.datasets[0].borderColor = tok('--card');
+        // Same marks as the React CollectedSpentChart: collected solid lavender, spent a pale rose with its stroke.
+        c.data.datasets[0].backgroundColor = tok('--chart-1-stroke');
+        c.data.datasets[1].backgroundColor = tok('--chart-4', 0.55);
+        c.data.datasets[1].borderColor = tok('--chart-4-stroke');
+        c.data.datasets[1].borderWidth = 1.5;
     }]);
 
     function paint() {

@@ -23,6 +23,9 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
+    /** Below RM 500 last year, no "% vs last year" is shown (see pct()). */
+    public const MIN_DELTA_BASE_SEN = 50_000;
+
     public function index(Request $request, Club $club): Response
     {
         $me = (int) $request->user()->id;
@@ -108,10 +111,13 @@ class DashboardController extends Controller
         ]);
     }
 
-    /** Percentage change, or null when there is nothing to compare with. */
+    /**
+     * Change against the same days last year, or null when last year is too
+     * small to compare with: "+2,400%" on a RM 20 base alarms more than it tells.
+     */
     private function pct(int $now, int $before): ?float
     {
-        return $before > 0 ? round(($now - $before) / $before * 100, 1) : null;
+        return $before >= self::MIN_DELTA_BASE_SEN ? round(($now - $before) / $before * 100, 1) : null;
     }
 
     /**

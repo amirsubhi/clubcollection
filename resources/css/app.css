@@ -109,7 +109,8 @@
 }
 
 /* Member area: 20px radius; admin keeps the 10px default. */
-.member-scope { --radius: 20px; }
+/* Long Malay words ("mengesahkannya") break instead of pushing a 320px screen sideways at 200% text. */
+.member-scope { --radius: 20px; overflow-wrap: break-word; }
 
 /* Outer app wrapper: side gutters respect notches / safe areas. */
 .app-shell {

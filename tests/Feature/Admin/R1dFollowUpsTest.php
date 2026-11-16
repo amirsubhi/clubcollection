@@ -93,10 +93,15 @@ class R1dFollowUpsTest extends TestCase
 
         $res->assertSee('Bank / gateway charges RM 2.50')
             ->assertSee('RM 77.50', false);
-        // Each chart has a text alternative: an aria-label, and the trend chart a table.
+        // The trend chart has a text alternative (aria-label and a table); the rest are labelled
+        // horizontal bars with their figures as text (no donuts: RESEARCH.md §3).
         $html = $res->getContent();
-        $this->assertSame(4, preg_match_all('/<canvas[^>]*role="img"[^>]*aria-label="[^"]+"/', $html));
+        $this->assertSame(1, preg_match_all('/<canvas[^>]*role="img"[^>]*aria-label="[^"]+"/', $html));
         $this->assertStringContainsString('data-testid="trend-table"', $html);
+        $this->assertStringNotContainsString('doughnut', $html);
+        foreach (['status-bars', 'club-bars', 'level-bars'] as $bars) {
+            $this->assertStringContainsString('data-testid="'.$bars.'"', $html);
+        }
     }
 
     // ── Reverting an online-paid fee ──────────────────────────────────────

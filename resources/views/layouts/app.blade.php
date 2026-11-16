@@ -61,8 +61,10 @@
         .admin-nav a:hover { background: var(--bs-tertiary-bg); }
         .admin-nav a[aria-current="page"] { background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text-emphasis); font-weight: 600; }
         .admin-nav a[aria-current="page"]::before { content: ""; position: absolute; left: -0.75rem; top: 0.5rem; bottom: 0.5rem; width: 4px; border-radius: 0 4px 4px 0; background: var(--bs-primary); }
-        .admin-nav .bi { font-size: 1.0625rem; flex-shrink: 0; }
-        .admin-nav .count { margin-left: auto; min-width: 1.375rem; height: 1.375rem; padding: 0 0.4rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: var(--bs-primary); color: #fff; }
+        .admin-nav .lucide { flex-shrink: 0; }
+        {{-- Colours of the count come from bootstrap-theme.css (primary / primary-foreground tokens, 4.5:1+ in both themes). --}}
+        .admin-nav .count { margin-left: auto; min-width: 1.375rem; height: 1.375rem; padding: 0 0.4rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+        .lucide { display: inline-block; vertical-align: -0.2em; }
         .admin-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
         .admin-topbar { position: sticky; top: 0; z-index: 1020; display: flex; align-items: center; gap: 0.5rem; min-height: 3.5rem; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--bs-border-color); background: var(--bs-body-bg); }
         .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--bs-body-color); font-size: 1.25rem; }
@@ -124,7 +126,7 @@
                                     @foreach ($group['items'] as $item)
                                         <li>
                                             <a href="{{ $item['href'] }}" data-nav="{{ $item['key'] }}" @if ($item['key'] === $adminNav['active']) aria-current="page" @endif>
-                                                <i class="bi {{ \App\Support\Admin\AdminNav::bootstrapIcon($item['icon']) }}" aria-hidden="true"></i>
+                                                {!! \App\Support\Admin\LucideIcons::svg($item['icon']) !!}
                                                 <span>{{ $item['label'] }}</span>
                                                 @if (! empty($item['badge']))
                                                     <span class="count" aria-label="{{ $item['badge'] }} waiting">{{ $item['badge'] }}</span>
@@ -144,22 +146,25 @@
     <div class="admin-main">
         <header class="admin-topbar">
             <button class="icon-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar" aria-controls="adminSidebar" aria-label="Open menu">
-                <i class="bi bi-list" aria-hidden="true"></i>
+                {!! \App\Support\Admin\LucideIcons::svg('menu', 20) !!}
             </button>
             <div class="flex-grow-1"></div>
             @stack('topbar-actions')
 
             <div class="dropdown">
+                {{-- Same control as the React pages (AdminShell ThemeMenu): sun / moon / monitor, the current choice on the button. --}}
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Theme (System)" id="themeMenuBtn">
-                    <i class="bi bi-circle-half" aria-hidden="true" id="themeMenuIcon"></i>
+                    @foreach (['light' => 'sun', 'dark' => 'moon', 'system' => 'monitor'] as $pref => $icon)
+                        <span class="theme-icon" data-theme-icon="{{ $pref }}" @if ($pref !== 'system') hidden @endif>{!! \App\Support\Admin\LucideIcons::svg($icon) !!}</span>
+                    @endforeach
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeMenuBtn">
                     <li><h2 class="dropdown-header h6 m-0">Theme</h2></li>
-                    @foreach (['light' => ['Light', 'bi-sun'], 'dark' => ['Dark', 'bi-moon-stars'], 'system' => ['System', 'bi-circle-half']] as $pref => [$label, $icon])
+                    @foreach (['light' => ['Light', 'sun'], 'dark' => ['Dark', 'moon'], 'system' => ['System', 'monitor']] as $pref => [$label, $icon])
                         <li>
-                            <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-theme-choice="{{ $pref }}" data-icon="{{ $icon }}" aria-pressed="false">
-                                <i class="bi {{ $icon }}" aria-hidden="true"></i>{{ $label }}
-                                <i class="bi bi-check2 ms-auto theme-check" aria-hidden="true"></i>
+                            <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-theme-choice="{{ $pref }}" aria-pressed="false">
+                                {!! \App\Support\Admin\LucideIcons::svg($icon, 16) !!}{{ $label }}
+                                <span class="ms-auto theme-check">{!! \App\Support\Admin\LucideIcons::svg('check', 16) !!}</span>
                             </button>
                         </li>
                     @endforeach
@@ -168,7 +173,7 @@
 
             <div class="dropdown">
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
-                    <span class="avatar" aria-hidden="true">{{ strtoupper(mb_substr($adminNav['user']['name'], 0, 2)) }}</span>
+                    <span class="avatar" aria-hidden="true">{{ $adminNav['user']['initials'] }}</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" style="min-width:15rem">
                     <li class="px-3 py-2">
@@ -176,10 +181,10 @@
                         <div class="small text-muted">{{ $adminNav['user']['roleLabel'] }}</div>
                     </li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{{ $adminNav['memberHref'] }}"><i class="bi bi-person me-2" aria-hidden="true"></i>Member view</a></li>
+                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="{{ $adminNav['memberHref'] }}">{!! \App\Support\Admin\LucideIcons::svg('user-round', 16) !!}Member view</a></li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('profile.security') }}">
-                            <i class="bi bi-shield-check me-2" aria-hidden="true"></i>Security &amp; 2FA
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('profile.security') }}">
+                            {!! \App\Support\Admin\LucideIcons::svg('security', 16) !!}Security &amp; 2FA
                             @if (auth()->user()->hasEnabledTwoFactor())
                                 <span class="badge bg-success ms-1">On</span>
                             @endif
@@ -189,7 +194,7 @@
                     <li>
                         <form action="{{ $adminNav['logoutUrl'] }}" method="POST" class="m-0">
                             @csrf
-                            <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Log out</button>
+                            <button type="submit" class="dropdown-item d-flex align-items-center gap-2">{!! \App\Support\Admin\LucideIcons::svg('log-out', 16) !!}Log out</button>
                         </form>
                     </li>
                 </ul>
@@ -227,7 +232,6 @@
 // Theme menu: same choices and storage as the React pages (cp-theme).
 (function () {
     const d = document.documentElement;
-    const icon = document.getElementById('themeMenuIcon');
     const btn = document.getElementById('themeMenuBtn');
     function sync() {
         const pref = d.getAttribute('data-theme-pref') || 'system';
@@ -235,8 +239,8 @@
             const on = el.dataset.themeChoice === pref;
             el.setAttribute('aria-pressed', on ? 'true' : 'false');
             el.querySelector('.theme-check').style.visibility = on ? 'visible' : 'hidden';
-            if (on && icon) icon.className = 'bi ' + el.dataset.icon;
         });
+        document.querySelectorAll('[data-theme-icon]').forEach(el => { el.hidden = el.dataset.themeIcon !== pref; });
         btn?.setAttribute('aria-label', 'Theme (' + pref.charAt(0).toUpperCase() + pref.slice(1) + ')');
     }
     document.querySelectorAll('[data-theme-choice]').forEach(el => {
@@ -261,6 +265,16 @@ document.querySelectorAll('input[type="date"]').forEach(input => {
     input.addEventListener('change', show);
     show();
 });
+
+// A form came back with errors: move focus to the first invalid field (its message is right under it).
+(function () {
+    const first = document.querySelector('#main :is(input, select, textarea).is-invalid:not([type="hidden"]), #main .is-invalid :is(input, select, textarea):not([type="hidden"]), #main [aria-invalid="true"]');
+    if (!first || typeof first.focus !== 'function') return;
+    // Inside a closed dialog (e.g. "Record payment…"), the page that opens it handles focus.
+    if (first.closest('.modal:not(.show)')) return;
+    first.focus({ preventScroll: true });
+    first.scrollIntoView({ block: 'center' });
+})();
 
 // CSP-safe replacements for inline event handlers.
 // Forms with data-confirm prompt before submission.

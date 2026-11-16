@@ -181,7 +181,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
   const title = isEdit ? `Edit ${item.ref}` : isWelfare ? "New welfare case" : "New expense";
 
   return (
-    <AdminLayout nav={nav} active="fund-usage" title={title} wide={false}>
+    <AdminLayout nav={nav} active="fund-usage" title={title} wide={false} ownErrors>
       <PageHeader
         eyebrow={
           <Link href={urls.index} className="hover:underline">

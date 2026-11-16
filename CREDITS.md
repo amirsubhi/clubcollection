@@ -114,7 +114,7 @@ ones pinned in `resources/views/layouts/*.blade.php`, `resources/views/install/i
 | Library | Version | Licence | Copyright | Source |
 |---|---|---|---|---|
 | Bootstrap | 5.3.3 | MIT | 2011-2024 The Bootstrap Authors | https://github.com/twbs/bootstrap |
-| Bootstrap Icons | 1.11.3 | MIT | 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons |
+| Bootstrap Icons | 1.11.3 | MIT | 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons (page-body icons on the classic Blade pages only; the Blade sidebar and top bar use Lucide) |
 | Chart.js | 4.4.4 | MIT | 2014-2024 Chart.js Contributors | https://github.com/chartjs/Chart.js |
 
 Chart.js draws the charts on the classic admin dashboard and the super admin's statistics page.
@@ -137,9 +137,11 @@ Chart.js draws the charts on the classic admin dashboard and the super admin's s
   `resources/js/Pages/Admin/FundUsage/Index.tsx` for the faceted filters).
 - **[Inertia.js](https://inertiajs.com)** (MIT): the React pages are served by Laravel controllers through Inertia's
   Laravel adapter and React client, so the app keeps Laravel's routing, auth and validation with no separate API.
-- **[Lucide](https://lucide.dev)** (ISC): the icons on the React pages.
+- **[Lucide](https://lucide.dev)** (ISC): the icons on the React pages, and the sidebar, top bar and menu icons on the
+  classic Blade pages (inline SVG paths copied from lucide-react 1.73.0 into `app/Support/Admin/LucideIcons.php`; licence
+  text in [`docs/THIRD-PARTY-LICENSES.md`](docs/THIRD-PARTY-LICENSES.md)).
 - **[Bootstrap](https://getbootstrap.com)** and **[Bootstrap Icons](https://icons.getbootstrap.com)** (MIT): the
-  remaining Blade pages.
+  remaining Blade pages (Bootstrap Icons only for icons inside the page body).
 
 ### UX research
 

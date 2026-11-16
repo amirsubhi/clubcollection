@@ -369,9 +369,11 @@ class PayAllTest extends TestCase
         Mail::assertSent(PaymentConfirmation::class, 1);
 
         // The result page shows one receipt with a line per fee.
-        $this->actingAs($this->member)->get(route('member.payments.group-result', $bill))
+        // Opened from the gateway's return (with its query string): "Kongsi" still shares the clean receipt URL.
+        $this->actingAs($this->member)->get(route('member.payments.group-result', $bill).'?status_id=1&billcode=X')
             ->assertInertia(fn (Assert $page) => $page->component('Member/PayResult')
                 ->where('outcome', 'paid')
+                ->where('receiptUrl', route('member.payments.group-result', $bill))
                 ->where('receipt.amount', 6000)
                 ->has('receipt.lines', 3)
                 ->where('receipt.lines.0.receiptNo', 'RCP-'.str_pad((string) $this->fees[0]->id, 6, '0', STR_PAD_LEFT)));

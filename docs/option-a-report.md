@@ -360,3 +360,11 @@ Follow-ups (non-blocking):
 - 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
 - Blade Payments summary total is a separate query from the status counts (harmless race).
 
+### R2b follow-ups (non-blocking)
+- Inertia requests that hit 419/500/503 show the branded page inside Inertia's error modal (iframe nonce mismatch likely); force a full-page reload on 419 for Inertia requests.
+- Return a small text/JSON body (not branded HTML) for `/webhook/*` errors.
+- `/up` health view now carries the CSP and may render unstyled (status stays 200).
+- On PHP 8.4, re-check an untrusted Host header returns 400 (here 8.3 gives 500 via isVirtual).
+- Billing WhatsApp field: hint that landlines need WhatsApp Business; help copy: a shared receipt link needs the member's own login.
+- Statistics "Collected vs spent" trend is still a Chart.js bar chart (token colours); convert if wanted.
+

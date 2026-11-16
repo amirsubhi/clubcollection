@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, router, useForm } from "@inertiajs/react";
-import { ArrowRight, Check, CheckCircle2, Hourglass, Info, Landmark, Save, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Hourglass, Info, Landmark, MessageCircle, Save, ShieldCheck, X } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Field } from "@/components/app/Field";
@@ -26,6 +26,8 @@ interface Settings {
   gateway_fee: string;
   /** Days after the due date before a fee is "Overdue" (Lewat) and reminded; 0–60, as typed. */
   overdue_grace_days: string;
+  /** Optional WhatsApp help number, as shown ("+60 12-345 6789"); empty = members get the email link. */
+  whatsapp_number: string;
   transfer_enabled: boolean;
   bank_name: string;
   bank_account_name: string;
@@ -313,7 +315,7 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
             <legend className="mb-2 text-sm font-medium">Default plan</legend>
             <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-describedby="default-plan-hint">
               {plans.map((p) => (
-                <Choice key={p.key} id={`default_${p.key}`} title={p.label} hint={!allowed[p.key] ? "Allow this plan first" : p.key === "yearly" ? "Recommended" : undefined} disabled={!allowed[p.key]}>
+                <Choice key={p.key} id={`default_${p.key}`} title={p.label} hint={!allowed[p.key] ? "Allow this plan first" : data.default_plan === p.key ? "Members see it marked “Disyorkan” (Recommended)" : undefined} disabled={!allowed[p.key]}>
                   <input
                     type="radio"
                     id={`default_${p.key}`}
@@ -414,6 +416,35 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
               invalid={!!errors.overdue_grace_days}
               className="sm:w-40"
             />
+          </Field>
+        </Section>
+
+        <Section
+          id="help"
+          title="Member help by WhatsApp (optional)"
+          sub="When a number is set, the “Perlu bantuan?” links on members' payment pages, receipts and rejected slips open WhatsApp with the fee and reference already typed in. Leave it empty to keep the email link."
+        >
+          <Field
+            id="whatsapp_number"
+            label="WhatsApp number"
+            error={errors.whatsapp_number}
+            hint="A Malaysian number like 012-345 6789, or any number with its country code (+65…); it is saved in the +60 form. Members see it, so use the club's or treasurer's work number."
+          >
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+              <Input
+                id="whatsapp_number"
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                maxLength={30}
+                value={data.whatsapp_number}
+                onChange={(e) => setData("whatsapp_number", e.target.value)}
+                invalid={!!errors.whatsapp_number}
+                placeholder="e.g. 012-345 6789"
+                className="sm:w-64"
+              />
+            </div>
           </Field>
         </Section>
 

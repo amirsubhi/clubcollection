@@ -8,6 +8,7 @@ use App\Services\AuditService;
 use App\Services\BankDetailsChangeService;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundFigures;
+use App\Support\Contact\WhatsAppNumber;
 use App\Support\Payments\DisplayStatus;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Validator;
@@ -23,7 +24,7 @@ class ClubBillingController extends Controller
 {
     private const FIELDS = [
         'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan', 'gateway_fee_payer', 'gateway_fee_sen',
-        'overdue_grace_days', 'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
+        'overdue_grace_days', 'whatsapp_number', 'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
     public function __construct(private BankDetailsChangeService $bankChanges) {}
@@ -92,6 +93,7 @@ class ClubBillingController extends Controller
                 'gateway_fee_payer' => $memberFeeAllowed ? $club->gatewayFeePayer() : 'club',
                 'gateway_fee' => number_format($club->gatewayFeeSen() / 100, 2, '.', ''),
                 'overdue_grace_days' => (string) $club->overdueGraceDays(),
+                'whatsapp_number' => WhatsAppNumber::display($club->whatsapp_number),
                 'transfer_enabled' => (bool) $club->transfer_enabled,
                 'bank_name' => $club->bank_name ?? '',
                 'bank_account_name' => $club->bank_account_name ?? '',
@@ -124,6 +126,12 @@ class ClubBillingController extends Controller
             // Days after the due date before a fee is "Overdue" and reminded (DisplayStatus).
             // (Left out by older clients: the current value is kept.)
             'overdue_grace_days' => 'sometimes|required|integer|min:0|max:'.DisplayStatus::MAX_GRACE_DAYS,
+            // Optional WhatsApp help number for members; normalised to E.164 below. (Left out by older clients: kept.)
+            'whatsapp_number' => ['sometimes', 'nullable', 'string', 'max:30', function (string $attr, mixed $value, \Closure $fail) {
+                if (trim((string) $value) !== '' && WhatsAppNumber::normalise((string) $value) === null) {
+                    $fail('Enter a phone number WhatsApp can reach, e.g. 012-345 6789 or +60 12-345 6789.');
+                }
+            }],
             // Manual bank / DuitNow transfer (P2). Members see these, so plain text.
             'transfer_enabled' => 'boolean',
             'bank_name' => 'nullable|string|max:100',
@@ -181,6 +189,9 @@ class ClubBillingController extends Controller
             'gateway_fee_payer' => $data['gateway_fee_payer'],
             'gateway_fee_sen' => (int) round(((float) $data['gateway_fee']) * 100),
             'overdue_grace_days' => (int) ($data['overdue_grace_days'] ?? $club->overdueGraceDays()),
+            'whatsapp_number' => array_key_exists('whatsapp_number', $data)
+                ? WhatsAppNumber::normalise($data['whatsapp_number'])
+                : $club->whatsapp_number,
         ];
 
         $old = $club->only(self::FIELDS);
@@ -192,7 +203,7 @@ class ClubBillingController extends Controller
 
         AuditService::log(
             'club.billing_updated',
-            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; overdue after '.$new['overdue_grace_days'].' day(s); bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
+            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; overdue after '.$new['overdue_grace_days'].' day(s); WhatsApp help '.($new['whatsapp_number'] ? 'on' : 'off').'; bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
             $club,
             $club->id,
             $old,

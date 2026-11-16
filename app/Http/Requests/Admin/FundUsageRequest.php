@@ -86,11 +86,32 @@ class FundUsageRequest extends FormRequest
 
     public function messages(): array
     {
+        // One wording style (what to do, in plain words), shown in the error summary and under the field.
+        $welfare = $this->input('type') === 'welfare';
+
         return [
+            'type.required' => 'Choose a record type.',
+            'type.in' => 'Choose a record type.',
+            'description.required' => 'Enter a description.',
+            'description.max' => 'Keep the description to 500 characters or fewer.',
             'payee.required' => 'Enter who was paid.',
-            'amount.min' => 'Amount must be more than RM 0.00.',
-            'amount.regex' => 'Amount can have at most 2 decimal places.',
+            'amount.required' => 'Enter the amount.',
+            'amount.numeric' => 'Enter the amount as a number, e.g. 120.50.',
+            'amount.min' => 'Enter an amount more than RM 0.00.',
+            'amount.max' => 'Enter an amount under RM 10,000,000.',
+            'amount.regex' => 'Enter the amount with at most 2 decimal places.',
+            'expense_date.required' => $welfare ? 'Enter the date the committee approved it.' : 'Enter the invoice date.',
+            'expense_date.date_format' => $welfare ? 'Enter the date the committee approved it.' : 'Enter the invoice date.',
+            'paid_date.date_format' => 'Enter the date paid as a full date.',
             'expense_category_id.required' => 'Choose a category.',
+            'welfare.beneficiary_user_id.required' => 'Choose the beneficiary member.',
+            'welfare.subject_name.required' => 'Enter the name of the deceased or affected person.',
+            'welfare.relationship.required' => 'Choose the relationship to the member.',
+            'welfare.relationship.in' => 'Choose the relationship to the member.',
+            'welfare.recipient_name.required' => 'Enter who received the payout.',
+            'welfare.certificate_sighted_by.required_with' => 'Choose who sighted the certificate.',
+            'welfare.certificate_sighted_at.required_with' => 'Enter the date the certificate was sighted.',
+            'welfare.certificate_sighted_at.before_or_equal' => 'The date the certificate was sighted cannot be in the future.',
             'expense_category_id.exists' => 'The selected category does not belong to this club.',
             'files.max' => 'You can attach at most '.Attachment::MAX_FILES.' documents.',
             'files.*.mimes' => 'Documents must be PDF, JPG, PNG or WebP.',

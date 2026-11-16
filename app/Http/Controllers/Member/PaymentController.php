@@ -715,9 +715,25 @@ class PaymentController extends Controller
     {
         return [
             'member' => ['name' => $payment->user->name, 'email' => $payment->user->email],
-            'payClub' => ['id' => $payment->club->id, 'name' => $payment->club->name, 'email' => $payment->club->email],
+            'payClub' => self::payClubProps($payment->club),
             'paymentsUrl' => route('member.payments.index', $payment->club_id),
             'dashboardUrl' => route('member.dashboard'),
+        ];
+    }
+
+    /**
+     * The club as the payment pages show it, with where "Perlu bantuan?" goes:
+     * WhatsApp (digits for wa.me) when the club set a number, else its email.
+     *
+     * @return array{id: int, name: string, email: ?string, whatsapp: ?string}
+     */
+    public static function payClubProps(Club $club): array
+    {
+        return [
+            'id' => $club->id,
+            'name' => $club->name,
+            'email' => $club->email,
+            'whatsapp' => \App\Support\Contact\WhatsAppNumber::waDigits($club->whatsapp_number),
         ];
     }
 

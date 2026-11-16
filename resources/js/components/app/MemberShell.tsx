@@ -26,7 +26,7 @@ export function LangToggle() {
           aria-checked={lang === l}
           onClick={() => setLang(l)}
           className={cn(
-            "inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "inline-flex h-11 min-w-[44px] items-center justify-center rounded-full px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -135,7 +135,7 @@ export function MemberShell({
                       active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <span className={cn("flex h-8 w-full max-w-14 items-center justify-center rounded-full transition-colors", active && "bg-accent")}>
+                    <span className={cn("flex h-8 w-full max-w-[56px] items-center justify-center rounded-full transition-colors", active && "bg-accent")}>
                       <Icon className="h-[22px] w-[22px]" aria-hidden strokeWidth={active ? 2.2 : 1.75} />
                     </span>
                     {t(label)}

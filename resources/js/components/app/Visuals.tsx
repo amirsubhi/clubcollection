@@ -25,17 +25,22 @@ export function IconBubble({ Icon, tone = "accent", size = 36, className }: { Ic
 
 const avatarTones = ["bg-accent text-accent-foreground", "bg-secondary text-foreground"];
 
+const PARTICLES = new Set(["bin", "binti", "a/l", "a/p"]);
+
+/** Same rule as App\Support\Initials: first letters (code points) of the first two words, skipping bin / binti / a/l / a/p. */
 export function initials(name: string) {
-  const parts = name.replace(/\b(bin|binti|a\/l|a\/p)\b/gi, "").split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+  const words = name.trim().split(/\s+/u).filter((w) => w !== "" && !PARTICLES.has(w.toLowerCase()));
+  const first = (w?: string) => (w ? (Array.from(w)[0] ?? "") : "");
+  return (first(words[0]) + first(words[1])).toUpperCase();
 }
 
-export function Avatar({ name, size = 36, className, ring }: { name: string; size?: 28 | 36 | 44; className?: string; ring?: boolean }) {
+/** initials: when the server already made them (App\Support\Initials, shared with the Blade pages). */
+export function Avatar({ name, initials: given, size = 36, className, ring }: { name: string; initials?: string; size?: 28 | 36 | 44; className?: string; ring?: boolean }) {
   const tone = avatarTones[[...name].reduce((s, c) => s + c.charCodeAt(0), 0) % avatarTones.length];
   const s = size === 28 ? "h-7 w-7 text-[11px]" : size === 36 ? "h-9 w-9 text-xs" : "h-11 w-11 text-sm";
   return (
     <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-bold", s, tone, ring && "ring-2 ring-card", className)} aria-hidden>
-      {initials(name)}
+      {given ?? initials(name)}
     </span>
   );
 }

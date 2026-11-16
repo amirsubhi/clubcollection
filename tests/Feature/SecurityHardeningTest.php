@@ -355,7 +355,12 @@ class SecurityHardeningTest extends TestCase
         $response = $this->call('POST', route('member.payments.transfer', $p), [], [], [], ['CONTENT_LENGTH' => (string) (1024 * 1024 * 1024)]);
 
         $response->assertStatus(413);
-        $response->assertSee('Fail terlalu besar')->assertSee('Upload too large');
+        // Branded page (layouts.auth), BM by default; the saved language gives English.
+        $response->assertSee('<html lang="ms">', false)->assertSee('Fail terlalu besar')->assertSee('10 MB');
         $this->assertSame('pending', $p->fresh()->status);
+
+        $this->call('POST', route('member.payments.transfer', $p), [], [\App\Http\Middleware\AuthPageLocale::COOKIE => 'en'], [], ['CONTENT_LENGTH' => (string) (1024 * 1024 * 1024)])
+            ->assertStatus(413)
+            ->assertSee('Upload too large');
     }
 }

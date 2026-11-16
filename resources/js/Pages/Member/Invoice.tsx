@@ -3,6 +3,7 @@ import { Head, Link } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
+import { ReceiptActions } from "@/components/app/ReceiptActions";
 import { ReceiptCard } from "@/components/app/ReceiptCard";
 import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,8 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             items: [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }],
           }}
         />
-        <PrintButton />
+        <ReceiptActions receiptNo={receipt.receiptNo} amount={receipt.amount} paidAt={receipt.paidAt} clubName={payClub.name} url={payment.urls.invoice} />
+        <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
     );
   }
@@ -89,45 +91,48 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             )}
           </div>
         </dl>
-        <table className="w-full text-base">
-          <thead>
-            <tr className="border-b text-left text-sm text-muted-foreground">
-              <th scope="col" className="py-2 font-medium">
+        {/* Item rows wrap (amount under the item) with large text instead of running off a narrow screen. */}
+        <div className="text-base" role="table" aria-label={t("invoice")}>
+          <div role="rowgroup">
+            <div role="row" className="flex flex-wrap justify-between gap-x-3 border-b py-2 text-sm text-muted-foreground">
+              <span role="columnheader" className="font-medium">
                 {t("item")}
-              </th>
-              <th scope="col" className="py-2 text-right font-medium">
+              </span>
+              <span role="columnheader" className="text-right font-medium">
                 {t("amount")}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b">
-              <td className="py-3 pr-2">
+              </span>
+            </div>
+          </div>
+          <div role="rowgroup">
+            <div role="row" className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 border-b py-3">
+              <span role="cell" className="min-w-0 flex-[1_1_10rem] break-words">
                 {feeLabel(payment)}
                 <span className="block text-sm text-muted-foreground">{t(`freq_${payment.frequency}`)}</span>
-              </td>
-              <td className="py-3 text-right align-top">
+              </span>
+              <span role="cell" className="ml-auto text-right">
                 <Money sen={payment.amount} />
-              </td>
-            </tr>
+              </span>
+            </div>
             {discount && (
-              <tr className="border-b text-sm text-muted-foreground">
-                <td className="py-2 pr-2">
+              <div role="row" className="flex flex-wrap justify-between gap-x-3 gap-y-1 border-b py-2 text-sm text-muted-foreground">
+                <span role="cell" className="min-w-0 flex-[1_1_10rem] break-words">
                   {t("discount")}: {discount.name}
-                </td>
-                <td className="py-2 text-right">{discount.type === "fixed" ? `−${rm(discount.value)}` : `−${discount.value}%`}</td>
-              </tr>
+                </span>
+                <span role="cell" className="ml-auto text-right">
+                  {discount.type === "fixed" ? `−${rm(discount.value)}` : `−${discount.value}%`}
+                </span>
+              </div>
             )}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className="pt-3 font-semibold">{t("total")}</td>
-              <td className="pt-3 text-right">
+            <div role="row" className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-3">
+              <span role="rowheader" className="font-semibold">
+                {t("total")}
+              </span>
+              <span role="cell" className="ml-auto min-w-0 text-right">
                 <Money sen={payment.amount} className="font-display text-2xl font-bold !whitespace-normal" />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
       {payment.status === "verifying" && payment.urls.review && (
         <section aria-labelledby="inv-vf" className="flex items-start gap-3 rounded-[20px] bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30 print:hidden" data-testid="invoice-verifying">
@@ -172,7 +177,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
         </Button>
       )}
       <PrintButton />
-      <HelpLine email={payClub.email} />
+      <HelpLine club={payClub} fee={payment} reference={payment.invoiceNo} />
     </MemberShell>
   );
 }

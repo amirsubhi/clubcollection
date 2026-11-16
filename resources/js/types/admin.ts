@@ -5,7 +5,7 @@ export interface AdminNavProps {
   groups: { title: string; items: { key: string; label: string; href: string; icon: string; external: boolean; badge?: number | null }[] }[];
   homeHref: string;
   brandSubtitle: string | null;
-  user: { name: string; roleLabel: string };
+  user: { name: string; initials: string; roleLabel: string };
   memberHref: string;
   logoutUrl: string;
 }

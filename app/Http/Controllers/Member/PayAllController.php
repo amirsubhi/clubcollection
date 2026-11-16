@@ -213,6 +213,8 @@ class PayAllController extends Controller
             ] : null,
             'statusUrl' => route('member.payments.group-status', $bill),
             'reviewUrl' => route('member.payments.review-all', $club),
+            // The group receipt's own clean address (no gateway query string), for "Kongsi".
+            'receiptUrl' => $outcome === 'paid' ? route('member.payments.group-result', $bill) : null,
             ...self::context($club),
         ]);
     }
@@ -422,7 +424,7 @@ class PayAllController extends Controller
 
         return [
             'member' => ['name' => $user->name, 'email' => $user->email],
-            'payClub' => ['id' => $club->id, 'name' => $club->name, 'email' => $club->email],
+            'payClub' => PaymentController::payClubProps($club),
             'paymentsUrl' => route('member.payments.index', $club),
             'dashboardUrl' => route('member.dashboard'),
         ];

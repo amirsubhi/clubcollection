@@ -47,26 +47,6 @@ final class AdminNav
     /** Super-admin pages about every club: the sidebar shows no club group there. */
     private const CROSS_CLUB = ['admin.clubs.index', 'admin.clubs.create', 'admin.clubs.store', 'admin.admins.*', 'admin.statistics', 'admin.audit-logs.*'];
 
-    /** Nav icon name → Bootstrap Icons class (Blade); AdminLayout.tsx maps the same names to lucide icons. */
-    private const BLADE_ICONS = [
-        'dashboard' => 'bi-grid-1x2',
-        'fund' => 'bi-receipt',
-        'verify' => 'bi-patch-check',
-        'payments' => 'bi-wallet2',
-        'members' => 'bi-people',
-        'rates' => 'bi-coin',
-        'billing' => 'bi-sliders',
-        'discounts' => 'bi-percent',
-        'categories' => 'bi-diagram-3',
-        'ledger' => 'bi-journal-bookmark',
-        'audit' => 'bi-journal-text',
-        'home' => 'bi-house',
-        'clubs' => 'bi-building',
-        'admins' => 'bi-person-gear',
-        'statistics' => 'bi-bar-chart-line',
-        'security' => 'bi-shield-check',
-    ];
-
     /**
      * Sidebar props for an Inertia admin page (AdminShell).
      *
@@ -173,11 +153,6 @@ final class AdminNav
         return null;
     }
 
-    public static function bootstrapIcon(string $icon): string
-    {
-        return self::BLADE_ICONS[$icon] ?? 'bi-dot';
-    }
-
     /**
      * The club whose pages the sidebar lists: the one in the URL (directly or
      * through a record such as a payment), else the one the admin last worked
@@ -223,12 +198,13 @@ final class AdminNav
     }
 
     /**
-     * @return array{name: string, roleLabel: string}
+     * @return array{name: string, initials: string, roleLabel: string}
      */
     private static function userProps(User $user): array
     {
         return [
             'name' => $user->name,
+            'initials' => \App\Support\Initials::of($user->name),
             'roleLabel' => $user->isSuperAdmin() ? 'Super admin' : 'Club admin',
         ];
     }

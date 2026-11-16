@@ -393,12 +393,13 @@ export default function VerificationsIndex({ nav, club, tab: initialTab, pending
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Props["tab"])}>
-        <TabsList>
-          <TabsTrigger value="pending">
+        {/* Two equal halves that may wrap their label on a narrow phone, instead of clipping "Recently handled". */}
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:w-auto">
+          <TabsTrigger value="pending" className="min-h-10 flex-wrap whitespace-normal text-center">
             <Clock className="h-4 w-4" aria-hidden /> Waiting
             <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{pending.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="handled">
+          <TabsTrigger value="handled" className="min-h-10 flex-wrap whitespace-normal text-center">
             <BadgeCheck className="h-4 w-4" aria-hidden /> Recently handled
             <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{handled.length}</span>
           </TabsTrigger>

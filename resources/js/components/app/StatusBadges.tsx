@@ -49,7 +49,7 @@ export function FundStatusBadge({ status, showBm = false, returned = false }: { 
         <span tabIndex={0} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <StatusChip Icon={Icon} tone={tone}>
             {label}
-            {showBm && <span className="font-medium opacity-80">· {bm}</span>}
+            {showBm && <span className="font-medium">· {bm}</span>}
           </StatusChip>
         </span>
       </TooltipTrigger>

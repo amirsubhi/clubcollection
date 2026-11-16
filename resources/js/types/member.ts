@@ -34,7 +34,8 @@ export interface MemberReceipt {
 /** Props every single-payment page receives (PaymentController::context()). */
 export interface PaymentContext {
   member: { name: string; email: string };
-  payClub: { id: number; name: string; email: string | null };
+  /** whatsapp: digits for wa.me when the club set a help number (PaymentController::payClubProps). */
+  payClub: { id: number; name: string; email: string | null; whatsapp: string | null };
   paymentsUrl: string;
   dashboardUrl: string;
 }

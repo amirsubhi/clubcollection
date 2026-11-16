@@ -12,13 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Apply security headers to every web response
-        // HandleInertiaRequests comes after SecurityHeaders so the CSP nonce
-        // (and Vite::useCspNonce) is set before an Inertia page renders. It
-        // passes plain Blade responses through untouched.
+        // SecurityHeaders (global, below) runs before HandleInertiaRequests, so the
+        // CSP nonce (and Vite::useCspNonce) is set before an Inertia page renders.
+        // HandleInertiaRequests passes plain Blade responses through untouched.
         $middleware->web(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
+        // Security headers (and the CSP nonce) on every response, outermost, so
+        // the error pages thrown before the web group runs (404 for an unknown
+        // URL, 503 maintenance, 413 upload too large) get the same CSP and can
+        // style themselves with the nonce (resources/views/errors).
+        $middleware->prepend(\App\Http\Middleware\SecurityHeaders::class);
 
         // Trusted proxies (TRUSTED_PROXIES) are applied in AppServiceProvider
         // from config('app.trusted_proxies'): this callback runs before .env

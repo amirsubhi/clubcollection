@@ -16,6 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('logo')->nullable();
             $table->string('email')->nullable();
+            // Optional WhatsApp help number, E.164 ("+60123456789"); when set, members'
+            // "Perlu bantuan?" links open WhatsApp instead of email (R2b).
+            $table->string('whatsapp_number', 20)->nullable();
             $table->boolean('is_active')->default(true);
             // Billing plans members may choose when paying ahead (P1).
             $table->boolean('allow_monthly')->default(true);

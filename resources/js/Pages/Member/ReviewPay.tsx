@@ -96,7 +96,7 @@ function MethodOption({
   return (
     <label
       className={cn(
-        "flex min-h-[64px] items-center gap-3 rounded-2xl border-2 px-4 py-3 transition-colors focus-within:ring-2 focus-within:ring-ring",
+        "flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border-2 px-4 py-3 transition-colors focus-within:ring-2 focus-within:ring-ring",
         disabled ? "cursor-not-allowed border-dashed border-border bg-muted/60" : "cursor-pointer",
         !disabled && (checked ? "border-primary bg-accent/60" : "border-border hover:bg-muted/60"),
       )}
@@ -112,13 +112,14 @@ function MethodOption({
         aria-describedby={`method-${value}-sub`}
         className="h-5 w-5 shrink-0 accent-[rgb(var(--primary))]"
       />
-      <span className="min-w-0 flex-1">
+      {/* With large text on a narrow phone, the charge note drops under the title instead of squeezing it. */}
+      <span className="min-w-0 flex-[1_1_9rem] break-words">
         <span className={cn("block text-base font-semibold leading-snug", disabled && "text-muted-foreground")}>{title}</span>
         <span id={`method-${value}-sub`} className={cn("block text-sm", disabled ? "font-medium text-foreground" : "text-muted-foreground")}>
           {sub}
         </span>
       </span>
-      {!disabled && <span className="shrink-0 text-sm font-semibold">{aside}</span>}
+      {!disabled && aside && <span className="ml-auto max-w-full text-right text-sm font-semibold">{aside}</span>}
     </label>
   );
 }
@@ -536,7 +537,10 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                   {t("reason")}: {rejection.reason}
                 </p>
                 <p className="mt-1">{t("rejectedBody")}</p>
-                {rejection.at && <p className="mt-1 text-sm opacity-80">{fmtDate(rejection.at, lang)}</p>}
+                {rejection.at && <p className="mt-1 text-sm">{fmtDate(rejection.at, lang)}</p>}
+                {(payClub.whatsapp || payClub.email) && (
+                  <HelpLine club={payClub} fee={payment} reference={transfer?.reference ?? payment?.invoiceNo} className="mt-1 min-h-11 justify-start text-left" />
+                )}
               </div>
             </Alert>
           )}
@@ -672,7 +676,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
         </>
       )}
 
-      <HelpLine email={payClub.email} />
+      <HelpLine club={payClub} fee={payment} reference={transfer?.reference ?? payment?.invoiceNo} />
     </MemberShell>
   );
 }

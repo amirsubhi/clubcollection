@@ -4,6 +4,7 @@ import { Head, Link, router } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
+import { ReceiptActions } from "@/components/app/ReceiptActions";
 import { ReceiptCard } from "@/components/app/ReceiptCard";
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ interface Props extends PaymentContext {
   reference: string | null;
   statusUrl: string;
   reviewUrl: string;
+  /** "Bayar semua" paid: the group receipt's clean URL (PayAllController::result). */
+  receiptUrl?: string | null;
 }
 
 /** Poll every 5 s for about 30 s (6 checks), then tell the member we'll email them. */
@@ -134,7 +137,7 @@ function usePaymentStatusPoll(statusUrl: string, enabled: boolean) {
   return { check, checking, checkedAt, gaveUp: checks >= POLL_MAX };
 }
 
-export default function PayResult({ outcome, payment, group, receipt, verification, gateway, reference, statusUrl, reviewUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function PayResult({ outcome, payment, group, receipt, verification, gateway, reference, statusUrl, reviewUrl, receiptUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -199,7 +202,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
         <Button asChild size="xl" className="w-full rounded-full">
           <Link href={dashboardUrl}>{t("backHome")}</Link>
         </Button>
-        <HelpLine email={payClub.email} />
+        <HelpLine club={payClub} reference={reference} />
       </MemberShell>
     );
   }
@@ -259,8 +262,9 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <h2 className="font-display text-lg font-bold">{t("whatsNext")}</h2>
           <p className="mt-1 text-base">{t("whatsNextBody")}</p>
         </section>
+        <ReceiptActions receiptNo={receipt.receiptNo} amount={receipt.amount} paidAt={receipt.paidAt} clubName={payClub.name} url={payment?.urls.invoice ?? receiptUrl ?? undefined} />
         <div className="flex flex-col gap-2">
-          <Button asChild size="xl" className="w-full rounded-full">
+          <Button asChild variant="outline" size="xl" className="w-full rounded-full">
             <Link href={dashboardUrl}>{t("backHome")}</Link>
           </Button>
           {payment ? (
@@ -273,6 +277,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
             </Button>
           )}
         </div>
+        <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
     );
   }
@@ -310,7 +315,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
             <Link href={dashboardUrl}>{t("backHome")}</Link>
           </Button>
         </div>
-        <HelpLine email={payClub.email} />
+        <HelpLine club={payClub} fee={payment} reference={reference ?? payment?.invoiceNo} />
       </MemberShell>
     );
   }
@@ -359,7 +364,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <Link href={dashboardUrl}>{t("backHome")}</Link>
         </Button>
       </div>
-      <HelpLine email={payClub.email} />
+      <HelpLine club={payClub} fee={payment} reference={reference ?? payment?.invoiceNo} />
     </MemberShell>
   );
 }

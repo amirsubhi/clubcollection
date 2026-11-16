@@ -87,13 +87,9 @@ class StatisticsController extends Controller
             ->groupBy('job_level')
             ->pluck('count', 'job_level');
 
-        // Pre-build ordered arrays matching jobLevelLabels (consistent chart order,
-        // avoids array_map logic in the Blade template).
+        // One count per job level, in jobLevelLabels order (the bar list's order).
         $jobLevelDistribution = collect($jobLevelLabels)
             ->mapWithKeys(fn($label, $key) => [$key => (int) ($rawJobLevels[$key] ?? 0)]);
-
-        $jobLevelChartLabels = array_values($jobLevelLabels);
-        $jobLevelChartCounts = $jobLevelDistribution->values()->all();
 
         // ── Recent Transactions ───────────────────────────────────────────────
         $recentTransactions = Payment::with(['user', 'club'])
@@ -107,7 +103,6 @@ class StatisticsController extends Controller
             'paidCount', 'pendingCount', 'overdueCount', 'processingCount', 'verifyingCount',
             'totals', 'monthly', 'asOf',
             'clubStats', 'jobLevelLabels', 'jobLevelDistribution',
-            'jobLevelChartLabels', 'jobLevelChartCounts',
             'recentTransactions'
         ));
     }

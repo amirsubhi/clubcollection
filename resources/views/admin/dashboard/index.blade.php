@@ -6,29 +6,35 @@
 @section('content')
 {{-- Period Selector + Ledger shortcut --}}
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-<form method="GET" class="d-flex gap-2 align-items-center">
-    <select name="month" class="form-select form-select-sm" style="width:auto">
+<form method="GET" class="d-flex flex-wrap gap-2 align-items-end" aria-label="Period">
+    <div>
+    <label for="dash-month" class="form-label small mb-1">Month</label>
+    <select name="month" id="dash-month" class="form-select form-select-sm" style="width:auto">
         @foreach(range(1,12) as $m)
             <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option>
         @endforeach
     </select>
-    <select name="year" class="form-select form-select-sm" style="width:auto">
+    </div>
+    <div>
+    <label for="dash-year" class="form-label small mb-1">Year</label>
+    <select name="year" id="dash-year" class="form-select form-select-sm" style="width:auto">
         @foreach($availableYears as $y)
             <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
         @endforeach
     </select>
+    </div>
     <button type="submit" class="btn btn-sm btn-primary">View</button>
 </form>
 <div class="d-flex gap-2">
     @php $ledgerParams = '?' . http_build_query(['from' => date('Y-01-01'), 'to' => date('Y-m-d')]); @endphp
     <a href="{{ route('admin.clubs.ledger', $club) }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-journal-bookmark me-1"></i>Ledger
+        <i class="bi bi-journal-bookmark me-1" aria-hidden="true"></i>Ledger
     </a>
-    <a href="{{ route('admin.clubs.ledger.export', $club) . $ledgerParams }}" class="btn btn-sm btn-success">
-        <i class="bi bi-filetype-csv me-1"></i>Export CSV
+    <a href="{{ route('admin.clubs.ledger.export', $club) . $ledgerParams }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>Export CSV
     </a>
-    <a href="{{ route('admin.clubs.ledger.export-pdf', $club) . $ledgerParams }}" class="btn btn-sm btn-danger">
-        <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+    <a href="{{ route('admin.clubs.ledger.export-pdf', $club) . $ledgerParams }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Export PDF
     </a>
 </div>
 </div>
@@ -47,7 +53,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
                 <div class="text-muted small mb-1">Expenses This Month</div>
-                <div class="fs-4 fw-bold text-danger">RM {{ number_format($expenseThisMonth, 2) }}</div>
+                <div class="fs-4 fw-bold">RM {{ number_format($expenseThisMonth, 2) }}</div>
             </div>
         </div>
     </div>
@@ -55,7 +61,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
                 <div class="text-muted small mb-1">Income This Year</div>
-                <div class="fs-4 fw-bold text-primary">RM {{ number_format($incomeThisYear, 2) }}</div>
+                <div class="fs-4 fw-bold">RM {{ number_format($incomeThisYear, 2) }}</div>
             </div>
         </div>
     </div>
@@ -63,7 +69,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
                 <div class="text-muted small mb-1">Club Balance (All Time)</div>
-                <div class="fs-4 fw-bold {{ $balance >= 0 ? 'text-success' : 'text-danger' }}">
+                <div class="fs-4 fw-bold {{ $balance < 0 ? 'text-danger' : '' }}">
                     RM {{ number_format(abs($balance), 2) }} {{ $balance < 0 ? '(deficit)' : '' }}
                 </div>
             </div>
@@ -77,7 +83,23 @@
         <div class="card shadow-sm h-100">
             <div class="card-header fw-semibold">Income vs Expenses (Last 12 Months)</div>
             <div class="card-body">
-                <canvas id="incomeExpenseChart" height="100"></canvas>
+                <div style="position:relative;height:260px">
+                    <canvas id="incomeExpenseChart" role="img" aria-label="Bar chart of income and expenses per month for the last 12 months. The same figures are in the table below the chart."></canvas>
+                </div>
+                <details class="mt-3">
+                    <summary class="small fw-semibold">Show as table</summary>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm small mb-0">
+                            <caption class="visually-hidden">Income and expenses per month</caption>
+                            <thead><tr><th scope="col">Month</th><th scope="col" class="text-end">Income</th><th scope="col" class="text-end">Expenses</th></tr></thead>
+                            <tbody>
+                                @foreach($monthlyIncome as $label => $amt)
+                                <tr><th scope="row" class="fw-normal">{{ $label }}</th><td class="text-end money">RM {{ number_format($amt, 2) }}</td><td class="text-end money">RM {{ number_format($monthlyExpense[$label] ?? 0, 2) }}</td></tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
         </div>
     </div>
@@ -86,30 +108,13 @@
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
             <div class="card-header fw-semibold">Payment Status (All Time)</div>
-            <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                <canvas id="statusChart" height="160" style="max-width:200px"></canvas>
-                <div class="mt-3 w-100">
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-success me-1">&nbsp;</span>Paid</span>
-                        <strong>{{ $paidCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-secondary me-1">&nbsp;</span>Due</span>
-                        <strong>{{ $pendingCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-warning me-1">&nbsp;</span>Overdue</span>
-                        <strong>{{ $overdueCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-primary me-1">&nbsp;</span>FPX in progress</span>
-                        <strong>{{ $processingCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small">
-                        <span><span class="badge bg-info me-1">&nbsp;</span>Awaiting verification</span>
-                        <strong>{{ $verifyingCount }}</strong>
-                    </div>
-                </div>
+            <div class="card-body">
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Fee records by status',
+                    'testid' => 'status-bars',
+                    'rows' => collect([['Paid', $paidCount], ['Due', $pendingCount], ['Overdue', $overdueCount], ['FPX in progress', $processingCount], ['Awaiting verification', $verifyingCount]])
+                        ->map(fn ($r) => ['label' => $r[0], 'value' => $r[1], 'display' => number_format($r[1])])->all(),
+                ])
             </div>
         </div>
     </div>
@@ -121,18 +126,10 @@
         <div class="card shadow-sm h-100">
             <div class="card-header fw-semibold">Income by Job Level — {{ date('F', mktime(0,0,0,$month,1)) }} {{ $year }}</div>
             <div class="card-body">
-                @foreach($jobLevels as $key => $label)
-                @php $amt = $incomeByJobLevel[$key] ?? 0; $maxAmt = max(array_values($incomeByJobLevel) ?: [1]); @endphp
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span>{{ $label }}</span>
-                        <span class="fw-semibold">RM {{ number_format($amt, 2) }}</span>
-                    </div>
-                    <div class="progress" style="height:8px">
-                        <div class="progress-bar bg-success" style="width: {{ $maxAmt > 0 ? ($amt/$maxAmt*100) : 0 }}%"></div>
-                    </div>
-                </div>
-                @endforeach
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Income by job level',
+                    'rows' => collect($jobLevels)->map(fn ($label, $key) => ['label' => $label, 'value' => (float) ($incomeByJobLevel[$key] ?? 0), 'display' => 'RM '.number_format($incomeByJobLevel[$key] ?? 0, 2)])->values()->all(),
+                ])
             </div>
         </div>
     </div>
@@ -142,21 +139,16 @@
         <div class="card shadow-sm h-100">
             <div class="card-header fw-semibold">Expenses by Category — {{ date('F', mktime(0,0,0,$month,1)) }} {{ $year }}</div>
             <div class="card-body">
-                @php $maxExp = $expenseByCategory->max('total') ?: 1; @endphp
-                @forelse($expenseByCategory as $cat)
-                @php $amt = $cat->total ?? 0; @endphp
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span>{{ $cat->name }}</span>
-                        <span class="fw-semibold text-danger">RM {{ number_format($amt, 2) }}</span>
-                    </div>
-                    <div class="progress" style="height:8px">
-                        <div class="progress-bar bg-danger" style="width: {{ $maxExp > 0 ? ($amt/$maxExp*100) : 0 }}%"></div>
-                    </div>
+                @if ($expenseByCategory->isEmpty())
+                <p class="text-muted text-center py-3 mb-0">No expenses this month.</p>
+                @else
+                <div class="bar-list-spent">
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Expenses by category',
+                    'rows' => $expenseByCategory->map(fn ($cat) => ['label' => $cat->name, 'value' => (float) ($cat->total ?? 0), 'display' => 'RM '.number_format($cat->total ?? 0, 2)])->values()->all(),
+                ])
                 </div>
-                @empty
-                <p class="text-muted text-center py-3">No expenses this month.</p>
-                @endforelse
+                @endif
             </div>
         </div>
     </div>
@@ -173,7 +165,7 @@
             <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto">
                 @forelse($paidMembers as $m)
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
-                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
                     <span>{{ $m->name }}</span>
                     <span class="text-muted small ms-auto">{{ $jobLevels[$m->pivot->job_level] ?? '' }}</span>
                 </div>
@@ -193,7 +185,7 @@
             <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto">
                 @forelse($unpaidMembers as $m)
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
-                    <i class="bi bi-x-circle text-warning"></i>
+                    <i class="bi bi-circle text-muted" aria-hidden="true"></i>
                     <span>{{ $m->name }}</span>
                     <span class="text-muted small ms-auto">{{ $jobLevels[$m->pivot->job_level] ?? '' }}</span>
                 </div>
@@ -242,7 +234,7 @@
                         <div class="small fw-semibold">{{ Str::limit($e->description, 35) }}</div>
                         <div class="text-muted small">{{ $e->category->name }} &middot; {{ $e->expense_date->format('d M Y') }}</div>
                     </div>
-                    <span class="text-danger fw-semibold small">-RM {{ number_format($e->amount,2) }}</span>
+                    <span class="fw-semibold small">−RM {{ number_format($e->amount,2) }}</span>
                 </div>
                 @empty
                 <div class="list-group-item text-muted text-center py-3">No recent expenses.</div>
@@ -256,31 +248,40 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" integrity="sha384-G436+Z2nlA8+PNoeRvWdxKbvOf8E/y+lYxqht2iBwNHTQDV5CJr3+AGVj8fGZi5t" crossorigin="anonymous"></script>
 <script nonce="{{ $cspNonce }}">
-// Income vs Expense bar chart
-const labels = @json(array_keys($monthlyIncome));
-const incomeData = @json(array_values($monthlyIncome));
-const expenseData = @json(array_values($monthlyExpense));
-
-new Chart(document.getElementById('incomeExpenseChart'), {
-    type: 'bar',
-    data: {
-        labels,
-        datasets: [
-            { label: 'Income (RM)', data: incomeData, backgroundColor: 'rgba(25,135,84,0.7)', borderRadius: 4 },
-            { label: 'Expenses (RM)', data: expenseData, backgroundColor: 'rgba(220,53,69,0.7)', borderRadius: 4 },
-        ]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
-});
-
-// Payment status doughnut
-new Chart(document.getElementById('statusChart'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Paid', 'Due', 'Overdue', 'FPX in progress', 'Awaiting verification'],
-        datasets: [{ data: [{{ $paidCount }}, {{ $pendingCount }}, {{ $overdueCount }}, {{ $processingCount }}, {{ $verifyingCount }}], backgroundColor: ['#198754','#6c757d','#ffc107','#6f42c1','#0dcaf0'] }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } }, cutout: '65%' }
-});
+(function () {
+    if (!window.Chart) return;
+    // Theme tokens (tokens.css), like Statistics and the React dashboard: income solid lavender, expenses pale rose.
+    const fallback = { '--chart-1-stroke': '91 79 207', '--chart-4': '249 203 211', '--chart-4-stroke': '184 64 90', '--chart-grid': '232 230 243', '--chart-axis': '95 92 122' };
+    function tok(name, alpha) {
+        const v = (getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback[name]).split(/\s+/).join(', ');
+        return alpha === undefined ? `rgb(${v})` : `rgba(${v}, ${alpha})`;
+    }
+    const rm = (v) => 'RM ' + Number(v).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const chart = new Chart(document.getElementById('incomeExpenseChart'), {
+        type: 'bar',
+        data: {
+            labels: @json(array_keys($monthlyIncome)),
+            datasets: [
+                { label: 'Income', data: @json(array_values($monthlyIncome)), borderRadius: 4 },
+                { label: 'Expenses', data: @json(array_values($monthlyExpense)), borderRadius: 4, borderWidth: 1.5 },
+            ],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${rm(c.parsed.y)}` } } },
+            scales: { y: { beginAtZero: true } },
+        },
+    });
+    function paint() {
+        chart.data.datasets[0].backgroundColor = tok('--chart-1-stroke');
+        chart.data.datasets[1].backgroundColor = tok('--chart-4', 0.55);
+        chart.data.datasets[1].borderColor = tok('--chart-4-stroke');
+        Object.values(chart.options.scales).forEach(s => { s.grid = { ...(s.grid || {}), color: tok('--chart-grid') }; s.ticks = { ...(s.ticks || {}), color: tok('--chart-axis') }; });
+        chart.options.plugins.legend.labels = { ...(chart.options.plugins.legend.labels || {}), color: tok('--chart-axis') };
+        chart.update();
+    }
+    paint();
+    new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+})();
 </script>
 @endpush

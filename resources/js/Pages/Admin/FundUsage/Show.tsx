@@ -250,7 +250,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
           <Card className="relative overflow-hidden">
             <CardContent className="flex flex-col gap-5 p-4 pt-5 sm:p-6">
               <div className="flex flex-col gap-1 pr-24 sm:pr-36">
-                <span className="text-sm text-muted-foreground">{item.type === "welfare" ? "Welfare payout" : "Amount paid"}</span>
+                <span className="text-sm text-muted-foreground">{item.type === "welfare" ? "Welfare payout" : item.paidDate ? "Amount paid" : "Amount"}</span>
                 <Money sen={item.amount} className="figure font-display text-[40px] font-extrabold leading-none tracking-tight" />
                 <span className="text-sm">
                   to <span className="font-semibold">{fi.payee}</span> · {item.category}

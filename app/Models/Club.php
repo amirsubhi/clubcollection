@@ -12,7 +12,7 @@ class Club extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'logo', 'email', 'is_active',
+        'name', 'logo', 'email', 'whatsapp_number', 'is_active',
         'payment_gateway',
         'toyyibpay_secret_key', 'toyyibpay_category_code',
         'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
