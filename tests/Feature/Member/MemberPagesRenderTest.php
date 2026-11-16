@@ -66,7 +66,7 @@ class MemberPagesRenderTest extends TestCase
                 ->has('years')
                 ->has('payments', 1)
                 ->where('payments.0.id', $this->payment->id)
-                ->where('summary.pending', 6000)
+                ->where('summary.due', 6000)
                 ->where('futureForm.action', route('member.payments.generate-future', $this->club))
             );
 
@@ -82,7 +82,7 @@ class MemberPagesRenderTest extends TestCase
                 ->component('Member/Invoice')
                 ->where('payment.id', $this->payment->id)
                 ->where('payment.amount', 6000)
-                ->where('payment.status', 'pending')
+                ->where('payment.status', 'due')
                 ->where('receipt', null)
                 ->where('member.name', $this->member->name)
                 ->where('payClub.name', $this->club->name)

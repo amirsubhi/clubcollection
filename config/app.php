@@ -49,6 +49,14 @@ return [
     'install_token' => env('INSTALL_TOKEN'),
 
     /*
+    | Reverse proxies / load balancers whose X-Forwarded-* headers are trusted:
+    | a comma-separated list of IPs or CIDR ranges, or '*' (only when the edge
+    | strips client-supplied X-Forwarded-* headers). Empty trusts nothing.
+    | Applied by AppServiceProvider::configureTrustedProxies().
+    */
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
+
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
@@ -72,7 +80,9 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Dates (paid dates, "today", report windows) and the scheduler use this.
+    // Malaysian clubs: APP_TIMEZONE=Asia/Kuala_Lumpur (set by the install wizard).
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

@@ -11,21 +11,29 @@ running `php artisan serve`:
    Submit for approval.
 3. **Admin B (checker):** opens the record → Approve with the conflict-of-interest declaration →
    the dashboard "Spent this year" goes up by exactly RM 12.34.
-4. **Second member (bank transfer):** Review & pay → "Pindahan DuitNow (tiada caj)" → the bank details and
+4. **Second member (bank transfer):** Review & pay → "Pindahan bank / DuitNow" → the bank details and
    the `YURAN-{id}` reference show → uploads a PNG slip → the invoice, review page and Home show
    **Menunggu pengesahan**.
 5. **Admin B (verifier):** Verifications page → Approve with a bank reference → "Recently handled" shows
    it → the member's invoice is now the official receipt ("Pindahan bank / DuitNow").
+6. **"Bayar semua" by FPX:** a member with three open fees → Home "Bayar semua RM 150.00" → the review lists the
+   three fees → one gateway bill → back on Home the payment shows as in progress ("Semak status bayaran", no
+   "Bayar semua") → one webhook (HMAC of the group reference) settles all three → one receipt with a
+   line per fee.
+7. **"Bayar semua" by transfer:** another member sends one slip (`YURAN-G{id}`) for three fees → Admin B sees one
+   card listing the fees and the total and approves the set → the group page is now the receipt.
+
+The run signs in more than five times, so it pauses about a minute once for the login rate limit.
 
 Every step is screenshotted in light and dark (member 390×844, admin 1366×860). The run fails on any
 console error, uncaught page error, failed request, CSP violation or horizontal overflow, and exits
-non-zero. Ignored on purpose: Google Fonts and the Bootstrap CDN used by the legacy Blade login/home
+non-zero. Ignored on purpose: Google Fonts and the Bootstrap CDN still used by the remaining legacy Blade
 pages (unreachable in some sandboxes), and the 409 Chrome logs for Inertia's external redirect to the
 gateway (that is how `Inertia::location` works).
 
 ## Requirements
 
-- PHP 8.3+, Composer dependencies installed, `npm ci && npm run build` done (the test uses the
+- PHP 8.4 (`composer.lock` requires it), Composer dependencies installed, `npm ci && npm run build` done (the test uses the
   production build in `public/build`, not the Vite dev server; delete `public/hot` if present).
 - Node 18+ with the `playwright` package resolvable (`require('playwright')`) and its Chromium installed.
   It is **not** a project dependency, so `npm ci` never downloads browsers. Install once with

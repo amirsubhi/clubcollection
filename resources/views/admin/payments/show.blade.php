@@ -1,27 +1,43 @@
 @extends('layouts.app')
 @section('title', 'Payment Details')
-@section('page-title', 'Payment Details')
+@section('page-title', 'Payment #' . $payment->id)
+@section('page-club', $payment->club->name)
 
 @section('content')
+@php $display = \App\Support\Payments\DisplayStatus::of($payment); @endphp
 <div class="row justify-content-center">
     <div class="col-lg-6">
+        @foreach($refundFlags as $flag)
+        @php $nv = (array) $flag->new_values; @endphp
+        <div class="alert alert-warning d-flex gap-2" role="status" data-testid="refund-flag">
+            <i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i>
+            <div>
+                <p class="fw-semibold mb-1">
+                    @if($flag->action === 'payment.gateway_paid_after_manual')
+                        Paid online after it was recorded as {{ \App\Http\Controllers\Admin\TransferVerificationController::RECORDED_AS[$nv['paid_via'] ?? ''] ?? 'paid by hand' }}: both payments reached the club. Refund the online payment.
+                    @elseif($flag->action === 'payment.group_bill_refund')
+                        Online payment received for a group bill ({{ $nv['bill_code'] ?? 'n/a' }}), but nothing was marked paid: refund it, or record the fees.
+                    @elseif($flag->action === 'payment.underpaid_webhook')
+                        Online payment was less than the bill{{ isset($nv['bill_code']) ? ' ('.$nv['bill_code'].')' : '' }}: nothing was marked paid. Refund it, or record the fee once the rest is paid.
+                    @elseif($flag->action === 'payment.gateway_paid_during_verification')
+                        Paid online as well as by bank transfer: refund one of them to the member.
+                    @else
+                        Paid online twice{{ ((int) $flag->auditable_id !== (int) $payment->id) ? ' (group bill '.($nv['bill_code'] ?? 'n/a').')' : '' }}: refund one of them to the member.
+                    @endif
+                </p>
+                <p class="small mb-0">{{ $flag->created_at->format('d M Y, g:i a') }}@if(!empty($nv['transaction_id'])) · online txn {{ $nv['transaction_id'] }}@endif @if(isset($nv['paid_amount_sen'])) · RM {{ number_format($nv['paid_amount_sen'] / 100, 2) }}@endif</p>
+            </div>
+        </div>
+        @endforeach
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold">Payment #{{ $payment->id }}</h6>
-                @if($payment->status === 'paid')
-                    <span class="badge bg-success">Paid</span>
-                @elseif($payment->status === 'overdue')
-                    <span class="badge bg-danger">Overdue</span>
-                @elseif($payment->status === 'pending_verification')
-                    <span class="badge bg-info text-dark">Awaiting verification</span>
-                @else
-                    <span class="badge bg-warning text-dark">Pending</span>
-                @endif
+                <h2 class="h6 mb-0 fw-semibold">{{ $payment->period_start->format('M Y') }} fee</h2>
+                @include('admin.payments._status-badge', ['status' => $display])
             </div>
             <div class="card-body p-4">
                 <dl class="row mb-0">
                     <dt class="col-5 text-muted">Member</dt>
-                    <dd class="col-7">{{ $payment->user->name }}</dd>
+                    <dd class="col-7">{{ $payment->user?->name ?? 'Former member' }}</dd>
 
                     <dt class="col-5 text-muted">Club</dt>
                     <dd class="col-7">{{ $payment->club->name }}</dd>
@@ -36,18 +52,36 @@
                     <dd class="col-7">{{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</dd>
 
                     <dt class="col-5 text-muted">Due Date</dt>
-                    <dd class="col-7 {{ $payment->isOverdue() ? 'text-danger fw-semibold' : '' }}">
+                    <dd class="col-7 {{ $display === 'overdue' ? 'fw-semibold' : '' }}">
                         {{ $payment->due_date->format('d M Y') }}
                     </dd>
+
+                    @if($display === 'processing')
+                    <dt class="col-5 text-muted">Online payment</dt>
+                    <dd class="col-7">The member started an FPX payment @php $ob = \App\Support\Payments\DisplayStatus::openBill($payment); @endphp{{ ($ob?->opened_at ?? $ob?->created_at)?->format('d M Y, g:i a') }}; the bank has not confirmed it yet.</dd>
+                    @endif
 
                     @if($payment->paid_date)
                     <dt class="col-5 text-muted">Paid On</dt>
                     <dd class="col-7 text-success">{{ $payment->paid_date->format('d M Y') }}</dd>
                     @endif
 
-                    @if($payment->paid_via === 'transfer')
+                    @if($payment->status === 'paid' && $payment->paid_via)
                     <dt class="col-5 text-muted">Method</dt>
-                    <dd class="col-7">Bank transfer / DuitNow (slip checked{{ $payment->verifiedBy ? ' by '.$payment->verifiedBy->name : '' }})</dd>
+                    <dd class="col-7">
+                        @switch($payment->paid_via)
+                            @case('transfer')
+                                @if($payment->transfer_submitted_at || $payment->verifiedBy)
+                                    Bank transfer / DuitNow (slip checked{{ $payment->verifiedBy ? ' by '.$payment->verifiedBy->name : '' }})
+                                @else
+                                    Bank transfer (recorded by an admin)
+                                @endif
+                                @break
+                            @case('cash') Cash (recorded by an admin) @break
+                            @case('manual') Other (recorded by an admin) @break
+                            @default Online ({{ ucfirst($payment->paid_via) }})
+                        @endswitch
+                    </dd>
                     @endif
 
                     @if($payment->transfer_date)
@@ -81,7 +115,7 @@
                     @endif
 
                     <dt class="col-5 text-muted">Recorded By</dt>
-                    <dd class="col-7">{{ $payment->recordedBy->name }}</dd>
+                    <dd class="col-7">{{ $payment->recordedBy?->name ?? '—' }}</dd>
                 </dl>
             </div>
             @if($slips->isNotEmpty())
@@ -109,16 +143,13 @@
                 <div class="form-text">Opening a slip is logged in the audit trail.</div>
             </div>
             @endif
-            <div class="card-footer d-flex gap-2">
+            <div class="card-footer d-flex flex-wrap gap-2">
                 @if($payment->status === 'pending_verification')
                 <a href="{{ route('admin.clubs.verifications.index', $payment->club) }}" class="btn btn-info btn-sm">
                     <i class="bi bi-patch-check me-1"></i>Check transfer slip
                 </a>
                 @elseif($payment->status !== 'paid')
-                <form action="{{ route('admin.payments.mark-paid', $payment) }}" method="POST">
-                    @csrf @method('PATCH')
-                    <button class="btn btn-success btn-sm"><i class="bi bi-check-lg me-1"></i>Mark as Paid</button>
-                </form>
+                @include('admin.payments._record-payment-button', ['payment' => $payment, 'status' => $display, 'class' => 'btn btn-primary btn-sm'])
                 @endif
                 <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-pencil me-1"></i>Edit
@@ -130,4 +161,5 @@
         </div>
     </div>
 </div>
+@include('admin.payments._record-payment-modal')
 @endsection

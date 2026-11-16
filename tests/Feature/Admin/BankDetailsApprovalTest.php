@@ -81,8 +81,18 @@ class BankDetailsApprovalTest extends TestCase
 
         // The billing page shows the request to the other admin, with Approve.
         $this->actingAs($this->adminB)->get(route('admin.clubs.billing.edit', $this->club))
-            ->assertOk()->assertSee('Bank details change waiting for approval')->assertSee($this->adminA->name)
-            ->assertSee(route('admin.clubs.billing.bank-change.approve', $this->club), false);
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Clubs/Billing')
+                ->where('pendingBank.requestedBy', $this->adminA->name)
+                ->where('pendingBank.requestedByMe', false)
+                ->where('pendingBank.canApprove', true)
+                ->where('pendingBank.version', $this->version())
+                ->where('pendingBank.rows.2.field', 'bank_account_no')
+                ->where('pendingBank.rows.2.current', '1111 2222 3333')
+                ->where('pendingBank.rows.2.requested', '9999 8888 7777')
+                ->where('pendingBank.rows.2.changed', true)
+                ->where('urls.approve', route('admin.clubs.billing.bank-change.approve', $this->club)));
 
         $this->post(route('admin.clubs.billing.bank-change.approve', $this->club), ['version' => $this->version()])->assertSessionHasNoErrors();
 
@@ -100,7 +110,12 @@ class BankDetailsApprovalTest extends TestCase
 
         $this->actingAs($this->adminA)->get(route('admin.clubs.billing.edit', $this->club))
             ->assertOk()->assertSee('You asked for this change')
-            ->assertDontSee(route('admin.clubs.billing.bank-change.approve', $this->club), false);
+            ->assertDontSee(route('admin.clubs.billing.bank-change.approve', $this->club), false)
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('pendingBank.requestedByMe', true)
+                ->where('pendingBank.canApprove', false)
+                ->where('urls.approve', null)
+                ->where('urls.cancel', route('admin.clubs.billing.bank-change.cancel', $this->club)));
 
         $this->post(route('admin.clubs.billing.bank-change.approve', $this->club), ['version' => $this->version()])
             ->assertSessionHas('error');

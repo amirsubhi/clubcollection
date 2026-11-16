@@ -1,40 +1,22 @@
 @extends('layouts.auth')
-@section('title', 'Reset Password')
-@section('auth-subtitle', 'We\'ll send you a reset link')
+@section('title', __('Reset password'))
+@section('auth-subtitle', __('We will email you a link to set a new password.'))
 
 @section('content')
+@include('auth.partials.alerts')
 
-@if (session('status'))
-<div class="alert alert-success py-2 small mb-3">
-    <i class="bi bi-check-circle me-1"></i>{{ session('status') }}
-</div>
-@endif
-
-<form method="POST" action="{{ route('password.email') }}">
+<form method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-5">
     @csrf
 
-    <div class="mb-4">
-        <label for="email" class="form-label">Email Address</label>
-        <div class="input-icon-wrap">
-            <i class="bi bi-envelope"></i>
-            <input id="email" type="email"
-                   class="form-control @error('email') is-invalid @enderror"
-                   name="email" value="{{ old('email') }}"
-                   required autocomplete="email" autofocus placeholder="you@example.com">
-            @error('email')
-            <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-        </div>
+    <div>
+        <label for="email" class="auth-label">{{ __('Email') }}</label>
+        <input id="email" type="email" name="email" value="{{ old('email') }}" class="auth-input"
+               required autocomplete="email" autocapitalize="none" spellcheck="false" autofocus
+               @error('email') aria-invalid="true" aria-describedby="auth-error" @enderror>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-auth mb-3">
-        <i class="bi bi-send me-2"></i>Send Reset Link
-    </button>
+    <button type="submit" class="auth-btn">{{ __('Send reset link') }}</button>
 
-    <div class="text-center">
-        <a href="{{ route('login') }}" class="small text-muted text-decoration-none">
-            <i class="bi bi-arrow-left me-1"></i>Back to Sign In
-        </a>
-    </div>
+    <a href="{{ route('login') }}" class="auth-link self-center">{{ __('Back to sign in') }}</a>
 </form>
 @endsection

@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useForm } from "@inertiajs/react";
 import { AlertCircle, FileText, HandHeart, ImageIcon, Lock, Receipt, ShieldCheck, Trash2, Undo2 } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
@@ -57,16 +57,31 @@ const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const toAmount = (sen: number) => (sen / 100).toFixed(2);
 
-function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: ReactNode }[]; label: string }) {
+function Segmented<T extends string>({ value, onChange, options, labelledBy }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: ReactNode }[]; labelledBy: string }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Radio-group keyboard pattern: one tab stop (the checked option), arrow keys move and select.
+  const onKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = (i + step + options.length) % options.length;
+    onChange(options[next].value);
+    refs.current[next]?.focus();
+  };
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex w-full rounded-md bg-secondary p-1 sm:w-auto">
-      {options.map((o) => (
+    <div role="radiogroup" aria-labelledby={labelledBy} className="inline-flex w-full rounded-md bg-secondary p-1 sm:w-auto">
+      {options.map((o, i) => (
         <button
           key={o.value}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
           type="button"
           role="radio"
           aria-checked={value === o.value}
+          tabIndex={value === o.value ? 0 : -1}
           onClick={() => onChange(o.value)}
+          onKeyDown={(e) => onKey(e, i)}
           className={cn(
             "inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none [&_svg]:size-4",
             value === o.value ? "bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-muted-foreground hover:text-foreground",
@@ -109,6 +124,8 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
   const [sighted, setSighted] = useState<boolean>(!!w?.certificateSightedById);
   const d = form.data;
   const isWelfare = d.type === "welfare";
+  // Gateway fees the club absorbs are counted automatically; warn so they are not entered twice.
+  const isBankCharges = /^bank charges$/i.test(categories.find((c) => String(c.id) === d.expense_category_id)?.name.trim() ?? "");
   const err = form.errors as Record<string, string | undefined>;
   const existing = (item?.attachments ?? []).filter((a) => !d.remove_attachment_ids.includes(Number(a.id)));
   const fileErr = fileError ?? err.files ?? Object.entries(err).find(([k]) => k.startsWith("files."))?.[1];
@@ -148,14 +165,23 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
       kinds: withFile.map((u) => u.kind || "other"),
       ...(isEdit ? { _method: "put" } : {}),
     }));
-    form.post(urls.action, { forceFormData: true, preserveScroll: true });
+    form.post(urls.action, { forceFormData: true, preserveScroll: true, onError: () => setFocusSummary(true) });
   };
 
   const errorList = Object.values(err).filter(Boolean) as string[];
+  // After a failed submit, move focus to the error summary so keyboard and screen-reader users hear what to fix.
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const [focusSummary, setFocusSummary] = useState(false);
+  useEffect(() => {
+    if (focusSummary && errorList.length > 0) {
+      summaryRef.current?.focus();
+      setFocusSummary(false);
+    }
+  }, [focusSummary, errorList.length]);
   const title = isEdit ? `Edit ${item.ref}` : isWelfare ? "New welfare case" : "New expense";
 
   return (
-    <AdminLayout nav={nav} active="fund-usage" title={title} wide={false}>
+    <AdminLayout nav={nav} active="fund-usage" title={title} wide={false} ownErrors>
       <PageHeader
         eyebrow={
           <Link href={urls.index} className="hover:underline">
@@ -185,10 +211,10 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
         </Alert>
       )}
       {errorList.length > 0 && (
-        <Alert variant="danger">
+        <Alert variant="danger" ref={summaryRef} tabIndex={-1} aria-labelledby="error-summary-title" className="scroll-mt-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <AlertCircle aria-hidden />
           <div>
-            <AlertTitle>
+            <AlertTitle id="error-summary-title">
               {errorList.length} thing{errorList.length === 1 ? "" : "s"} need{errorList.length === 1 ? "s" : ""} fixing
             </AlertTitle>
             <AlertDescription>
@@ -205,9 +231,9 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
       <form className="flex flex-col gap-5" onSubmit={send("submit")} noValidate>
         <Card>
           <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
-            <Field label="Record type">
+            <Field id="type" label="Record type" group>
               <Segmented<FundType>
-                label="Record type"
+                labelledBy="type-label"
                 value={d.type}
                 onChange={(v) => form.setData("type", v)}
                 options={[
@@ -217,7 +243,13 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
               />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="category" label="Category" required error={err.expense_category_id}>
+              <Field
+                id="category"
+                label="Category"
+                required
+                error={err.expense_category_id}
+                hint={isBankCharges ? "Bank charges: only charges the portal can't see. Absorbed gateway fees are added automatically." : undefined}
+              >
                 <Select value={d.expense_category_id || undefined} onValueChange={(v) => form.setData("expense_category_id", v)}>
                   <SelectTrigger id="category" invalid={!!err.expense_category_id}>
                     <SelectValue placeholder="Select category" />
@@ -312,7 +344,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field id="sightedOn" label="Sighted on" required error={err["welfare.certificate_sighted_at"]}>
+                    <Field id="sightedOn" dateValue={d.welfare.certificate_sighted_at} label="Sighted on" required error={err["welfare.certificate_sighted_at"]}>
                       <Input id="sightedOn" type="date" max={today()} value={d.welfare.certificate_sighted_at} onChange={(e) => setW("certificate_sighted_at", e.target.value)} />
                     </Field>
                   </div>
@@ -339,10 +371,10 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
                   <Input id="invoiceNo" value={d.invoice_no} onChange={(e) => form.setData("invoice_no", e.target.value)} maxLength={100} />
                 </Field>
               )}
-              <Field id="invoiceDate" label={isWelfare ? "Date approved by committee" : "Invoice date"} required error={err.expense_date}>
+              <Field id="invoiceDate" dateValue={d.expense_date} label={isWelfare ? "Date approved by committee" : "Invoice date"} required error={err.expense_date}>
                 <Input id="invoiceDate" type="date" value={d.expense_date} onChange={(e) => form.setData("expense_date", e.target.value)} />
               </Field>
-              <Field id="paidDate" label="Date paid" hint="When the money actually left the account" error={err.paid_date}>
+              <Field id="paidDate" dateValue={d.paid_date} label="Date paid" hint="When the money actually left the account" error={err.paid_date}>
                 <Input id="paidDate" type="date" value={d.paid_date} onChange={(e) => form.setData("paid_date", e.target.value)} />
               </Field>
               <Field id="minute" label="Meeting minute ref." hint="Rujukan minit mesyuarat, e.g. MJK 10/2026 item 3.1" error={err.minute_ref} className="sm:col-span-2">

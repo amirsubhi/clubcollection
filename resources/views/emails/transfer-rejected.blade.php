@@ -35,6 +35,24 @@
 
     <div class="details">
       <table>
+        @if($fees)
+        @foreach($fees as $fee)
+        <tr>
+          <td>{{ $fee->period_start->format('d M Y') }} &ndash; {{ $fee->period_end->format('d M Y') }}</td>
+          <td>RM {{ number_format($fee->amount, 2) }}</td>
+        </tr>
+        @endforeach
+        <tr>
+          <td>Jumlah / Total</td>
+          <td>RM {{ number_format($fees->sum(fn ($f) => (float) $f->amount), 2) }}</td>
+        </tr>
+        @if($group)
+        <tr>
+          <td>Rujukan / Reference</td>
+          <td>{{ $group->reference }}</td>
+        </tr>
+        @endif
+        @else
         <tr>
           <td>Tempoh / Period</td>
           <td>{{ $payment->period_start->format('d M Y') }} &ndash; {{ $payment->period_end->format('d M Y') }}</td>
@@ -47,13 +65,14 @@
           <td>Rujukan / Reference</td>
           <td>{{ $payment->transferReference() }}</td>
         </tr>
+        @endif
       </table>
     </div>
 
     <p>Sila semak sebab di atas, kemudian hantar slip yang betul atau bayar dalam talian. Jika wang telah keluar dari akaun anda, jangan bayar sekali lagi. Hubungi bendahari.</p>
 
     <div class="cta">
-      <a href="{{ route('member.payments.review', $payment) }}">Semak &amp; bayar / Review &amp; pay</a>
+      <a href="{{ $fees ? route('member.payments.review-all', $payment->club_id) : route('member.payments.review', $payment) }}">Semak &amp; bayar / Review &amp; pay</a>
     </div>
 
     <hr>

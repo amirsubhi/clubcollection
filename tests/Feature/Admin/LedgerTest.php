@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Payment;
 use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class LedgerTest extends TestCase
@@ -30,13 +31,37 @@ class LedgerTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_date_range_over_24_months_returns_422(): void
+    public function test_date_range_over_24_months_is_refused(): void
     {
         $club = Club::factory()->create();
         $this->actingAsClubAdmin($club);
 
-        $this->get(route('admin.clubs.ledger', $club).'?from=2020-01-01&to=2099-12-31')
-            ->assertStatus(422);
+        // A validation error shown on the page (redirect back with errors), 422 for JSON.
+        $this->from(route('admin.clubs.ledger', $club))
+            ->get(route('admin.clubs.ledger', $club).'?from=2020-01-01&to=2099-12-31')
+            ->assertRedirect(route('admin.clubs.ledger', $club))
+            ->assertSessionHasErrors('to');
+        $this->getJson(route('admin.clubs.ledger', $club).'?from=2020-01-01&to=2099-12-31')
+            ->assertUnprocessable()->assertJsonValidationErrors('to');
+        // Exports refuse it the same way.
+        $this->getJson(route('admin.clubs.ledger.export', $club).'?from=2020-01-01&to=2099-12-31')->assertUnprocessable();
+        $this->getJson(route('admin.clubs.ledger.export-pdf', $club).'?from=2020-01-01&to=2099-12-31')->assertUnprocessable();
+    }
+
+    public function test_exactly_24_months_is_allowed_and_one_day_more_is_not(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsClubAdmin($club);
+        $url = route('admin.clubs.ledger', $club);
+
+        $this->get($url.'?from=2025-01-01&to=2027-01-01')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('filters.to', '2027-01-01')->has('monthly', 25));
+        $this->getJson($url.'?from=2025-01-01&to=2027-01-02')->assertUnprocessable()->assertJsonValidationErrors('to');
+
+        // Month ends do not overflow: 31 Dec 2024 + 24 months = 31 Dec 2026; 29 Feb 2024 + 24 = 28 Feb 2026.
+        $this->get($url.'?from=2024-12-31&to=2026-12-31')->assertOk();
+        $this->get($url.'?from=2024-02-29&to=2026-02-28')->assertOk();
+        $this->getJson($url.'?from=2024-02-29&to=2026-03-01')->assertUnprocessable();
     }
 
     public function test_admin_of_different_club_is_forbidden(): void
@@ -228,7 +253,13 @@ class LedgerTest extends TestCase
 
         $this->get(route('admin.clubs.ledger', $club) . "?from={$from}&to={$to}&opening_balance=100")
             ->assertOk()
-            ->assertSee('120.00'); // closing balance
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Ledger/Index')
+                ->where('opening.amount', 10000)
+                ->where('opening.source', 'manual')
+                ->where('summary.in', 5000)
+                ->where('summary.out', 3000)
+                ->where('summary.closing', 12000)); // closing balance
     }
 
     // ── CSV export ─────────────────────────────────────────────────────────

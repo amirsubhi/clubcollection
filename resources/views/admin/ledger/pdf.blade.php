@@ -3,28 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <style>
+    /* Lavender Ledger colours (tokens.css, light theme): the PDF matches the app. Hex because dompdf has no CSS variables. */
     * { box-sizing: border-box; }
     body {
         font-family: DejaVu Sans, Arial, sans-serif;
         font-size: 8.5pt;
-        color: #1a1a1a;
+        color: #1E1B3A;
         margin: 0;
         padding: 0;
     }
     .page { padding: 18mm 16mm 14mm 16mm; }
 
     /* ── Header ── */
-    .report-header { margin-bottom: 14px; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; }
+    .report-header { margin-bottom: 14px; border-bottom: 2px solid #5B4FCF; padding-bottom: 10px; }
     .report-header table { width: 100%; }
-    .report-title { font-size: 14pt; font-weight: bold; color: #0d6efd; }
-    .report-club  { font-size: 11pt; font-weight: bold; color: #212529; margin-top: 2px; }
-    .report-meta  { font-size: 7.5pt; color: #6c757d; margin-top: 4px; }
+    .report-title { font-size: 14pt; font-weight: bold; color: #4338A8; }
+    .report-club  { font-size: 11pt; font-weight: bold; color: #1E1B3A; margin-top: 2px; }
+    .report-meta  { font-size: 7.5pt; color: #5F5C7A; margin-top: 4px; }
     .report-logo-cell { text-align: right; vertical-align: top; }
 
     /* ── Section headings ── */
     .section-title {
-        background: #0d6efd;
-        color: #fff;
+        background: #E9E6FB;
+        color: #4338A8;
         font-weight: bold;
         font-size: 8pt;
         padding: 4px 8px;
@@ -39,25 +40,25 @@
         margin-bottom: 0;
     }
     table.data th {
-        background: #e9ecef;
+        background: #F0EFF8;
         font-weight: bold;
         font-size: 7.5pt;
         padding: 4px 6px;
-        border: 1px solid #dee2e6;
+        border: 1px solid #DEDCEC;
         text-align: left;
     }
     table.data td {
         padding: 3px 6px;
-        border: 1px solid #dee2e6;
+        border: 1px solid #DEDCEC;
         vertical-align: top;
     }
-    table.data tr:nth-child(even) td { background: #f8f9fa; }
+    table.data tr:nth-child(even) td { background: #F6F5FB; }
     .text-right  { text-align: right; }
     .text-center { text-align: center; }
-    .text-green  { color: #198754; }
-    .text-red    { color: #dc3545; }
-    .text-blue   { color: #0d6efd; }
-    .text-muted  { color: #6c757d; }
+    .text-green  { color: #14603F; }
+    .text-red    { color: #99243B; }
+    .text-blue   { color: #4338A8; }
+    .text-muted  { color: #5F5C7A; }
     .fw-bold     { font-weight: bold; }
     .font-mono   { font-family: DejaVu Sans Mono, Courier, monospace; font-size: 7.5pt; }
 
@@ -65,21 +66,21 @@
     .summary-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
     .summary-table td {
         width: 25%;
-        border: 1px solid #dee2e6;
+        border: 1px solid #DEDCEC;
         padding: 8px 10px;
         vertical-align: top;
     }
-    .summary-label { font-size: 7pt; color: #6c757d; margin-bottom: 3px; }
+    .summary-label { font-size: 7pt; color: #5F5C7A; margin-bottom: 3px; }
     .summary-value { font-size: 12pt; font-weight: bold; }
 
     /* ── Opening/closing rows ── */
-    .row-opening td { background: #e8f4fd !important; font-style: italic; color: #6c757d; }
-    .row-closing td { background: #e9ecef !important; font-weight: bold; }
+    .row-opening td { background: #F6F5FB !important; font-style: italic; color: #5F5C7A; }
+    .row-closing td { background: #ECEAF7 !important; font-weight: bold; }
 
     /* ── Outstanding badges ── */
-    .badge-verifying { background: #0dcaf0; color: #000; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
-    .badge-overdue { background: #dc3545; color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
-    .badge-pending { background: #ffc107; color: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
+    .badge-verifying { background: #E9E6FB; color: #4338A8; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
+    .badge-overdue { background: #FFF0CF; color: #7A4E00; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
+    .badge-pending { background: #F0EFF8; color: #1E1B3A; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
 
     /* ── Footer ── */
     .page-footer {
@@ -87,10 +88,10 @@
         bottom: 8mm;
         left: 16mm;
         right: 16mm;
-        border-top: 1px solid #dee2e6;
+        border-top: 1px solid #DEDCEC;
         padding-top: 4px;
         font-size: 7pt;
-        color: #6c757d;
+        color: #5F5C7A;
     }
     .page-footer table { width: 100%; }
 
@@ -126,6 +127,7 @@
                         Period: {{ $filters['from']->format('d M Y') }} — {{ $filters['to']->format('d M Y') }}
                         &nbsp;&nbsp;|&nbsp;&nbsp;
                         Opening Balance: RM {{ number_format($filters['openingBalance'], 2) }}
+                        @if(($filters['openingSource'] ?? null) === 'manual') (diubah secara manual) @endif
                         &nbsp;&nbsp;|&nbsp;&nbsp;
                         Generated: {{ $generatedAt }} by {{ $generatedBy }}
                     </div>
@@ -145,6 +147,11 @@
             <td>
                 <div class="summary-label">Opening Balance</div>
                 <div class="summary-value">RM {{ number_format($filters['openingBalance'], 2) }}</div>
+                @if(($filters['openingSource'] ?? null) === 'manual')
+                <div class="summary-label">(diubah secara manual)</div>
+                @else
+                <div class="summary-label">Fund balance on {{ $filters['from']->copy()->subDay()->format('d M Y') }}</div>
+                @endif
             </td>
             <td>
                 <div class="summary-label">Total In</div>
@@ -203,12 +210,14 @@
                     Outstanding Payments (All Time)
                     @if($overduePayments->isNotEmpty()) — {{ $overduePayments->count() }} overdue
                     @endif
-                    @if($pendingPayments->isNotEmpty()) — {{ $pendingPayments->count() }} pending
+                    @if($pendingPayments->isNotEmpty()) — {{ $pendingPayments->count() }} due
+                    @endif
+                    @if($processingPayments->isNotEmpty()) — {{ $processingPayments->count() }} FPX in progress
                     @endif
                     @if($verifyingPayments->isNotEmpty()) — {{ $verifyingPayments->count() }} awaiting verification
                     @endif
                 </div>
-                @if($overduePayments->isEmpty() && $pendingPayments->isEmpty() && $verifyingPayments->isEmpty())
+                @if($overduePayments->isEmpty() && $pendingPayments->isEmpty() && $processingPayments->isEmpty() && $verifyingPayments->isEmpty())
                 <table class="data"><tr><td class="text-center text-muted">No outstanding payments.</td></tr></table>
                 @else
                 <table class="data">
@@ -224,25 +233,34 @@
                     <tbody>
                     @foreach($overduePayments as $p)
                     <tr>
-                        <td class="fw-bold">{{ $p->user->name }}</td>
+                        <td class="fw-bold">{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
-                        <td class="text-right text-red">{{ number_format($p->amount, 2) }}</td>
+                        <td class="text-right">{{ number_format($p->amount, 2) }}</td>
                         <td class="text-center"><span class="badge-overdue">Overdue</span></td>
                     </tr>
                     @endforeach
                     @foreach($pendingPayments as $p)
                     <tr>
-                        <td>{{ $p->user->name }}</td>
+                        <td>{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
                         <td class="text-right">{{ number_format($p->amount, 2) }}</td>
-                        <td class="text-center"><span class="badge-pending">Pending</span></td>
+                        <td class="text-center"><span class="badge-pending">Due</span></td>
+                    </tr>
+                    @endforeach
+                    @foreach($processingPayments as $p)
+                    <tr>
+                        <td>{{ $p->user?->name ?? 'Former member' }}</td>
+                        <td>{{ $p->period_start->format('M Y') }}</td>
+                        <td>{{ $p->due_date->format('d M Y') }}</td>
+                        <td class="text-right">{{ number_format($p->amount, 2) }}</td>
+                        <td class="text-center"><span class="badge-verifying">FPX in progress</span></td>
                     </tr>
                     @endforeach
                     @foreach($verifyingPayments as $p)
                     <tr>
-                        <td>{{ $p->user->name }}</td>
+                        <td>{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
                         <td class="text-right">{{ number_format($p->amount, 2) }}</td>

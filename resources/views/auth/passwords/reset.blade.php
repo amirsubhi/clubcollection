@@ -1,51 +1,34 @@
 @extends('layouts.auth')
-@section('title', 'Set New Password')
-@section('auth-subtitle', 'Choose a new password')
+@section('title', __('Set a new password'))
+@section('auth-subtitle', __('Use at least 8 characters.'))
 
 @section('content')
-<form method="POST" action="{{ route('password.update') }}">
+@include('auth.partials.alerts')
+
+<form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-5">
     @csrf
     <input type="hidden" name="token" value="{{ $token }}">
 
-    <div class="mb-3">
-        <label for="email" class="form-label">Email Address</label>
-        <div class="input-icon-wrap">
-            <i class="bi bi-envelope"></i>
-            <input id="email" type="email"
-                   class="form-control @error('email') is-invalid @enderror"
-                   name="email" value="{{ $email ?? old('email') }}"
-                   required autocomplete="email" autofocus>
-            @error('email')
-            <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-        </div>
+    <div>
+        <label for="email" class="auth-label">{{ __('Email') }}</label>
+        <input id="email" type="email" name="email" value="{{ $email ?? old('email') }}" class="auth-input"
+               required autocomplete="email" autocapitalize="none" spellcheck="false"
+               @error('email') aria-invalid="true" aria-describedby="auth-error" @enderror>
     </div>
 
-    <div class="mb-3">
-        <label for="password" class="form-label">New Password</label>
-        <div class="input-icon-wrap">
-            <i class="bi bi-lock"></i>
-            <input id="password" type="password"
-                   class="form-control @error('password') is-invalid @enderror"
-                   name="password" required autocomplete="new-password" placeholder="Min 8 characters">
-            @error('password')
-            <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-        </div>
+    <div>
+        <label for="password" class="auth-label">{{ __('New password') }}</label>
+        <input id="password" type="password" name="password" class="auth-input"
+               required minlength="8" autocomplete="new-password" autofocus
+               @error('password') aria-invalid="true" aria-describedby="auth-error" @enderror>
     </div>
 
-    <div class="mb-4">
-        <label for="password-confirm" class="form-label">Confirm New Password</label>
-        <div class="input-icon-wrap">
-            <i class="bi bi-lock-fill"></i>
-            <input id="password-confirm" type="password"
-                   class="form-control"
-                   name="password_confirmation" required autocomplete="new-password" placeholder="Repeat password">
-        </div>
+    <div>
+        <label for="password-confirm" class="auth-label">{{ __('Type the new password again') }}</label>
+        <input id="password-confirm" type="password" name="password_confirmation" class="auth-input"
+               required minlength="8" autocomplete="new-password">
     </div>
 
-    <button type="submit" class="btn btn-primary btn-auth">
-        <i class="bi bi-check-lg me-2"></i>Reset Password
-    </button>
+    <button type="submit" class="auth-btn">{{ __('Save new password') }}</button>
 </form>
 @endsection

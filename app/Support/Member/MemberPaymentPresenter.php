@@ -3,6 +3,9 @@
 namespace App\Support\Member;
 
 use App\Models\Payment;
+use App\Models\PaymentBill;
+use App\Support\Payments\DisplayStatus;
+use Illuminate\Support\Collection;
 
 /**
  * Shapes a Payment for the member-facing Inertia pages.
@@ -19,21 +22,13 @@ final class MemberPaymentPresenter
     }
 
     /**
-     * The status a member should see: a pending fee whose due date is before
-     * today is shown as overdue even before the nightly reminder job flips it.
-     * The summary SQL in the member controllers uses the same rule.
+     * The status a member should see: paid, verifying, processing (an FPX
+     * bill is open), due (within the club's grace period) or overdue. One
+     * rule for every page: App\Support\Payments\DisplayStatus.
      */
     public static function displayStatus(Payment $payment): string
     {
-        if ($payment->status === 'paid') {
-            return 'paid';
-        }
-        // A transfer slip is waiting for the treasurer: not paid, not overdue.
-        if ($payment->status === 'pending_verification') {
-            return 'verifying';
-        }
-
-        return ($payment->status === 'overdue' || $payment->due_date->lt(today())) ? 'overdue' : 'pending';
+        return DisplayStatus::of($payment);
     }
 
     public static function invoiceNo(Payment $payment): string
@@ -77,6 +72,8 @@ final class MemberPaymentPresenter
             'urls' => [
                 'invoice' => route('member.payments.invoice', $payment),
                 'review' => $status === 'paid' ? null : route('member.payments.review', $payment),
+                // An FPX payment was started: where to check it before paying again.
+                'billStatus' => $status === DisplayStatus::PROCESSING ? DisplayStatus::memberBillUrl($payment) : null,
             ],
         ];
     }
@@ -104,6 +101,62 @@ final class MemberPaymentPresenter
             'reference' => $payment->paid_via === 'transfer'
                 ? ($payment->transfer_bank_ref ?? $payment->transfer_ref ?? $payment->transferReference())
                 : $payment->reference,
+        ];
+    }
+
+    /**
+     * One receipt for a settled group ("Bayar semua"): the total, how it was
+     * paid, and one line per fee with that fee's own receipt number. Null
+     * until the group is settled.
+     *
+     * @param  Collection<int, Payment>  $fees
+     * @return array<string, mixed>|null
+     */
+    public static function groupReceipt(PaymentBill $bill, Collection $fees): ?array
+    {
+        if ($bill->paid_at === null || $fees->isEmpty()) {
+            return null;
+        }
+        $amounts = $bill->itemAmounts();
+        $transfer = $bill->isTransfer();
+        $all = $fees;
+        if ($transfer) {
+            // A slip receipt covers only what the slip settled: a fee paid online
+            // while the slip was checked has its own receipt and is noted instead.
+            $fees = $all->filter(fn (Payment $p) => $p->paid_via === 'transfer' && (int) $p->transfer_group_id === (int) $bill->id)->values();
+            if ($fees->isEmpty()) {
+                return null;
+            }
+        }
+        $lead = $fees->first();
+        $amount = $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount));
+
+        return [
+            'receiptNo' => 'RCP-G'.str_pad((string) $bill->id, 6, '0', STR_PAD_LEFT),
+            'amount' => $amount,
+            'paidAt' => ($lead->paid_date ?? $bill->paid_at)->toDateString(),
+            'gateway' => $transfer ? null : self::gatewayLabel($bill->gateway),
+            'method' => $transfer ? 'transfer' : 'gateway',
+            'transactionId' => $transfer ? null : $bill->transaction_id,
+            'reference' => $transfer ? ($lead->transfer_bank_ref ?? $lead->transfer_ref ?? $bill->reference) : $bill->reference,
+            'lines' => $fees->map(fn (Payment $p) => [
+                'id' => $p->id,
+                'receiptNo' => self::receiptNo($p),
+                'periodStart' => $p->period_start->toDateString(),
+                'periodEnd' => $p->period_end->toDateString(),
+                'amount' => $amounts[$p->id] ?? self::sen($p->amount),
+                'invoiceUrl' => route('member.payments.invoice', $p),
+            ])->values()->all(),
+            // Fees of the slip that were paid online instead (their own receipt has the details).
+            'paidOnline' => $all->reject(fn (Payment $p) => $fees->contains('id', $p->id))
+                ->filter(fn (Payment $p) => $p->status === 'paid')
+                ->map(fn (Payment $p) => [
+                    'id' => $p->id,
+                    'periodStart' => $p->period_start->toDateString(),
+                    'periodEnd' => $p->period_end->toDateString(),
+                    'amount' => $amounts[$p->id] ?? self::sen($p->amount),
+                    'invoiceUrl' => route('member.payments.invoice', $p),
+                ])->values()->all(),
         ];
     }
 }

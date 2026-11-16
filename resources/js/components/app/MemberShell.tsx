@@ -3,6 +3,7 @@ import { ArrowLeft, Home, Landmark, PieChart, UserRound } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import { useLang, useT, type DictKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useStickyFit } from "@/lib/useStickyFit";
 
 export type MemberTab = "home" | "payments" | "fund" | "account";
 
@@ -25,7 +26,7 @@ export function LangToggle() {
           aria-checked={lang === l}
           onClick={() => setLang(l)}
           className={cn(
-            "inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "inline-flex h-11 min-w-[44px] items-center justify-center rounded-full px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -64,6 +65,7 @@ export function MemberShell({
   children,
   hideNav = false,
   bare = false,
+  titleIsHeading = true,
 }: {
   /** Short club name shown above the page title. */
   clubName: string;
@@ -76,13 +78,23 @@ export function MemberShell({
   hideNav?: boolean;
   /** Skip the page padding (for screens that draw their own full-bleed layout). */
   bare?: boolean;
+  /** The header title is the page's <h1>. Pass false when the page draws its own h1 (PayResult's big status titles). */
+  titleIsHeading?: boolean;
 }) {
   const t = useT();
+  // Pinned while it is one compact row; with large text it scrolls away with the page.
+  const [headerRef, headerPinned] = useStickyFit<HTMLElement>("top", { maxFraction: 0.15 });
+  const [navRef] = useStickyFit<HTMLElement>("bottom", { keepPinned: true });
   const visibleTabs = tabs.filter((x) => navHrefs[x.id]);
   return (
     <div className="member-scope flex min-h-full flex-col text-base">
-      <header className="bleed-x sticky top-0 z-20 border-b bg-background/90 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto flex max-w-md items-center gap-2.5">
+      <header
+        ref={headerRef}
+        className={cn("bleed-x relative z-20 border-b bg-background/90 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80", headerPinned && "sticky top-0")}
+        data-pinned={headerPinned}
+      >
+        {/* Wraps with large text: the language switch drops under the title instead of squeezing it. */}
+        <div className="mx-auto flex max-w-md flex-wrap items-center gap-x-2.5 gap-y-2">
           {backHref ? (
             <Link
               href={backHref}
@@ -94,9 +106,13 @@ export function MemberShell({
           ) : (
             <ClubMark />
           )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm text-muted-foreground">{clubName}</div>
-            <div className="truncate font-display text-lg font-bold leading-tight tracking-tight">{title ?? t("navHome")}</div>
+          <div className="min-w-0 flex-[1_1_8rem]">
+            <div className="break-words text-sm leading-snug text-muted-foreground">{clubName}</div>
+            {titleIsHeading ? (
+              <h1 className="break-words font-display text-lg font-bold leading-tight tracking-tight">{title ?? t("navHome")}</h1>
+            ) : (
+              <div className="break-words font-display text-lg font-bold leading-tight tracking-tight">{title ?? t("navHome")}</div>
+            )}
           </div>
           <LangToggle />
         </div>
@@ -105,7 +121,7 @@ export function MemberShell({
         <div className="mx-auto flex max-w-md flex-col gap-5">{children}</div>
       </main>
       {!hideNav && (
-        <nav aria-label="Member" className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pt-1.5 backdrop-blur">
+        <nav ref={navRef} aria-label="Member" className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pt-1.5 backdrop-blur">
           <ul className="mx-auto grid max-w-md gap-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
             {visibleTabs.map(({ id, label, Icon }) => {
               const active = id === tab;
@@ -115,11 +131,11 @@ export function MemberShell({
                     href={navHrefs[id]!}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-center text-[0.8125rem] font-semibold leading-tight [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <span className={cn("flex h-8 w-14 items-center justify-center rounded-full transition-colors", active && "bg-accent")}>
+                    <span className={cn("flex h-8 w-full max-w-[56px] items-center justify-center rounded-full transition-colors", active && "bg-accent")}>
                       <Icon className="h-[22px] w-[22px]" aria-hidden strokeWidth={active ? 2.2 : 1.75} />
                     </span>
                     {t(label)}

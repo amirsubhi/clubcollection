@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
-use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Models\Payment;
-use App\Support\Admin\FundUsageStats;
+use App\Support\Admin\FundFigures;
 use App\Support\Member\MemberPaymentPresenter as P;
+use App\Support\Payments\DisplayStatus;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,52 +20,56 @@ class DashboardController extends Controller
         $clubIds = $clubs->pluck('id');
         $year = now()->year;
 
-        // 1 query instead of 4N queries (one per status per club)
+        // Paid figures in one query; open fees are counted below by DisplayStatus
+        // (grace period and FPX bills in progress), from the list loaded anyway.
         $rawStats = Payment::where('user_id', $user->id)
             ->whereIn('club_id', $clubIds)
             ->selectRaw("
                 club_id,
                 SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
-                SUM(CASE WHEN status = 'pending' AND due_date >= ? THEN 1 ELSE 0 END) as pending_count,
-                SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < ?) THEN 1 ELSE 0 END) as overdue_count,
-                SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count,
                 SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_paid
-            ", [today()->toDateString(), today()->toDateString()])
+            ")
             ->groupBy('club_id')
             ->get()
             ->keyBy('club_id');
 
-        // "Where your money goes": club-wide aggregates for this year only.
-        // Totals per club and per expense category; no descriptions, payees,
-        // receipts or other members' names leave the database.
-        $collected = Payment::whereIn('club_id', $clubIds)
-            ->where('status', 'paid')
-            ->whereYear('paid_date', $year)
-            ->selectRaw('club_id, SUM(amount) as total')
-            ->groupBy('club_id')
-            ->pluck('total', 'club_id');
+        $open = Payment::where('user_id', $user->id)
+            ->whereIn('club_id', $clubIds)
+            ->where('status', '!=', 'paid')
+            ->orderBy('due_date')
+            ->orderBy('period_start')
+            ->orderBy('id')
+            ->get();
+        $statuses = DisplayStatus::many($open);
+        $openCounts = fn (int $clubId, string $status) => $open->where('club_id', $clubId)
+            ->filter(fn (Payment $p) => $statuses[$p->id] === $status)->count();
 
-        // Approved (counted) spending only: drafts, pending and void never show.
-        $spending = Expense::query()
-            ->counted()
-            ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
-            ->whereIn('expenses.club_id', $clubIds)
-            // By cash date (paid_date, else invoice date), as on the admin pages.
-            ->tap(fn ($q) => FundUsageStats::inRange($q, FundUsageStats::cashDate(), now()->startOfYear(), now()->endOfYear()))
-            ->selectRaw('expenses.club_id as club_id, expense_categories.name as category, SUM(expenses.amount) as total')
-            ->groupBy('expenses.club_id', 'expense_categories.name')
-            ->get()
-            ->groupBy('club_id');
+        // "Where your money goes": club-wide aggregates for this year so far,
+        // from FundFigures (the same figures the club's admins see). Totals per
+        // club and per expense category only; no descriptions, payees, receipts
+        // or other members' names leave the database.
+        $ytd = FundFigures::yearToDate();
+        $fundFor = function ($club) use ($ytd) {
+            $figures = new FundFigures($club);
+            $w = $figures->forWindow($ytd);
+
+            return [
+                'window' => $w['window'],
+                'collected' => $w['collected'],
+                'spent' => $w['spent'],
+                'expenses' => $w['expenses'],
+                'welfare' => $w['welfare'],
+                'charges' => $w['charges'],
+                // Spending above what came in this year was paid from earlier savings.
+                'fromReserves' => max(0, $w['spent'] - $w['collected']),
+                'categories' => $figures->byCategoryBetween($ytd['from'], $ytd['to']),
+            ];
+        };
 
         $jobLevels = FeeRate::jobLevelLabels();
 
-        $clubCards = $clubs->map(function ($club) use ($rawStats, $collected, $spending, $jobLevels) {
+        $clubCards = $clubs->map(function ($club) use ($rawStats, $fundFor, $jobLevels, $openCounts) {
             $s = $rawStats[$club->id] ?? null;
-            $categories = collect($spending[$club->id] ?? [])
-                ->map(fn ($row) => ['name' => $row->category, 'amount' => P::sen($row->total)])
-                ->sortByDesc('amount')
-                ->values();
-
             return [
                 'id' => $club->id,
                 'name' => $club->name,
@@ -74,27 +78,18 @@ class DashboardController extends Controller
                 'paymentsUrl' => route('member.payments.index', $club),
                 'summary' => [
                     'paid' => (int) ($s->paid_count ?? 0),
-                    'pending' => (int) ($s->pending_count ?? 0),
-                    'overdue' => (int) ($s->overdue_count ?? 0),
-                    'verifying' => (int) ($s->verifying_count ?? 0),
+                    'due' => $openCounts($club->id, DisplayStatus::DUE),
+                    'overdue' => $openCounts($club->id, DisplayStatus::OVERDUE),
+                    'processing' => $openCounts($club->id, DisplayStatus::PROCESSING),
+                    'verifying' => $openCounts($club->id, DisplayStatus::VERIFYING),
                     'totalPaid' => P::sen($s->total_paid ?? 0),
                 ],
-                'fund' => [
-                    'collected' => P::sen($collected[$club->id] ?? 0),
-                    'spent' => $categories->sum('amount'),
-                    'categories' => $categories,
-                ],
+                'fund' => $fundFor($club),
             ];
         })->values();
 
         $clubNames = $clubs->pluck('name', 'id');
         $withClub = fn (Payment $p) => P::summary($p) + ['clubName' => $clubNames[$p->club_id] ?? ''];
-
-        $open = Payment::where('user_id', $user->id)
-            ->whereIn('club_id', $clubIds)
-            ->where('status', '!=', 'paid')
-            ->orderBy('due_date')
-            ->get();
 
         $recentPaid = Payment::where('user_id', $user->id)
             ->whereIn('club_id', $clubIds)
@@ -105,22 +100,48 @@ class DashboardController extends Controller
             ->get();
 
         // A fee whose transfer slip is being checked is not owed any more (the
-        // member has paid; the treasurer is confirming), so it is left out of
-        // the amount due and counted on its own line.
-        $owing = $open->reject(fn (Payment $p) => $p->isVerifying());
+        // member has paid; the treasurer is confirming), and one with an FPX
+        // bill in progress may already be paid (the bank has not confirmed):
+        // both are left out of the amount due and counted on their own line.
+        $is = fn (string $status) => fn (Payment $p) => $statuses[$p->id] === $status;
+        $owing = $open->filter(fn (Payment $p) => in_array($statuses[$p->id], [DisplayStatus::DUE, DisplayStatus::OVERDUE], true))->values();
+        $processing = $open->filter($is(DisplayStatus::PROCESSING))->values();
+        $verifying = $open->filter($is(DisplayStatus::VERIFYING))->values();
+
+        // "Bayar semua" (R1b): every fee owed in the club of the oldest one, with
+        // one bill or slip. Offered from two fees on, to active members only,
+        // and not while an FPX payment is in progress in that club (it could
+        // be paid twice).
+        $payAll = null;
+        if ($first = $owing->first()) {
+            $club = $clubs->firstWhere('id', $first->club_id);
+            $inClub = $owing->where('club_id', $first->club_id);
+            if ($club && $club->pivot->is_active && $inClub->count() > 1
+                && ! $processing->contains('club_id', $first->club_id)) {
+                $payAll = [
+                    'url' => route('member.payments.review-all', $club),
+                    'totalSen' => $inClub->sum(fn (Payment $p) => P::sen($p->amount)),
+                    'count' => $inClub->count(),
+                    'clubName' => $club->name,
+                ];
+            }
+        }
 
         return Inertia::render('Member/Home', [
             'year' => $year,
             'outstanding' => [
                 'total' => $owing->sum(fn (Payment $p) => P::sen($p->amount)),
                 'count' => $owing->count(),
-                'overdueCount' => $owing->filter(fn (Payment $p) => P::displayStatus($p) === 'overdue')->count(),
-                'verifyingCount' => $open->count() - $owing->count(),
+                'overdueCount' => $owing->filter($is(DisplayStatus::OVERDUE))->count(),
+                'verifyingCount' => $verifying->count(),
+                'processingCount' => $processing->count(),
+                'processingTotal' => $processing->sum(fn (Payment $p) => P::sen($p->amount)),
             ],
             // Oldest fee still owed first (the hero button pays exactly this one),
-            // then fees whose slip is being checked.
-            'upcoming' => $owing->concat($open->filter(fn (Payment $p) => $p->isVerifying()))->take(5)->map($withClub)->values(),
+            // then fees with an FPX payment in progress, then slips being checked.
+            'upcoming' => $owing->concat($processing)->concat($verifying)->take(5)->map($withClub)->values(),
             'recentPaid' => $recentPaid->map($withClub)->values(),
+            'payAll' => $payAll,
             'clubs' => $clubCards,
             'dashboardUrl' => route('member.dashboard'),
             'account' => [

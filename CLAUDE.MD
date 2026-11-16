@@ -1,214 +1,136 @@
 # CLAUDE.md
 
-Guidance for AI assistants working in this repository. Read this first — it reflects what the code actually does, not what the README says.
+Guidance for AI assistants working in this repository. It describes what the code does; when it disagrees with
+the code, trust the code and fix this file.
 
-## Project Overview
+## Project overview
 
-**Club Portal** is a self-hosted Laravel web app for organisations that run multiple clubs and need to track membership fees, payments, expenses, and discounts with a proper audit trail. It ships an installation wizard, TOTP two-factor auth, role-based access, per-club ToyyibPay (Malaysian payment gateway) integration, CSV member import, and a financial ledger that exports to CSV and PDF.
+**Club Portal**: a self-hosted Laravel app for small Malaysian staff clubs. Members pay fees by FPX (ToyyibPay or
+Billplz, chosen per club) or by free bank / DuitNow transfer with a slip that an admin verifies. Admins record
+spending ("Fund Usage": expenses and welfare cases) with documents and two-person approval. Also: installer, TOTP
+2FA, roles, CSV member import, ledger with CSV/PDF export, audit log, installable PWA. Deployed on cPanel (PHP only,
+prebuilt assets). User-facing docs: `README.md`, `docs/INSTALL.md` (first install), `docs/RELEASE.md` (build and
+upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/THIRD-PARTY-LICENSES.md`.
 
-## Stack (verified against composer.json / package.json)
+## Stack
 
-- **PHP `^8.3`** (README says 8.2 — trust `composer.json:9`)
-- **Laravel `^13.0`** (README says Laravel 11 — trust `composer.json:12`)
-- **Database:** SQLite by default (`database/database.sqlite`), switchable via `.env`
-- **Session / queue / cache:** `database` driver (per `.env.example`)
-- **Mail:** `log` driver by default
-- **Frontend:** Bootstrap 5.3.3 **via CDN** in every layout. See the warning in "Pitfalls" below.
-- **2FA:** `pragmarx/google2fa` + `bacon/bacon-qr-code`
-- **PDF:** `barryvdh/laravel-dompdf`
-- **Payments:** ToyyibPay (sandbox + production)
+- **PHP 8.4** (`composer.lock` needs it; `composer.json` still says `^8.3`), **Laravel 13**.
+- SQLite by default; `database` driver for session, cache (locks, rate limits) and queue; mail `log` locally.
+- **Two front ends side by side:**
+  - **Inertia 2 + React 18 + TypeScript + Tailwind 3** (Vite) for member pages and the admin Dashboard, Fund Usage and
+    Verifications. Root view `resources/views/app.blade.php`, pages in `resources/js/Pages/{Member,Admin}`, shared
+    components in `resources/js/components/{app,ui}`, BM/EN strings in `resources/js/lib/i18n.ts` (members default
+    to `ms`), theme in `resources/js/lib/theme.tsx`. Props are shared by `HandleInertiaRequests`.
+  - **Blade + Bootstrap 5 from jsDelivr** for login/2FA/password pages, installer and the remaining admin pages
+    (members, payments, fee rates, discounts, categories, billing settings, ledger, audit logs, clubs, admins,
+    statistics, classic dashboard). Use Bootstrap classes there, Tailwind only in the React pages.
+- `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade, CDN).
 
-## Repo Layout
+## Layout
 
 ```
-app/
-  Http/
-    Controllers/
-      Admin/          13 controllers (Club, Member, Payment, Expense, Ledger, ...)
-      Auth/           Login, 2FA challenge, password reset
-      Member/         Member-facing portal (Dashboard, Payment)
-      Concerns/       AuthorizesClubResource trait — shallow-route auth
-      Controller.php HomeController.php InstallController.php WebhookController.php
-    Middleware/       6 custom + SecurityHeaders
-  Models/             User, Club, Payment, Expense, ExpenseCategory, FeeRate, Discount, AuditLog
-  Services/           AuditService, ToyyibPayService
-  Mail/               MemberWelcome, PaymentConfirmation, OverdueReminder
-  Console/Commands/   SendOverdueReminders (scheduled daily)
-bootstrap/app.php     Middleware alias registry (Laravel 11/13-style bootstrap)
-config/toyyibpay.php  ToyyibPay credentials + webhook secret
-routes/
-  web.php             All HTTP routes (single file)
-  console.php         Artisan schedule: overdue reminders at 08:00
-database/
-  migrations/         15 migrations
-  seeders/            DatabaseSeeder (super admin + sample club + fee rates + expense categories)
-  factories/          7 factories for all domain models
-resources/views/
-  layouts/            app.blade.php (admin), auth.blade.php, member.blade.php
-  admin/ member/ auth/ emails/ install/
-tests/
-  TestCase.php        RefreshDatabase + `.installed` marker + acting-as helpers
-  Feature/Admin/      7 feature tests
-  Unit/               PaymentModelTest
+app/Contracts/                 PaymentGateway, ConfirmsWebhookPayments
+app/Http/Controllers/Admin/    Club, ClubBilling, Member, FeeRate, Payment, FundUsage, Attachment,
+                               TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
+app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
+app/Http/Controllers/          InstallController, WebhookController, HomeController, Auth/*
+app/Models/                    User, Club, Payment, PaymentBill, Expense, WelfareCase, Attachment, FeeRate,
+                               Discount, ExpenseCategory, AuditLog
+app/Services/                  AuditService, AttachmentService, FundUsageService, TransferVerificationService,
+                               BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
+app/Support/                   presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
+                               WebhookSecret, BillplzSignature, ...), Export/CsvSafe
+app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
+routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC)
+database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSeeder (e2e fixtures)
+public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release)
+scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)
+mockup/                        standalone design mockup (sample data only; see mockup/README.md)
+tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.mjs (Playwright)
 ```
 
-## Routes (`routes/web.php`)
+## Routes and middleware
 
-Four concentric middleware groups:
+- `/install` (`redirect_if_installed`, POST throttled) needs `INSTALL_TOKEN` (or `storage/app/.install-token`), 16+ chars.
+- `POST /webhook/toyyibpay` and `/webhook/billplz`: outside `check_installed`, no auth, `throttle:webhooks`, and
+  `withoutMiddleware(PreventRequestForgery::class)`. Laravel 13's web group runs `PreventRequestForgery`; excluding
+  `VerifyCsrfToken` does **not** work (tests skip CSRF, so only `WebhookCsrfExemptionTest` / e2e catch it).
+- Everything else is inside `check_installed` (needs `storage/app/.installed`), then `['auth', 'auth.session', 'two_factor']`:
+  - `member` group, prefix `/my`: member pages. `MemberOnly` only checks auth (admins can use it too).
+  - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log.
+  - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
+    attachments, billing, ledger.
+- `/two-factor-challenge` deliberately has **no `auth`**: login logs the user out and stores `two_factor_user_id`;
+  the controller gates on that session key. Don't add `auth` there.
+- Put literal child routes (e.g. `members/import`) **before** `Route::resource(...)->shallow()`.
+- In production URLs are built from `APP_URL` and other hosts are refused (`trustHosts`).
 
-1. **`/install`** — gated by `redirect_if_installed` (GET) and `redirect_if_installed + throttle:5,1` (POST).
-2. **`POST /webhook/toyyibpay`** — CSRF-exempt, no auth, **outside** `check_installed`. Verifies shared secret via query token.
-3. Everything else is inside `check_installed` → redirects to `/install` until `storage/app/.installed` exists.
-4. Inside that, most routes use `['auth', 'two_factor']` plus one of:
-   - `member` (prefix `/my`) — member portal
-   - `super_admin` (prefix `/admin`) — clubs, admins, statistics, platform audit-logs
-   - `club_admin` (prefix `/admin`) — shallow resources under `/admin/clubs/{club}/...`
+## Domain rules (keep them)
 
-**Shallow-route ordering gotcha** (`routes/web.php:87-91`): the member import / template routes are declared **before** `Route::resource('clubs.members', ...)->shallow()` so `import` isn't captured as a `{member}` wildcard. When you add child routes, place literal segments before the resource.
+- **Payment.status**: `pending | paid | overdue | pending_verification`. `transfer_*` / `verified_*` are not fillable;
+  only `TransferVerificationService` sets them. `paid_via` is the gateway name, `transfer`, or null (manual).
+- **Bills**: every gateway bill is a `PaymentBill`; `pay` is POST-only and runs under a per-fee cache lock. ToyyibPay
+  callbacks carry a per-bill HMAC token and are confirmed with `getBillTransactions` before settling; Billplz uses
+  X-Signature. Webhooks fail closed (secret < 32 chars or placeholder = refuse) and are idempotent.
+- **Maker-checker**: Fund Usage approve (different admin, not the welfare beneficiary, CoI declaration), void
+  (request + confirm by another admin), bank/DuitNow detail changes (`BankDetailsChangeService`), and `OwnFeeRule`
+  (a club admin can't settle, verify or edit their own fee; super admin exempt). Only the super admin grants the club-admin role.
+- **Counted totals**: only `approved` expenses count (`Expense::scopeCounted`); money is summed in sen.
+- **Attachments**: encrypted with `Crypt` on the private `local` disk (`serve => false`), served only via
+  `admin.attachments.show` (audited) / `thumb` (not audited) or the member's own slip route. Locked once submitted.
+- **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and
+  `users.two_factor_secret` / recovery codes (manual `encrypt`/`decrypt`; use `User::getTwoFactorSecret()`).
 
-## Middleware (aliases in `bootstrap/app.php:19-26`)
+## Patterns
 
-| Alias | Class | Behaviour |
-|---|---|---|
-| `super_admin` | `SuperAdmin` | 403 unless `role === 'super_admin'` |
-| `club_admin` | `ClubAdmin` | Requires `isAdmin()`. If the route has `{club}`, verifies the user is in `club_user` with `role=admin` (super admin bypasses) |
-| `member` | `MemberOnly` | **Only checks auth.** Admins/super admins can enter the member portal — do not rely on this for role isolation |
-| `check_installed` | `CheckInstalled` | Redirects to `/install` unless `storage/app/.installed` exists |
-| `redirect_if_installed` | `RedirectIfInstalled` | Opposite |
-| `two_factor` | `RequiresTwoFactor` | If user has 2FA enabled and `session('two_factor_verified')` is falsy, logs them out, stores `two_factor_user_id`, redirects to `/two-factor-challenge` |
+- **Shallow-route auth**: controllers for shallow resources use `Concerns\AuthorizesClubResource` and call
+  `$this->authorizeClubAdmin($model->club)`.
+- **Audit every write**: `AuditService::log($action, $description, $model, $clubId, $old = [], $new = [])` (positional).
+- **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Allowed hosts: jsDelivr, Google Fonts;
+  form-action allows the ToyyibPay and Billplz hosts.
+- **Rate limits**: login, 2FA verify, installer, CSV import `throttle:5,1`; password reset `throttle:password-reset`;
+  Fund Usage / verification / billing writes `throttle:20,1`; slip upload and pay-ahead `throttle:10,1`.
+- **Exports**: `Cache-Control: no-store`, attachment disposition, `CsvSafe` for formula cells.
+- **Gateway access** goes through `PaymentGatewayManager::for($club)`, never a concrete gateway.
 
-`SecurityHeaders` is appended globally to the `web` stack and shares a per-request nonce to all views as `$cspNonce`.
-
-## Models & Relationships
-
-- **User** (`app/Models/User.php`) — `role` is one of `super_admin`, `admin`, `member`. `isSuperAdmin()` and `isAdmin()` (the latter returns true for both admin roles). `hasEnabledTwoFactor()` checks `two_factor_confirmed_at`. `getTwoFactorSecret()` / `getTwoFactorRecoveryCodes()` manually `decrypt()` — these fields are **not** declared as `'encrypted'` casts.
-- **Club** — `toyyibpay_secret_key` uses the `'encrypted'` cast (automatic). `members()` is a belongsToMany via `club_user` with pivot `role`, `job_level`, `joined_date`, `is_active`. `currentFeeRates()` filters by `effective_to`.
-- **Payment** — `status` ∈ `{pending, paid, overdue}`. `amount` is `decimal:2`; dates (`period_start`, `period_end`, `due_date`, `paid_date`) cast `date`. `bill_code` + `transaction_id` are ToyyibPay fields.
-- **AuditLog** — polymorphic (`auditable_type/auditable_id`), immutable, captures `old_values` / `new_values` as JSON plus IP and user agent.
-
-**Enums:**
-- `users.role`: `super_admin | admin | member`
-- `club_user.role`: `admin | member`
-- `club_user.job_level`: `gm | agm | manager | executive | non_exec`
-- `payments.status`: `pending | paid | overdue`
-- `payments.frequency`: `monthly | quarterly | yearly`
-
-**Encrypted at rest:**
-- `clubs.toyyibpay_secret_key` (auto cast)
-- `users.two_factor_secret`, `users.two_factor_recovery_codes` (manual encrypt/decrypt)
-
-## Key Patterns — Follow These
-
-### 1. Shallow-route authorization
-
-Routes like `PUT /admin/payments/{payment}` lose the `{club}` segment, so the `club_admin` middleware can't verify ownership. Controllers use the `AuthorizesClubResource` trait (`app/Http/Controllers/Concerns/AuthorizesClubResource.php`) and call `$this->authorizeClubAdmin($payment->club)` at the top of `show/edit/update/destroy/markPaid`. See `app/Http/Controllers/Admin/PaymentController.php` as the canonical example. **Any new controller for a shallow-nested resource must use this trait.**
-
-### 2. Audit every write
-
-Call `AuditService::log($action, $description, $model, $clubId, $old = [], $new = [])` (positional args) from controllers in `store / update / destroy / markPaid / import / 2FA toggle` actions. The service auto-captures user, role, IP, and user agent. Don't write to `audit_logs` directly.
-
-```php
-AuditService::log(
-    'payment.updated',
-    "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']}).",
-    $payment,
-    $payment->club_id,
-    $old,
-    $payment->fresh()->only([...])
-);
-```
-
-### 3. ToyyibPay integration
-
-`app/Services/ToyyibPayService.php`:
-- `isConfiguredForClub(Club)` — check before offering online payment (per-club creds preferred, global `.env` fallback)
-- `createBill([...])` — returns a `bill_code` string or `null`. Amount goes to ToyyibPay in cents: `(int) round($amount * 100)`
-- `paymentUrl($billCode)` — build the redirect URL
-- `signedCallbackUrl($url)` — appends `?webhook_token=<secret>`
-- `verifyWebhookSecret($token)` — uses `hash_equals()`
-- `verifyCallback($payload)` — true when ToyyibPay returns `status_id === 1`
-
-Webhook handler (`app/Http/Controllers/WebhookController.php`):
-- Validates the token first (403 on mismatch)
-- Looks up `Payment` by `bill_code`, then by `reference`
-- **Idempotent**: early-returns if `status === 'paid'`
-- Updates to `paid`, sends `PaymentConfirmation` mail, returns `200 ok` (even on "not found" / "not successful" — ToyyibPay retries otherwise)
-
-### 4. Two-factor auth flow
-
-Login → `RequiresTwoFactor` sees 2FA enabled but session unverified → logs user out, stores `two_factor_user_id` → redirect `/two-factor-challenge` → `TwoFactorChallengeController` validates TOTP → sets `session('two_factor_verified') = true`. Don't design flows that assume a route behind the `two_factor` middleware is reachable while unverified.
-
-**Critical gotcha**: `/two-factor-challenge` (both GET and POST) intentionally has **no `auth` middleware** (`routes/web.php:50-61`). `LoginController::authenticated()` calls `auth()->logout()` and stores `two_factor_user_id` in session — adding `auth` here would redirect the now-unauthenticated user back to `/login`. `TwoFactorChallengeController` gates on `session('two_factor_user_id')` internally. The POST has `throttle:5,1` to block TOTP brute-force.
-
-### 5. Install wizard
-
-Gated by the `storage/app/.installed` marker file. `CheckInstalled` redirects every non-install / non-webhook route to `/install` until the file exists. Tests create the marker in `Tests\TestCase::setUp()` so requests aren't redirected.
-
-### 6. CSP nonce
-
-`SecurityHeaders` generates a per-request `base64` nonce and shares it to views as `$cspNonce`. The CSP blocks `'unsafe-inline'`, so every inline `<script>` or `<style>` needs `nonce="{{ $cspNonce }}"`. Allowed external hosts: `cdn.jsdelivr.net` (scripts/styles/fonts). Form-action allows `toyyibpay.com` + `dev.toyyibpay.com`.
-
-### 7. Rate limiting
-
-`throttle:5,1` is applied to:
-- Login POST (`routes/web.php:46-48`)
-- Install POST (`routes/web.php:27`)
-- CSV import POST (`routes/web.php:88`)
-
-Preserve this pattern for new sensitive endpoints.
-
-### 8. Export responses
-
-CSV and PDF export actions set `Cache-Control: no-store` and `Content-Disposition: attachment` to prevent browser caching and content-sniffing.
-
-## Dev Workflows
-
-From `composer.json:37-53`:
+## Dev workflow
 
 | Command | What it does |
 |---|---|
-| `composer setup` | `composer install` → copy `.env` → `key:generate` → `migrate --force` → `npm install` → `npm run build` |
-| `composer dev` | Runs four concurrent processes: `artisan serve`, `queue:listen --tries=1 --timeout=0`, `pail` (log tail), `npm run dev` |
-| `composer test` | `config:clear` then `php artisan test` (PHPUnit; SQLite in-memory per `phpunit.xml`) |
-| `php artisan db:seed` | Local/testing only (refuses elsewhere). Creates `superadmin@clubportal.com` with `SEED_SUPER_ADMIN_PASSWORD` or a random password it prints once, plus a sample club, fee rates, expense categories and demo members/payments |
-| `php artisan test --filter=LedgerTest` | Run a single test file |
-| `vendor/bin/pint` | Laravel Pint — standard preset, no custom config |
-| `php artisan schedule:run` | To execute the daily 08:00 overdue-reminders job, run this per minute from cron |
+| `composer setup` | install, copy `.env`, `key:generate`, `migrate --force` (no npm) |
+| `npm ci && npm run build` | build `public/build` (needed to serve any Inertia page; tests that render the root view call `withoutVite()`) |
+| `npm run dev` / `composer dev` | Vite dev server / `artisan serve` + queue + log tail |
+| `php artisan test` (`composer test`) | PHPUnit, SQLite in memory; `RefreshDatabase` + `.installed` marker in `TestCase` |
+| `npm run typecheck` | `tsc --noEmit` |
+| `php artisan db:seed` | demo data, local/testing only; super admin password from `SEED_SUPER_ADMIN_PASSWORD` or printed once |
+| `node tests/e2e/smoke.mjs` | browser smoke test; setup in `tests/e2e/README.md` |
+| `vendor/bin/pint` | code style (`pint.json`) |
+| `npm run licenses` | regenerate `docs/THIRD-PARTY-LICENSES.md` from the lockfiles (`scripts/licenses.mjs`); run after any dependency change |
 
-**`TRUSTED_PROXIES`** (`.env.example`): Accepts comma-separated IPs, CIDR ranges, or `'*'`. Misconfiguring this causes `request()->ip()` to return the load-balancer IP, which pollutes audit logs and breaks per-IP rate limiting.
+Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 
-## Testing Conventions
+## Testing conventions
 
-- `Tests\TestCase` uses `RefreshDatabase` and `touch`es `storage/app/.installed` in `setUp()`.
-- Helpers on the base class: `actingAsSuperAdmin()`, `actingAsClubAdmin(Club $club)`, `actingAsMember(Club $club)`. Factory users have 2FA disabled, so `RequiresTwoFactor` passes through.
-- **IDOR test pattern**: Cross-club access checks on admin resources expect `assertForbidden()` (they call `authorizeClubAdmin()`). Member portal routes use `abort(404)` for information-hiding — test those with `assertNotFound()`. Don't mix the two.
-- **Session pre-seeding**: Use `withSession(['two_factor_user_id' => $user->id])` when testing the 2FA challenge flow — `TwoFactorChallengeController` gates on that session key, not `Auth::check()`.
-- Feature tests: `tests/Feature/Admin/` — `AuthorizationTest`, `ClubControllerTest`, `ExpenseControllerTest`, `LedgerTest`, `MemberControllerTest`, `MemberCsvImportTest`, `PaymentControllerTest`.
-- Unit tests: `tests/Unit/PaymentModelTest.php`.
-- Factories exist for all 7 domain models in `database/factories/`.
-- Add new admin CRUD coverage in `tests/Feature/Admin/`.
+- Helpers in `Tests\TestCase`: `actingAsSuperAdmin()`, `actingAsClubAdmin($club)`, `actingAsMember($club)`.
+- Cross-club access to admin resources: `assertForbidden()`. Member routes hide other people's data with 404:
+  `assertNotFound()`.
+- 2FA challenge tests pre-seed `withSession(['two_factor_user_id' => $id])`.
+- Add tests next to the area you touch (`tests/Feature/Admin`, `tests/Feature/Member`, top-level for webhooks/security).
 
-## Common Pitfalls
+## Pitfalls
 
-- **README version drift** — composer says PHP 8.3 / Laravel 13. Trust composer.
-- **Bootstrap is loaded via CDN** in every real layout (`resources/views/layouts/{app,auth,member}.blade.php`, `install/index.blade.php`). The Vite + SCSS pipeline (`resources/sass/app.scss`, `vite.config.js`) is vestigial Laravel scaffolding — the only file using `@vite(...)` is `welcome.blade.php`, which is unreachable after install. **`npm run build` produces unused assets.** Tailwind 4 is in `package.json` but not wired into `app.scss` — **do not add Tailwind classes, they won't render.** Use Bootstrap 5 utility classes.
-- **`MemberOnly` does not restrict to members** — it only checks auth. If you need admin-vs-member isolation, check roles explicitly.
-- **`two_factor_secret` / `two_factor_recovery_codes` are NOT `encrypted` casts** — they're encrypted on write by `ProfileController` and decrypted by `User::getTwoFactorSecret()` / `getTwoFactorRecoveryCodes()`. Don't read the raw attribute.
-- **Money is `decimal:2`** — arithmetic on the cast value. For ToyyibPay: `(int) round($amount * 100)` for cents.
-- **Webhook route is CSRF-exempt and unauthenticated** — do not add `auth` or CSRF middleware. The token query param is the auth.
-- **Place specific child routes before `Route::resource(...)->shallow()`** to avoid wildcard collisions (member-import / template is the existing example).
-- **Every domain write needs a matching `AuditService::log(...)` call.** Grep for existing calls when adding a new action.
-- **Inline `<script>` / `<style>` without `nonce="{{ $cspNonce }}"` will be blocked** by CSP.
-- **`Payment.status` has three values**, not two — `overdue` is set by the scheduled `payments:send-overdue-reminders` command (`routes/console.php:12-14`).
-- **CSV import hard limit is 1000 rows** (`MemberController::CSV_ROW_LIMIT`); file cap is 2 MB. On completion the controller flashes `import_imported` (int) and `import_errors` (array of `{row, email, reason}`) back via `with()`. `stripFormulaPrefix()` runs on `name` and `email` fields — any value starting with `=`, `+`, `-`, or `@` is defanged to prevent CSV injection when admins later export the list.
+- Until the first real production install (the next release tag) migrations are edited in place (no live data); an old database needs `migrate:fresh`. After that, additive only.
+- `CACHE_STORE` must not be `array` in production (pay lock, rate limits).
+- `bootstrap/app.php`'s `withMiddleware` callback runs before `.env` is loaded: never read `env()` there. Trusted proxies
+  come from `config('app.trusted_proxies')` (`TRUSTED_PROXIES`) via `AppServiceProvider::configureTrustedProxies()`.
+- Webhook routes: never add `auth` or CSRF; the token/signature is the auth.
+- A missing `public/build/manifest.json` breaks every Inertia page; delete a stray `public/hot` before building/uploading.
+- Don't relax security defaults (CSP nonces, throttles, encrypted columns, webhook verification, maker-checker) without a reason and a test.
 
-## Working Principles
+## Working principles
 
-- Think before coding. Surface assumptions, ask rather than guess, present alternatives when a request has multiple sensible interpretations.
-- Surgical changes only. Match existing style — Bootstrap markup, positional `AuditService::log(...)` arguments, `AuthorizesClubResource` trait usage, `throttle:5,1` on sensitive POSTs.
-- Don't touch the security defaults (CSRF, CSP nonces, throttle limits, encrypted columns, webhook secret verification) without an explicit reason.
-- Before calling a task done: add or update a feature test in `tests/Feature/Admin/` for new admin behaviour, then run `composer test`.
-
----
-
-Built by [@amirsubhi](https://github.com/amirsubhi), assisted by [Claude Code](https://claude.ai/code).
+- Surgical changes in the existing style; ask when a request has several sensible readings.
+- Before calling a task done: add or update tests, run `php artisan test`, and for front-end changes `npm run typecheck`
+  and `npm run build`.
+- Keep the docs in step with the code: first-install facts live in `docs/INSTALL.md` (README and `docs/RELEASE.md`
+  only summarise or link to it); a new direct dependency also goes into `CREDITS.md`.

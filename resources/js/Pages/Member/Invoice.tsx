@@ -1,8 +1,9 @@
-import { Hourglass, Lock, Printer } from "lucide-react";
+import { Hourglass, Lock, Printer, RefreshCw } from "lucide-react";
 import { Head, Link } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
+import { ReceiptActions } from "@/components/app/ReceiptActions";
 import { ReceiptCard } from "@/components/app/ReceiptCard";
 import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,8 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             items: [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }],
           }}
         />
-        <PrintButton />
+        <ReceiptActions receiptNo={receipt.receiptNo} amount={receipt.amount} paidAt={receipt.paidAt} clubName={payClub.name} url={payment.urls.invoice} />
+        <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
     );
   }
@@ -61,22 +63,26 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
       <Head title={t("invoice")} />
       <FlashBanner />
       <section aria-label={t("invoice")} className="flex flex-col gap-5 rounded-[20px] border bg-card p-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <div className="text-sm text-muted-foreground">{payClub.name}</div>
-            <div className="font-mono text-lg">{payment.invoiceNo}</div>
+            <div className="break-words text-sm text-muted-foreground">{payClub.name}</div>
+            <h2 className="break-all font-mono text-lg font-normal">{payment.invoiceNo}</h2>
           </div>
-          <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))} size="sm" />
+          <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))}
+            size="sm"
+            className="h-auto min-h-6 whitespace-normal py-0.5"
+          />
         </div>
-        <dl className="grid grid-cols-2 gap-3 text-base">
+        {/* Two columns while they fit; one under the other with large text. */}
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 text-base">
           <div className="min-w-0">
             <dt className="text-sm text-muted-foreground">{t("billedTo")}</dt>
-            <dd className="font-semibold">{member.name}</dd>
-            <dd className="truncate text-sm text-muted-foreground">{member.email}</dd>
+            <dd className="break-words font-semibold">{member.name}</dd>
+            <dd className="break-all text-sm text-muted-foreground">{member.email}</dd>
           </div>
           <div>
             <dt className="text-sm text-muted-foreground">{t("due")}</dt>
-            <dd className={payment.status === "overdue" ? "font-semibold text-danger-foreground" : "font-semibold"}>{fmtDate(payment.dueDate, lang)}</dd>
+            <dd className="font-semibold">{fmtDate(payment.dueDate, lang)}</dd>
             {issuedOn && (
               <>
                 <dt className="mt-2 text-sm text-muted-foreground">{t("issuedOn")}</dt>
@@ -85,45 +91,48 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             )}
           </div>
         </dl>
-        <table className="w-full text-base">
-          <thead>
-            <tr className="border-b text-left text-sm text-muted-foreground">
-              <th scope="col" className="py-2 font-medium">
+        {/* Item rows wrap (amount under the item) with large text instead of running off a narrow screen. */}
+        <div className="text-base" role="table" aria-label={t("invoice")}>
+          <div role="rowgroup">
+            <div role="row" className="flex flex-wrap justify-between gap-x-3 border-b py-2 text-sm text-muted-foreground">
+              <span role="columnheader" className="font-medium">
                 {t("item")}
-              </th>
-              <th scope="col" className="py-2 text-right font-medium">
+              </span>
+              <span role="columnheader" className="text-right font-medium">
                 {t("amount")}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b">
-              <td className="py-3 pr-2">
+              </span>
+            </div>
+          </div>
+          <div role="rowgroup">
+            <div role="row" className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 border-b py-3">
+              <span role="cell" className="min-w-0 flex-[1_1_10rem] break-words">
                 {feeLabel(payment)}
                 <span className="block text-sm text-muted-foreground">{t(`freq_${payment.frequency}`)}</span>
-              </td>
-              <td className="py-3 text-right align-top">
+              </span>
+              <span role="cell" className="ml-auto text-right">
                 <Money sen={payment.amount} />
-              </td>
-            </tr>
+              </span>
+            </div>
             {discount && (
-              <tr className="border-b text-sm text-muted-foreground">
-                <td className="py-2 pr-2">
+              <div role="row" className="flex flex-wrap justify-between gap-x-3 gap-y-1 border-b py-2 text-sm text-muted-foreground">
+                <span role="cell" className="min-w-0 flex-[1_1_10rem] break-words">
                   {t("discount")}: {discount.name}
-                </td>
-                <td className="py-2 text-right">{discount.type === "fixed" ? `−${rm(discount.value)}` : `−${discount.value}%`}</td>
-              </tr>
+                </span>
+                <span role="cell" className="ml-auto text-right">
+                  {discount.type === "fixed" ? `−${rm(discount.value)}` : `−${discount.value}%`}
+                </span>
+              </div>
             )}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className="pt-3 font-semibold">{t("total")}</td>
-              <td className="pt-3 text-right">
-                <Money sen={payment.amount} className="font-display text-2xl font-bold" />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+            <div role="row" className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-3">
+              <span role="rowheader" className="font-semibold">
+                {t("total")}
+              </span>
+              <span role="cell" className="ml-auto min-w-0 text-right">
+                <Money sen={payment.amount} className="font-display text-2xl font-bold !whitespace-normal" />
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
       {payment.status === "verifying" && payment.urls.review && (
         <section aria-labelledby="inv-vf" className="flex items-start gap-3 rounded-[20px] bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30 print:hidden" data-testid="invoice-verifying">
@@ -139,15 +148,36 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
           </div>
         </section>
       )}
-      {payment.urls.review && payment.status !== "verifying" && (
-        <Button asChild size="xl" className="w-full rounded-full text-lg print:hidden">
+      {payment.status === "processing" && payment.urls.billStatus && (
+        <section aria-labelledby="inv-pr" className="flex flex-col gap-3 rounded-[20px] bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30 print:hidden" data-testid="invoice-processing">
+          <div className="flex items-start gap-3">
+            <RefreshCw className="mt-0.5 h-6 w-6 shrink-0" strokeWidth={1.75} aria-hidden />
+            <div className="min-w-0">
+              <h2 id="inv-pr" className="text-base font-semibold">
+                {t("processingWarnTitle")}
+              </h2>
+              <p className="text-base">{t("processingWarnBody")}</p>
+            </div>
+          </div>
+          <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg">
+            <Link href={payment.urls.billStatus}>{t("checkPaymentStatus")}</Link>
+          </Button>
+        </section>
+      )}
+      {payment.urls.review && payment.status === "processing" && (
+        <Button asChild variant="outline" size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg print:hidden">
+          <Link href={payment.urls.review}>{t("payAgain")}</Link>
+        </Button>
+      )}
+      {payment.urls.review && payment.status !== "verifying" && payment.status !== "processing" && (
+        <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg print:hidden">
           <Link href={payment.urls.review}>
             <Lock aria-hidden /> {t("reviewPay")} {rm(payment.amount)}
           </Link>
         </Button>
       )}
       <PrintButton />
-      <HelpLine email={payClub.email} />
+      <HelpLine club={payClub} fee={payment} reference={payment.invoiceNo} />
     </MemberShell>
   );
 }

@@ -19,7 +19,8 @@ export interface Member {
 }
 
 /** "verifying": a bank-transfer slip is waiting for the treasurer (payments.status pending_verification). */
-export type PaymentStatus = "paid" | "pending" | "overdue" | "verifying";
+/** App\\Support\\Payments\\DisplayStatus: the one status word for a fee. */
+export type PaymentStatus = "paid" | "due" | "overdue" | "processing" | "verifying";
 
 export interface MemberPayment {
   id: number;
@@ -112,6 +113,8 @@ export interface Line {
 export interface MonthPoint {
   month: string;
   monthEn: string;
+  /** Calendar year of the month (FundFigures::monthly); shown in tooltips and the table. */
+  year?: number;
   collected: Sen;
   spent: Sen;
 }

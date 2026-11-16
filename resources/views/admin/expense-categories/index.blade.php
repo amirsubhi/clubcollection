@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Expense Categories')
-@section('page-title', $club->name . ' — Expense Categories')
+@section('page-title', 'Expense Categories')
+@section('page-club', $club->name)
 
 @section('content')
 <div class="row g-4">
@@ -11,13 +12,21 @@
                 <form action="{{ route('admin.clubs.expense-categories.store', $club) }}" method="POST">
                     @csrf
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                        <label for="f-name" class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                        <input id="f-name" @error('name') aria-invalid="true" aria-describedby="f-name-error" @enderror type="text" name="name" class="form-control @error('name') is-invalid @enderror"
                                value="{{ old('name') }}" placeholder="e.g. Event">
-                        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('name')<div id="f-name-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="f-name-ms" class="form-label fw-semibold">Name in Bahasa Melayu <span class="fw-normal text-body-secondary">(optional)</span></label>
+                        <input id="f-name-ms" aria-describedby="f-name-ms-help @error('name_ms') f-name-ms-error @enderror" @error('name_ms') aria-invalid="true" @enderror type="text" name="name_ms" class="form-control @error('name_ms') is-invalid @enderror"
+                               value="{{ old('name_ms') }}" placeholder="e.g. Acara" lang="ms">
+                        <div id="f-name-ms-help" class="form-text">Members see this name on their pages. Left empty, they see the English name.</div>
+                        @error('name_ms')<div id="f-name-ms-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <button type="submit" class="btn btn-primary">Add Category</button>
                 </form>
+                <p class="form-text mt-3 mb-0" id="bank-charges-note"><i class="bi bi-info-circle me-1" aria-hidden="true"></i><strong>Bank charges:</strong> only charges the portal can't see. Absorbed gateway fees are added automatically.</p>
             </div>
         </div>
     </div>
@@ -28,9 +37,10 @@
             <div class="list-group list-group-flush">
                 @forelse($categories as $cat)
                 <div class="list-group-item d-flex align-items-center justify-content-between gap-3 py-2">
-                    <form action="{{ route('admin.expense-categories.update', $cat) }}" method="POST" class="d-flex align-items-center gap-2 flex-grow-1">
+                    <form action="{{ route('admin.expense-categories.update', $cat) }}" method="POST" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
                         @csrf @method('PUT')
-                        <input type="text" name="name" value="{{ $cat->name }}" class="form-control form-control-sm">
+                        <input type="text" name="name" value="{{ $cat->name }}" class="form-control form-control-sm" style="flex:1 1 9rem" aria-label="English name of category {{ $cat->name }}">
+                        <input type="text" name="name_ms" value="{{ $cat->name_ms }}" lang="ms" class="form-control form-control-sm" style="flex:1 1 9rem" placeholder="BM name (optional)" aria-label="Bahasa Melayu name of category {{ $cat->name }}">
                         <span class="text-muted small text-nowrap">{{ $cat->expenses_count }} expense(s)</span>
                         <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">Save</button>
                     </form>
@@ -38,7 +48,7 @@
                     <form action="{{ route('admin.expense-categories.destroy', $cat) }}" method="POST"
                           data-confirm="Delete this category?">
                         @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-danger" aria-label="Delete category"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" aria-label="Delete category {{ $cat->name }}"><i class="bi bi-trash"></i></button>
                     </form>
                     @endif
                 </div>

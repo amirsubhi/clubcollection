@@ -8,6 +8,81 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.2] — Unreleased
 
+### Added (Option A: new member app and admin pages)
+- **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
+  never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
+  Login, the installer and the remaining admin pages are still Blade + Bootstrap.
+- **Member app:** Home (amount due, upcoming and recent fees, club-wide "where your money goes" totals), Payments by
+  year with pay-ahead, invoice / official receipt, Review & pay (POST-only pay) and a status-aware result page.
+- **Fund Usage:** expenses and welfare (kebajikan) cases with maker-checker approval (conflict-of-interest
+  declaration, return with reason, two-admin void), private encrypted attachments with audited downloads, encrypted
+  welfare personal details, and an Inertia admin dashboard.
+- **PWA:** web manifest, icons, a minimal service worker (`public/sw.js`, static assets only) and an install tip.
+- **Small fixes:** the installer requires PHP 8.4 (as `composer.lock` does); the demo super admin is
+  `superadmin@example.com`; the dashboard chart's end labels no longer overlap when both lines end close together;
+  the receipt's paid date uses BM month names on BM pages.
+- **Fix:** `TRUSTED_PROXIES` set in `.env` was ignored (it was read with `env()` in `bootstrap/app.php`, before `.env`
+  loads). It is now `config('app.trusted_proxies')`, applied in `AppServiceProvider`; empty still trusts nothing.
+- **Docs:** README rewrite with screenshots, `docs/USER-GUIDE.md`, `docs/payment-options.md`, end-to-end smoke test
+  (`tests/e2e/`).
+
+### Design fix round (R1a–R1e, from the design review)
+- **R1a, sign-in and member basics:** sign-in, 2FA and password pages work on phones (one column, Lavender look with
+  dark mode, "Club Portal" brand, BM/EN switch shared with the member app, accessible errors, a plain fallback style
+  when the build is missing); `<html lang>` follows the language toggle; member pages hold up at 200% text; the
+  network-dots hero is replaced by a membership card; Review & pay has a sticky pay bar, no duplicate amount, FPX
+  disabled with a reason when unavailable, and camera-first slip upload on phones.
+- **R1b, "Bayar semua":** pay every open fee with one gateway bill (one gateway charge) or one transfer slip
+  (`YURAN-G{id}`); group bills in `payment_bills` + `payment_bill_items`; the webhook settles a set atomically with the
+  same token, confirmation, amount and dedupe checks; the treasurer approves or rejects a group slip as one set.
+- **R1c, one set of fund figures:** `FundFigures` is the single source for the balance, collected and spent
+  (approved expenses + welfare + absorbed gateway charges), each with its period; Ledger and Billing settings rebuilt
+  on Inertia (computed opening balance, period presets, monthly bank-charge rows); `APP_TIMEZONE`
+  (`Asia/Kuala_Lumpur` from the installer) so dates and the 08:00 reminder follow Malaysia time.
+- **R1d, classic admin pages:** Bootstrap pages use the same tokens, dark mode, sidebar (one `AdminNav` source),
+  headings and accessible forms as the React pages; Statistics uses `FundFigures`; members list links fixed.
+- **R1e, polish:**
+  - Forms: `Field` links each control to its label, hint and error (`aria-describedby`), sets `required` /
+    `aria-required` and `aria-invalid` on inputs, textareas and selects; the Fund Usage "Record type" switch is a
+    labelled radio group with arrow keys; a failed submit moves focus to the error summary. The file uploader ties
+    its error and limits to every way in.
+  - One `h1` per page and no skipped heading levels (member header title is the `h1`, card titles are `h2`).
+  - "Close" on dialogs and sheets and the uploader's default text follow the page language (BM on member pages).
+  - With reduced motion, spinners stop turning but gently fade, so a busy state never looks frozen.
+  - Admin date fields write the picked date out under the field ("16 Nov 2026", React and Blade), so day and
+    month can't be mixed up whatever order the browser's date control uses.
+  - The Verifications sidebar badge counts slips, not fees (a "Bayar semua" slip counts once).
+  - A note on the "Bank charges" category (Fund Usage form and Expense categories page): only charges the portal
+    can't see; absorbed gateway fees are added automatically.
+  - Expense categories have an optional Bahasa Melayu name (`expense_categories.name_ms`, edited on the Expense
+    categories page); members see it on "Ke mana wang anda pergi". Demo and e2e seeders include BM names and a
+    "Bank charges" category.
+  - Admin lines no longer mix BM and English in one phrase (dashboard slips panel, ledger manual opening balance).
+  - The dashboard slips panel shows a "Bayar semua" slip as one row with its fee count and total; a settled group
+    no longer reads "paid" after an admin reverts one of its fees.
+  - Sign-in: the saved language only counts when it is `bm`/`en`; alert messages are guarded; a translated, styled
+    429 "too many attempts" page.
+  - Classic pages: Subresource Integrity on the Bootstrap, Bootstrap Icons and Chart.js CDN tags (Chart.js now loads
+    the package's own `chart.umd.js`); the club name is no longer repeated under the brand; the theme button reads
+    "Theme (System)"; on phones the payments table shows each status under the member's name, with a scroll hint.
+  - The member page's club fallback for admins only uses clubs they still actively manage.
+  - The review page's sticky pay bar keeps the same size pinned or not, so it can't flicker at the threshold; the
+    receipt amount wraps at large text sizes.
+  - Docs: screenshots retaken (new `member-pay-all.png`); README and user guide cover "Bayar semua", the new ledger
+    and billing pages, bank charges, the 08:00 Malaysia-time reminder, which figure to quote at the AGM, and that
+    removing a member keeps their payment history.
+
+### Documentation and licensing
+- New `docs/INSTALL.md`: one complete first-install guide (requirements and PHP extensions, local and cPanel paths,
+  MySQL, after-install setup, backups, troubleshooting). README keeps a short summary; `docs/RELEASE.md` now covers
+  building a release and upgrading.
+- New `SECURITY.md` (private reporting, supported versions, security model) and `mockup/README.md`.
+- `CREDITS.md` rewritten from the installed packages' own licence files, with copyright holders, the pinned CDN
+  versions, the fonts actually loaded, design acknowledgements and a trademarks notice. New
+  `docs/THIRD-PARTY-LICENSES.md` (package list and full licence texts) and `public/licenses.txt` (the texts, served
+  at `/licenses.txt` by every install), both generated by `scripts/licenses.mjs` (`npm run licenses`).
+- `LICENSE`: copyright holder is now "Amir Subhi and clubcollection contributors" (still MIT).
+
 ### Security (S1: hardening from the full audit)
 - **Gateway callbacks:** absolute URLs come from `APP_URL` (host and scheme) in production and other `Host` headers are
   refused, so a forged `Host`/`X-Forwarded-Host` can't redirect callbacks or email links. The ToyyibPay callback
@@ -46,7 +121,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   bilingual page for uploads over `post_max_size`.
 
 ### Payments (P2: manual DuitNow transfer with slip upload)
-- Clubs can publish bank / DuitNow details (Billing settings). Members then choose "Pindahan DuitNow (tiada caj)"
+- Clubs can publish bank / DuitNow details (Billing settings). Members then choose "Pindahan bank / DuitNow"
   on Review & pay, transfer with the reference `YURAN-{id}` and upload 1–3 slips (stored encrypted, private).
 - The fee waits as "Menunggu pengesahan" (`pending_verification`) until a club admin approves or rejects it on the
   new **Verifications** page (nav badge + dashboard panel). Approve marks it paid by transfer and emails the
@@ -60,9 +135,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the previous value `1` until a sandbox run confirms how ToyyibPay reads each value; "member pays" (`0`) stays
   disabled for ToyyibPay until `TOYYIBPAY_CHARGE_VERIFIED=true`.
 
+### Earlier hardening pass (before Option A)
+
 Security and accessibility hardening pass. No public API changes.
 
-### Security
+#### Security
 - Webhook handler is now atomic (lockForUpdate + transaction) and idempotent;
   fails closed if `TOYYIBPAY_WEBHOOK_SECRET` is unset.
 - 2FA challenge POST is throttled (5 req/min/IP); audit-log distinguishes
@@ -80,7 +157,7 @@ Security and accessibility hardening pass. No public API changes.
   silently); inline `onsubmit/onclick/onchange` handlers replaced with
   CSP-safe data attributes wired in the layouts.
 
-### DB / Infra
+#### DB / Infra
 - Composite index on `audit_logs(auditable_type, auditable_id)`.
 - `sessions.user_id` foreign key with cascade-on-delete (MySQL/Postgres).
 - Trusted-proxies wired via `TRUSTED_PROXIES` env var.
@@ -88,20 +165,21 @@ Security and accessibility hardening pass. No public API changes.
 - Portable `whereBetween` month filter in PaymentController (was
   SQLite-only `strftime`).
 
-### Accessibility
+#### Accessibility
 - `aria-label` on all icon-only action buttons.
 - `scope="col"` on every `<th>` across admin and member tables.
 - `alt` text on every logo image.
 - Status badges normalised to `-subtle` variants for WCAG AA contrast.
 
-### Tooling
+#### Tooling
 - Removed unused Vite / Tailwind / SCSS scaffolding (Bootstrap is loaded
-  via CDN). `package.json` deleted; `composer setup` no longer runs `npm`.
+  via CDN). `composer setup` no longer runs `npm`. (Option A later brought
+  back `package.json` with a real Vite + React build; see above.)
 - Added `pint.json` so the Laravel preset is consistent across machines.
 - `phpunit.xml` pins `APP_KEY` so encryption-dependent tests don't depend
   on the developer's local `.env`.
 
-### Tests
+#### Tests
 - 129 tests, 290 assertions (was 90 / 167). New suites: WebhookTest (8),
   TwoFactorTest (9), InstallationTest (6), ShallowResourceAuthorizationTest (10),
   SendOverdueRemindersTest (2). Existing suites extended with date-range
@@ -111,6 +189,8 @@ Security and accessibility hardening pass. No public API changes.
 
 ## [v0.0.1] — 2026-03-23
 
+(Published on GitHub as the `v1.0.0` release, which the version heading links to.)
+
 First public release of Club Portal — a self-hosted club membership management system built with Laravel 13.
 
 ### Features included
@@ -119,7 +199,7 @@ First public release of Club Portal — a self-hosted club membership management
 - Super admin can create, update, and delete clubs
 - Per-club admins manage their own club in isolation
 - Role-based access: `super_admin`, `admin`, `member`
-- Optional TOTP two-factor authentication (via Laravel Fortify)
+- Optional TOTP two-factor authentication (via `pragmarx/google2fa`)
 
 #### Member management
 - Add members individually with automatic welcome email (temporary password)
@@ -176,4 +256,5 @@ First public release of Club Portal — a self-hosted club membership management
 
 ---
 
-[v0.0.1]: https://github.com/amirsubhi/scriptOLT/releases/tag/v0.0.1
+[v0.0.2]: https://github.com/amirsubhi/clubcollection/compare/v1.0.0...master
+[v0.0.1]: https://github.com/amirsubhi/clubcollection/releases/tag/v1.0.0

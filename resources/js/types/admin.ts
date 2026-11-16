@@ -4,10 +4,21 @@ import type { Attachment, AuditEvent, FundStatus, FundType, Sen } from "./domain
 export interface AdminNavProps {
   groups: { title: string; items: { key: string; label: string; href: string; icon: string; external: boolean; badge?: number | null }[] }[];
   homeHref: string;
-  brandSubtitle: string;
-  user: { name: string; roleLabel: string };
+  brandSubtitle: string | null;
+  user: { name: string; initials: string; roleLabel: string };
   memberHref: string;
   logoutUrl: string;
+}
+
+/** FundFigures::windowProps(): the period a figure covers. */
+export interface FigureWindow {
+  key: string;
+  /** e.g. "This year so far", "Last 12 months". */
+  label: string;
+  /** e.g. "1 Jan – 15 Nov 2026". */
+  range: string;
+  from: string;
+  to: string;
 }
 
 /** FundUsagePresenter::row(): no welfare personal data. */

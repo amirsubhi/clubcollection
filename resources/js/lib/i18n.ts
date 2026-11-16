@@ -7,26 +7,16 @@ const dict = {
   navPayments: { bm: "Bayaran", en: "Payments" },
   navFund: { bm: "Dana", en: "Fund" },
   navAccount: { bm: "Akaun", en: "Account" },
-  hello: { bm: "Assalamualaikum & salam sejahtera", en: "Hello" },
   amountDue: { bm: "Jumlah perlu dibayar", en: "Amount due" },
   payNow: { bm: "Bayar", en: "Pay" },
-  overdueTitle: { bm: "1 bayaran tertunggak", en: "1 payment overdue" },
-  overdueBody: {
-    bm: "Yuran Oktober 2026 telah lewat. Ia termasuk dalam jumlah di atas.",
-    en: "October 2026 fee is past due. It is included in the amount above.",
-  },
-  includes: { bm: "Termasuk", en: "Includes" },
   upcoming: { bm: "Akan datang", en: "Upcoming" },
   due: { bm: "Tarikh akhir", en: "Due" },
   viewAll: { bm: "Lihat semua", en: "View all" },
   moneyGoes: { bm: "Ke mana wang anda pergi", en: "Where your money goes" },
-  moneyGoesSub: { bm: "Tahun 2026 setakat ini, item yang diluluskan sahaja", en: "2026 so far, approved items only" },
   collected: { bm: "Dikutip", en: "Collected" },
   spent: { bm: "Dibelanjakan", en: "Spent" },
   balance: { bm: "Baki", en: "Balance" },
   welfare: { bm: "Kebajikan", en: "Welfare" },
-  welfareCases: { bm: "kes kebajikan dibantu", en: "welfare cases helped" },
-  bankCharges: { bm: "Caj bank & FPX", en: "Bank & FPX charges" },
   aggregatesOnly: {
     bm: "Hanya jumlah keseluruhan dipaparkan. Dokumen dan nama penerima tidak dikongsi.",
     en: "Totals only. Documents and recipient names are not shared.",
@@ -38,17 +28,7 @@ const dict = {
   amount: { bm: "Amaun", en: "Amount" },
   total: { bm: "Jumlah", en: "Total" },
   payWith: { bm: "Kaedah bayaran", en: "Payment method" },
-  fpxLine: { bm: "Perbankan dalam talian FPX", en: "FPX online banking" },
-  viaGateway: { bm: "melalui ToyyibPay", en: "via ToyyibPay" },
-  chooseBank: { bm: "Pilih bank anda", en: "Choose your bank" },
-  handoff: {
-    bm: "Anda akan dibawa ke ToyyibPay, kemudian ke laman bank anda. Jangan tutup tetingkap sehingga selesai.",
-    en: "You will go to ToyyibPay, then to your bank. Don't close the window until it finishes.",
-  },
-  continueTo: { bm: "Teruskan ke ToyyibPay", en: "Continue to ToyyibPay" },
-  noFees: { bm: "Tiada caj tambahan kepada anda.", en: "No extra charge to you." },
   successTitle: { bm: "Bayaran berjaya", en: "Payment successful" },
-  successBody: { bm: "Terima kasih. Resit telah dihantar ke e-mel anda.", en: "Thank you. A receipt has been emailed to you." },
   receiptNo: { bm: "No. resit", en: "Receipt no." },
   paidOn: { bm: "Dibayar pada", en: "Paid on" },
   bank: { bm: "Bank", en: "Bank" },
@@ -67,13 +47,7 @@ const dict = {
   },
   checkAgain: { bm: "Semak status semula", en: "Check status again" },
   failedTitle: { bm: "Bayaran tidak berjaya", en: "Payment not completed" },
-  failedBody: { bm: "Bank anda menolak atau membatalkan transaksi ini.", en: "Your bank declined or cancelled this transaction." },
-  failedMoneyLeft: {
-    bm: "Jika wang telah keluar dari akaun anda, jangan bayar lagi. Hubungi bendahari dengan rujukan di bawah.",
-    en: "If money left your account, don't pay again. Contact the treasurer with the reference below.",
-  },
   tryAgain: { bm: "Cuba lagi", en: "Try again" },
-  contactTreasurer: { bm: "Hubungi bendahari", en: "Contact the treasurer" },
   history: { bm: "Sejarah bayaran", en: "Payment history" },
   historySub: { bm: "Semua bayaran anda bagi 2026", en: "All your 2026 payments" },
   paid: { bm: "Dibayar", en: "Paid" },
@@ -86,66 +60,60 @@ const dict = {
     bm: "Resit ini dijana oleh komputer dan tidak memerlukan tandatangan.",
     en: "This is a computer-generated receipt; no signature is required.",
   },
-  share: { bm: "Kongsi", en: "Share" },
-  download: { bm: "Muat turun PDF", en: "Download PDF" },
   account: { bm: "Akaun saya", en: "My account" },
-  memberNo: { bm: "No. ahli", en: "Member no." },
-  phone: { bm: "Telefon", en: "Phone" },
   email: { bm: "E-mel", en: "Email" },
-  language: { bm: "Bahasa", en: "Language" },
-  fundTitle: { bm: "Dana kelab", en: "Club fund" },
-  fundSub: { bm: "Bagaimana yuran digunakan tahun ini", en: "How fees are used this year" },
-  spentBy: { bm: "Perbelanjaan mengikut kategori", en: "Spending by category" },
-  fullReport: {
-    bm: "Penyata penuh dibentangkan di Mesyuarat Agung Tahunan.",
-    en: "The full statement is presented at the AGM.",
-  },
-  qaPay: { bm: "Bayar", en: "Pay" },
-  qaReceipts: { bm: "Resit", en: "Receipts" },
-  qaFund: { bm: "Dana", en: "Fund" },
-  qaWelfare: { bm: "Kebajikan", en: "Welfare" },
-  quickActions: { bm: "Tindakan pantas", en: "Quick actions" },
   recent: { bm: "Aktiviti terkini", en: "Recent activity" },
   helpTitle: { bm: "Perlu bantuan?", en: "Need help?" },
-  helpBody: { bm: "WhatsApp bendahari, Lim Siew Ling", en: "WhatsApp the treasurer, Lim Siew Ling" },
   viewInvoice: { bm: "Invois", en: "Invoice" },
   change: { bm: "Tukar", en: "Change" },
   paidFor: { bm: "Untuk", en: "For" },
   member: { bm: "Ahli", en: "Member" },
   payee: { bm: "Dibayar kepada", en: "Paid to" },
-  popularBanks: { bm: "Bank popular", en: "Popular banks" },
-  otherBanks: { bm: "Bank lain (A–Z)", en: "Other banks (A–Z)" },
-  offlineNow: { bm: "Tidak tersedia sekarang", en: "Offline right now" },
-  secured: { bm: "Dilindungi oleh FPX melalui ToyyibPay", en: "Secured by FPX via ToyyibPay" },
-  redirecting: { bm: "Membawa anda ke ToyyibPay…", en: "Taking you to ToyyibPay…" },
   fpxTxn: { bm: "ID transaksi FPX", en: "FPX transaction ID" },
   whatsNext: { bm: "Apa seterusnya", en: "What happens next" },
   whatsNextBody: {
     bm: "Resit rasmi telah dihantar ke e-mel anda dan status yuran anda sudah dikemas kini. Tiada apa-apa lagi perlu dibuat.",
     en: "The official receipt is in your email and your fee status is already updated. Nothing else to do.",
   },
-  shareWa: { bm: "Kongsi ke WhatsApp", en: "Share to WhatsApp" },
-  noMoneyTaken: { bm: "Tiada wang diambil daripada akaun anda.", en: "No money was taken from your account." },
   failedReason: {
     bm: "Sebab: transaksi dibatalkan di laman bank atau sesi tamat masa.",
     en: "Reason: the transaction was cancelled at the bank page or the session timed out.",
   },
   theme: { bm: "Tema", en: "Theme" },
-  fundBalance: { bm: "Baki dana kelab", en: "Club fund balance" },
   monthlyTitle: { bm: "Kutipan & belanja bulanan", en: "Monthly collected & spent" },
-  spendSplit: { bm: "Pecahan perbelanjaan", en: "Spending split" },
-  payFeeTitle: { bm: "Bayar yuran", en: "Pay fees" },
-  dueSoon: { bm: "Sila bayar sebelum 30 Nov 2026", en: "Please pay by 30 Nov 2026" },
-  lateCount: { bm: "1 lewat", en: "1 late" },
   checkedAt: { bm: "Disemak", en: "Checked" },
   back: { bm: "Kembali", en: "Back" },
-  overdueBadge: { bm: "Lewat", en: "Late" },
-  forMonths: { bm: "Okt & Nov 2026", en: "Oct & Nov 2026" },
+  overdueBadge: { bm: "Lewat", en: "Overdue" },
+  statusDue: { bm: "Perlu dibayar", en: "Due" },
+  statusProcessing: { bm: "Dalam proses", en: "In progress" },
   // ── Member pay flow (A2) ── "{x}" placeholders are filled with fill().
   hi: { bm: "Hai", en: "Hi" },
   allPaid: { bm: "Semua yuran telah dibayar", en: "All fees are paid" },
   allPaidBody: { bm: "Terima kasih. Tiada apa-apa perlu dibayar sekarang.", en: "Thank you. Nothing to pay right now." },
-  lateN: { bm: "{n} lewat", en: "{n} late" },
+  lateN: { bm: "{n} lewat", en: "{n} overdue" },
+  processingN: { bm: "{n} dalam proses", en: "{n} in progress" },
+  heroProcessingTitle: { bm: "Bayaran dalam proses", en: "Payment in progress" },
+  heroProcessingBody: {
+    bm: "Anda telah memulakan bayaran FPX. Bank belum mengesahkannya. Semak status dahulu sebelum bayar lagi.",
+    en: "You started an FPX payment. The bank hasn't confirmed it yet. Check its status before paying again.",
+  },
+  checkPaymentStatus: { bm: "Semak status bayaran", en: "Check payment status" },
+  payAgain: { bm: "Bayar sekali lagi", en: "Pay again" },
+  processingRow: { bm: "Bayaran FPX belum disahkan", en: "FPX payment not confirmed yet" },
+  processingGroup: { bm: "Dalam proses", en: "In progress" },
+  processingGroupNote: {
+    bm: "Anda telah memulakan bayaran FPX untuk yuran ini. Status dikemas kini sendiri apabila bank mengesahkannya.",
+    en: "You started an FPX payment for these fees. The status updates by itself once the bank confirms it.",
+  },
+  processingWarnTitle: { bm: "Bayaran FPX anda sedang diproses", en: "Your FPX payment is in progress" },
+  processingWarnBody: {
+    bm: "Jika wang telah keluar dari akaun anda, jangan bayar lagi. Semak status bayaran dahulu: ia dikemas kini sendiri apabila bank mengesahkannya.",
+    en: "If money already left your account, don't pay again. Check the payment status first: it updates by itself once the bank confirms it.",
+  },
+  payAgainWarn: {
+    bm: "Bayar sekali lagi hanya jika anda pasti bayaran tadi tidak berjaya.",
+    en: "Pay again only if you're sure the earlier payment didn't go through.",
+  },
   openN: { bm: "{n} yuran belum dibayar", en: "{n} fees to pay" },
   payOldestFirst: { bm: "Bayar satu per satu, bermula dengan yang paling lama.", en: "Pay one at a time, oldest first." },
   membershipFee: { bm: "Yuran keahlian", en: "Membership fee" },
@@ -154,7 +122,12 @@ const dict = {
   freq_yearly: { bm: "Tahunan", en: "Yearly" },
   nothingDue: { bm: "Tiada yuran perlu dibayar.", en: "Nothing due." },
   noRecent: { bm: "Belum ada bayaran.", en: "No payments yet." },
-  moneyGoesYear: { bm: "Tahun {y} setakat ini, jumlah keseluruhan sahaja", en: "{y} so far, totals only" },
+  moneyGoesWindow: { bm: "{from} hingga {to}: item yang diluluskan dan caj bank", en: "{from} to {to}: approved items and bank charges" },
+  spentSplit: { bm: "Perbelanjaan {a} + Kebajikan {b} + Caj bank {c}", en: "Expenses {a} + Welfare {b} + Bank charges {c}" },
+  fromReserves: {
+    bm: "Perbelanjaan melebihi kutipan sebanyak {x}. Bezanya dibayar daripada simpanan kelab tahun-tahun lepas.",
+    en: "Spending is {x} more than was collected. The difference came from the club's savings from earlier years.",
+  },
   noSpending: { bm: "Belum ada perbelanjaan direkodkan tahun ini.", en: "No spending recorded this year yet." },
   others: { bm: "Lain-lain", en: "Others" },
   viewPayments: { bm: "Lihat bayaran", en: "View payments" },
@@ -173,8 +146,6 @@ const dict = {
   futureTitle: { bm: "Bayar lebih awal", en: "Pay ahead" },
   futureBody: { bm: "Pilih tempoh dan bayar sekali gus untuk bulan akan datang.", en: "Choose a period and pay for coming months in one go." },
   futureStart: { bm: "Bulan mula", en: "Start month" },
-  futureType: { bm: "Jenis bayaran", en: "Payment type" },
-  futureSubmit: { bm: "Cipta invois", en: "Create invoice" },
   futureSubmitAmt: { bm: "Teruskan · {x}", en: "Continue · {x}" },
   futurePlan: { bm: "Tempoh", en: "Period" },
   months_1: { bm: "1 bulan", en: "1 month" },
@@ -190,7 +161,6 @@ const dict = {
   beyondCap: { bm: "Melebihi had 12 bulan", en: "Beyond the 12-month limit" },
   noFeeRateYet: { bm: "Kadar yuran anda belum ditetapkan. Hubungi bendahari.", en: "Your fee rate isn't set yet. Contact the treasurer." },
   gatewayCharge: { bm: "Caj bayaran dalam talian", en: "Online payment charge" },
-  feeLine: { bm: "Yuran {a} + caj {b} = Jumlah {c}", en: "Fee {a} + charge {b} = Total {c}" },
   chargeByMember: { bm: "Kelab anda menetapkan caj gateway dibayar oleh ahli.", en: "Your club has members pay the gateway charge." },
   prevPage: { bm: "Sebelum", en: "Previous" },
   nextPage: { bm: "Seterusnya", en: "Next" },
@@ -198,7 +168,11 @@ const dict = {
   issuedOn: { bm: "Tarikh invois", en: "Invoice date" },
   discount: { bm: "Diskaun", en: "Discount" },
   print: { bm: "Cetak", en: "Print" },
-  period: { bm: "Tempoh", en: "Period" },
+  shareReceipt: { bm: "Kongsi", en: "Share" },
+  shareReceiptTitle: { bm: "Resit {no}", en: "Receipt {no}" },
+  shareReceiptText: { bm: "Resit {no}: {amount} kepada {club}, dibayar {date}.", en: "Receipt {no}: {amount} to {club}, paid {date}." },
+  receiptLinkCopied: { bm: "Butiran dan pautan resit disalin. Tampal di mana-mana untuk berkongsi.", en: "Receipt details and link copied. Paste them anywhere to share." },
+  receiptLinkManual: { bm: "Salin ini untuk berkongsi:", en: "Copy this to share:" },
   securedGw: { bm: "Dilindungi oleh FPX melalui {gw}", en: "Secured by FPX via {gw}" },
   handoffGw: {
     bm: "Anda akan dibawa ke {gw} untuk memilih bank (FPX), kemudian ke laman bank anda. Jangan tutup tetingkap sehingga selesai.",
@@ -223,6 +197,12 @@ const dict = {
   checking: { bm: "Menyemak status…", en: "Checking status…" },
   recordedByTreasurer: { bm: "Direkod oleh bendahari", en: "Recorded by the treasurer" },
   helpAdmin: { bm: "Hubungi pentadbir kelab", en: "Contact the club administrator" },
+  helpWhatsApp: { bm: "WhatsApp kelab", en: "WhatsApp the club" },
+  helpOpensWhatsApp: { bm: "(dibuka dalam WhatsApp)", en: "(opens in WhatsApp)" },
+  /** The prefilled WhatsApp message: always BM (the treasurer reads it); only the member's own fee and reference. */
+  waHelloMsg: { bm: "Salam. Saya perlukan bantuan tentang bayaran kepada {club}.", en: "Salam. Saya perlukan bantuan tentang bayaran kepada {club}." },
+  waFeeMsg: { bm: "Yuran: {fee}", en: "Yuran: {fee}" },
+  waRefMsg: { bm: "Rujukan: {ref}", en: "Rujukan: {ref}" },
   receiptEmailed: { bm: "Resit akan dihantar ke e-mel anda.", en: "A receipt will be emailed to you." },
   notReceivedTitle: { bm: "Bayaran belum diterima", en: "Payment not received yet" },
   failedMoneyLeftAdvice: {
@@ -244,9 +224,9 @@ const dict = {
   flash_period_overlaps: { bm: "Anda sudah ada bayaran untuk sebahagian tempoh ini.", en: "You already have a payment covering part of this period." },
   flash_future_created: { bm: "Invois baharu dicipta. Teruskan untuk membayar.", en: "New invoice created. Continue to pay." },
   // ── Manual bank / DuitNow transfer (P2) ──
-  verifying: { bm: "Menunggu pengesahan", en: "Awaiting confirmation" },
+  verifying: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
   // Short chip for list rows; the invoice uses the full "verifying" label.
-  verifyingBadge: { bm: "Disemak", en: "Checking" },
+  verifyingBadge: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
   slipBeingChecked: { bm: "Slip dihantar", en: "Slip sent" },
   chooseMethod: { bm: "Pilih cara bayar", en: "Choose how to pay" },
   methodFpx: { bm: "FPX (perbankan dalam talian)", en: "FPX (online banking)" },
@@ -271,8 +251,12 @@ const dict = {
   slipLimits: { bm: "Gambar atau PDF · maksimum {n} fail · {mb} MB setiap satu", en: "Photo or PDF · up to {n} files · {mb} MB each" },
   dropPrefix: { bm: "Seret fail ke sini atau", en: "Drag files here or" },
   browse: { bm: "pilih fail", en: "browse" },
-  takePhoto: { bm: "Ambil gambar", en: "Take photo" },
   cameraHint: { bm: "Di telefon, ini membuka kamera.", en: "On a phone this opens the camera." },
+  takePhotoSlip: { bm: "Ambil gambar slip", en: "Take a photo of the slip" },
+  chooseFile: { bm: "Pilih gambar atau PDF", en: "Choose a photo or PDF" },
+  slipNeeded: { bm: "Tambah gambar atau PDF slip dahulu.", en: "Add a photo or PDF of the slip first." },
+  paymentStatus: { bm: "Status bayaran", en: "Payment status" },
+  fpxUnavailableShort: { bm: "Belum tersedia untuk kelab ini. Guna pindahan bank.", en: "Not available for this club yet. Use a bank transfer." },
   removeFile: { bm: "Buang {f}", en: "Remove {f}" },
   transferDateLbl: { bm: "Tarikh pindahan", en: "Transfer date" },
   bankRefLbl: { bm: "No. rujukan bank (pilihan)", en: "Bank reference no. (optional)" },
@@ -303,8 +287,8 @@ const dict = {
   rejectedTitle: { bm: "Slip anda belum diterima", en: "Your slip wasn't accepted" },
   rejectedBody: { bm: "Sila hantar slip yang betul, atau bayar dalam talian.", en: "Please send the right slip, or pay online." },
   reason: { bm: "Sebab", en: "Reason" },
-  verifyingN: { bm: "{n} menunggu pengesahan", en: "{n} awaiting confirmation" },
-  heroVerifyingTitle: { bm: "Menunggu pengesahan", en: "Awaiting confirmation" },
+  verifyingN: { bm: "{n} menunggu pengesahan", en: "{n} awaiting verification" },
+  heroVerifyingTitle: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
   heroVerifyingBody: {
     bm: "Slip pindahan anda sedang disemak bendahari. Tiada apa-apa perlu dibayar sekarang.",
     en: "The treasurer is checking your transfer slip. Nothing to pay right now.",
@@ -330,6 +314,41 @@ const dict = {
     bm: "Fail yang dihantar terlalu besar. Setiap fail mesti 10 MB atau kurang; cuba lagi dengan fail yang lebih kecil.",
     en: "What you sent was too large. Each file must be 10 MB or smaller; try again with smaller files.",
   },
+  // ── "Bayar semua": every open fee with one bill or one slip (R1b) ──
+  payAllAmt: { bm: "Bayar semua {x}", en: "Pay all {x}" },
+  payOneOldest: { bm: "Bayar satu sahaja (yang paling lama)", en: "Pay just one (the oldest)" },
+  payAllHint: { bm: "Bayar {n} yuran dengan satu bayaran.", en: "Pay all {n} fees in one go." },
+  payAllInClub: { bm: "Untuk {c}", en: "For {c}" },
+  reviewPayAll: { bm: "Semak & bayar semua", en: "Review & pay all" },
+  feesN: { bm: "{n} yuran", en: "{n} fees" },
+  subtotal: { bm: "Jumlah yuran", en: "Fees total" },
+  payAllOneCharge: { bm: "Satu caj untuk semua yuran", en: "One charge for all the fees" },
+  payAllTransferNote: {
+    bm: "Satu pindahan dan satu slip untuk semua yuran di atas. Bendahari akan mengesahkan semuanya sekali.",
+    en: "One transfer and one slip for all the fees above. The treasurer confirms them all at once.",
+  },
+  paidTogether: { bm: "{n} yuran dibayar sekali gus", en: "{n} fees paid together" },
+  sentTogether: { bm: "{n} yuran dalam satu slip", en: "{n} fees in one slip" },
+  paidOnlineInstead: { bm: "dibayar dalam talian", en: "paid online" },
+  paidOnlineNote: {
+    bm: "Yuran ini termasuk dalam slip tetapi telah dibayar dalam talian, jadi ia tidak termasuk dalam resit ini:",
+    en: "These fees were in the slip but were paid online, so they are not on this receipt:",
+  },
+  checkEarlierPayment: { bm: "Semak status bayaran tadi", en: "Check that payment's status" },
+  feesInSet: { bm: "Yuran yang dibayar", en: "Fees being paid" },
+  flash_check_status_first: {
+    bm: "Satu bayaran FPX untuk yuran ini masih dalam proses. Semak status bayaran itu dahulu sebelum bayar lagi.",
+    en: "An FPX payment for one of these fees is still in progress. Check that payment's status before paying again.",
+  },
+  staleBillHint: {
+    bm: "Jika bayaran berjaya tetapi status belum berubah, hubungi bendahari.",
+    en: "If you paid but the status hasn't changed, contact the treasurer.",
+  },
+  flash_set_changed: {
+    bm: "Senarai yuran anda telah berubah. Sila semak jumlah baharu sebelum membayar.",
+    en: "Your list of fees has changed. Please check the new total before paying.",
+  },
+  flash_nothing_to_pay: { bm: "Tiada yuran perlu dibayar sekarang.", en: "Nothing to pay right now." },
   installTitle: { bm: "Pasang di skrin utama", en: "Add to home screen" },
   installBody: {
     bm: "Buka Club Portal terus dari skrin telefon anda, seperti aplikasi.",
@@ -354,6 +373,11 @@ export function useT() {
   return (key: DictKey) => dict[key][lang];
 }
 
+/** A dictionary entry in a given language, whatever the page shows (e.g. the BM WhatsApp help message). */
+export function textIn(key: DictKey, lang: Lang): string {
+  return dict[key][lang];
+}
+
 /** Replace "{name}" placeholders in a translated string. */
 export function fill(text: string, vars: Record<string, string | number>): string {
   return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
@@ -361,6 +385,16 @@ export function fill(text: string, vars: Record<string, string | number>): strin
 
 export function isDictKey(key: string): key is DictKey {
   return Object.prototype.hasOwnProperty.call(dict, key);
+}
+
+/**
+ * The language of the page on screen ("ms" or "en"), as set on <html lang>: member pages follow the BM/EN toggle,
+ * admin pages the server locale. Shared UI parts (dialog "Close", uploader defaults) read it so they match the page.
+ */
+export const PageLangContext = createContext<"ms" | "en">("en");
+
+export function usePageLang() {
+  return useContext(PageLangContext);
 }
 
 export function useLang() {

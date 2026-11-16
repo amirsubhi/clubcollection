@@ -6,15 +6,14 @@
 <div class="row justify-content-center">
     <div class="col-lg-7 col-xl-6">
 
-        <h5 class="fw-bold mb-1">Security Settings</h5>
-        <p class="text-muted small mb-4">Manage your account security and two-factor authentication.</p>
+        <p class="text-muted mb-4">Manage your account security and two-factor authentication.</p>
 
         {{-- Recovery codes shown once after enabling --}}
         @if(isset($recoveryCodes) && count($recoveryCodes))
-        <div class="alert alert-warning border-warning mb-4">
+        <div class="alert alert-warning mb-4" role="alert">
             <div class="fw-semibold mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Save your recovery codes now</div>
             <p class="small mb-2">These codes will not be shown again. Store them somewhere safe (e.g. a password manager). Each code can only be used once.</p>
-            <div class="bg-white rounded border p-3 font-monospace small d-grid" style="gap:4px;grid-template-columns:1fr 1fr">
+            <div class="bg-white rounded border p-3 font-monospace d-grid" style="gap:4px;grid-template-columns:1fr 1fr" data-testid="recovery-codes">
                 @foreach($recoveryCodes as $code)
                 <span>{{ $code }}</span>
                 @endforeach
@@ -27,9 +26,9 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between mb-3">
                     <div>
-                        <h6 class="fw-semibold mb-1">
-                            <i class="bi bi-shield-lock me-1"></i>Two-Factor Authentication
-                        </h6>
+                        <h2 class="h5 fw-semibold mb-1">
+                            <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Two-factor authentication
+                        </h2>
                         <p class="text-muted small mb-0">
                             Adds a second layer of security via a time-based one-time password (TOTP) from an authenticator app (Google Authenticator, Authy, etc.).
                         </p>
@@ -52,11 +51,11 @@
                     @method('DELETE')
                     <div class="mb-3">
                         <label for="disable2faPassword" class="form-label small fw-semibold">Confirm your password to disable 2FA</label>
-                        <input type="password" id="disable2faPassword" name="password"
-                               class="form-control form-control-sm @error('password') is-invalid @enderror"
+                        <input type="password" id="disable2faPassword" name="password" @error('password') aria-invalid="true" aria-describedby="disable2faPassword-error" @enderror
+                               class="form-control @error('password') is-invalid @enderror"
                                placeholder="Current password" autocomplete="current-password" required>
                         @error('password')
-                        <div class="invalid-feedback">{{ $message }}</div>
+                        <div id="disable2faPassword-error" role="alert" class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -71,10 +70,10 @@
                     </p>
                     <div class="mb-3">
                         <label for="enable2faPassword" class="form-label small fw-semibold">Confirm your password to set up 2FA</label>
-                        <input type="password" id="enable2faPassword" name="current_password" autocomplete="current-password" required
-                               class="form-control form-control-sm @error('current_password') is-invalid @enderror">
+                        <input type="password" id="enable2faPassword" name="current_password" @error('current_password') aria-invalid="true" aria-describedby="enable2faPassword-error" @enderror autocomplete="current-password" required
+                               class="form-control @error('current_password') is-invalid @enderror">
                         @error('current_password')
-                        <div class="invalid-feedback">{{ $message }}</div>
+                        <div id="enable2faPassword-error" role="alert" class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <button type="submit" class="btn btn-sm btn-primary">

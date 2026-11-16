@@ -14,7 +14,8 @@ export interface MemberPaymentRow {
   clubId: number;
   /** Present on Home rows. */
   clubName?: string;
-  urls: { invoice: string; review: string | null };
+  /** billStatus: where to check an FPX payment in progress (status "processing" only). */
+  urls: { invoice: string; review: string | null; billStatus?: string | null };
 }
 
 /** MemberPaymentPresenter::receipt(): only for paid fees. */
@@ -33,13 +34,16 @@ export interface MemberReceipt {
 /** Props every single-payment page receives (PaymentController::context()). */
 export interface PaymentContext {
   member: { name: string; email: string };
-  payClub: { id: number; name: string; email: string | null };
+  /** whatsapp: digits for wa.me when the club set a help number (PaymentController::payClubProps). */
+  payClub: { id: number; name: string; email: string | null; whatsapp: string | null };
   paymentsUrl: string;
   dashboardUrl: string;
 }
 
 export interface FundCategory {
   name: string;
+  /** BM name when it differs (FundFigures::CHARGES_LABEL_MS for bank / gateway charges). */
+  nameMs?: string;
   amount: Sen;
 }
 
@@ -49,8 +53,20 @@ export interface HomeClub {
   jobLevel: string;
   role: string;
   paymentsUrl: string;
-  summary: { paid: number; pending: number; overdue: number; verifying: number; totalPaid: Sen };
-  fund: { collected: Sen; spent: Sen; categories: FundCategory[] };
+  summary: { paid: number; due: number; overdue: number; processing: number; verifying: number; totalPaid: Sen };
+  /** FundFigures for this year so far: the same figures the club's admins see. spent = expenses + welfare + charges. */
+  fund: {
+    window: { from: string; to: string; range: string };
+    collected: Sen;
+    spent: Sen;
+    expenses: Sen;
+    welfare: Sen;
+    /** Bank / gateway charges the club absorbed. */
+    charges: Sen;
+    /** Spending above what came in this year (paid from earlier savings); 0 when none. */
+    fromReserves: Sen;
+    categories: FundCategory[];
+  };
 }
 
 /** PaymentController::transferProps(): the club's bank details for a manual transfer. */
@@ -59,7 +75,7 @@ export interface TransferOption {
   accountName: string;
   accountNo: string | null;
   duitnowId: string | null;
-  /** What the member types as the transfer reference: YURAN-{id}. */
+  /** What the member types as the transfer reference: YURAN-{id}, or YURAN-G{id} for "Bayar semua". */
   reference: string;
   submitUrl: string;
   today: string;
@@ -74,4 +90,29 @@ export interface TransferVerification {
   transferDate: string | null;
   transferRef: string | null;
   slips: { id: number; name: string; isPdf: boolean; url: string }[];
+}
+
+/** "Bayar semua" (R1b): every fee still owed in one club, offered from two fees on. */
+export interface PayAllOffer {
+  url: string;
+  totalSen: Sen;
+  count: number;
+  clubName: string;
+}
+
+/** PayAllController::groupProps(): the fees of a "Bayar semua" set, oldest first. */
+export interface PaymentGroup {
+  fees: MemberPaymentRow[];
+  paymentIds: number[];
+  /** Sum of the fees, without any gateway charge. */
+  sumSen: Sen;
+  /** Set on the result page: how the group was paid. */
+  method: "gateway" | "transfer" | null;
+}
+
+/** MemberPaymentPresenter::groupReceipt(): one receipt, one line per fee (each with its own receipt no.). */
+export interface GroupReceipt extends MemberReceipt {
+  lines: { id: number; receiptNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
+  /** Slip receipt only: fees of the slip paid online instead (not in the total). */
+  paidOnline: { id: number; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
 }

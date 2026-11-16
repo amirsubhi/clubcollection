@@ -100,7 +100,7 @@ class SecurityHardeningTest extends TestCase
         $admin = $this->actingAsClubAdmin($club);
         $own = Payment::factory()->forClub($club)->forMember($admin)->pending()->create();
 
-        $this->patch(route('admin.payments.mark-paid', $own))->assertSessionHas('error');
+        $this->patch(route('admin.payments.mark-paid', $own), $this->recordPayment())->assertSessionHas('error');
         $this->assertSame('pending', $own->fresh()->status);
 
         $this->put(route('admin.payments.update', $own), $this->editPayload($own, ['status' => 'paid']))
@@ -139,12 +139,12 @@ class SecurityHardeningTest extends TestCase
         $own = Payment::factory()->forClub($club)->forMember($adminA)->pending()->create();
         $this->actingAsClubAdmin($club);
 
-        $this->patch(route('admin.payments.mark-paid', $own))->assertSessionHas('success');
+        $this->patch(route('admin.payments.mark-paid', $own), $this->recordPayment())->assertSessionHas('success');
         $this->assertSame('paid', $own->fresh()->status);
 
         $super = $this->actingAsSuperAdmin();
         $superFee = Payment::factory()->forClub($club)->forMember($super)->pending()->create(['period_start' => now()->addMonths(2)->startOfMonth()->toDateString()]);
-        $this->patch(route('admin.payments.mark-paid', $superFee))->assertSessionHas('success');
+        $this->patch(route('admin.payments.mark-paid', $superFee), $this->recordPayment())->assertSessionHas('success');
     }
 
     // ── Reminder race ────────────────────────────────────────────────────
@@ -186,8 +186,10 @@ class SecurityHardeningTest extends TestCase
 
         $response = $this->get(route('admin.clubs.ledger', $club).'?from='.now()->startOfYear()->toDateString().'&to='.now()->toDateString())->assertOk();
 
-        $this->assertSame(3.0, $response->viewData('totalIncome'));
-        $this->assertSame(3.0, $response->viewData('closingBalance'));
+        $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('summary.in', 300)
+            ->where('summary.closing', 300)
+            ->where('transactions.29.balance', 300));
     }
 
     public function test_csv_cells_that_look_like_formulas_get_an_apostrophe(): void
@@ -244,7 +246,7 @@ class SecurityHardeningTest extends TestCase
     {
         (new DatabaseSeeder)->run();
 
-        $super = User::where('email', 'superadmin@clubportal.com')->sole();
+        $super = User::where('email', 'superadmin@example.com')->sole();
         $this->assertFalse(\Illuminate\Support\Facades\Hash::check('Admin@123', $super->password));
     }
 
@@ -353,7 +355,12 @@ class SecurityHardeningTest extends TestCase
         $response = $this->call('POST', route('member.payments.transfer', $p), [], [], [], ['CONTENT_LENGTH' => (string) (1024 * 1024 * 1024)]);
 
         $response->assertStatus(413);
-        $response->assertSee('Fail terlalu besar')->assertSee('Upload too large');
+        // Branded page (layouts.auth), BM by default; the saved language gives English.
+        $response->assertSee('<html lang="ms">', false)->assertSee('Fail terlalu besar')->assertSee('10 MB');
         $this->assertSame('pending', $p->fresh()->status);
+
+        $this->call('POST', route('member.payments.transfer', $p), [], [\App\Http\Middleware\AuthPageLocale::COOKIE => 'en'], [], ['CONTENT_LENGTH' => (string) (1024 * 1024 * 1024)])
+            ->assertStatus(413)
+            ->assertSee('Upload too large');
     }
 }

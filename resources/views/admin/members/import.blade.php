@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Import Members — ' . $club->name)
-@section('page-title', $club->name . ' — Import Members')
+@section('page-title', 'Import Members')
+@section('page-club', $club->name)
 
 @section('content')
 <div class="row justify-content-center">
@@ -65,11 +66,11 @@
                 <form action="{{ route('admin.members.import.process', $club) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">CSV File <span class="text-danger">*</span></label>
-                        <input type="file" name="file" accept=".csv,.txt"
+                        <label for="f-file" class="form-label fw-semibold">CSV File <span class="text-danger">*</span></label>
+                        <input id="f-file" aria-describedby="f-file-help @error('file') f-file-error @enderror" @error('file') aria-invalid="true" @enderror type="file" name="file" accept=".csv,.txt"
                                class="form-control @error('file') is-invalid @enderror">
-                        <div class="form-text">Max file size: 2 MB. Must be a valid <code>.csv</code> file.</div>
-                        @error('file')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div id="f-file-help" class="form-text">Max file size: 2 MB. Must be a valid <code>.csv</code> file.</div>
+                        @error('file')<div id="f-file-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="d-flex gap-2 align-items-center">
                         <button type="submit" class="btn btn-primary">

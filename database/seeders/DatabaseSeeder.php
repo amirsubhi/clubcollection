@@ -38,11 +38,11 @@ class DatabaseSeeder extends Seeder
         $password = (string) env('SEED_SUPER_ADMIN_PASSWORD', '');
         if ($password === '') {
             $password = Str::password(20, symbols: false);
-            $this->command?->info("Demo super admin: superadmin@clubportal.com / {$password} (shown once; local only)");
+            $this->command?->info("Demo super admin: superadmin@example.com / {$password} (shown once; local only)");
         }
         User::create([
             'name'     => 'Super Admin',
-            'email'    => 'superadmin@clubportal.com',
+            'email'    => 'superadmin@example.com',
             'password' => Hash::make($password),
             'role'     => 'super_admin',
         ]);
@@ -78,22 +78,12 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Default expense categories
-        $categories = [
-            'Event',
-            'Food & Beverage',
-            'Supplies',
-            'Decoration',
-            'Transportation',
-            'Printing & Stationery',
-            'Maintenance',
-            'Miscellaneous',
-        ];
-
-        foreach ($categories as $name) {
+        // Default expense categories (English for admins, BM for members)
+        foreach (ExpenseCategory::DEFAULTS as $name => $nameMs) {
             ExpenseCategory::create([
                 'club_id' => $club->id,
                 'name'    => $name,
+                'name_ms' => $nameMs,
             ]);
         }
 
@@ -106,7 +96,7 @@ class DatabaseSeeder extends Seeder
      */
     private function seedDemoFunds(Club $club): void
     {
-        $super = User::where('email', 'superadmin@clubportal.com')->first();
+        $super = User::where('email', 'superadmin@example.com')->first();
         $members = collect(['Aminah binti Yusof', 'Tan Wei Ming', 'Priya a/p Subramaniam'])->map(function ($name, $i) use ($club) {
             $u = User::create([
                 'name'     => $name,

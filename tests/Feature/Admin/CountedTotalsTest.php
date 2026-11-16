@@ -49,8 +49,12 @@ class CountedTotalsTest extends TestCase
             ->assertDontSee('HIDDEN-DRAFT')
             ->assertDontSee('HIDDEN-SUBMITTED')
             ->assertDontSee('HIDDEN-VOID');
-        $this->assertEquals(100.0, $res->viewData('totalExpenses'));
-        $this->assertEquals(900.0, $res->viewData('closingBalance'));
+        // Opening is computed (0 before this year's records), all money in sen.
+        $res->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Ledger/Index')
+            ->where('summary.out', 10000)
+            ->where('summary.closing', 90000)
+            ->has('transactions', 2));
     }
 
     public function test_ledger_includes_the_last_day_of_the_range(): void
@@ -58,8 +62,9 @@ class CountedTotalsTest extends TestCase
         $this->actingAsClubAdmin($this->club);
         $res = $this->get(route('admin.clubs.ledger', $this->club).'?from='.now()->toDateString().'&to='.now()->toDateString());
 
-        $this->assertEquals(1000.0, $res->viewData('totalIncome'));
-        $this->assertEquals(100.0, $res->viewData('totalExpenses'));
+        $res->assertInertia(fn (Assert $page) => $page
+            ->where('summary.in', 100000)
+            ->where('summary.out', 10000));
     }
 
     public function test_csv_export_excludes_unapproved(): void
@@ -104,10 +109,11 @@ class CountedTotalsTest extends TestCase
         $res = $this->get(route('admin.statistics'));
 
         $res->assertOk();
-        $this->assertEquals(100.0, $res->viewData('totalExpenses'));
-        $this->assertEquals(900.0, $res->viewData('netBalance'));
-        $this->assertEquals(100.0, array_sum($res->viewData('monthlyExpenses')));
-        $this->assertEquals(100.0, $res->viewData('clubStats')->firstWhere('id', $this->club->id)->total_expenses);
+        // FundFigures (sen): spent = approved expenses + welfare + bank charges.
+        $this->assertSame(10000, $res->viewData('totals')['spent']);
+        $this->assertSame(90000, $res->viewData('totals')['balance']);
+        $this->assertSame(10000, array_sum(array_column($res->viewData('monthly'), 'spent')));
+        $this->assertSame(10000, $res->viewData('clubStats')->firstWhere('id', $this->club->id)->spent_sen);
     }
 
     public function test_pdf_ledger_export_excludes_unapproved(): void
@@ -150,13 +156,13 @@ class CountedTotalsTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('kpis.spentYtd', 10700)->where('monthly.11.spent', 10700));
 
         $res = $this->get(route('admin.clubs.ledger', $this->club).'?from='.now()->startOfYear()->toDateString().'&to='.now()->toDateString());
-        $this->assertEquals(107.0, $res->viewData('totalExpenses'));
-        $res->assertSee('PAID-THIS-YEAR');
+        $res->assertSee('PAID-THIS-YEAR')
+            ->assertInertia(fn (Assert $page) => $page->where('summary.out', 10700));
 
         $classic = $this->get(route('admin.clubs.dashboard.classic', $this->club));
         $this->assertEquals(107.0, $classic->viewData('expenseThisYear'));
 
         $this->actingAsSuperAdmin();
-        $this->assertEquals(107.0, array_sum($this->get(route('admin.statistics'))->viewData('monthlyExpenses')));
+        $this->assertSame(10700, array_sum(array_column($this->get(route('admin.statistics'))->viewData('monthly'), 'spent')));
     }
 }

@@ -7,12 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Attachment;
 use App\Models\Club;
 use App\Models\Payment;
+use App\Models\PaymentBill;
 use App\Services\AttachmentService;
 use App\Services\AuditService;
 use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
+use App\Support\Payments\DisplayStatus;
 use App\Support\Payments\GatewayFee;
+use App\Support\Payments\OpenFeeSet;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -54,33 +57,30 @@ class PaymentController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Annual summary — 1 query instead of 5
-        $annualStats = $club->payments()
+        // Annual summary by DisplayStatus (grace period, FPX bills in progress):
+        // one year of one member's fees, so loading them is cheap.
+        $yearFees = $club->payments()
             ->where('user_id', $user->id)
             ->whereYear('due_date', $selectedYear)
-            // A pending fee past its due date counts as overdue (see MemberPaymentPresenter::displayStatus).
-            ->selectRaw("
-                SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as paid,
-                SUM(CASE WHEN status = 'pending' AND due_date >= ? THEN amount ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < ?) THEN amount ELSE 0 END) as overdue,
-                SUM(CASE WHEN status = 'pending_verification' THEN amount ELSE 0 END) as verifying,
-                SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
-                SUM(amount) as total
-            ", [today()->toDateString(), today()->toDateString()])
-            ->first();
+            ->get(['id', 'club_id', 'status', 'due_date', 'amount']);
+        $yearStatuses = DisplayStatus::many($yearFees);
+        $sumOf = fn (string $status) => $yearFees->filter(fn (Payment $p) => $yearStatuses[$p->id] === $status)->sum(fn (Payment $p) => P::sen($p->amount));
+        DisplayStatus::prime($payments->getCollection());
 
         return Inertia::render('Member/Payments', [
             'club' => $club->only(['id', 'name']),
             'selectedYear' => $selectedYear,
             'years' => $years,
             'summary' => [
-                'paid' => P::sen($annualStats->paid ?? 0),
-                'pending' => P::sen($annualStats->pending ?? 0),
-                'overdue' => P::sen($annualStats->overdue ?? 0),
+                'paid' => $sumOf(DisplayStatus::PAID),
+                'due' => $sumOf(DisplayStatus::DUE),
+                'overdue' => $sumOf(DisplayStatus::OVERDUE),
+                // FPX payment started, bank not confirmed yet: maybe paid already.
+                'processing' => $sumOf(DisplayStatus::PROCESSING),
                 // Slip sent, treasurer still checking: neither paid nor owed.
-                'verifying' => P::sen($annualStats->verifying ?? 0),
-                'paidCount' => (int) ($annualStats->paid_count ?? 0),
-                'total' => P::sen($annualStats->total ?? 0),
+                'verifying' => $sumOf(DisplayStatus::VERIFYING),
+                'paidCount' => count(array_filter($yearStatuses, fn ($st) => $st === DisplayStatus::PAID)),
+                'total' => $yearFees->sum(fn (Payment $p) => P::sen($p->amount)),
             ],
             'payments' => collect($payments->items())->map(fn (Payment $p) => P::summary($p))->values(),
             'pagination' => [
@@ -91,6 +91,8 @@ class PaymentController extends Controller
                 'nextUrl' => $payments->nextPageUrl(),
             ],
             'futureForm' => $this->futureFormProps($club, $user),
+            // "Bayar semua": every fee still owed in the club (any year), from two on.
+            'payAll' => $this->payAllProps($club, $user),
             'paymentsUrl' => route('member.payments.index', $club),
             'dashboardUrl' => route('member.dashboard'),
         ]);
@@ -132,6 +134,11 @@ class PaymentController extends Controller
         $payment->load(['club', 'user']);
         $gateway = $this->gateways->for($payment->club);
         $hasOpenBill = $this->openBillFor($payment, $gateway) !== null;
+        $openGroup = $payment->status === 'paid' || $payment->isVerifying() ? null
+            : PaymentBill::openGatewayGroupsContaining($payment->id)->whereNotNull('bill_code')->latest('id')->first();
+        // An FPX payment started recently and not confirmed yet: checking it
+        // comes first, paying again is the secondary choice (R2a).
+        $processing = DisplayStatus::of($payment) === DisplayStatus::PROCESSING;
         // An open bill is reused as it is, so show the fee mode it was created
         // with; otherwise the club's current setting (what a new bill will use).
         $fee = $hasOpenBill ? self::storedFee($payment) : GatewayFee::forClub($payment->club);
@@ -151,8 +158,13 @@ class PaymentController extends Controller
                 'label' => P::gatewayLabel($gateway->name()),
                 'available' => $gateway->isConfiguredForClub($payment->club),
             ],
-            // A bill was already opened for this fee: warn before paying again.
-            'hasOpenBill' => $hasOpenBill,
+            // A bill was already opened for this fee, on its own or in a "Bayar
+            // semua" bill: warn before paying again, and link to the group's status.
+            'hasOpenBill' => $hasOpenBill || $openGroup !== null,
+            'openBillUrl' => $processing ? DisplayStatus::memberBillUrl($payment)
+                : ($openGroup ? route('member.payments.group-result', $openGroup)
+                    : ($hasOpenBill ? route('member.payments.thankyou', $payment) : null)),
+            'processing' => $processing,
             'payUrl' => route('member.payments.pay', $payment),
             // Manual bank / DuitNow transfer (P2): null when the club doesn't accept it.
             'transfer' => $this->transferProps($payment),
@@ -179,12 +191,28 @@ class PaymentController extends Controller
             return redirect()->route('member.payments.invoice', $payment)->with('error', 'member.already_paid');
         }
 
-        $data = $request->validate([
+        $data = $request->validate(self::transferRules(), self::transferMessages());
+
+        $service->submit($payment, $request->user(), array_values($data['files']), $data['transfer_date'], $data['transfer_ref'] ?? null);
+
+        return redirect()->route('member.payments.invoice', $payment)->with('success', 'member.slip_sent');
+    }
+
+    /** Rules for a transfer slip submission (single fee or "Bayar semua"). */
+    public static function transferRules(): array
+    {
+        return [
             'files' => ['required', 'array', 'min:1', 'max:'.TransferVerificationService::MAX_SLIPS],
             'files.*' => AttachmentService::fileRules(),
             'transfer_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:'.today()->subYear()->toDateString()],
             'transfer_ref' => ['nullable', 'string', 'max:60'],
-        ], [
+        ];
+    }
+
+    /** member.* codes the pages translate. */
+    public static function transferMessages(): array
+    {
+        return [
             'files.required' => 'member.slip_required',
             'files.min' => 'member.slip_required',
             'files.max' => 'member.slip_count',
@@ -197,11 +225,7 @@ class PaymentController extends Controller
             'transfer_date.before_or_equal' => 'member.transfer_date_invalid',
             'transfer_date.after_or_equal' => 'member.transfer_date_invalid',
             'transfer_ref.max' => 'member.transfer_ref_long',
-        ]);
-
-        $service->submit($payment, $request->user(), array_values($data['files']), $data['transfer_date'], $data['transfer_ref'] ?? null);
-
-        return redirect()->route('member.payments.invoice', $payment)->with('success', 'member.slip_sent');
+        ];
     }
 
     /**
@@ -210,9 +234,14 @@ class PaymentController extends Controller
      */
     public function slip(Attachment $attachment, AttachmentService $service): HttpResponse
     {
-        $payment = $attachment->attachable;
-        abort_unless($payment instanceof Payment && $attachment->kind === 'proof_of_payment', 404);
-        $this->authorizePayment($payment);
+        $owner = $attachment->attachable;
+        abort_unless(($owner instanceof Payment || ($owner instanceof PaymentBill && $owner->isGroup())) && $attachment->kind === 'proof_of_payment', 404);
+        if ($owner instanceof Payment) {
+            $this->authorizePayment($owner);
+        } else {
+            // A slip sent for several fees at once ("Bayar semua") is kept on the group.
+            PayAllController::authorizeGroup($owner);
+        }
 
         $contents = $service->contents($attachment);
         $inline = in_array($attachment->mime, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], true);
@@ -341,6 +370,9 @@ class PaymentController extends Controller
         // second one. A replaced bill stays in payment_bills, so a late payment
         // against it is still matched by the webhook.
         if ($url = $this->openBillFor($payment, $gateway)) {
+            // Sent to pay it again: "in progress" counts from now.
+            $payment->bills()->where('bill_code', $payment->bill_code)->whereNull('superseded_at')->first()?->markOpened();
+
             return Inertia::location($url);
         }
 
@@ -387,6 +419,7 @@ class PaymentController extends Controller
                 'amount_sen' => $payment->amountSen(),
                 'fee_payer' => $fee->payer,
                 'fee_sen' => $fee->feeSen,
+                'opened_at' => now(),
             ]);
             $payment->update([
                 'bill_code' => $result->billCode,
@@ -514,6 +547,27 @@ class PaymentController extends Controller
             ->with('success', 'member.future_created');
     }
 
+    /** @return array<string, mixed>|null */
+    private function payAllProps(Club $club, $user): ?array
+    {
+        $active = $club->is_active && $club->members()->where('users.id', $user->id)->where('club_user.is_active', true)->exists();
+        $open = $active ? OpenFeeSet::query($club->id, $user->id)->get(['id', 'club_id', 'status', 'due_date', 'amount']) : collect();
+        if ($open->count() < 2) {
+            return null;
+        }
+        // An FPX payment is in progress for one of them: check it before paying the set (R2a).
+        if (in_array(DisplayStatus::PROCESSING, DisplayStatus::many($open), true)) {
+            return null;
+        }
+
+        return [
+            'url' => route('member.payments.review-all', $club),
+            'totalSen' => $open->sum(fn (Payment $p) => $p->amountSen()),
+            'count' => $open->count(),
+            'clubName' => $club->name,
+        ];
+    }
+
     /** The fee mode an existing bill was created with (legacy bills: club absorbed). */
     private static function storedFee(Payment $payment): GatewayFee
     {
@@ -603,7 +657,7 @@ class PaymentController extends Controller
 
         $outcome = match (true) {
             $payment->status === 'paid' => 'paid',
-            $this->gatewayReportsFailure($request) => 'failed',
+            self::gatewayReportsFailure($request) => 'failed',
             default => 'pending',
         };
 
@@ -623,7 +677,7 @@ class PaymentController extends Controller
      * ToyyibPay returns ?status_id=3 for a failed/cancelled payment; Billplz
      * returns billplz[paid]=false. Anything else is treated as still pending.
      */
-    private function gatewayReportsFailure(Request $request): bool
+    public static function gatewayReportsFailure(Request $request): bool
     {
         if ($request->query('status_id') === '3') {
             return true;
@@ -661,9 +715,25 @@ class PaymentController extends Controller
     {
         return [
             'member' => ['name' => $payment->user->name, 'email' => $payment->user->email],
-            'payClub' => ['id' => $payment->club->id, 'name' => $payment->club->name, 'email' => $payment->club->email],
+            'payClub' => self::payClubProps($payment->club),
             'paymentsUrl' => route('member.payments.index', $payment->club_id),
             'dashboardUrl' => route('member.dashboard'),
+        ];
+    }
+
+    /**
+     * The club as the payment pages show it, with where "Perlu bantuan?" goes:
+     * WhatsApp (digits for wa.me) when the club set a number, else its email.
+     *
+     * @return array{id: int, name: string, email: ?string, whatsapp: ?string}
+     */
+    public static function payClubProps(Club $club): array
+    {
+        return [
+            'id' => $club->id,
+            'name' => $club->name,
+            'email' => $club->email,
+            'whatsapp' => \App\Support\Contact\WhatsAppNumber::waDigits($club->whatsapp_number),
         ];
     }
 

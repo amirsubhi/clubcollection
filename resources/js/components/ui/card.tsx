@@ -13,11 +13,10 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
 );
 CardHeader.displayName = "CardHeader";
 
-export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("font-display text-lg font-bold leading-tight tracking-tight", className)} {...props} />
-  ),
-);
+/** A card heading. h2 by default (cards sit directly under the page h1); pass as="h3" for cards inside an h2 section. */
+export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement> & { as?: "h2" | "h3" | "h4" }>(({ className, as: Tag = "h2", ...props }, ref) => (
+  <Tag ref={ref} className={cn("font-display text-lg font-bold leading-tight tracking-tight", className)} {...props} />
+));
 CardTitle.displayName = "CardTitle";
 
 export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(

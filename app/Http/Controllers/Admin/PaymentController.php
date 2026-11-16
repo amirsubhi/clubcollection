@@ -9,10 +9,12 @@ use App\Models\Discount;
 use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Services\AuditService;
+use App\Support\Payments\DisplayStatus;
 use App\Support\Payments\OwnFeeRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -26,8 +28,14 @@ class PaymentController extends Controller
         $query = $club->payments()->with(['user', 'discount'])
             ->orderByDesc('due_date');
 
+        // One status word everywhere (DisplayStatus); the old stored-status
+        // values still work as links.
+        $status = ['pending' => DisplayStatus::DUE, 'pending_verification' => DisplayStatus::VERIFYING][$status] ?? $status;
+        if (! in_array($status, DisplayStatus::ALL, true)) {
+            $status = null;
+        }
         if ($status) {
-            $query->where('payments.status', $status);
+            DisplayStatus::scope($query, $status, $club);
         }
 
         if ($month) {
@@ -55,21 +63,12 @@ class PaymentController extends Controller
 
         $payments = $query->paginate(20)->withQueryString();
 
-        // 1 query instead of 3 separate status queries
-        $summaryStats = $club->payments()
-            ->selectRaw("
-                SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_paid,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending,
-                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as total_overdue,
-                SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as total_verifying
-            ")
-            ->first();
-
+        DisplayStatus::prime($payments->getCollection());
+        $counts = DisplayStatus::counts($club->payments()->getQuery());
         $summary = [
-            'total_paid'    => (float) ($summaryStats->total_paid    ?? 0),
-            'total_pending' => (int)   ($summaryStats->total_pending ?? 0),
-            'total_overdue' => (int)   ($summaryStats->total_overdue ?? 0),
-            'total_verifying' => (int) ($summaryStats->total_verifying ?? 0),
+            'total_paid'    => (float) $club->payments()->where('status', 'paid')->sum('amount'),
+            'counts'        => $counts,
+            'grace_days'    => $club->overdueGraceDays(),
         ];
 
         $jobLevels = FeeRate::jobLevelLabels();
@@ -167,10 +166,31 @@ class PaymentController extends Controller
         $this->authorizeClubAdmin($payment->club);
         $payment->load(['user', 'club', 'discount', 'recordedBy', 'verifiedBy']);
         // Every transfer slip ever sent for this fee (rejected ones are kept), newest first.
-        $slips = $payment->attachments()->where('kind', 'proof_of_payment')->reorder()->orderByDesc('id')->get();
+        // Slips sent for several fees at once ("Bayar semua") are kept on the group.
+        $slips = \App\Models\Attachment::query()->where('kind', 'proof_of_payment')
+            ->where(function ($q) use ($payment) {
+                $q->where(fn ($q) => $q->where('attachable_type', Payment::class)->where('attachable_id', $payment->id))
+                    ->orWhere(fn ($q) => $q->where('attachable_type', \App\Models\PaymentBill::class)
+                        ->whereIn('attachable_id', $payment->groupBills()->where('method', 'transfer')->select('payment_bills.id')));
+            })
+            ->orderByDesc('id')->get();
         $currentSlipIds = $payment->transfer_submitted_at ? $payment->currentSlips()->pluck('id')->all() : [];
 
-        return view('admin.payments.show', compact('payment', 'slips', 'currentSlipIds'));
+        // A second payment for this fee reached the club (online on top of a slip, a
+        // hand-recorded payment or another online payment): the admin must refund one.
+        $refundFlags = \App\Models\AuditLog::where('auditable_type', Payment::class)->where('auditable_id', $payment->id)
+            ->whereIn('action', self::REFUND_FLAG_ACTIONS)->latest('id')->get();
+        // A group bill's flags sit on its oldest fee: show them on every fee of that bill.
+        $groupCodes = $payment->groupBills()->whereNotNull('payment_bills.bill_code')->pluck('payment_bills.bill_code')->all();
+        if ($groupCodes) {
+            $refundFlags = $refundFlags->concat(\App\Models\AuditLog::where('club_id', $payment->club_id)
+                ->where('auditable_type', Payment::class)->where('auditable_id', '!=', $payment->id)
+                ->whereIn('action', self::REFUND_FLAG_ACTIONS)->latest('id')->limit(500)->get()
+                ->filter(fn ($log) => in_array($log->new_values['bill_code'] ?? null, $groupCodes, true)))
+                ->sortByDesc('id')->values();
+        }
+
+        return view('admin.payments.show', compact('payment', 'slips', 'currentSlipIds', 'refundFlags'));
     }
 
     public function edit(Payment $payment)
@@ -244,6 +264,10 @@ class PaymentController extends Controller
                 && ($own = OwnFeeRule::blocker($payment, $admin, 'mark it paid'))) {
                 return $refuse($own);
             }
+            // Money received is recorded with "Record payment…" only (method, date, FPX check, audit).
+            if ($data['status'] === 'paid' && $payment->status !== 'paid') {
+                return $refuse('To mark this fee paid, use "Record payment…" on the payment page: it asks how and when the money was received.');
+            }
             // Nor lower what they owe: amount and discount of their own fee are another admin's call.
             $moneyChanged = (int) round(((float) $data['amount']) * 100) !== $payment->amountSen()
                 || (int) ($data['discount_id'] ?? 0) !== (int) ($payment->discount_id ?? 0);
@@ -259,7 +283,12 @@ class PaymentController extends Controller
             $payment->fill($data);
             // No longer paid: how and by whom it was settled no longer applies.
             if ($old['status'] === 'paid' && $data['status'] !== 'paid') {
-                $payment->forceFill(['paid_via' => null, 'gateway' => null, 'verified_by' => null, 'verified_at' => null]);
+                // ...nor does a group slip it was settled with.
+                // The slip fields too: a later "Record payment…" by transfer must read as recorded by hand (refund flags).
+                $payment->forceFill([
+                    'paid_via' => null, 'gateway' => null, 'verified_by' => null, 'verified_at' => null, 'transfer_group_id' => null,
+                    'transfer_submitted_at' => null, 'transfer_bank_ref' => null, 'transfer_ref' => null,
+                ]);
             }
             $payment->save();
 
@@ -282,16 +311,53 @@ class PaymentController extends Controller
             ->with('success', 'Payment updated.');
     }
 
+    /** Audit actions that mean the member paid twice and one payment must be refunded. */
+    public const REFUND_FLAG_ACTIONS = [
+        'payment.gateway_paid_after_manual', 'payment.gateway_paid_during_verification', 'payment.gateway_paid_twice',
+        'payment.group_bill_refund', 'payment.underpaid_webhook',
+    ];
+
+    /** How a payment recorded by hand was made => payments.paid_via. */
+    public const RECORD_METHODS = ['cash' => 'cash', 'transfer' => 'transfer', 'other' => 'manual'];
+
+    /** Earliest "date received" for a fee recorded by hand: its period start, or the day it was raised if that is earlier (fees paid ahead). */
+    public static function earliestPaidDate(Payment $payment): Carbon
+    {
+        $start = $payment->period_start->copy()->startOfDay();
+        $created = $payment->created_at?->copy()->startOfDay();
+
+        return $created && $created->lt($start) ? $created : $start;
+    }
+
+    /**
+     * "Record payment…": an admin records a fee paid outside the app (cash,
+     * bank transfer without a slip, other). Method and date received are
+     * required; with an FPX payment in progress the admin must confirm they
+     * checked it, or the member could end up paying twice.
+     */
     public function markPaid(Request $request, Payment $payment)
     {
         $this->authorizeClubAdmin($payment->club);
-        $request->validate(['reference' => 'nullable|string|max:255']);
         if ($own = OwnFeeRule::blocker($payment, $request->user(), 'mark it paid')) {
             return back()->with('error', $own);
         }
+        $min = self::earliestPaidDate($payment)->toDateString();
+        $data = $request->validate([
+            'method'    => ['required', Rule::in(array_keys(self::RECORD_METHODS))],
+            'paid_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$min, 'before_or_equal:today'],
+            'reference' => 'nullable|string|max:255',
+            'confirm_processing' => 'nullable|boolean',
+        ], [
+            'method.required' => 'Choose how the member paid.',
+            'paid_date.required' => 'Enter the date the money was received.',
+            'paid_date.after_or_equal' => 'The date received can\'t be before '.Carbon::parse($min)->format('j M Y').'.',
+            'paid_date.before_or_equal' => 'The date received can\'t be in the future.',
+        ], [
+            'paid_date' => 'date received',
+        ]);
 
         // Lock and re-check, so a slip approval or a webhook running at the same moment can't race this.
-        $refusal = DB::transaction(function () use ($request, $payment) {
+        $refusal = DB::transaction(function () use ($request, $payment, $data) {
             $locked = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             if ($locked->status === 'paid') {
                 return back()->with('error', 'This payment is already paid.');
@@ -300,21 +366,38 @@ class PaymentController extends Controller
                 return redirect()->route('admin.clubs.verifications.index', $locked->club_id)
                     ->with('error', "Payment #{$locked->id} has a transfer slip waiting. Approve or reject it here instead of marking it paid by hand.");
             }
+            $processing = DisplayStatus::of($locked) === DisplayStatus::PROCESSING;
+            if ($processing && ! $request->boolean('confirm_processing')) {
+                return back()->withInput()->withErrors(['confirm_processing' => 'Tick the box to confirm.']);
+            }
 
-            $old = $locked->status;
-            $locked->update([
+            $old = $locked->only(['status', 'paid_date', 'paid_via', 'reference']);
+            $paidVia = self::RECORD_METHODS[$data['method']];
+            $reference = filled($data['reference'] ?? null) ? trim($data['reference']) : null;
+            $locked->forceFill([
                 'status'    => 'paid',
-                'paid_date' => now()->toDateString(),
-                'reference' => $request->reference,
-            ]);
+                'paid_date' => $data['paid_date'],
+                'paid_via'  => $paidVia,
+                // Only what the admin typed: an earlier FPX bill reference (PAY-…) must not show on the receipt.
+                'reference' => $reference,
+                // Recorded by hand: no gateway settled it.
+                'gateway'   => null,
+                'transaction_id' => null,
+                // A bank transfer recorded by hand: its reference is the bank's.
+                'transfer_bank_ref' => $paidVia === 'transfer' ? $reference : $locked->transfer_bank_ref,
+            ])->save();
 
+            $label = ['cash' => 'cash', 'transfer' => 'bank transfer', 'manual' => 'other'][$paidVia];
             AuditService::log(
                 'payment.marked_paid',
-                "Payment #{$locked->id} marked as paid" . ($request->reference ? " (ref: {$request->reference})" : '') . '.',
+                "Payment #{$locked->id} recorded as paid by {$label} on {$data['paid_date']}"
+                    .($reference ? " (ref: {$reference})" : '')
+                    .($processing ? '; the admin confirmed an open FPX payment did not go through' : '').'.',
                 $locked,
                 $locked->club_id,
-                ['status' => $old],
-                ['status' => 'paid', 'paid_date' => now()->toDateString()]
+                $old,
+                ['status' => 'paid', 'paid_date' => $data['paid_date'], 'paid_via' => $paidVia, 'method' => $data['method'], 'reference' => $reference]
+                    + ($processing ? ['fpx_in_progress_confirmed' => true] : [])
             );
 
             return null;
@@ -323,7 +406,7 @@ class PaymentController extends Controller
             return $refusal;
         }
 
-        return back()->with('success', 'Payment marked as paid.');
+        return back()->with('success', 'Payment recorded as paid.');
     }
 
     public function destroy(Payment $payment)
@@ -337,7 +420,8 @@ class PaymentController extends Controller
             return back()->with('error', $own);
         }
         // Transfer slips are kept as evidence: a fee with slips can't be deleted.
-        if ($payment->status === 'pending_verification' || $payment->attachments()->exists()) {
+        // A slip sent for several fees at once ("Bayar semua") covers this one too.
+        if ($payment->status === 'pending_verification' || $payment->attachments()->exists() || $payment->inAnyTransferGroup()) {
             return back()->with('error', 'This payment has transfer slips attached, so it is kept for the record and can\'t be deleted.');
         }
         $payment->delete();

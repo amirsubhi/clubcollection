@@ -43,12 +43,17 @@ class InstallationTest extends BaseTestCase
         Artisan::shouldReceive('output')->andReturn('')->byDefault();
 
         config(['app.install_token' => self::TOKEN]);
+
+        // The app needs PHP 8.4 (InstallController::MIN_PHP); let the install
+        // flow tests run on an older local PHP too. Reset in tearDown().
+        \App\Http\Controllers\InstallController::$minimumPhp = '8.0.0';
     }
 
     private const TOKEN = 'test-install-token-0123456789';
 
     protected function tearDown(): void
     {
+        \App\Http\Controllers\InstallController::$minimumPhp = \App\Http\Controllers\InstallController::MIN_PHP;
         @unlink(storage_path('app/.installed'));
         @unlink(storage_path('app/.installed.tmp'));
 
@@ -177,6 +182,7 @@ class InstallationTest extends BaseTestCase
         $env = file_get_contents(base_path('.env'));
         $this->assertMatchesRegularExpression('/^APP_ENV=production$/m', $env);
         $this->assertMatchesRegularExpression('/^APP_DEBUG=false$/m', $env);
+        $this->assertMatchesRegularExpression('/^APP_TIMEZONE=Asia\/Kuala_Lumpur$/m', $env);
         $this->assertMatchesRegularExpression('/^SESSION_SECURE_COOKIE=true$/m', $env);
         $this->assertMatchesRegularExpression('/^LOG_LEVEL=warning$/m', $env);
         $this->assertMatchesRegularExpression('/^APP_URL=https:\/\/example\.test$/m', $env);
@@ -195,5 +201,13 @@ class InstallationTest extends BaseTestCase
             'admin_password_confirmation' => 'StrongPass!2026',
             'install_token'               => self::TOKEN,
         ], $overrides);
+    }
+
+    public function test_installer_requires_php_8_4(): void
+    {
+        $this->assertSame('8.4.0', \App\Http\Controllers\InstallController::MIN_PHP);
+
+        \App\Http\Controllers\InstallController::$minimumPhp = \App\Http\Controllers\InstallController::MIN_PHP;
+        $this->get('/install')->assertSee('PHP &gt;= 8.4', false);
     }
 }

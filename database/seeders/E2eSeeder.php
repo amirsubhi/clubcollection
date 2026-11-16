@@ -18,7 +18,9 @@ use RuntimeException;
  *
  * Creates one club with fake ToyyibPay credentials and sample bank-transfer
  * details, two members with one pending RM 50.00 fee each (one pays online,
- * one by transfer slip) and two club admins (maker and checker). The
+ * one by transfer slip), two members with three open fees each ("Bayar
+ * semua": RM 150.00, one by FPX, one by slip) and two club admins (maker
+ * and checker). The
  * passwords are public, so it refuses to run outside local/testing.
  */
 class E2eSeeder extends Seeder
@@ -33,6 +35,11 @@ class E2eSeeder extends Seeder
 
     /** Second member: pays by bank transfer with a slip (P2). */
     public const TRANSFER_MEMBER_EMAIL = 'e2e.member.transfer@clubportal.test';
+
+    /** "Bayar semua" (R1b): three open fees each, paid with one FPX bill / one slip. */
+    public const PAY_ALL_EMAIL = 'e2e.member.payall@clubportal.test';
+
+    public const PAY_ALL_TRANSFER_EMAIL = 'e2e.member.payall.transfer@clubportal.test';
 
     public function run(): void
     {
@@ -66,7 +73,7 @@ class E2eSeeder extends Seeder
         ]);
 
         foreach (['Event', 'Supplies', 'Miscellaneous'] as $name) {
-            ExpenseCategory::create(['club_id' => $club->id, 'name' => $name]);
+            ExpenseCategory::create(['club_id' => $club->id, 'name' => $name, 'name_ms' => ExpenseCategory::DEFAULTS[$name]]);
         }
 
         $member = $this->user('E2E Ahli Ujian', self::MEMBER_EMAIL, 'member');
@@ -93,6 +100,26 @@ class E2eSeeder extends Seeder
                 'due_date' => $start->copy()->addDays(14)->toDateString(),
                 'status' => 'pending',
             ]);
+        }
+
+        // Three open fees each, oldest overdue: RM 50 × 3 = RM 150.
+        foreach ([['E2E Ahli Bayar Semua', self::PAY_ALL_EMAIL], ['E2E Ahli Semua Pindahan', self::PAY_ALL_TRANSFER_EMAIL]] as [$name, $email]) {
+            $payer = $this->user($name, $email, 'member');
+            $club->members()->attach($payer, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->subYear()->toDateString(), 'is_active' => true]);
+            foreach ([-2, -1, 0] as $offset) {
+                $month = $start->copy()->addMonthsNoOverflow($offset);
+                Payment::create([
+                    'club_id' => $club->id,
+                    'user_id' => $payer->id,
+                    'recorded_by' => $payer->id,
+                    'amount' => 50.00,
+                    'frequency' => 'monthly',
+                    'period_start' => $month->toDateString(),
+                    'period_end' => $month->copy()->endOfMonth()->toDateString(),
+                    'due_date' => $month->copy()->addDays(14)->toDateString(),
+                    'status' => $offset < -1 ? 'overdue' : 'pending',
+                ]);
+            }
         }
     }
 

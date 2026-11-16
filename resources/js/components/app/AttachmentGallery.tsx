@@ -12,19 +12,12 @@ const kindLabel = (k: Attachment["kind"]) => (k === "proof_of_payment" ? "Transf
 const isPdf = (a: Attachment) => a.mime === "application/pdf" || a.name.toLowerCase().endsWith(".pdf");
 const isImage = (a: Attachment) => !!a.mime?.startsWith("image/");
 
-/** Real image when there is a URL, a PDF tile for PDFs, otherwise the placeholder drawing. */
+/** Real image when there is a URL, otherwise a neutral file tile with the type and size. */
 function AttachmentPreview({ a, className, title, thumb = false }: { a: Attachment; className?: string; title: string; thumb?: boolean }) {
   // Grid tiles use the unaudited thumbnail; the opened preview uses the audited view URL.
   const src = thumb && a.thumbUrl !== undefined ? a.thumbUrl : a.url;
   if (src && isImage(a)) return <img src={src} alt={title} loading="lazy" className={cn("object-cover", className)} />;
-  if (isPdf(a))
-    return (
-      <div className={cn("flex flex-col items-center justify-center gap-2 bg-muted text-muted-foreground", className)} role="img" aria-label={title}>
-        <FileText className="h-10 w-10" strokeWidth={1.5} aria-hidden />
-        <span className="text-xs font-bold">PDF</span>
-      </div>
-    );
-  return <AttachmentArt kind={a.kind} className={className} title={title} />;
+  return <AttachmentArt name={a.name} mime={a.mime ?? (isPdf(a) ? "application/pdf" : undefined)} sizeKb={a.sizeKb} className={className} title={title} />;
 }
 
 export function AttachmentGallery({ items, frozen }: { items: Attachment[]; frozen: boolean }) {

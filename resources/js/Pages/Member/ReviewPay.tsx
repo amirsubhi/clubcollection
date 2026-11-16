@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { AlertTriangle, Check, Copy, FileText, Hourglass, ImageIcon, Landmark, Loader2, Lock, Send, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Check, Copy, FileText, Hourglass, ImageIcon, Landmark, Loader2, Lock, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, useFeeLabel, useServerText } from "@/components/app/MemberParts";
@@ -12,14 +12,24 @@ import { Input, Label } from "@/components/ui/input";
 import { fmtDate, rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import type { MemberPaymentRow, PaymentContext, TransferOption, TransferVerification } from "@/types/member";
+import { useStickyFit } from "@/lib/useStickyFit";
+import type { MemberPaymentRow, PaymentContext, PaymentGroup, TransferOption, TransferVerification } from "@/types/member";
 
 interface Props extends PaymentContext {
-  payment: MemberPaymentRow;
+  /** The fee being paid; null for "Bayar semua", which sends `group` instead. */
+  payment: MemberPaymentRow | null;
+  /** "Bayar semua": every open fee in the club, paid with one bill or one slip. */
+  group?: PaymentGroup | null;
   gateway: { name: string; label: string; available: boolean };
   /** feeSen is the gateway charge the member pays on top (0 when the club absorbs it). */
   charges: { payer: "club" | "member"; feeSen: number; totalSen: number };
   hasOpenBill: boolean;
+  /** Where to check the payment already started (single fee's pay result, or the group's result page). */
+  openBillUrl?: string | null;
+  /** An FPX payment for this fee (or set) is in progress (DisplayStatus "processing"): checking it is the main action. */
+  processing?: boolean;
+  /** "Bayar semua": a fee of the set is being paid through another bill, so paying the set again is refused. */
+  payAgainBlocked?: boolean;
   payUrl: string;
   /** Bank / DuitNow transfer details; null when the club doesn't take transfers. */
   transfer: TransferOption | null;
@@ -55,8 +65,8 @@ function CopyButton({ value, what }: { value: string; what: string }) {
 /** copyValue: what goes to the clipboard when it differs from what is shown (e.g. digits only). */
 function DetailRow({ label, value, copy, copyValue, mono = false }: { label: string; value: string; copy?: boolean; copyValue?: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
+      <div className="min-w-0 flex-[1_1_8rem]">
         <dt className="text-sm text-muted-foreground">{label}</dt>
         <dd className={cn("break-words text-base font-semibold", mono && "font-mono tracking-wide")}>{value}</dd>
       </div>
@@ -72,33 +82,50 @@ function MethodOption({
   title,
   sub,
   aside,
+  disabled = false,
 }: {
   value: Method;
   checked: boolean;
   onChange: (m: Method) => void;
   title: string;
+  /** With disabled, the reason it can't be chosen. */
   sub: string;
   aside: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <label
       className={cn(
-        "flex min-h-[64px] cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition-colors focus-within:ring-2 focus-within:ring-ring",
-        checked ? "border-primary bg-accent/60" : "border-border hover:bg-muted/60",
+        "flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border-2 px-4 py-3 transition-colors focus-within:ring-2 focus-within:ring-ring",
+        disabled ? "cursor-not-allowed border-dashed border-border bg-muted/60" : "cursor-pointer",
+        !disabled && (checked ? "border-primary bg-accent/60" : "border-border hover:bg-muted/60"),
       )}
+      data-testid={`method-${value}`}
     >
-      <input type="radio" name="method" value={value} checked={checked} onChange={() => onChange(value)} className="h-5 w-5 shrink-0 accent-[rgb(var(--primary))]" />
-      <span className="min-w-0 flex-1">
-        <span className="block text-base font-semibold leading-snug">{title}</span>
-        <span className="block text-sm text-muted-foreground">{sub}</span>
+      <input
+        type="radio"
+        name="method"
+        value={value}
+        checked={checked}
+        disabled={disabled}
+        onChange={() => onChange(value)}
+        aria-describedby={`method-${value}-sub`}
+        className="h-5 w-5 shrink-0 accent-[rgb(var(--primary))]"
+      />
+      {/* With large text on a narrow phone, the charge note drops under the title instead of squeezing it. */}
+      <span className="min-w-0 flex-[1_1_9rem] break-words">
+        <span className={cn("block text-base font-semibold leading-snug", disabled && "text-muted-foreground")}>{title}</span>
+        <span id={`method-${value}-sub`} className={cn("block text-sm", disabled ? "font-medium text-foreground" : "text-muted-foreground")}>
+          {sub}
+        </span>
       </span>
-      <span className="shrink-0 text-sm font-semibold">{aside}</span>
+      {!disabled && aside && <span className="ml-auto max-w-full text-right text-sm font-semibold">{aside}</span>}
     </label>
   );
 }
 
 /** Bank details, the reference to type, and the slip form. */
-function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOption; amount: number; hasOpenBill: boolean }) {
+function TransferForm({ transfer, amount, group }: { transfer: TransferOption; amount: number; group?: PaymentGroup | null }) {
   const t = useT();
   const { lang } = useLang();
   const text = useServerText();
@@ -127,6 +154,8 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (form.processing || items.length === 0) return;
+    // "Bayar semua": the exact set and total the member saw, so the server can refuse a stale page.
+    if (group) form.transform((d) => ({ ...d, payment_ids: group.paymentIds, total_sen: group.sumSen }));
     form.post(transfer.submitUrl, {
       forceFormData: true,
       preserveScroll: true,
@@ -137,30 +166,25 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
   const err = (k: "transfer_date" | "transfer_ref" | "method" | "status") => (form.errors as Record<string, string | undefined>)[k];
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
-      {hasOpenBill && (
-        <Alert variant="warning" className="text-base" data-testid="transfer-open-bill">
-          <AlertTriangle aria-hidden />
-          <p>{t("openBillTransferWarn")}</p>
-        </Alert>
-      )}
-
-      <section aria-labelledby="tx-step1" className="flex flex-col gap-3">
+    // "contents": the steps sit straight in the page column, so the sticky send bar stays in reach across the whole page.
+    <form id="transfer-form" onSubmit={submit} className="contents" noValidate>
+      <section aria-labelledby="tx-step1" className="flex flex-col gap-3 rounded-[20px] border bg-card p-4">
         <h2 id="tx-step1" className="flex items-center gap-2 text-base font-semibold">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground" aria-hidden>
             1
           </span>
           {fill(t("transferStep1"), { x: rm(amount) })}
         </h2>
-        <dl className="flex flex-col divide-y rounded-2xl border">
+        {group && <p className="text-sm text-muted-foreground">{t("payAllTransferNote")}</p>}
+        <dl className="-mx-4 flex flex-col divide-y border-y">
           <DetailRow label={t("bank")} value={transfer.bankName} />
           <DetailRow label={t("accountName")} value={transfer.accountName} />
           {transfer.accountNo && <DetailRow label={t("accountNo")} value={transfer.accountNo} copyValue={transfer.accountNo.replace(/[\s-]/g, "")} copy mono />}
           {transfer.duitnowId && <DetailRow label={t("duitnowId")} value={transfer.duitnowId} copy mono />}
         </dl>
         <div className="flex flex-col gap-2 rounded-2xl bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <div className="min-w-0 flex-[1_1_8rem]">
               <div className="text-sm font-semibold">{t("transferRefLbl")}</div>
               <div className="font-mono text-xl font-bold tracking-wide" data-testid="transfer-ref">
                 {transfer.reference}
@@ -172,7 +196,7 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
         </div>
       </section>
 
-      <section aria-labelledby="tx-step2" className="flex flex-col gap-4">
+      <section aria-labelledby="tx-step2" className="flex flex-col gap-4 rounded-[20px] border bg-card p-4">
         <h2 id="tx-step2" className="flex items-center gap-2 text-base font-semibold">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground" aria-hidden>
             2
@@ -195,8 +219,9 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
               n: transfer.maxFiles,
               mb: transfer.maxMb,
             }),
-            takePhoto: t("takePhoto"),
+            takePhoto: t("takePhotoSlip"),
             cameraHint: t("cameraHint"),
+            chooseFile: t("chooseFile"),
             remove: (name) => fill(t("removeFile"), { f: name }),
             tooLarge: (names, mb) => fill(t("fileTooLarge"), { f: names, mb }),
           }}
@@ -258,8 +283,25 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
         </Alert>
       )}
 
-      <div className="flex flex-col gap-2">
-        <Button type="submit" size="xl" className="w-full rounded-full text-lg" disabled={form.processing || items.length === 0} aria-live="polite">
+      <p className="px-1 text-sm text-muted-foreground">{t("slipNote")}</p>
+
+      {/* Why the send button is off: in the page flow, so the sticky bar holds only the button. */}
+      {items.length === 0 && (
+        <p id="slip-needed" className="-mb-3 px-1 text-sm font-medium text-foreground" data-testid="slip-needed">
+          {t("slipNeeded")}
+        </p>
+      )}
+      {/* The send button sits in the sticky bar at the bottom; it submits this form by id. */}
+      <StickyBar>
+        <Button
+          type="submit"
+          form="transfer-form"
+          size="xl"
+          className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg"
+          disabled={form.processing || items.length === 0}
+          aria-describedby={items.length === 0 ? "slip-needed" : undefined}
+          aria-live="polite"
+        >
           {form.processing ? (
             <>
               <Loader2 className="animate-spin" aria-hidden /> {t("sendingSlip")}
@@ -270,8 +312,7 @@ function TransferForm({ transfer, amount, hasOpenBill }: { transfer: TransferOpt
             </>
           )}
         </Button>
-        <p className="text-center text-sm text-muted-foreground">{t("slipNote")}</p>
-      </div>
+      </StickyBar>
     </form>
   );
 }
@@ -329,7 +370,7 @@ function VerifyingCard({ v }: { v: TransferVerification }) {
                   })}
                 >
                   {s.isPdf ? <FileText className="h-5 w-5 shrink-0 text-danger" aria-hidden /> : <ImageIcon className="h-5 w-5 shrink-0 text-info" aria-hidden />}
-                  <span className="truncate">{s.name}</span>
+                  <span className="min-w-0 break-all">{s.name}</span>
                 </a>
               </li>
             ))}
@@ -340,8 +381,64 @@ function VerifyingCard({ v }: { v: TransferVerification }) {
   );
 }
 
-/** Review & pay: a confirm step that is clearly not a receipt; the amount is on the one primary button. */
-export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payUrl, transfer, verification, rejection, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+/**
+ * The page's one action, kept in reach at the bottom of the screen: only the button, and only while it is
+ * small next to the screen (useStickyFit); with large text or a short screen it stays in the page flow.
+ * Sticky, not fixed, so it never covers the last lines.
+ */
+function StickyBar({ children }: { children: React.ReactNode }) {
+  const [ref, pinned] = useStickyFit<HTMLDivElement>("bottom", { maxFraction: 0.18, minViewport: 560 });
+  return (
+    <div
+      ref={ref}
+      // Same box pinned or not (border, padding, safe-area inset): only position and background change, so its
+      // measured height never moves across the threshold and it cannot flip between the two states.
+      className={cn(
+        "bleed-x z-10 flex flex-col gap-2 border-t border-transparent pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3",
+        pinned && "sticky bottom-0 border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85",
+      )}
+      data-testid="pay-bar"
+      data-pinned={pinned}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** "Bayar semua": each fee on its own line, oldest first, then the fees total. */
+function GroupLines({ group }: { group: PaymentGroup }) {
+  const t = useT();
+  const { lang } = useLang();
+  const feeLabel = useFeeLabel();
+  return (
+    <div className="px-4 py-3" data-testid="group-fees">
+      <dt className="text-sm text-muted-foreground">{fill(t("feesN"), { n: group.fees.length })}</dt>
+      <dd>
+        <ul className="mt-1 flex flex-col divide-y divide-dashed">
+          {group.fees.map((f) => (
+            <li key={f.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-2 text-base">
+              <span className="min-w-0 flex-[1_1_10rem] break-words">
+                {feeLabel(f)}
+                <span className="block text-sm text-muted-foreground">
+                  {f.invoiceNo} · {t("due")} {fmtDate(f.dueDate, lang)}
+                  {f.status === "overdue" && <span className="font-semibold text-warning-foreground"> · {t("overdueBadge")}</span>}
+                </span>
+              </span>
+              <Money sen={f.amount} className="font-semibold" />
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap justify-between gap-x-3 border-t pt-2 text-base">
+          <span className="text-muted-foreground">{t("subtotal")}</span>
+          <Money sen={group.sumSen} className="font-semibold" />
+        </div>
+      </dd>
+    </div>
+  );
+}
+
+/** Review & pay: a confirm step that is clearly not a receipt. The amount is in the summary and on the one pay button. */
+export default function ReviewPay({ payment, group, gateway, charges, hasOpenBill, openBillUrl, processing = false, payAgainBlocked = false, payUrl, transfer, verification, rejection, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -353,175 +450,233 @@ export default function ReviewPay({ payment, gateway, charges, hasOpenBill, payU
   // FPX costs the member a charge: only then is "no charge" worth saying on the transfer option.
   const fpxCharge = charges.payer === "member" && charges.feeSen > 0;
   const memberCharge = !isTransfer && fpxCharge;
-  const total = verification || isTransfer ? payment.amount : charges.totalSen;
+  const feesSen = group ? group.sumSen : (payment?.amount ?? 0);
+  const total = verification || isTransfer ? feesSen : charges.totalSen;
+  // A slip is with the treasurer: this page is now about where the payment stands, not paying.
+  const title = verification ? t("paymentStatus") : group ? t("reviewPayAll") : t("reviewPay");
+  // An FPX payment is still with the bank: the main button checks it; paying again is secondary.
+  const checkFirst = processing && !!openBillUrl;
 
   const pay = () => {
     if (sent || !gateway.available) return;
     setSent(true);
     // The server answers with an external redirect (X-Inertia-Location) to the gateway,
     // or back here with a flash error, in which case the button is enabled again.
-    router.post(payUrl, {}, { onError: () => setSent(false), onSuccess: () => setSent(false) });
+    // "Bayar semua" sends the exact set and total shown, so a stale page is refused.
+    const data = group ? { payment_ids: group.paymentIds, total_sen: group.sumSen } : {};
+    router.post(payUrl, data, { onError: () => setSent(false), onSuccess: () => setSent(false) });
   };
 
   return (
-    <MemberShell tab="payments" navHrefs={{ home: dashboardUrl, payments: paymentsUrl }} clubName={payClub.name} title={t("reviewPay")} backHref={payment.urls.invoice} hideNav>
-      <Head title={t("reviewPay")} />
-      <div className="flex flex-col items-center gap-1 pt-1 text-center">
-        <span className="text-base text-muted-foreground">{t("payFeeTitle")}</span>
-        <Money sen={total} className="figure font-display text-[44px] font-extrabold leading-none tracking-tight" />
-        {memberCharge && (
-          <span className="text-sm text-muted-foreground" data-testid="fee-line">
-            {fill(t("feeLine"), {
-              a: rm(payment.amount),
-              b: rm(charges.feeSen),
-              c: rm(total),
-            })}
-          </span>
-        )}
-      </div>
+    <MemberShell tab="payments" navHrefs={{ home: dashboardUrl, payments: paymentsUrl }} clubName={payClub.name} title={title} backHref={payment ? payment.urls.invoice : dashboardUrl} hideNav>
+      <Head title={title} />
 
       <FlashBanner />
 
-      <section
-        aria-labelledby="sheet-h"
-        className="relative flex animate-sheet-up flex-col gap-5 rounded-[28px] border bg-card p-5 shadow-[0_-12px_40px_-24px_rgba(30,27,58,0.45)] motion-reduce:animate-none"
-      >
-        <h1 id="sheet-h" className="font-display text-2xl font-bold tracking-tight">
-          {t("reviewPay")}
-        </h1>
-
-        <dl className="flex flex-col divide-y rounded-2xl border">
-          <div className="px-4 py-3">
-            <dt className="text-sm text-muted-foreground">{t("paidFor")}</dt>
-            <dd className="flex justify-between gap-2 text-base">
-              <span className="min-w-0">
-                {feeLabel(payment)}
-                <span className="block text-sm text-muted-foreground">
-                  {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
-                </span>
-              </span>
-              <Money sen={payment.amount} className="font-semibold" />
-            </dd>
-          </div>
+      <section aria-label={group ? t("feesInSet") : t("paidFor")} className="flex flex-col">
+        <dl className="flex flex-col divide-y rounded-[20px] border bg-card">
+          {group ? (
+            <GroupLines group={group} />
+          ) : (
+            payment && (
+              <div className="px-4 py-3">
+                <dt className="text-sm text-muted-foreground">{t("paidFor")}</dt>
+                <dd className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-base">
+                  <span className="min-w-0 flex-[1_1_10rem] break-words">
+                    {feeLabel(payment)}
+                    <span className="block text-sm text-muted-foreground">
+                      {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
+                    </span>
+                  </span>
+                  <Money sen={payment.amount} className="font-semibold" />
+                </dd>
+              </div>
+            )
+          )}
           <div className="px-4 py-3">
             <dt className="text-sm text-muted-foreground">{t("member")}</dt>
-            <dd className="truncate text-base font-semibold">{member.name}</dd>
+            <dd className="break-words text-base font-semibold">{member.name}</dd>
           </div>
           <div className="px-4 py-3">
             <dt className="text-sm text-muted-foreground">{t("payee")}</dt>
-            <dd className="text-base font-semibold">{payClub.name}</dd>
+            <dd className="break-words text-base font-semibold">{payClub.name}</dd>
           </div>
           {memberCharge && (
-            <div className="px-4 py-3">
+            <div className="px-4 py-3" data-testid="fee-line">
               <dt className="text-sm text-muted-foreground">{t("gatewayCharge")}</dt>
-              <dd className="flex justify-between gap-2 text-base">
-                <span className="min-w-0 text-sm text-muted-foreground">{t("chargeByMember")}</span>
+              <dd className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-base">
+                <span className="min-w-0 flex-[1_1_10rem] text-sm text-muted-foreground">{group ? t("payAllOneCharge") : t("chargeByMember")}</span>
                 <Money sen={charges.feeSen} className="font-semibold" />
               </dd>
             </div>
           )}
-          <div className="flex items-center justify-between gap-3 bg-muted/60 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-b-[20px] bg-muted/60 px-4 py-3">
             <dt className="text-base font-semibold">{t("total")}</dt>
-            <dd>
+            <dd data-testid="review-total">
               <Money sen={total} className="font-display text-2xl font-bold" />
             </dd>
           </div>
         </dl>
-        <Link href={payment.urls.invoice} className="-mt-3 inline-flex min-h-11 items-center self-start text-base font-semibold text-primary underline-offset-4 hover:underline">
-          {t("invoice")} {payment.invoiceNo}
-        </Link>
-
-        {verification ? (
-          <VerifyingCard v={verification} />
-        ) : (
-          <>
-            {rejection && (
-              <Alert variant="warning" className="text-base" data-testid="rejection">
-                <AlertTriangle aria-hidden />
-                <div>
-                  <p className="font-semibold">{t("rejectedTitle")}</p>
-                  <p>
-                    {t("reason")}: {rejection.reason}
-                  </p>
-                  <p className="mt-1">{t("rejectedBody")}</p>
-                  {rejection.at && <p className="mt-1 text-sm opacity-80">{fmtDate(rejection.at, lang)}</p>}
-                </div>
-              </Alert>
-            )}
-
-            {transfer && (
-              <fieldset className="flex flex-col gap-2">
-                <legend className="mb-2 text-base font-semibold">{t("chooseMethod")}</legend>
-                <MethodOption
-                  value="fpx"
-                  checked={method === "fpx"}
-                  onChange={setMethod}
-                  title={t("methodFpx")}
-                  sub={fill(t("methodFpxSub"), gw)}
-                  aside={fpxCharge ? fill(t("plusChargeShort"), { x: rm(charges.feeSen) }) : null}
-                />
-                <MethodOption
-                  value="transfer"
-                  checked={method === "transfer"}
-                  onChange={setMethod}
-                  title={t("methodTransfer")}
-                  sub={t("methodTransferSub")}
-                  aside={fpxCharge ? t("noCharge") : <Landmark className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden />}
-                />
-              </fieldset>
-            )}
-
-            {isTransfer && transfer ? (
-              <TransferForm transfer={transfer} amount={payment.amount} hasOpenBill={hasOpenBill} />
-            ) : (
-              <>
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-base font-semibold">{t("payWith")}</span>
-                    <FpxMark />
-                  </div>
-                  <div className="flex items-start gap-3 rounded-2xl bg-accent/70 p-3 text-sm text-accent-foreground">
-                    <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
-                    <p>
-                      <span className="font-semibold">{fill(t("securedGw"), gw)}.</span> {fill(t("handoffGw"), gw)}
-                    </p>
-                  </div>
-                </div>
-
-                {hasOpenBill && (
-                  <Alert variant="warning" className="text-base">
-                    <AlertTriangle aria-hidden />
-                    <p>{t("openBillWarn")}</p>
-                  </Alert>
-                )}
-                {!gateway.available && (
-                  <Alert variant="danger" className="text-base">
-                    <AlertTriangle aria-hidden />
-                    <p>{t("gatewayUnavailable")}</p>
-                  </Alert>
-                )}
-
-                <div className="flex flex-col gap-2">
-                  <Button size="xl" className="w-full rounded-full text-lg" onClick={pay} disabled={sent || !gateway.available} aria-live="polite">
-                    {sent ? (
-                      <>
-                        <Loader2 className="animate-spin" aria-hidden /> {fill(t("redirectingGw"), gw)}
-                      </>
-                    ) : (
-                      <>
-                        <Lock aria-hidden /> {t("payNow")} {rm(total)}
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-center text-sm text-muted-foreground">FPX · {gateway.label}</p>
-                </div>
-              </>
-            )}
-          </>
+        {payment && (
+          <Link href={payment.urls.invoice} className="inline-flex min-h-11 items-center self-start px-1 text-base font-semibold text-primary underline-offset-4 hover:underline">
+            {t("invoice")} {payment.invoiceNo}
+          </Link>
         )}
       </section>
 
-      <HelpLine email={payClub.email} />
+      {verification ? (
+        <VerifyingCard v={verification} />
+      ) : (
+        <>
+          {rejection && (
+            <Alert variant="warning" className="text-base" data-testid="rejection">
+              <AlertTriangle aria-hidden />
+              <div>
+                <p className="font-semibold">{t("rejectedTitle")}</p>
+                <p>
+                  {t("reason")}: {rejection.reason}
+                </p>
+                <p className="mt-1">{t("rejectedBody")}</p>
+                {rejection.at && <p className="mt-1 text-sm">{fmtDate(rejection.at, lang)}</p>}
+                {(payClub.whatsapp || payClub.email) && (
+                  <HelpLine club={payClub} fee={payment} reference={transfer?.reference ?? payment?.invoiceNo} className="mt-1 min-h-11 justify-start text-left" />
+                )}
+              </div>
+            </Alert>
+          )}
+
+          {/* A payment was already started: said before the member picks how to pay (again). */}
+          {hasOpenBill && (
+            <Alert variant="warning" className="text-base" data-testid={isTransfer ? "transfer-open-bill" : "open-bill-warning"} id="open-bill-warning">
+              {processing ? <RefreshCw aria-hidden /> : <AlertTriangle aria-hidden />}
+              <div>
+                {processing && <p className="font-semibold">{t("processingWarnTitle")}</p>}
+                <p>{processing ? t("processingWarnBody") : isTransfer ? t("openBillTransferWarn") : t("openBillWarn")}</p>
+                {/* No longer counted as in progress: if it did go through, the treasurer can confirm it. */}
+                {!processing && <p className="mt-1" data-testid="stale-bill-hint">{t("staleBillHint")}</p>}
+                {openBillUrl && !processing && (
+                  <Link href={openBillUrl} className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" data-testid="open-bill-status">
+                    {t("checkEarlierPayment")}
+                  </Link>
+                )}
+              </div>
+            </Alert>
+          )}
+
+          {transfer && (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 px-1 text-base font-semibold">{t("chooseMethod")}</legend>
+              <MethodOption
+                value="fpx"
+                checked={method === "fpx"}
+                onChange={setMethod}
+                title={t("methodFpx")}
+                sub={gateway.available ? fill(t("methodFpxSub"), gw) : t("fpxUnavailableShort")}
+                aside={fpxCharge ? fill(t("plusChargeShort"), { x: rm(charges.feeSen) }) : null}
+                disabled={!gateway.available}
+              />
+              <MethodOption
+                value="transfer"
+                checked={method === "transfer"}
+                onChange={setMethod}
+                title={t("methodTransfer")}
+                sub={t("methodTransferSub")}
+                aside={fpxCharge ? t("noCharge") : <Landmark className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden />}
+              />
+            </fieldset>
+          )}
+
+          {isTransfer && transfer ? (
+            <TransferForm transfer={transfer} amount={feesSen} group={group} />
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 rounded-[20px] border bg-card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-base font-semibold">{t("payWith")}</span>
+                  <FpxMark />
+                </div>
+                <div className="flex items-start gap-3 rounded-2xl bg-accent/70 p-3 text-sm text-accent-foreground">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
+                  <p>
+                    <span className="font-semibold">{fill(t("securedGw"), gw)}.</span> {fill(t("handoffGw"), gw)}
+                  </p>
+                </div>
+              </div>
+
+              {!gateway.available && (
+                <Alert variant="danger" className="text-base" id="gateway-unavailable">
+                  <AlertTriangle aria-hidden />
+                  <p>{t("gatewayUnavailable")}</p>
+                </Alert>
+              )}
+
+              {checkFirst && openBillUrl ? (
+                <>
+                  {/* Paying again stays possible, but as the second choice, with the warning attached. */}
+                  {!payAgainBlocked && (
+                  <div className="flex flex-col gap-2 rounded-[20px] border bg-card p-4" data-testid="pay-again-box">
+                    <p id="pay-again-warn" className="text-base">
+                      {t("payAgainWarn")}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xl"
+                      className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg"
+                      onClick={pay}
+                      disabled={sent || !gateway.available}
+                      aria-describedby={!gateway.available ? "gateway-unavailable pay-again-warn" : "pay-again-warn open-bill-warning"}
+                      aria-live="polite"
+                      data-testid="pay-again"
+                    >
+                      {sent ? (
+                        <>
+                          <Loader2 className="animate-spin" aria-hidden /> {fill(t("redirectingGw"), gw)}
+                        </>
+                      ) : (
+                        <>
+                          {t("payAgain")} {rm(total)}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  )}
+                  <StickyBar>
+                    <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
+                      <Link href={openBillUrl} data-testid="check-status">
+                        <RefreshCw aria-hidden /> {t("checkPaymentStatus")}
+                      </Link>
+                    </Button>
+                  </StickyBar>
+                </>
+              ) : (
+              <StickyBar>
+                <Button
+                  size="xl"
+                  className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg"
+                  onClick={pay}
+                  disabled={sent || !gateway.available}
+                  aria-describedby={!gateway.available ? "gateway-unavailable" : undefined}
+                  aria-live="polite"
+                >
+                  {sent ? (
+                    <>
+                      <Loader2 className="animate-spin" aria-hidden /> {fill(t("redirectingGw"), gw)}
+                    </>
+                  ) : (
+                    <>
+                      <Lock aria-hidden /> {t("payNow")} {rm(total)}
+                    </>
+                  )}
+                </Button>
+              </StickyBar>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      <HelpLine club={payClub} fee={payment} reference={transfer?.reference ?? payment?.invoiceNo} />
     </MemberShell>
   );
 }

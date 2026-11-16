@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', $club->name . ' - Fee Rates')
-@section('page-title', $club->name . ' — Fee Rates')
+@section('page-title', 'Fee Rates')
+@section('page-club', $club->name)
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -13,7 +14,7 @@
 @foreach($jobLevels as $key => $label)
 <div class="card shadow-sm mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-semibold">{{ $label }}</h6>
+        <h2 class="h6 mb-0 fw-semibold">{{ $label }}</h2>
         @if(isset($rates[$key]) && $rates[$key]->first()?->effective_to === null)
             <span class="badge bg-success">Current Rate: RM {{ number_format($rates[$key]->first()->monthly_amount, 2) }}/month</span>
         @else

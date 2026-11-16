@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
@@ -37,9 +38,41 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(300)->by('webhook|'.$request->ip()));
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by('password|'.$request->ip()));
 
+        self::configureTrustedProxies();
+
+        // A fresh install still says APP_NAME=Laravel: members should see the product name instead.
+        if (in_array(config('app.name'), [null, '', 'Laravel'], true)) {
+            config(['app.name' => 'Club Portal']);
+        }
+
         if ($this->app->isProduction()) {
             self::pinRootUrl();
         }
+    }
+
+    /**
+     * Trust X-Forwarded-For/Host/Port/Proto only from the proxies listed in
+     * config('app.trusted_proxies') (TRUSTED_PROXIES), so request()->ip(),
+     * rate limits and audit-log IPs see the real client behind them. Empty
+     * (the default) trusts nothing. Read from config, not env(), so it works
+     * from .env and with a cached config.
+     */
+    public static function configureTrustedProxies(): void
+    {
+        $proxies = trim((string) config('app.trusted_proxies', ''));
+        if ($proxies === '') {
+            TrustProxies::flushState();
+
+            return;
+        }
+
+        TrustProxies::at($proxies === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', $proxies)))));
+        TrustProxies::withHeaders(
+            Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO
+        );
     }
 
     /**

@@ -1,94 +1,61 @@
 @extends('layouts.auth')
-@section('title', 'Two-Factor Authentication')
-@section('auth-subtitle', 'Verify your identity')
+@section('title', __('Two-step check'))
+@section('auth-subtitle', __('Enter the 6-digit code from your authenticator app.'))
 
 @section('content')
-<div class="text-center mb-4">
-    <div class="d-flex justify-content-center mb-2">
-        <div style="width:56px;height:56px;background:#e8f4fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;color:#0d6efd">
-            <i class="bi bi-shield-lock"></i>
-        </div>
-    </div>
-    <p class="text-muted small mb-0">Enter the 6-digit code from your authenticator app to continue.</p>
-</div>
+@include('auth.partials.alerts')
 
-@if($errors->any())
-<div class="alert alert-danger py-2 small mb-3">
-    <i class="bi bi-exclamation-triangle me-1"></i>{{ $errors->first() }}
-</div>
-@endif
-
-<form method="POST" action="{{ route('two-factor.verify') }}" id="totpForm">
+<form method="POST" action="{{ route('two-factor.verify') }}" class="flex flex-col gap-5">
     @csrf
 
-    {{-- TOTP code --}}
-    <div id="codeSection">
-        <div class="mb-3">
-            <label for="code" class="form-label">Authenticator Code</label>
-            <input type="text" name="code" id="code"
-                   class="form-control text-center font-monospace"
-                   placeholder="000000"
-                   inputmode="numeric"
-                   autocomplete="one-time-code"
-                   maxlength="6"
-                   style="font-size:1.5rem;letter-spacing:0.4rem"
-                   autofocus>
+    {{-- Authenticator code --}}
+    <div id="codeSection" class="flex flex-col gap-5">
+        <div>
+            <label for="code" class="auth-label">{{ __('Authenticator code') }}</label>
+            <input type="text" name="code" id="code" class="auth-input auth-code"
+                   inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" autofocus
+                   @error('code') aria-invalid="true" aria-describedby="auth-error" @enderror>
         </div>
-        <button type="submit" class="btn btn-primary btn-auth mb-3">
-            <i class="bi bi-shield-check me-1"></i>Verify
-        </button>
-        <div class="text-center">
-            <button type="button" class="btn btn-link btn-sm p-0 text-muted" data-toggle-recovery>
-                Use a recovery code instead
-            </button>
-        </div>
+        <button type="submit" class="auth-btn">{{ __('Verify') }}</button>
+        <button type="button" class="auth-link self-center" data-toggle-recovery>{{ __('Use a recovery code instead') }}</button>
     </div>
 
     {{-- Recovery code --}}
-    <div id="recoverySection" class="d-none">
-        <div class="mb-3">
-            <label for="recovery_code" class="form-label">Recovery Code</label>
-            <input type="text" name="recovery_code" id="recovery_code"
-                   class="form-control font-monospace text-center"
-                   placeholder="XXXX-XXXX"
-                   autocomplete="one-time-code"
-                   style="letter-spacing:2px">
+    <div id="recoverySection" class="flex flex-col gap-5" hidden>
+        <div>
+            <label for="recovery_code" class="auth-label">{{ __('Recovery code') }}</label>
+            <input type="text" name="recovery_code" id="recovery_code" class="auth-input auth-code"
+                   autocomplete="one-time-code" autocapitalize="characters" spellcheck="false"
+                   @error('recovery_code') aria-invalid="true" aria-describedby="auth-error" @enderror>
         </div>
-        <button type="submit" class="btn btn-primary btn-auth mb-3">
-            <i class="bi bi-key me-1"></i>Use Recovery Code
-        </button>
-        <div class="text-center">
-            <button type="button" class="btn btn-link btn-sm p-0 text-muted" data-toggle-recovery>
-                Use authenticator code instead
-            </button>
-        </div>
+        <button type="submit" class="auth-btn">{{ __('Verify') }}</button>
+        <button type="button" class="auth-link self-center" data-toggle-recovery>{{ __('Use the authenticator code instead') }}</button>
     </div>
 </form>
 
-<div class="text-center mt-3">
-    <form method="POST" action="{{ route('logout') }}" class="d-inline">
-        @csrf
-        <button type="submit" class="btn btn-link btn-sm p-0 text-muted small">
-            <i class="bi bi-arrow-left me-1"></i>Sign in as a different user
-        </button>
-    </form>
-</div>
+<form method="POST" action="{{ route('logout') }}" class="mt-4 flex justify-center border-t pt-4">
+    @csrf
+    <button type="submit" class="auth-link text-muted-foreground">{{ __('Sign in as someone else') }}</button>
+</form>
 
 <script nonce="{{ $cspNonce ?? '' }}">
-function toggleRecovery() {
-    // Toggle classes, not inline styles: the CSP blocks style attributes.
-    const code     = document.getElementById('codeSection');
-    const recovery = document.getElementById('recoverySection');
-    const isCode   = ! code.classList.contains('d-none');
-    code.classList.toggle('d-none', isCode);
-    recovery.classList.toggle('d-none', ! isCode);
-    // Clear both inputs when switching
-    document.getElementById('code').value = '';
-    document.getElementById('recovery_code').value = '';
-    (isCode ? document.getElementById('recovery_code') : document.getElementById('code')).focus();
-}
-document.querySelectorAll('[data-toggle-recovery]').forEach(btn => {
-    btn.addEventListener('click', toggleRecovery);
-});
+(function () {
+    // The hidden attribute, not inline styles: the CSP blocks inline style blocks without a nonce.
+    var code = document.getElementById('codeSection');
+    var recovery = document.getElementById('recoverySection');
+    function show(useRecovery) {
+        code.hidden = useRecovery;
+        recovery.hidden = ! useRecovery;
+        document.getElementById('code').value = '';
+        document.getElementById('recovery_code').value = '';
+        document.getElementById(useRecovery ? 'recovery_code' : 'code').focus();
+    }
+    document.querySelectorAll('[data-toggle-recovery]').forEach(function (btn) {
+        btn.addEventListener('click', function () { show(! code.hidden); });
+    });
+    @if ($errors->has('recovery_code'))
+    show(true);
+    @endif
+})();
 </script>
 @endsection

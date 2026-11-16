@@ -18,11 +18,13 @@ const PASSWORD = process.env.E2E_PASSWORD || "E2e-Smoke-Pass-2026"; // Database\
 const USERS = {
   member: "e2e.member@clubportal.test",
   transferMember: "e2e.member.transfer@clubportal.test",
+  payAll: "e2e.member.payall@clubportal.test",
+  payAllTransfer: "e2e.member.payall.transfer@clubportal.test",
   adminA: "e2e.admin.a@clubportal.test",
   adminB: "e2e.admin.b@clubportal.test",
 };
 const GATEWAY_HOST = "dev.toyyibpay.com"; // TOYYIBPAY_SANDBOX=true
-// Sandbox-only network noise: Google Fonts, and the Bootstrap CDN used by the legacy Blade login/home pages.
+// Sandbox-only network noise: Google Fonts, and the Bootstrap CDN still used by the remaining legacy Blade pages.
 const IGNORED_HOSTS = (process.env.E2E_IGNORE_HOSTS || "fonts.googleapis.com,fonts.gstatic.com,cdn.jsdelivr.net").split(",").filter(Boolean);
 const EXPENSE_SEN = 1234; // RM 12.34
 
@@ -99,7 +101,7 @@ function guard(page, label) {
     const url = msg.location()?.url || "";
     if (isIgnored(url) || IGNORED_HOSTS.some((h) => msg.text().includes(h))) return;
     // Inertia's external redirect (Inertia::location) is a 409 + X-Inertia-Location by design; Chrome logs it.
-    if (/status of 409/.test(msg.text()) && /\/my\/payments\/\d+\/pay$/.test(url)) return;
+    if (/status of 409/.test(msg.text()) && /\/my\/(payments\/\d+\/pay|clubs\/\d+\/pay-all)$/.test(url)) return;
     fail(`[${label}] console error on ${page.url()}: ${msg.text()} ${url}`);
   });
   page.on("pageerror", (err) => fail(`[${label}] uncaught error on ${page.url()}: ${err.message}`));
@@ -149,7 +151,13 @@ async function newPage(browser, label, viewport, mobile) {
   guard(page, label);
   return { ctx, page };
 }
+let logins = 0;
 async function login(page, email) {
+  // POST /login is throttled to 5 a minute per IP: the run signs in more often than that, so pace it.
+  if (++logins % 5 === 0) {
+    log("waiting 61 s for the login rate limit");
+    await new Promise((r) => setTimeout(r, 61000));
+  }
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', PASSWORD);
@@ -158,7 +166,7 @@ async function login(page, email) {
 }
 const parseRm = (s) => Math.round(parseFloat(String(s).replace(/[^0-9.]/g, "")) * 100);
 async function spentThisYear(page) {
-  const tile = page.locator("div.rounded-lg.border", { has: page.getByText("Spent this year", { exact: true }) }).first();
+  const tile = page.locator("div.rounded-lg.border", { has: page.getByText("Spent", { exact: true }) }).first();
   return parseRm(await tile.locator(".figure").innerText());
 }
 async function step(name, fn) {
@@ -295,6 +303,24 @@ try {
     if (after - spentBefore !== EXPENSE_SEN) throw new Error(`spent went ${spentBefore / 100} → ${after / 100}, expected +${EXPENSE_SEN / 100}`);
     await shot(b.page, "c4-admin-dashboard-after");
   });
+  await step("ledger closing balance matches the dashboard fund balance", async () => {
+    const tile = (label) => b.page.locator("div.rounded-lg.border", { has: b.page.getByText(label, { exact: true }) }).first();
+    const balance = parseRm(await tile("Fund balance").locator(".figure").innerText());
+    await b.page.getByRole("link", { name: "Ledger", exact: true }).first().click();
+    await b.page.getByRole("heading", { name: "Ledger", level: 1 }).waitFor();
+    const closing = parseRm(await tile("Closing balance").locator(".figure").innerText());
+    log("fund balance:", balance / 100, "ledger closing:", closing / 100);
+    if (closing !== balance) throw new Error(`ledger closing ${closing / 100} != dashboard balance ${balance / 100}`);
+    await b.page.getByRole("button", { name: "Show as chart" }).click();
+    await b.page.locator(".recharts-bar-rectangle path").first().waitFor({ state: "attached" });
+    await shot(b.page, "c5-ledger");
+  });
+  await step("billing settings open as an app page", async () => {
+    await b.page.getByRole("link", { name: "Billing settings", exact: true }).first().click();
+    await b.page.getByRole("heading", { name: "Billing settings", level: 1 }).waitFor();
+    await b.page.getByRole("heading", { name: "Plans members can choose" }).waitFor();
+    await shot(b.page, "c6-billing");
+  });
   await b.ctx.close();
 
   /* (d) a second member pays by bank transfer and uploads a slip */
@@ -358,6 +384,109 @@ try {
     await shot(d.page, "d6-receipt-transfer");
   });
   await d.ctx.close();
+
+  /* (f) "Bayar semua" by FPX: three open fees, one bill, one webhook settles all */
+  const f = await newPage(browser, "payAllMember", MEMBER_VIEW, true);
+  let groupResultUrl, groupBillCode;
+  await step("pay-all member sees Bayar semua on Home", async () => {
+    await login(f.page, USERS.payAll);
+    await f.page.waitForURL(/\/my\/dashboard/);
+    const btn = f.page.getByTestId("pay-all");
+    await btn.waitFor();
+    if (!/Bayar semua\s+RM 150\.00/.test(await btn.innerText())) throw new Error(`pay-all button says "${await btn.innerText()}"`);
+    await f.page.getByTestId("pay-one").waitFor();
+    await shot(f.page, "f1-home-pay-all");
+  });
+  await step("pay-all review lists the three fees and the total", async () => {
+    await f.page.getByTestId("pay-all").click();
+    await f.page.waitForURL(/\/my\/clubs\/\d+\/pay-all$/);
+    const n = await f.page.getByTestId("group-fees").locator("li").count();
+    if (n !== 3) throw new Error(`review lists ${n} fees, expected 3`);
+    await f.page.getByTestId("review-total").getByText("RM 150.00").waitFor();
+    await shot(f.page, "f2-review-pay-all-fpx");
+  });
+  await step("POST pay-all redirects to one gateway bill", async () => {
+    await f.page.route(`https://${GATEWAY_HOST}/**`, (route) =>
+      route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Fake gateway</title><meta name=viewport content='width=device-width'><h1>Fake ToyyibPay (e2e)</h1>" }),
+    );
+    await Promise.all([f.page.waitForURL(new RegExp(`^https://${GATEWAY_HOST.replace(/\./g, "\\.")}/`)), f.page.getByRole("button", { name: /Bayar\s+RM 150\.00/ }).click()]);
+    groupBillCode = decodeURIComponent(new URL(f.page.url()).pathname.slice(1));
+    if (!/^e2e[a-z0-9]{8}$/.test(groupBillCode)) throw new Error(`unexpected group bill code "${groupBillCode}"`);
+    await f.page.unroute(`https://${GATEWAY_HOST}/**`);
+    // Back on Home, the started payment is shown as in progress (R2a): checking it is the main action,
+    // "Bayar semua" is gone, and paying again is the secondary choice.
+    await f.page.goto(`${BASE}/my/dashboard`);
+    await f.page.getByTestId("check-status").waitFor();
+    await f.page.getByTestId("processing-line").getByText("3 dalam proses").waitFor();
+    if (await f.page.getByTestId("pay-all").count()) throw new Error("Bayar semua is still offered while the group bill is in progress");
+    groupResultUrl = await f.page.getByTestId("check-status").getAttribute("href");
+    if (!/\/my\/pay-all\/\d+$/.test(groupResultUrl || "")) throw new Error(`check-status points to "${groupResultUrl}"`);
+    await shot(f.page, "f2b-home-in-progress");
+  });
+  await step("one webhook settles all three fees", async () => {
+    await f.page.goto(groupResultUrl);
+    const reference = await f.page.evaluate(() => JSON.parse(document.querySelector("[data-page]").getAttribute("data-page")).props.reference);
+    if (!/^PAYG-\d+-\d+$/.test(reference || "")) throw new Error(`unexpected group reference "${reference}"`);
+    await shot(f.page, "f3-pay-all-pending");
+    const api = await pwRequest.newContext();
+    const form = { billcode: groupBillCode, order_id: reference, status_id: "1", amount: "150.00", transaction_id: "E2E-TXN-GROUP-1", msg: "ok" };
+    const bad = await api.post(`${BASE}/webhook/toyyibpay?webhook_token=wrong-token`, { form });
+    if (bad.status() !== 403) throw new Error(`group webhook with a wrong token returned ${bad.status()}, expected 403`);
+    const token = createHmac("sha256", SECRET).update(reference).digest("hex");
+    const res = await api.post(`${BASE}/webhook/toyyibpay?webhook_token=${token}`, { form });
+    if (res.status() !== 200 || (await res.text()).trim() !== "ok") throw new Error(`group webhook returned ${res.status()}`);
+    await api.dispose();
+    await f.page.goto(`${groupResultUrl}?status_id=1&billcode=${encodeURIComponent(groupBillCode)}`);
+    await f.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await f.page.getByText("3 yuran dibayar sekali gus").first().waitFor();
+    const lines = await f.page.locator('article[aria-label="Resit rasmi"] tbody tr').count();
+    if (lines !== 4) throw new Error(`receipt has ${lines - 1} fee lines, expected 3`);
+    await shot(f.page, "f4-pay-all-receipt");
+    await f.page.goto(`${BASE}/my/dashboard`);
+    await f.page.getByText("Semua yuran telah dibayar").first().waitFor();
+  });
+  await f.ctx.close();
+
+  /* (g) "Bayar semua" by transfer: one slip, the admin approves the whole set */
+  const g = await newPage(browser, "payAllTransfer", MEMBER_VIEW, true);
+  await step("pay-all transfer member sends one slip for three fees", async () => {
+    await login(g.page, USERS.payAllTransfer);
+    await g.page.getByTestId("pay-all").click();
+    await g.page.waitForURL(/\/my\/clubs\/\d+\/pay-all$/);
+    await g.page.getByLabel(/Pindahan bank \/ DuitNow/).check();
+    const ref = (await g.page.getByTestId("transfer-ref").innerText()).trim();
+    if (!/^YURAN-G\d+$/.test(ref)) throw new Error(`group transfer reference is "${ref}"`);
+    await g.page.getByText("Pindahkan RM 150.00 ke akaun ini").first().waitFor();
+    await shot(g.page, "g1-review-pay-all-transfer");
+    await g.page.locator('input[type="file"][multiple]').setInputFiles([pngPath]);
+    await Promise.all([g.page.waitForURL(/\/my\/pay-all\/\d+$/), g.page.getByRole("button", { name: /Hantar slip/ }).click()]);
+    await g.page.getByTestId("verifying").waitFor();
+    await shot(g.page, "g2-pay-all-verifying");
+  });
+  const h = await newPage(browser, "adminB-group", ADMIN_VIEW, false);
+  await step("admin B approves the group slip as one set", async () => {
+    await login(h.page, USERS.adminB);
+    await h.page.goto(`${BASE}/admin/clubs/${clubId}/verifications`);
+    const card = h.page.getByTestId("slip-card").filter({ has: h.page.getByTestId("slip-group") }).first();
+    await card.waitFor();
+    const rows = await card.getByTestId("slip-group").locator("tbody tr").count();
+    if (rows !== 3) throw new Error(`group card lists ${rows} fees, expected 3`);
+    await card.getByText("RM 150.00").first().waitFor();
+    await shot(h.page, "h1-verifications-group");
+    await card.getByRole("button", { name: /^Approve/ }).click();
+    const dialog = h.page.getByRole("dialog");
+    await dialog.getByRole("button", { name: /^Approve/ }).click();
+    await dialog.waitFor({ state: "detached" });
+    await h.page.getByText(/3 fees are now paid/).first().waitFor();
+  });
+  await h.ctx.close();
+  await step("the group result page is now the receipt", async () => {
+    await g.page.reload();
+    await g.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await g.page.getByText("Pindahan bank / DuitNow").first().waitFor();
+    await shot(g.page, "g3-pay-all-transfer-receipt");
+  });
+  await g.ctx.close();
 } catch {
   /* already recorded by step() */
 } finally {

@@ -1,180 +1,10 @@
+@import "./tokens.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * "Lavender Ledger" theme (pastel). Every colour is defined for light first, then dark.
- * Lavender = everything interactive; mint = money in / paid / positive only; amber + rose = status chips only.
- * Values are RGB triplets so Tailwind can apply alpha (bg-primary/10). Hex in comments.
- * Dark applies when the OS prefers dark and the viewer hasn't forced light, or when data-theme="dark".
- */
-:root {
-  color-scheme: light;
-  --background: 246 245 251; /* #F6F5FB */
-  --foreground: 30 27 58; /* #1E1B3A */
-  --card: 255 255 255; /* #FFFFFF */
-  --card-foreground: 30 27 58; /* #1E1B3A */
-  --popover: 255 255 255; /* #FFFFFF */
-  --popover-foreground: 30 27 58; /* #1E1B3A */
-  --primary: 91 79 207; /* #5B4FCF */
-  --primary-foreground: 255 255 255; /* #FFFFFF */
-  --deep: 227 223 252; /* #E3DFFC */
-  --deep-foreground: 36 28 107; /* #241C6B */
-  --mint: 191 235 221; /* #BFEBDD */
-  --mint-foreground: 11 74 58; /* #0B4A3A */
-  --secondary: 236 234 247; /* #ECEAF7 */
-  --secondary-foreground: 30 27 58; /* #1E1B3A */
-  --muted: 240 239 248; /* #F0EFF8 */
-  --muted-foreground: 95 92 122; /* #5F5C7A */
-  --accent: 233 230 251; /* #E9E6FB */
-  --accent-foreground: 67 56 168; /* #4338A8 */
-  --border: 222 220 236; /* #DEDCEC */
-  --input: 138 135 166; /* #8A87A6 */
-  --ring: 91 79 207; /* #5B4FCF */
-  --success: 31 122 85; /* #1F7A55 */
-  --success-soft: 221 244 233; /* #DDF4E9 */
-  --success-foreground: 20 96 63; /* #14603F */
-  --on-success: 255 255 255; /* #FFFFFF */
-  --warning: 138 90 0; /* #8A5A00 */
-  --warning-soft: 255 240 207; /* #FFF0CF */
-  --warning-foreground: 122 78 0; /* #7A4E00 */
-  --danger: 180 50 74; /* #B4324A */
-  --danger-soft: 253 228 232; /* #FDE4E8 */
-  --danger-foreground: 153 36 59; /* #99243B */
-  --on-danger: 255 255 255; /* #FFFFFF */
-  --info: 91 79 207; /* #5B4FCF */
-  --info-soft: 233 230 251; /* #E9E6FB */
-  --info-foreground: 67 56 168; /* #4338A8 */
-  --sidebar: 251 250 254; /* #FBFAFE */
-  --chart-1: 201 195 247; /* #C9C3F7 */
-  --chart-2: 191 235 221; /* #BFEBDD */
-  --chart-3: 197 221 248; /* #C5DDF8 */
-  --chart-4: 249 203 211; /* #F9CBD3 */
-  --chart-1-stroke: 91 79 207; /* #5B4FCF */
-  --chart-2-stroke: 31 138 100; /* #1F8A64 */
-  --chart-3-stroke: 47 111 184; /* #2F6FB8 */
-  --chart-4-stroke: 184 64 90; /* #B8405A */
-  --on-chart-1: 30 27 58; /* #1E1B3A */
-  --on-chart-2: 30 27 58; /* #1E1B3A */
-  --on-chart-3: 30 27 58; /* #1E1B3A */
-  --on-chart-4: 30 27 58; /* #1E1B3A */
-  --chart-grid: 232 230 243; /* #E8E6F3 */
-  --chart-axis: 95 92 122; /* #5F5C7A */
-  --overlay: 18 17 28; /* #12111C */
-  --radius: 10px;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --background: 30 31 35; /* #1E1F23 */
-    --foreground: 241 241 244; /* #F1F1F4 */
-    --card: 38 39 44; /* #26272C */
-    --card-foreground: 241 241 244; /* #F1F1F4 */
-    --popover: 46 47 53; /* #2E2F35 */
-    --popover-foreground: 241 241 244; /* #F1F1F4 */
-    --primary: 155 140 250; /* #9B8CFA */
-    --primary-foreground: 20 17 46; /* #14112E */
-    --deep: 59 47 138; /* #3B2F8A */
-    --deep-foreground: 243 241 255; /* #F3F1FF */
-    --mint: 31 59 51; /* #1F3B33 */
-    --mint-foreground: 168 235 208; /* #A8EBD0 */
-    --secondary: 48 49 55; /* #303137 */
-    --secondary-foreground: 241 241 244; /* #F1F1F4 */
-    --muted: 42 43 48; /* #2A2B30 */
-    --muted-foreground: 179 180 190; /* #B3B4BE */
-    --accent: 53 44 110; /* #352C6E */
-    --accent-foreground: 206 198 255; /* #CEC6FF */
-    --border: 58 59 66; /* #3A3B42 */
-    --input: 111 112 122; /* #6F707A */
-    --ring: 155 140 250; /* #9B8CFA */
-    --success: 116 211 169; /* #74D3A9 */
-    --success-soft: 30 50 41; /* #1E3229 */
-    --success-foreground: 147 226 191; /* #93E2BF */
-    --on-success: 11 42 31; /* #0B2A1F */
-    --warning: 237 193 110; /* #EDC16E */
-    --warning-soft: 58 48 32; /* #3A3020 */
-    --warning-foreground: 243 208 142; /* #F3D08E */
-    --danger: 242 160 173; /* #F2A0AD */
-    --danger-soft: 62 37 42; /* #3E252A */
-    --danger-foreground: 246 182 192; /* #F6B6C0 */
-    --on-danger: 42 10 18; /* #2A0A12 */
-    --info: 155 140 250; /* #9B8CFA */
-    --info-soft: 53 44 110; /* #352C6E */
-    --info-foreground: 206 198 255; /* #CEC6FF */
-    --sidebar: 34 35 39; /* #222327 */
-    --chart-1: 155 140 250; /* #9B8CFA */
-    --chart-2: 65 168 125; /* #41A87D */
-    --chart-3: 98 150 206; /* #6296CE */
-    --chart-4: 201 118 133; /* #C97685 */
-    --chart-1-stroke: 155 140 250; /* #9B8CFA */
-    --chart-2-stroke: 65 168 125; /* #41A87D */
-    --chart-3-stroke: 98 150 206; /* #6296CE */
-    --chart-4-stroke: 201 118 133; /* #C97685 */
-    --on-chart-1: 30 31 35; /* #1E1F23 */
-    --on-chart-2: 30 31 35; /* #1E1F23 */
-    --on-chart-3: 30 31 35; /* #1E1F23 */
-    --on-chart-4: 30 31 35; /* #1E1F23 */
-    --chart-grid: 52 53 59; /* #34353B */
-    --chart-axis: 179 180 190; /* #B3B4BE */
-    --overlay: 11 11 13; /* #0B0B0D */
-  }
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --background: 30 31 35; /* #1E1F23 */
-  --foreground: 241 241 244; /* #F1F1F4 */
-  --card: 38 39 44; /* #26272C */
-  --card-foreground: 241 241 244; /* #F1F1F4 */
-  --popover: 46 47 53; /* #2E2F35 */
-  --popover-foreground: 241 241 244; /* #F1F1F4 */
-  --primary: 155 140 250; /* #9B8CFA */
-  --primary-foreground: 20 17 46; /* #14112E */
-  --deep: 59 47 138; /* #3B2F8A */
-  --deep-foreground: 243 241 255; /* #F3F1FF */
-  --mint: 31 59 51; /* #1F3B33 */
-  --mint-foreground: 168 235 208; /* #A8EBD0 */
-  --secondary: 48 49 55; /* #303137 */
-  --secondary-foreground: 241 241 244; /* #F1F1F4 */
-  --muted: 42 43 48; /* #2A2B30 */
-  --muted-foreground: 179 180 190; /* #B3B4BE */
-  --accent: 53 44 110; /* #352C6E */
-  --accent-foreground: 206 198 255; /* #CEC6FF */
-  --border: 58 59 66; /* #3A3B42 */
-  --input: 111 112 122; /* #6F707A */
-  --ring: 155 140 250; /* #9B8CFA */
-  --success: 116 211 169; /* #74D3A9 */
-  --success-soft: 30 50 41; /* #1E3229 */
-  --success-foreground: 147 226 191; /* #93E2BF */
-  --on-success: 11 42 31; /* #0B2A1F */
-  --warning: 237 193 110; /* #EDC16E */
-  --warning-soft: 58 48 32; /* #3A3020 */
-  --warning-foreground: 243 208 142; /* #F3D08E */
-  --danger: 242 160 173; /* #F2A0AD */
-  --danger-soft: 62 37 42; /* #3E252A */
-  --danger-foreground: 246 182 192; /* #F6B6C0 */
-  --on-danger: 42 10 18; /* #2A0A12 */
-  --info: 155 140 250; /* #9B8CFA */
-  --info-soft: 53 44 110; /* #352C6E */
-  --info-foreground: 206 198 255; /* #CEC6FF */
-  --sidebar: 34 35 39; /* #222327 */
-  --chart-1: 155 140 250; /* #9B8CFA */
-  --chart-2: 65 168 125; /* #41A87D */
-  --chart-3: 98 150 206; /* #6296CE */
-  --chart-4: 201 118 133; /* #C97685 */
-  --chart-1-stroke: 155 140 250; /* #9B8CFA */
-  --chart-2-stroke: 65 168 125; /* #41A87D */
-  --chart-3-stroke: 98 150 206; /* #6296CE */
-  --chart-4-stroke: 201 118 133; /* #C97685 */
-  --on-chart-1: 30 31 35; /* #1E1F23 */
-  --on-chart-2: 30 31 35; /* #1E1F23 */
-  --on-chart-3: 30 31 35; /* #1E1F23 */
-  --on-chart-4: 30 31 35; /* #1E1F23 */
-  --chart-grid: 52 53 59; /* #34353B */
-  --chart-axis: 179 180 190; /* #B3B4BE */
-  --overlay: 11 11 13; /* #0B0B0D */
-}
+/* "Lavender Ledger" tokens (light + dark) live in tokens.css. */
 
 /* Receipts and the AGM sheet stay white "paper" in both themes (people print and share them). */
 .paper {
@@ -206,7 +36,10 @@
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  /* --sticky-top / --sticky-bottom: heights of the pinned header and action bar (useStickyFit), so focus scrolls clear of them. */
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: var(--sticky-top, 0px); scroll-padding-bottom: var(--sticky-bottom, 0px); }
+  /* Preflight paints every border gray-200 (#E5E7EB), which glares in dark mode: use the theme's border token. */
+  *, ::before, ::after { border-color: rgb(var(--border)); }
   #root { min-height: 100vh; display: flex; flex-direction: column; }
   #root > * { flex: 1 0 auto; }
   body {
@@ -214,7 +47,6 @@
     color: rgb(var(--foreground));
     font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
   }
   h1, h2, h3, h4 { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.015em; }
   *:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; }
@@ -244,8 +76,41 @@
   .scrollbar-none::-webkit-scrollbar { display: none; }
 }
 
+/* Sign-in pages (resources/views/layouts/auth.blade.php): plain Blade forms on the same tokens. */
+@layer components {
+  .auth-page {
+    background-image: linear-gradient(180deg, rgb(var(--deep) / 0.55), rgb(var(--background)) 22rem);
+    background-repeat: no-repeat;
+  }
+  .auth-page [hidden] { display: none !important; }
+  .auth-card {
+    @apply rounded-[20px] border bg-card p-6 text-card-foreground shadow-[0_18px_40px_-28px_rgb(var(--primary)/0.45)] min-[400px]:p-7;
+  }
+  .auth-label { @apply mb-1.5 block text-base font-semibold; }
+  .auth-input {
+    @apply block min-h-12 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-base text-foreground transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+  .auth-input[aria-invalid="true"] { @apply border-danger; }
+  .auth-code { @apply text-center text-2xl font-semibold tracking-[0.3em]; font-variant-numeric: tabular-nums; }
+  .auth-check { @apply h-5 w-5 shrink-0 rounded accent-[rgb(var(--primary))]; }
+  .auth-btn {
+    @apply inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-center text-base font-bold text-primary-foreground shadow-[0_8px_18px_-10px_rgb(var(--primary)/0.7)] transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card;
+  }
+  .auth-link {
+    @apply inline-flex min-h-11 items-center rounded font-semibold text-primary underline-offset-4 hover:underline;
+  }
+  .auth-lang {
+    @apply inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 text-muted-foreground hover:text-foreground;
+  }
+  .auth-lang.is-active { @apply bg-primary text-primary-foreground hover:text-primary-foreground; }
+  .auth-alert { @apply flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-base ring-1; }
+  .auth-alert-danger { @apply bg-danger-soft text-danger-foreground ring-danger/25; }
+  .auth-alert-success { @apply bg-success-soft text-success-foreground ring-success/25; }
+}
+
 /* Member area: 20px radius; admin keeps the 10px default. */
-.member-scope { --radius: 20px; }
+/* Long Malay words ("mengesahkannya") break instead of pushing a 320px screen sideways at 200% text. */
+.member-scope { --radius: 20px; overflow-wrap: break-word; }
 
 /* Outer app wrapper: side gutters respect notches / safe areas. */
 .app-shell {
@@ -275,6 +140,17 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Spinners stay put (no rotation) but keep a gentle fade so a busy state still reads as busy, not frozen. */
+  .animate-spin {
+    animation-name: cp-busy-fade !important;
+    animation-duration: 1.6s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+@keyframes cp-busy-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 /* Printing an invoice or receipt from the member portal: drop the app chrome. */

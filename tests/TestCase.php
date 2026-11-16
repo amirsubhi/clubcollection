@@ -25,6 +25,12 @@ abstract class TestCase extends BaseTestCase
         touch(storage_path('app/.installed'));
     }
 
+    /** Form data for "Record payment…" (admin markPaid): method and date received are required. */
+    protected function recordPayment(array $extra = []): array
+    {
+        return $extra + ['method' => 'cash', 'paid_date' => today()->toDateString()];
+    }
+
     /**
      * Create a super_admin user, log them in, and return the user.
      * 2FA is NOT enabled (two_factor_confirmed_at = null) so the

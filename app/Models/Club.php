@@ -12,12 +12,12 @@ class Club extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'logo', 'email', 'is_active',
+        'name', 'logo', 'email', 'whatsapp_number', 'is_active',
         'payment_gateway',
         'toyyibpay_secret_key', 'toyyibpay_category_code',
         'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
         'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan',
-        'gateway_fee_payer', 'gateway_fee_sen',
+        'gateway_fee_payer', 'gateway_fee_sen', 'overdue_grace_days',
         'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
@@ -38,6 +38,7 @@ class Club extends Model
             'allow_quarterly'          => 'boolean',
             'allow_yearly'             => 'boolean',
             'gateway_fee_sen'          => 'integer',
+            'overdue_grace_days'       => 'integer',
             'transfer_enabled'         => 'boolean',
             'pending_bank_change'      => 'array',
             'bank_change_requested_at' => 'datetime',
@@ -94,6 +95,12 @@ class Club extends Model
     public function memberFeeAllowed(): bool
     {
         return $this->activeGateway() !== 'toyyibpay' || (bool) config('toyyibpay.charge_to_customer_verified');
+    }
+
+    /** Days after the due date before an unpaid fee counts as overdue (DisplayStatus). */
+    public function overdueGraceDays(): int
+    {
+        return max(0, (int) ($this->overdue_grace_days ?? \App\Support\Payments\DisplayStatus::DEFAULT_GRACE_DAYS));
     }
 
     /** Expected gateway fee per bill, in sen. */

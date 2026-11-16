@@ -2,6 +2,13 @@
 
 Running log of each Option A step: what was built, review findings, and follow-ups.
 
+**Status (15 Nov 2026):** A1–A5, P1 (billing plans and gateway fee), P2 (bank / DuitNow transfer with slip upload),
+S1 (security hardening) and two documentation rounds are done. Docs round 2 added the installation guide
+(`docs/INSTALL.md`), `SECURITY.md`, the credits and generated third-party licence list (`CREDITS.md`,
+`docs/THIRD-PARTY-LICENSES.md`, `scripts/licenses.mjs`) and `mockup/README.md`, and changed the licence holder to
+"Amir Subhi and clubcollection contributors". **Next: P3**, the 🔴 must-dos in the
+[before go-live checklist](#before-go-live-checklist), starting with a ToyyibPay sandbox run.
+
 ## A1 — Front-end foundation
 
 **Built:** Inertia v2 (`inertiajs/inertia-laravel` 2.0.28, `@inertiajs/react` 2.3.29) + React 18 + TypeScript + Tailwind 3 alongside the existing Blade pages. Mockup components, tokens (approved light theme + vivid-lavender dark theme) and BM/EN strings moved into `resources/js`. Nonce-based CSP kept: scripts and styles nonce-only, `style-src-attr 'unsafe-inline'` for Radix/Recharts inline styles. `/dev/ui-kit` proof page (local/testing only). `docs/RELEASE.md` covers build-then-upload for cPanel.
@@ -10,7 +17,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Checker findings fixed:** shared `club` prop (route-bound only), locale `ms` for members and guests, release doc, attachments use `url`/`mime` instead of mockup drawings, unused mockup tokens removed, Radix Dialog nonce verified with no CSP violations, small nits.
 
-**Fable verdict:** GO.
+**Final review verdict:** GO.
 
 **Follow-ups (non-blocking):**
 - Stop sending `cdn.jsdelivr.net` in the CSP for Inertia responses; remove it entirely once Blade pages are migrated.
@@ -30,7 +37,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Checker findings fixed:** underpayment through a reused bill (major), unverified "no money taken" wording on the failed page (major), overdue counts, inactive member/club access, return page without a bill, multi-club tab, `payment.bill_replaced` audit, `<html lang>`, 44px toggle, URL-encoding.
 
-**Fable verdict:** GO.
+**Final review verdict:** GO.
 
 **Follow-ups (non-blocking):**
 - Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside) so two tabs or a retry can't create two bills.
@@ -56,7 +63,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Checker findings fixed:** file/database consistency on edit and create (major), beneficiary return, certificate sighted by a different active admin, thumbnails no longer audited per render, cash-date totals, inactive admins blocked, upload form pairing, void-requested chip, explicit redirects, plus tests for each.
 
-**Fable verdict:** GO.
+**Final review verdict:** GO.
 
 **Follow-ups (non-blocking; go-live items marked ★):**
 - ★ Thumbnail route serves the full original image without an audit row — serve a real downscaled thumbnail (or audit it) before go-live, since welfare photos can be sensitive.
@@ -69,6 +76,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ★ Block club deletion when records exist (cascade wipes approved records and leaves encrypted files on disk).
 - Tell admins not to type personal data in description/return/void reason (these reach the audit log and ledger).
 - Deferred as planned: welfare purge command, void notifications, `backup:run`, `account_id` (PR2).
+- Welfare personal data is **not purged automatically** yet (`retention_until` is only recorded, although the form says data is deleted after about 7 years); until the purge command exists, purging is manual (see `docs/RELEASE.md`).
 - Super admins are not counted in the "needs second approver" banner.
 
 ## A4 — Installable web app (PWA)
@@ -77,7 +85,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Checker:** no blockers or majors. Verified in production mode that no HTML, Inertia JSON, attachment or payment response is ever cached, logged-out start URL goes to login, switching users shows no stale data, and a cache version bump replaces old caches. Minors fixed: offline icon precached, cache writes awaited, orientation lock removed, prompt also on the no-clubs screen, iOS Chrome/Edge get Share instructions.
 
-**Fable verdict:** GO.
+**Final review verdict:** GO.
 
 **Follow-ups (non-blocking):**
 - Test on a real iPhone: an installed app has separate cookies from Safari, so a bank/FPX return may land in Safari logged out (the webhook still records the payment).
@@ -100,10 +108,10 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Deviation (correctness):** online pay is refused while a slip is being checked, but if a real gateway payment still arrives for a `pending_verification` fee (an earlier open bill) it is settled as paid and flagged `payment.gateway_paid_during_verification` (also when it arrives after an approved transfer) so the treasurer can refund the duplicate; ignoring it would lose track of real money. Reminders already skip it (only `pending` is matched).
 
-**Review gate:** checker found no blockers; 2 majors (slip cap locked members out after rejections; handled slips not viewable) and 6 minors (amount editable while verifying, approve overwrote `reference`, copy button kept spaces, verifying missing from summaries, paid date before transfer date, unlocked `markPaid`) were fixed. Fable: **GO**.
+**Review gate:** checker found no blockers; 2 majors (slip cap locked members out after rejections; handled slips not viewable) and 6 minors (amount editable while verifying, approve overwrote `reference`, copy button kept spaces, verifying missing from summaries, paid date before transfer date, unlocked `markPaid`) were fixed. Final review: **GO**.
 
-**Fable follow-ups (non-blocking):**
-- 🔴 Before go-live: set PHP `upload_max_filesize` ≥ 12M and `post_max_size` ≥ 32M on cPanel (defaults are often 2M/8M while the form allows 3 × 10 MB); add a client-side size check in `FileUploader` and a translated message for `PostTooLargeException`.
+**Final review follow-ups (non-blocking):**
+- 🔴 Before go-live: set PHP `upload_max_filesize` ≥ 12M and `post_max_size` ≥ 32M on cPanel (defaults are often 2M/8M while the form allows 3 × 10 MB); add a client-side size check in `FileUploader` and a translated message for `PostTooLargeException`. (The size check and the bilingual 413 page were done in S1; the host limits are a go-live item.)
 - Render the `method`/`status` errors in the ReviewPay transfer form (today they are silently dropped).
 - Lock `Admin\PaymentController::update` like `markPaid`.
 - Show the open-bill warning on the transfer option too.
@@ -141,9 +149,9 @@ not worth the cost. Billplz has no confirm step like ToyyibPay's, so its `x_sign
 - a slip submission number;
 - deactivating instead of deleting users who have financial records (for now the delete is refused with a message).
 
-**Review gate:** checker found no blockers; 1 major (a second gateway payment on another bill of an already-paid fee was not recorded) and 7 minors were fixed. Fable: **GO** (also ran the app in production mode to confirm host pinning).
+**Review gate:** checker found no blockers; 1 major (a second gateway payment on another bill of an already-paid fee was not recorded) and 7 minors were fixed. Final review: **GO** (also ran the app in production mode to confirm host pinning).
 
-**Fable follow-ups (non-blocking, most important first):**
+**Final review follow-ups (non-blocking, most important first):**
 1. 🔴 **Sandbox hard gate:** confirm ToyyibPay's server callback field names (`status`/`refno` vs `status_id`/`transaction_id` read by `ToyyibPayGateway::parseWebhook`), that it retries non-200 callbacks, how soon `getBillTransactions` lists a payment, and what `billpaymentAmount` holds. If retries don't happen, set `TOYYIBPAY_VERIFY_CALLBACK=false` or add reconciliation.
 2. Audit (once per bill) when `getBillTransactions` is unreachable (503 path), like the 409 case.
 3. Installer: check the typed `app_url` host matches the request host, so a typo can't lock the site out.
@@ -187,7 +195,7 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 
 ### Metrics
 
-- **Time:** A1–A4 were committed between 07:37 and 11:17 UTC on 2026-11-15 (about 4 hours of agent wall-clock time
+- **Time:** A1–A4 were committed between 07:37 and 11:17 UTC on 2026-11-15 (about 4 hours of wall-clock time
   after the mockup, including the review gates). A5 took about another hour.
 - **Lines of code** (`git diff ab0cd3d^..HEAD`, A1–A4, before A5): 148 files, +16,518 / −1,263, of which
   - TypeScript/TSX: **+6,278** (pages 2,545; app components 2,171; UI primitives 674, mostly moved from the mockup; lib 467; types 282; entry 68);
@@ -204,7 +212,7 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 - **Tests:** 153 before Option A → 257 after A4 → **263** now.
 - **Build output:** `public/build` 1.3 MB on disk across 40 assets. Main `app` JS 464 KB (154 KB gzip); `Charts` (Recharts) 403 KB (111 KB gzip), loaded only on pages with charts (not member Home); CSS 46 KB (9 KB gzip); page chunks 4–29 KB each.
 
-### cPanel deploy (summary; details in `docs/RELEASE.md`)
+### cPanel deploy (summary; first install in `docs/INSTALL.md`, upgrades in `docs/RELEASE.md`)
 
 1. Build locally or in CI: `composer install --no-dev -o`, `npm ci && npm run build`. **The server never needs Node.**
 2. Upload the app including `vendor/` and `public/build/`. Leave out `node_modules/` and `public/hot`.
@@ -216,7 +224,7 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 
 ### Before go-live checklist
 
-All ★ and go-live items from A1–A4 plus what A5 and Fable's final review found. **Must-do before go-live** items are marked 🔴; the rest can follow soon after launch or are optional.
+All ★ and go-live items from A1–A4 plus what A5 and the final review found. **Must-do before go-live** items are marked 🔴; the rest can follow soon after launch or are optional.
 
 **🔴 Must-do before go-live**
 - [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix.
@@ -238,17 +246,18 @@ Full list by area:
 - [x] Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside). Done in S1.
 - [ ] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available.
 - [ ] **Reference fallback** when a bill code isn't found (only with a paid amount present).
-- [ ] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment).
-- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start).
+- [x] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment). Done in S1 (`payment.gateway_paid_twice`, flagged for a refund).
+- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` runs under a per-fee lock but has no throttle of its own.
 - [ ] Billplz callback for a replaced bill on a per-club-key club (S1 keeps replaced bills in `payment_bills` and matches them; still to try in the Billplz sandbox).
 - [ ] **Real iPhone payment return** from FPX/bank in the installed PWA (separate cookie jar from Safari).
 
 **Data and files**
 - [ ] **Back up `APP_KEY`** off-server; document rotation with `APP_PREVIOUS_KEYS` (attachments and welfare fields are encrypted with it).
+- [ ] PHP upload limits on the host: `upload_max_filesize = 12M`, `post_max_size = 32M` (documented in `docs/INSTALL.md` step 10).
 - [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt).
 - [ ] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original.
 - [ ] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk).
-- [ ] From v1.0, use additive migrations only.
+- [ ] From the first real production install (the next release tag), use additive migrations only.
 - [ ] Tell admins not to type personal data in description, return or void reasons.
 
 **Hosting**
@@ -282,13 +291,13 @@ The weaker points:
 
 Option B (AdonisJS) would mean re-implementing the same gateway, webhook, audit and auth logic in a new codebase and running a Node app under cPanel Passenger. Nothing in A1–A5 required that. The plan says to reconsider B only if A falls short on cPanel or on ease of editing. The first can only be confirmed on the real host (PHP 8.4, `mod_headers`/`mod_deflate`, memory limit). The second is the user's call after editing a page or two. **The decision is the user's.**
 
-### Final review (Fable) — advisory recommendation
+### Final review — advisory recommendation
 
 Verdict on A5: GO. Hardening applied before commit: the private `local` disk is no longer served over HTTP (`'serve' => false`), with a test that the `storage.local*` routes stay absent.
 
 Advice to the owner: continue with Option A. The slice reused payments, webhooks, auth/2FA and the audit log almost untouched, deploys as plain PHP with no Node on the server, and grew the suite from 153 to 263 tests. The one serious defect found (webhooks getting 419) was pre-existing and unrelated to the stack; a rewrite would re-open that kind of money-path risk across the whole codebase and add Node-on-cPanel hosting risk. Option B only becomes worth it if the real host can't run PHP 8.4, or if the owner finds the React pages hard to edit after trying one or two. Suggested order: the 🔴 must-dos and a real-host sandbox payment first, then migrate the remaining Blade pages module by module, retiring Bootstrap last. Re-measure Lighthouse on the host with compression on; the 69 was measured uncompressed.
 
-### P1 final review (Fable): GO
+### P1 final review: GO
 
 Applied before commit: ToyyibPay "club absorbs" keeps the pre-P1 `billChargeToCustomer=1` until the sandbox run confirms how blank vs `1` is read (avoids members being charged RM1 more than shown).
 
@@ -299,3 +308,63 @@ Follow-ups (non-blocking):
 - Review → pay race: if an admin flips the fee setting between page load and POST, the charge can differ from what was shown; post the expected total and reject a mismatch.
 - Fee KPI and the member-pays line use the configured fee (default RM1), not the gateway's real fee (Billplz RM1.25 + SST); label as "estimated".
 - Pay-ahead ignores discounts and uses today's rate for all months.
+
+### Docs and licensing follow-ups (non-blocking)
+- Enable GitHub private vulnerability reporting so the `SECURITY.md` link works.
+- Licence script strictness: append the GPL-3.0 text (incorporated by LGPL-3.0), pick up the DejaVu font and `sRGB2014.icc` licence files under `vendor/dompdf/dompdf/lib/res/`, and add fallback copyright notices for `react-remove-scroll-bar` and `victory-vendor` (no licence file upstream).
+- Link `/licenses.txt` from the app footer or an About page.
+
+### R1a follow-ups (non-blocking)
+- ✅ **Done in R1e.** ReviewPay StickyBar: same border, padding and safe-area inset pinned or not (only position and background change), so it cannot flip near the 18% threshold.
+- ✅ **Done in R1e.** `authLangChosen` uses the normalised `cp_lang` value; `__($message)` and the status line in `auth/partials/alerts.blade.php` are guarded with `is_string`.
+- ✅ **Done in R1e.** Feature test for the sign-in fallback style when `public/build/manifest.json` is missing (`AuthPagesTest`).
+- ✅ **Done in R1e.** Translated 429 page (`errors/429.blade.php`, auth layout, BM/EN from the sign-in language or `cp_lang`), with tests.
+
+### R1b follow-ups (non-blocking)
+- ✅ **Done in R1e.** Group result page and status poll read "paid" only while every fee in the set is still paid; otherwise the member is sent to their fee list (test in `PayAllTest`).
+- ⏸ **Deferred.** `flagGroup` refund-flag dedupe scans the latest 500 flag rows per club; revisit if volume grows.
+- ✅ **Done in R1e.** Admin dashboard slips panel groups pay-all slips into one row with fee count and total (shared `TransferVerificationController::slipSets`).
+
+### R1c follow-ups (non-blocking; to pick up in R1d/R1e)
+- ✅ **Done in R1d.** Reverting an online-paid fee warns and a hand re-mark keeps its charge; the remaining case is documented in R1e (USER-GUIDE, "Bank and gateway charges").
+- ✅ **Done in R1d.** Statistics uses FundFigures (bank charges included).
+- ✅ **Done.** `FundFigures::spentSplitBetween` docblock describes `welfareCount` (admin screens only).
+- ✅ **Done in R1d/R1e.** Ledger rows use a "Former member" fallback; removing a member only detaches them from the club (payments keep `user_id`), so paid fees stay in AGM history. Decision: keep detach; documented in USER-GUIDE, covered by `R1ePolishTest`.
+- ✅ **Done.** BM label for the charges line on the member card ("Caj bank / gateway"); the split line reads "Caj bank". Wrapping at 390 px checked in R1e (no overflow at 200% text).
+- ✅ **Done in R1e.** USER-GUIDE says which figure to quote at the AGM with a manual opening balance, and how gateway settlement dates differ from the bank statement.
+
+### R1d follow-ups (non-blocking; for R1e)
+- ✅ **Done in R1e.** Docs screenshots retaken (all 16 plus `member-pay-all.png`).
+- ✅ **Done in R1e.** USER-GUIDE: record a lost first gateway charge as a manual bank-charge expense.
+- ✅ **Done in R1e.** Club name shown at most twice on desktop admin (brand subtitle dropped; nav group and page eyebrow remain).
+- ✅ **Done in R1e.** `resolveClubForMember` club-admin fallback filters active pivot and active club like `managesClub` (test in `R1ePolishTest`).
+- ⏸ **Deferred.** Statistics runs ~8-10 queries per club; batch/cache if clubs grow.
+- ✅ **Done in R1e.** Theme button label "Theme (System)" (Blade and React); date hint on admin date inputs: the picked date written out ("16 Nov 2026") under the field (Blade layout script and React `DateHint`), so it never contradicts the browser's own date order; SRI (sha384, `crossorigin="anonymous"`) on the Bootstrap, Bootstrap Icons and Chart.js CDN tags, hashes computed from the npm package files jsDelivr serves (Chart.js switched to the package's own `dist/chart.umd.js`); payments table shows status under the member's name on phones with a scroll hint and a focusable scroll region.
+
+### R1e notes
+- Spending categories have an optional `name_ms` (migration edited in place: existing databases need `migrate:fresh` before the first release, as noted in README).
+- Checker round: the Verifications sidebar badge counts slip sets (`TransferVerificationController::waitingSlipCount`, one SQL query); "Bank charges" category note on the Fund Usage form and Expense categories page; date hints echo the picked date; screenshots retaken with real encrypted demo attachments and `en-GB` admin locale.
+- Re-review (Impeccable critique A/B and audit) still to run separately.
+
+### R1e follow-ups (non-blocking)
+- Member card may show both "Caj bank" (hand-entered category) and "Caj bank / gateway" (automatic); merge or rename the automatic line to "Caj gateway".
+- Bank-charges hint matches the English category name; use a category flag instead.
+- `byCategoryBetween` groups by (name, name_ms); same-named categories with different BM names split.
+- Fund Usage list shows a red "0" attachments count on approved records; make it muted.
+- Welfare form reuses the expense description example.
+- Check audit-log filter alignment with the date echo at 768 px.
+- Move `slipSets`/`waitingSlipCount` from the controller into a Support class.
+- 🔴 Before go-live: open one Blade admin page against the real jsDelivr with devtools to confirm no SRI errors.
+
+### R2a follow-ups (non-blocking)
+- 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
+- Blade Payments summary total is a separate query from the status counts (harmless race).
+
+### R2b follow-ups (non-blocking)
+- Inertia requests that hit 419/500/503 show the branded page inside Inertia's error modal (iframe nonce mismatch likely); force a full-page reload on 419 for Inertia requests.
+- Return a small text/JSON body (not branded HTML) for `/webhook/*` errors.
+- `/up` health view now carries the CSP and may render unstyled (status stays 200).
+- On PHP 8.4, re-check an untrusted Host header returns 400 (here 8.3 gives 500 via isVirtual).
+- Billing WhatsApp field: hint that landlines need WhatsApp Business; help copy: a shared receipt link needs the member's own login.
+- Statistics "Collected vs spent" trend is still a Chart.js bar chart (token colours); convert if wanted.
+

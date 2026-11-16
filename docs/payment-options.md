@@ -1,6 +1,6 @@
 # Pilihan bayaran yuran / Payment options for club fees
 
-*Nota satu halaman untuk AJK / One-page note for the committee — 15 Nov 2026*
+*Nota satu halaman untuk AJK / One-page note for the committee — 15 Nov 2026 (the app section updated after the transfer option was built)*
 
 > **Penting / Important:** the figures below come from **search-result extracts read on 15 Nov 2026**. The providers'
 > own sites were blocked from the session that did the research. **Confirm every fee on the provider's site (and in
@@ -24,7 +24,7 @@ Online gateways charge a **flat fee per bill**, which is heavy on small amounts.
 | Stripe (card) | 3% + RM1 | 23% | 13% | Not suited to small bills. |
 | CHIP DuitNow QR | 1%, min RM0.15 | 3% | 1.5% | Cheapest automated QR; needs a new integration. |
 | Bank static DuitNow QR (Maybank, CIMB) | 0% (promotional) | 0% | 0% | Needs a business/club account; promotional rate, check its end date. |
-| DuitNow / IBG transfer to the club account | RM0 | 0% | 0% | Manual: member uploads the slip, treasurer verifies in the app (coming next). |
+| DuitNow / IBG transfer to the club account | RM0 | 0% | 0% | Built into the app: member uploads the slip, an admin verifies it. |
 
 Avoid Billplz FPX, Stripe, senangPay, iPay88 and Fiuu for bills this small.
 
@@ -55,8 +55,22 @@ quarterly 6.7%, yearly 1.7%.
    would need a per-plan setting (a possible future addition). **For ToyyibPay the app keeps "club absorbs" until its
    "charge to customer" option has been tested in the sandbox** (see the technical note).
 
-**Pilihan percuma / Free option (coming next):** DuitNow transfer straight to the club account, with the member
-uploading the transfer slip and the treasurer confirming it in the app. No gateway charge.
+**Pilihan percuma / Free option (available now):** bank / DuitNow transfer straight to the club account. No gateway
+charge. How it works in the app:
+
+1. A club admin enters the club's bank name, account holder, account number and/or DuitNow ID under
+   **Billing settings** and switches transfers on. **Any change to these details waits until a second admin (or the
+   super admin) approves it**, and members keep seeing the old details until then, so one person can't quietly
+   redirect members' money. All club admins are emailed when a change is requested and when it is approved.
+2. On **Semak & bayar** the member chooses **Pindahan bank / DuitNow**, transfers the exact amount with the reference
+   shown (`YURAN-{id}`) and uploads 1–3 slips (photo or PDF). The fee shows **Menunggu pengesahan** and no longer
+   counts as owed.
+3. An admin checks the slip against the bank statement on the **Payment verifications** page and approves it (the
+   member gets the receipt by email) or rejects it with a reason (the member is emailed and can send a new slip). An
+   admin can't verify their own fee.
+
+It costs the club nothing, but someone has to check each slip against the statement. A mix works well: FPX for
+members who prefer it, transfer for the rest.
 
 ## Langkah tadbir urus / Governance steps
 

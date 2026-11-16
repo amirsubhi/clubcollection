@@ -28,7 +28,12 @@
     <p>Dear <strong>{{ $payment->user->name }}</strong>,</p>
     <p>Your payment has been received and confirmed. Thank you!</p>
 
+    @if($fees)
+    <div class="amount">RM {{ number_format($fees->sum(fn ($f) => (float) $f->amount), 2) }}</div>
+    <p style="text-align:center;margin-top:-10px;color:#6c757d">{{ $fees->count() === 1 ? '1 fee' : $fees->count().' fees' }} paid together{{ $group ? ' ('.($group->isTransfer() ? $group->reference : 'bill '.$group->bill_code).')' : '' }}</p>
+    @else
     <div class="amount">RM {{ number_format($payment->amount, 2) }}</div>
+    @endif
 
     <div class="details">
       <table>
@@ -36,6 +41,14 @@
           <td>Club</td>
           <td>{{ $payment->club->name }}</td>
         </tr>
+        @if($fees)
+        @foreach($fees as $fee)
+        <tr>
+          <td>{{ $fee->period_start->format('d M Y') }} – {{ $fee->period_end->format('d M Y') }}</td>
+          <td>RM {{ number_format($fee->amount, 2) }} &middot; RCP-{{ str_pad((string) $fee->id, 6, '0', STR_PAD_LEFT) }}</td>
+        </tr>
+        @endforeach
+        @else
         <tr>
           <td>Period</td>
           <td>{{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</td>
@@ -44,6 +57,7 @@
           <td>Payment Type</td>
           <td>{{ ucfirst($payment->frequency) }}</td>
         </tr>
+        @endif
         <tr>
           <td>Paid On</td>
           <td>{{ $payment->paid_date->format('d M Y') }}</td>
@@ -66,7 +80,7 @@
           <td>{{ $payment->transaction_id }}</td>
         </tr>
         @endif
-        @if($payment->reference && $payment->paid_via !== 'transfer')
+        @if($payment->reference && $payment->paid_via !== 'transfer' && ! $fees)
         <tr>
           <td>Reference</td>
           <td>{{ $payment->reference }}</td>

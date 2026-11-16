@@ -11,7 +11,7 @@ use App\Models\WelfareCase;
 use App\Services\FundUsageService;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundUsagePresenter as P;
-use App\Support\Admin\FundUsageStats;
+use App\Support\Admin\FundFigures;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -82,18 +82,26 @@ class FundUsageController extends Controller
         $totalSen = P::sen((clone $query)->reorder()->sum('amount'));
         $page = $query->paginate($filters['per'] ?? 10)->withQueryString();
 
-        $stats = new FundUsageStats($club);
+        $stats = new FundFigures($club);
         $awaiting = $stats->awaiting($me);
+        $ytd = $stats->forWindow(FundFigures::yearToDate());
 
         return Inertia::render('Admin/FundUsage/Index', [
             'nav' => AdminNav::props($club, $request->user(), $awaiting['mine']),
+            // Same figures and windows as the dashboard (FundFigures).
             'kpis' => [
-                'collectedYtd' => $stats->collectedBetween(now()->startOfYear(), now()->endOfYear()),
-                'spentYtd' => $stats->spentBetween(now()->startOfYear(), now()->endOfYear(), 'expense'),
-                'welfareYtd' => $stats->spentBetween(now()->startOfYear(), now()->endOfYear(), 'welfare'),
-                'welfareCountYtd' => $stats->welfareCountBetween(now()->startOfYear(), now()->endOfYear()),
+                'window' => $ytd['window'],
+                'collectedYtd' => $ytd['collected'],
+                // Spent = expenses + welfare + bank charges; the split is shown on the tile.
+                'spentYtd' => $ytd['spent'],
+                'expensesYtd' => $ytd['expenses'],
+                'welfareYtd' => $ytd['welfare'],
+                'chargesYtd' => $ytd['charges'],
+                'welfareCountYtd' => $ytd['welfareCount'],
                 'balance' => $stats->balance(),
+                'balanceAsOf' => now()->toDateString(),
                 'awaiting' => $awaiting['count'],
+                'awaitingSum' => $awaiting['sum'],
                 'awaitingMine' => $awaiting['mine'],
                 'year' => now()->year,
             ],
@@ -163,7 +171,7 @@ class FundUsageController extends Controller
         $isRecorder = (int) $expense->recorded_by === $me;
         $blocker = $this->service->approvalBlocker($expense, $user);
         $eligible = $this->service->eligibleApproverCount($expense);
-        $stats = new FundUsageStats($expense->club);
+        $stats = new FundFigures($expense->club);
 
         return Inertia::render('Admin/FundUsage/Show', [
             'nav' => AdminNav::props($expense->club, $user, $stats->awaiting($me)['mine']),
@@ -309,7 +317,7 @@ class FundUsageController extends Controller
         return match ($tab) {
             'expense' => $q->where('type', 'expense')->where('status', '!=', 'void'),
             'welfare' => $q->where('type', 'welfare')->where('status', '!=', 'void'),
-            'mine' => FundUsageStats::awaitingFor($q, $me),
+            'mine' => FundFigures::awaitingFor($q, $me),
             'void' => $q->where('status', 'void'),
             default => $q->where('status', '!=', 'void'),
         };
@@ -318,7 +326,7 @@ class FundUsageController extends Controller
     private function form(Request $request, Club $club, ?Expense $expense, string $type): Response
     {
         $expense?->load(['category', 'recordedBy:id,name', 'approver:id,name', 'attachments', 'welfareCase.beneficiary:id,name', 'welfareCase.sightedBy:id,name']);
-        $stats = new FundUsageStats($club);
+        $stats = new FundFigures($club);
 
         $members = $club->members()->wherePivot('is_active', true)->orderBy('name')->get(['users.id', 'users.name']);
 

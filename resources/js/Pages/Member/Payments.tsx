@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { CalendarPlus, ChevronDown, PiggyBank } from "lucide-react";
+import { CalendarPlus, ChevronDown, PiggyBank, RefreshCw } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, PaymentRow } from "@/components/app/MemberParts";
@@ -9,13 +9,14 @@ import { FieldError, Label } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtDate, fmtMonth, rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
-import type { MemberPaymentRow } from "@/types/member";
+import type { MemberPaymentRow, PayAllOffer } from "@/types/member";
 
 interface Props {
   club: { id: number; name: string };
   selectedYear: number;
   years: number[];
-  summary: { paid: number; pending: number; overdue: number; verifying: number; paidCount: number; total: number };
+  /** Sen by DisplayStatus; processing = an FPX payment the bank has not confirmed (not in what is owed). */
+  summary: { paid: number; due: number; overdue: number; processing: number; verifying: number; paidCount: number; total: number };
   payments: MemberPaymentRow[];
   pagination: { currentPage: number; lastPage: number; total: number; prevUrl: string | null; nextUrl: string | null };
   futureForm: {
@@ -30,9 +31,15 @@ interface Props {
     feePayer: "club" | "member";
     feeSen: number;
   };
+  /** "Bayar semua": every fee still owed in the club (any year); null with fewer than two. */
+  payAll: PayAllOffer | null;
   paymentsUrl: string;
   dashboardUrl: string;
 }
+
+/** Oldest first: due date, then period start, then invoice number. */
+const oldestFirst = (a: MemberPaymentRow, b: MemberPaymentRow) =>
+  a.dueDate.localeCompare(b.dueDate) || a.periodStart.localeCompare(b.periodStart) || a.id - b.id;
 
 type Plan = "monthly" | "quarterly" | "yearly";
 const PLAN_MONTHS: Record<Plan, 1 | 3 | 12> = { monthly: 1, quarterly: 3, yearly: 12 };
@@ -169,12 +176,15 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
   );
 }
 
-export default function Payments({ club, selectedYear, years, summary, payments, pagination, futureForm, paymentsUrl, dashboardUrl }: Props) {
+export default function Payments({ club, selectedYear, years, summary, payments, pagination, futureForm, payAll, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
-  const open = payments.filter((p) => p.status === "pending" || p.status === "overdue");
+  // Fees still owed, oldest first (the order to pay them in); history stays newest first.
+  const open = payments.filter((p) => p.status === "due" || p.status === "overdue").sort(oldestFirst);
+  const processing = payments.filter((p) => p.status === "processing").sort(oldestFirst);
   const verifying = payments.filter((p) => p.status === "verifying");
   const paid = payments.filter((p) => p.status === "paid");
   const groups = [
+    { key: "processing", title: t("processingGroup"), items: processing },
     { key: "open", title: t("stillToPay"), items: open },
     { key: "verifying", title: t("verifying"), items: verifying },
     { key: "paid", title: t("paidGroup"), items: paid },
@@ -212,7 +222,7 @@ export default function Payments({ club, selectedYear, years, summary, payments,
         </div>
         <div className="rounded-[20px] border bg-card p-4">
           <div className="text-sm font-medium text-muted-foreground">{fill(t("owingInYear"), { y: selectedYear })}</div>
-          <Money sen={summary.pending + summary.overdue} className="figure font-display text-[26px] font-extrabold leading-tight" />
+          <Money sen={summary.due + summary.overdue} className="figure font-display text-[26px] font-extrabold leading-tight" />
         </div>
       </div>
 
@@ -224,6 +234,20 @@ export default function Payments({ club, selectedYear, years, summary, payments,
           <h2 id={`h-${g.key}`} className="px-1 font-display text-xl font-bold tracking-tight">
             {g.title}
           </h2>
+          {g.key === "processing" && (
+            <p className="flex items-start gap-2 rounded-2xl bg-warning-soft px-4 py-3 text-base text-warning-foreground ring-1 ring-warning/25" data-testid="processing-note">
+              <RefreshCw className="mt-1 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+              <span>{t("processingGroupNote")}</span>
+            </p>
+          )}
+          {g.key === "open" && payAll && (
+            <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
+              <Link href={payAll.url} data-testid="payments-pay-all">
+                {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
+                <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
+              </Link>
+            </Button>
+          )}
           <ul className="divide-y rounded-[20px] border bg-card">
             {g.items.map((p) => (
               <li key={p.id}>

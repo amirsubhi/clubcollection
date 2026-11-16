@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Set Fee Rates')
-@section('page-title', $club->name . ' — Set New Fee Rates')
+@section('page-title', 'Set New Fee Rates')
+@section('page-club', $club->name)
 
 @section('content')
 <div class="row justify-content-center">
@@ -14,31 +15,33 @@
                 <form action="{{ route('admin.clubs.fee-rates.store', $club) }}" method="POST">
                     @csrf
                     @foreach($jobLevels as $key => $label)
-                    <div class="card mb-3 border-0 bg-light p-3 rounded">
-                        <h6 class="fw-semibold mb-3">{{ $label }}</h6>
+                    <fieldset class="mb-3 bg-light p-3 rounded border">
+                        <legend class="visually-hidden">{{ $label }}</legend>
+                        <h2 class="h6 fw-semibold mb-3">{{ $label }}</h2>
                         <input type="hidden" name="rates[{{ $loop->index }}][job_level]" value="{{ $key }}">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label small">Monthly Amount (RM) <span class="text-danger">*</span></label>
+                                <label for="rate-{{ $key }}-amount" class="form-label small">Monthly Amount (RM) <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text">RM</span>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="number" step="0.01" min="0" id="rate-{{ $key }}-amount" aria-describedby="rate-{{ $key }}-amount-help"
+                                           @error('rates.'.$loop->index.'.monthly_amount') aria-invalid="true" @enderror
                                            name="rates[{{ $loop->index }}][monthly_amount]"
                                            class="form-control @error('rates.'.$loop->index.'.monthly_amount') is-invalid @enderror"
                                            value="{{ old('rates.'.$loop->index.'.monthly_amount') }}"
                                            placeholder="0.00">
                                 </div>
-                                <div class="form-text">Base fee per month. Quarterly/yearly payments multiply this amount.</div>
+                                <div class="form-text" id="rate-{{ $key }}-amount-help">Base fee per month. Quarterly/yearly payments multiply this amount.</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small">Effective From <span class="text-danger">*</span></label>
-                                <input type="date" name="rates[{{ $loop->index }}][effective_from]"
+                                <label for="rate-{{ $key }}-from" class="form-label small">Effective From <span class="text-danger">*</span></label>
+                                <input type="date" id="rate-{{ $key }}-from" aria-describedby="rate-{{ $key }}-from-help" @error('rates.'.$loop->index.'.effective_from') aria-invalid="true" @enderror name="rates[{{ $loop->index }}][effective_from]"
                                        class="form-control @error('rates.'.$loop->index.'.effective_from') is-invalid @enderror"
                                        value="{{ old('rates.'.$loop->index.'.effective_from', date('Y-m-d')) }}">
-                                <div class="form-text">Existing rate for this level will be closed on this date.</div>
+                                <div class="form-text" id="rate-{{ $key }}-from-help">Existing rate for this level will be closed on this date.</div>
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
                     @endforeach
 
                     <div class="d-flex gap-2 mt-3">

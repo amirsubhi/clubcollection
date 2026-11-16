@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\AuditLog;
 use App\Models\Club;
 use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ClubBillingSettingsTest extends TestCase
@@ -36,7 +37,22 @@ class ClubBillingSettingsTest extends TestCase
         $club = Club::factory()->create(['payment_gateway' => 'billplz']);
         $this->actingAsClubAdmin($club);
 
-        $this->get(route('admin.clubs.billing.edit', $club))->assertOk()->assertSee('Billing settings');
+        $this->get(route('admin.clubs.billing.edit', $club))->assertOk()->assertSee('Billing settings')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Clubs/Billing')
+                ->where('gatewayLabel', 'Billplz')
+                ->where('memberFeeAllowed', true)
+                ->has('plans', 3)
+                ->where('plans.2.key', 'yearly')
+                ->where('settings.allow_monthly', true)
+                ->where('settings.default_plan', 'yearly')
+                ->where('settings.gateway_fee_payer', 'club')
+                ->where('settings.gateway_fee', '1.00')
+                ->where('settings.transfer_enabled', false)
+                ->where('pendingBank', null)
+                ->where('urls.update', route('admin.clubs.billing.update', $club))
+                ->where('urls.approve', null)
+                ->where('nav.groups.0.items', fn ($items) => collect($items)->firstWhere('key', 'billing')['external'] === false));
 
         $this->put(route('admin.clubs.billing.update', $club), $this->valid(['allow_monthly' => '0', 'default_plan' => 'quarterly']))
             ->assertRedirect(route('admin.clubs.billing.edit', $club))
@@ -113,9 +129,14 @@ class ClubBillingSettingsTest extends TestCase
         $club = Club::factory()->create(['payment_gateway' => 'toyyibpay']);
         $this->actingAsClubAdmin($club);
 
+        // The member option is offered disabled, with its reason, and the form starts on "club".
         $this->get(route('admin.clubs.billing.edit', $club))->assertOk()
-            ->assertSee('Not available yet for ToyyibPay');
-        $this->assertMatchesRegularExpression('/id="payer_member"[^>]*\bdisabled\b/', $this->get(route('admin.clubs.billing.edit', $club))->getContent());
+            ->assertSee('Not available yet for ToyyibPay')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Clubs/Billing')
+                ->where('memberFeeAllowed', false)
+                ->where('memberFeeReason', fn ($r) => str_contains($r, 'Not available yet for ToyyibPay'))
+                ->where('settings.gateway_fee_payer', 'club'));
 
         $this->put(route('admin.clubs.billing.update', $club), $this->valid())->assertSessionHasErrors('gateway_fee_payer');
         $this->putJson(route('admin.clubs.billing.update', $club), $this->valid())->assertStatus(422)->assertJsonValidationErrors('gateway_fee_payer');
@@ -131,7 +152,8 @@ class ClubBillingSettingsTest extends TestCase
         $club = Club::factory()->create(['payment_gateway' => 'toyyibpay']);
         $this->actingAsClubAdmin($club);
 
-        $this->get(route('admin.clubs.billing.edit', $club))->assertDontSee('Not available yet for ToyyibPay');
+        $this->get(route('admin.clubs.billing.edit', $club))->assertDontSee('Not available yet for ToyyibPay')
+            ->assertInertia(fn (Assert $page) => $page->where('memberFeeAllowed', true)->where('memberFeeReason', null));
         $this->put(route('admin.clubs.billing.update', $club), $this->valid())->assertSessionHasNoErrors();
         $this->assertSame('member', $club->fresh()->gatewayFeePayer());
     }

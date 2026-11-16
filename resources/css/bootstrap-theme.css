@@ -1,0 +1,439 @@
+@import "./tokens.css";
+
+/*
+ * Bootstrap 5.3 re-skinned with the Lavender Ledger tokens, for the classic
+ * Blade admin pages (layouts/app.blade.php). Bootstrap itself still comes from
+ * the CDN; this file only maps its --bs-* variables (and a few component
+ * variables) onto tokens.css, so light and dark follow the same saved theme
+ * (cp-theme / prefers-color-scheme) as the React pages.
+ *
+ * Bootstrap builds colours as rgba(var(--bs-x-rgb), a) and needs comma
+ * triplets, while the tokens are space-separated. The few *-rgb triplets are
+ * therefore written out below, each tagged with the token it mirrors;
+ * tests/Feature/Admin/R1dFollowUpsTest.php fails if one drifts from tokens.css.
+ */
+
+/* ── Light triplets (mirror :root in tokens.css) ── */
+:root,
+:root[data-bs-theme] {
+  --bs-primary-rgb: 91, 79, 207; /* = --primary */
+  --bs-secondary-rgb: 95, 92, 122; /* = --muted-foreground */
+  --bs-success-rgb: 31, 122, 85; /* = --success */
+  --bs-info-rgb: 91, 79, 207; /* = --info */
+  --bs-warning-rgb: 138, 90, 0; /* = --warning */
+  --bs-danger-rgb: 180, 50, 74; /* = --danger */
+  --bs-light-rgb: 240, 239, 248; /* = --muted */
+  --bs-dark-rgb: 30, 27, 58; /* = --foreground */
+  --bs-body-color-rgb: 30, 27, 58; /* = --foreground */
+  --bs-body-bg-rgb: 246, 245, 251; /* = --background */
+  --bs-emphasis-color-rgb: 30, 27, 58; /* = --foreground */
+  --bs-secondary-color-rgb: 95, 92, 122; /* = --muted-foreground */
+  --bs-secondary-bg-rgb: 236, 234, 247; /* = --secondary */
+  --bs-tertiary-bg-rgb: 240, 239, 248; /* = --muted */
+  --bs-link-color-rgb: 91, 79, 207; /* = --primary */
+  --bs-link-hover-color-rgb: 67, 56, 168; /* = --accent-foreground */
+}
+
+/* ── Dark triplets (mirror the two dark blocks in tokens.css) ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]),
+  :root:not([data-theme="light"])[data-bs-theme] {
+    --bs-primary-rgb: 155, 140, 250; /* = --primary */
+    --bs-secondary-rgb: 179, 180, 190; /* = --muted-foreground */
+    --bs-success-rgb: 116, 211, 169; /* = --success */
+    --bs-info-rgb: 155, 140, 250; /* = --info */
+    --bs-warning-rgb: 237, 193, 110; /* = --warning */
+    --bs-danger-rgb: 242, 160, 173; /* = --danger */
+    --bs-light-rgb: 42, 43, 48; /* = --muted */
+    --bs-dark-rgb: 241, 241, 244; /* = --foreground */
+    --bs-body-color-rgb: 241, 241, 244; /* = --foreground */
+    --bs-body-bg-rgb: 30, 31, 35; /* = --background */
+    --bs-emphasis-color-rgb: 241, 241, 244; /* = --foreground */
+    --bs-secondary-color-rgb: 179, 180, 190; /* = --muted-foreground */
+    --bs-secondary-bg-rgb: 48, 49, 55; /* = --secondary */
+    --bs-tertiary-bg-rgb: 42, 43, 48; /* = --muted */
+    --bs-link-color-rgb: 155, 140, 250; /* = --primary */
+    --bs-link-hover-color-rgb: 206, 198, 255; /* = --accent-foreground */
+  }
+}
+:root[data-theme="dark"],
+:root[data-theme="dark"][data-bs-theme] {
+  --bs-primary-rgb: 155, 140, 250; /* = --primary */
+  --bs-secondary-rgb: 179, 180, 190; /* = --muted-foreground */
+  --bs-success-rgb: 116, 211, 169; /* = --success */
+  --bs-info-rgb: 155, 140, 250; /* = --info */
+  --bs-warning-rgb: 237, 193, 110; /* = --warning */
+  --bs-danger-rgb: 242, 160, 173; /* = --danger */
+  --bs-light-rgb: 42, 43, 48; /* = --muted */
+  --bs-dark-rgb: 241, 241, 244; /* = --foreground */
+  --bs-body-color-rgb: 241, 241, 244; /* = --foreground */
+  --bs-body-bg-rgb: 30, 31, 35; /* = --background */
+  --bs-emphasis-color-rgb: 241, 241, 244; /* = --foreground */
+  --bs-secondary-color-rgb: 179, 180, 190; /* = --muted-foreground */
+  --bs-secondary-bg-rgb: 48, 49, 55; /* = --secondary */
+  --bs-tertiary-bg-rgb: 42, 43, 48; /* = --muted */
+  --bs-link-color-rgb: 155, 140, 250; /* = --primary */
+  --bs-link-hover-color-rgb: 206, 198, 255; /* = --accent-foreground */
+}
+
+/* ── Everything else reads the tokens directly, so one block serves both themes ── */
+:root,
+:root[data-bs-theme] {
+  --bs-primary: rgb(var(--primary));
+  --bs-secondary: rgb(var(--muted-foreground));
+  --bs-success: rgb(var(--success));
+  --bs-info: rgb(var(--info));
+  --bs-warning: rgb(var(--warning));
+  --bs-danger: rgb(var(--danger));
+  --bs-light: rgb(var(--muted));
+  --bs-dark: rgb(var(--foreground));
+
+  --bs-body-font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bs-body-font-size: 0.9375rem;
+  --bs-body-line-height: 1.55;
+  --bs-body-color: rgb(var(--foreground));
+  --bs-body-bg: rgb(var(--background));
+  --bs-emphasis-color: rgb(var(--foreground));
+  --bs-heading-color: rgb(var(--foreground));
+  --bs-secondary-color: rgb(var(--muted-foreground));
+  --bs-secondary-bg: rgb(var(--secondary));
+  --bs-tertiary-color: rgb(var(--muted-foreground));
+  --bs-tertiary-bg: rgb(var(--muted));
+  --bs-link-color: rgb(var(--primary));
+  --bs-link-hover-color: rgb(var(--accent-foreground));
+  --bs-code-color: rgb(var(--accent-foreground));
+  --bs-highlight-bg: rgb(var(--warning-soft));
+  --bs-highlight-color: rgb(var(--warning-foreground));
+  --bs-border-color: rgb(var(--border));
+  --bs-border-color-translucent: rgb(var(--border));
+  --bs-border-radius: var(--radius);
+  --bs-border-radius-sm: 8px;
+  --bs-border-radius-lg: 14px;
+  --bs-border-radius-xl: 18px;
+  --bs-focus-ring-color: rgb(var(--ring) / 0.35);
+  --bs-form-valid-color: rgb(var(--success-foreground));
+  --bs-form-valid-border-color: rgb(var(--success));
+  --bs-form-invalid-color: rgb(var(--danger-foreground));
+  --bs-form-invalid-border-color: rgb(var(--danger));
+
+  /* Alerts, subtle backgrounds and *-emphasis text: the soft status tokens. */
+  --bs-primary-text-emphasis: rgb(var(--accent-foreground));
+  --bs-primary-bg-subtle: rgb(var(--accent));
+  --bs-primary-border-subtle: rgb(var(--primary) / 0.3);
+  --bs-info-text-emphasis: rgb(var(--info-foreground));
+  --bs-info-bg-subtle: rgb(var(--info-soft));
+  --bs-info-border-subtle: rgb(var(--info) / 0.3);
+  --bs-success-text-emphasis: rgb(var(--success-foreground));
+  --bs-success-bg-subtle: rgb(var(--success-soft));
+  --bs-success-border-subtle: rgb(var(--success) / 0.3);
+  --bs-warning-text-emphasis: rgb(var(--warning-foreground));
+  --bs-warning-bg-subtle: rgb(var(--warning-soft));
+  --bs-warning-border-subtle: rgb(var(--warning) / 0.3);
+  --bs-danger-text-emphasis: rgb(var(--danger-foreground));
+  --bs-danger-bg-subtle: rgb(var(--danger-soft));
+  --bs-danger-border-subtle: rgb(var(--danger) / 0.3);
+  --bs-secondary-text-emphasis: rgb(var(--foreground));
+  --bs-secondary-bg-subtle: rgb(var(--muted));
+  --bs-secondary-border-subtle: rgb(var(--border));
+  --bs-light-text-emphasis: rgb(var(--foreground));
+  --bs-light-bg-subtle: rgb(var(--muted));
+  --bs-light-border-subtle: rgb(var(--border));
+  --bs-dark-text-emphasis: rgb(var(--foreground));
+  --bs-dark-bg-subtle: rgb(var(--secondary));
+  --bs-dark-border-subtle: rgb(var(--border));
+
+  accent-color: rgb(var(--primary));
+  scrollbar-color: rgb(var(--input)) transparent;
+}
+
+/* ── Browser surfaces ── */
+::selection { background: rgb(var(--primary) / 0.28); }
+:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; }
+h1, h2, h3, h4, .h1, .h2, .h3, .h4 {
+  font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+body { -webkit-font-smoothing: antialiased; }
+a { text-underline-offset: 3px; }
+.table td, .table th, .money { font-variant-numeric: tabular-nums; }
+code { font-size: 0.875em; }
+
+/* Utilities that hard-code white or Bootstrap greys: follow the theme. */
+.bg-white { background-color: rgb(var(--card)) !important; }
+.bg-light { background-color: rgb(var(--muted)) !important; }
+.text-dark { color: rgb(var(--foreground)) !important; }
+.text-success { color: rgb(var(--success-foreground)) !important; }
+.text-danger { color: rgb(var(--danger-foreground)) !important; }
+.text-warning { color: rgb(var(--warning-foreground)) !important; }
+.text-info { color: rgb(var(--info-foreground)) !important; }
+.shadow-sm { box-shadow: 0 1px 2px rgb(var(--foreground) / 0.04), 0 10px 24px -18px rgb(var(--primary) / 0.35) !important; }
+
+/* ── Buttons ── */
+.btn {
+  --bs-btn-font-weight: 600;
+  --bs-btn-border-radius: var(--radius);
+  --bs-btn-focus-box-shadow: none;
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.btn-sm { --bs-btn-border-radius: 8px; min-height: 2.25rem; min-width: 2.25rem; }
+.btn:focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; }
+/* Green is for money in / paid only (tokens.css): a "success" button is an ordinary action, so it is a primary button. */
+.btn-primary,
+.btn-success {
+  --bs-btn-color: rgb(var(--primary-foreground));
+  --bs-btn-bg: rgb(var(--primary));
+  --bs-btn-border-color: rgb(var(--primary));
+  --bs-btn-hover-color: rgb(var(--primary-foreground));
+  --bs-btn-hover-bg: rgb(var(--primary) / 0.9);
+  --bs-btn-hover-border-color: rgb(var(--primary) / 0.9);
+  --bs-btn-active-color: rgb(var(--primary-foreground));
+  --bs-btn-active-bg: rgb(var(--primary) / 0.82);
+  --bs-btn-active-border-color: rgb(var(--primary) / 0.82);
+  --bs-btn-disabled-color: rgb(var(--primary-foreground));
+  --bs-btn-disabled-bg: rgb(var(--primary) / 0.55);
+  --bs-btn-disabled-border-color: transparent;
+}
+.btn-danger {
+  --bs-btn-color: rgb(var(--on-danger));
+  --bs-btn-bg: rgb(var(--danger));
+  --bs-btn-border-color: rgb(var(--danger));
+  --bs-btn-hover-color: rgb(var(--on-danger));
+  --bs-btn-hover-bg: rgb(var(--danger) / 0.9);
+  --bs-btn-hover-border-color: rgb(var(--danger) / 0.9);
+  --bs-btn-active-color: rgb(var(--on-danger));
+  --bs-btn-active-bg: rgb(var(--danger) / 0.82);
+  --bs-btn-active-border-color: rgb(var(--danger) / 0.82);
+}
+/* "Check the slip" style buttons: lavender tint, not Bootstrap cyan. */
+.btn-info {
+  --bs-btn-color: rgb(var(--accent-foreground));
+  --bs-btn-bg: rgb(var(--accent));
+  --bs-btn-border-color: rgb(var(--primary) / 0.3);
+  --bs-btn-hover-color: rgb(var(--accent-foreground));
+  --bs-btn-hover-bg: rgb(var(--deep));
+  --bs-btn-hover-border-color: rgb(var(--primary) / 0.45);
+  --bs-btn-active-color: rgb(var(--accent-foreground));
+  --bs-btn-active-bg: rgb(var(--deep));
+  --bs-btn-active-border-color: rgb(var(--primary) / 0.45);
+}
+.btn-outline-primary {
+  --bs-btn-color: rgb(var(--primary));
+  --bs-btn-border-color: rgb(var(--primary) / 0.45);
+  --bs-btn-hover-color: rgb(var(--accent-foreground));
+  --bs-btn-hover-bg: rgb(var(--accent));
+  --bs-btn-hover-border-color: rgb(var(--primary));
+  --bs-btn-active-color: rgb(var(--accent-foreground));
+  --bs-btn-active-bg: rgb(var(--accent));
+  --bs-btn-active-border-color: rgb(var(--primary));
+}
+.btn-outline-secondary {
+  --bs-btn-color: rgb(var(--foreground));
+  --bs-btn-border-color: rgb(var(--input) / 0.7);
+  --bs-btn-hover-color: rgb(var(--foreground));
+  --bs-btn-hover-bg: rgb(var(--muted));
+  --bs-btn-hover-border-color: rgb(var(--input));
+  --bs-btn-active-color: rgb(var(--foreground));
+  --bs-btn-active-bg: rgb(var(--secondary));
+  --bs-btn-active-border-color: rgb(var(--input));
+}
+.btn-outline-danger {
+  --bs-btn-color: rgb(var(--danger-foreground));
+  --bs-btn-border-color: rgb(var(--danger) / 0.45);
+  --bs-btn-hover-color: rgb(var(--danger-foreground));
+  --bs-btn-hover-bg: rgb(var(--danger-soft));
+  --bs-btn-hover-border-color: rgb(var(--danger));
+  --bs-btn-active-color: rgb(var(--danger-foreground));
+  --bs-btn-active-bg: rgb(var(--danger-soft));
+  --bs-btn-active-border-color: rgb(var(--danger));
+}
+.btn-outline-success {
+  --bs-btn-color: rgb(var(--success-foreground));
+  --bs-btn-border-color: rgb(var(--success) / 0.45);
+  --bs-btn-hover-color: rgb(var(--success-foreground));
+  --bs-btn-hover-bg: rgb(var(--success-soft));
+  --bs-btn-hover-border-color: rgb(var(--success));
+  --bs-btn-active-color: rgb(var(--success-foreground));
+  --bs-btn-active-bg: rgb(var(--success-soft));
+  --bs-btn-active-border-color: rgb(var(--success));
+}
+.btn-link {
+  --bs-btn-color: rgb(var(--primary));
+  --bs-btn-hover-color: rgb(var(--accent-foreground));
+}
+
+/* ── Forms: inputs use the --input token (3:1 against the card) ── */
+.form-control,
+.form-select {
+  background-color: rgb(var(--card));
+  color: rgb(var(--foreground));
+  border-color: rgb(var(--input));
+}
+.form-control::placeholder { color: rgb(var(--muted-foreground)); opacity: 1; }
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgb(var(--ring) / 0.3);
+}
+.form-control:disabled,
+.form-select:disabled { background-color: rgb(var(--muted)); }
+.form-check-input { border-color: rgb(var(--input)); background-color: rgb(var(--card)); }
+.form-check-input:checked { background-color: rgb(var(--primary)); border-color: rgb(var(--primary)); }
+.form-label { font-weight: 600; }
+.input-group-text {
+  background-color: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+  border-color: rgb(var(--input));
+}
+.text-danger.small,
+.invalid-feedback { font-size: 0.875rem; }
+/* iOS zooms into inputs under 16px: small inputs stay 16px on phones. */
+@media (max-width: 575.98px) {
+  .form-control-sm,
+  .form-select-sm { font-size: 1rem; }
+}
+
+/* ── Cards, tables, lists ── */
+.card {
+  --bs-card-bg: rgb(var(--card));
+  --bs-card-color: rgb(var(--card-foreground));
+  --bs-card-border-color: rgb(var(--border));
+  --bs-card-cap-bg: transparent;
+  --bs-card-cap-color: rgb(var(--foreground));
+  --bs-card-border-radius: 14px;
+  --bs-card-inner-border-radius: 13px;
+}
+.card.border-0 { border: 1px solid rgb(var(--border)) !important; }
+.card-header { font-weight: 600; }
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: rgb(var(--foreground));
+  --bs-table-border-color: rgb(var(--border));
+  --bs-table-striped-bg: rgb(var(--muted));
+  --bs-table-hover-bg: rgb(var(--muted));
+  --bs-table-hover-color: rgb(var(--foreground));
+  --bs-table-active-bg: rgb(var(--secondary));
+}
+.table-light {
+  --bs-table-bg: rgb(var(--muted));
+  --bs-table-color: rgb(var(--muted-foreground));
+  --bs-table-border-color: rgb(var(--border));
+  --bs-table-striped-bg: rgb(var(--muted));
+  --bs-table-hover-bg: rgb(var(--muted));
+}
+.table > thead th { font-size: 0.8125rem; font-weight: 600; white-space: nowrap; }
+.list-group {
+  --bs-list-group-bg: rgb(var(--card));
+  --bs-list-group-color: rgb(var(--foreground));
+  --bs-list-group-border-color: rgb(var(--border));
+  --bs-list-group-action-hover-bg: rgb(var(--muted));
+  --bs-list-group-action-hover-color: rgb(var(--foreground));
+  --bs-list-group-action-color: rgb(var(--foreground));
+  --bs-list-group-active-bg: rgb(var(--accent));
+  --bs-list-group-active-color: rgb(var(--accent-foreground));
+  --bs-list-group-active-border-color: rgb(var(--border));
+}
+.dropdown-menu {
+  --bs-dropdown-bg: rgb(var(--popover));
+  --bs-dropdown-color: rgb(var(--popover-foreground));
+  --bs-dropdown-border-color: rgb(var(--border));
+  --bs-dropdown-link-color: rgb(var(--popover-foreground));
+  --bs-dropdown-link-hover-color: rgb(var(--foreground));
+  --bs-dropdown-link-hover-bg: rgb(var(--muted));
+  --bs-dropdown-link-active-color: rgb(var(--accent-foreground));
+  --bs-dropdown-link-active-bg: rgb(var(--accent));
+  --bs-dropdown-header-color: rgb(var(--muted-foreground));
+  --bs-dropdown-divider-bg: rgb(var(--border));
+  --bs-dropdown-border-radius: 12px;
+  --bs-dropdown-item-padding-y: 0.5rem;
+}
+.modal {
+  --bs-modal-bg: rgb(var(--popover));
+  --bs-modal-color: rgb(var(--popover-foreground));
+  --bs-modal-border-color: rgb(var(--border));
+  --bs-modal-header-border-color: rgb(var(--border));
+  --bs-modal-border-radius: 16px;
+}
+.modal-backdrop { --bs-backdrop-bg: rgb(var(--overlay)); --bs-backdrop-opacity: 0.55; }
+.pagination {
+  --bs-pagination-color: rgb(var(--primary));
+  --bs-pagination-bg: rgb(var(--card));
+  --bs-pagination-border-color: rgb(var(--border));
+  --bs-pagination-hover-color: rgb(var(--accent-foreground));
+  --bs-pagination-hover-bg: rgb(var(--accent));
+  --bs-pagination-hover-border-color: rgb(var(--border));
+  --bs-pagination-focus-color: rgb(var(--accent-foreground));
+  --bs-pagination-focus-bg: rgb(var(--accent));
+  --bs-pagination-focus-box-shadow: 0 0 0 3px rgb(var(--ring) / 0.3);
+  --bs-pagination-active-color: rgb(var(--primary-foreground));
+  --bs-pagination-active-bg: rgb(var(--primary));
+  --bs-pagination-active-border-color: rgb(var(--primary));
+  --bs-pagination-disabled-color: rgb(var(--muted-foreground));
+  --bs-pagination-disabled-bg: rgb(var(--muted));
+  --bs-pagination-disabled-border-color: rgb(var(--border));
+}
+.alert { --bs-alert-border-radius: 12px; }
+.nav-link { color: rgb(var(--primary)); }
+hr { color: rgb(var(--border)); opacity: 1; }
+
+/*
+ * ── Status badges: soft status tokens, 12px minimum ──
+ * Every badge colour (solid, -subtle or text-bg-) becomes the soft chip of
+ * its status: *-foreground on *-soft is at least 4.5:1 in both themes.
+ */
+.badge {
+  --bs-badge-font-size: 0.75rem;
+  --bs-badge-font-weight: 600;
+  --bs-badge-padding-x: 0.55em;
+  --bs-badge-padding-y: 0.35em;
+  --bs-badge-border-radius: 999px;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.01em;
+}
+.badge.bg-success, .badge.bg-success-subtle, .badge.text-bg-success { background-color: rgb(var(--success-soft)) !important; color: rgb(var(--success-foreground)) !important; }
+.badge.bg-warning, .badge.bg-warning-subtle, .badge.text-bg-warning { background-color: rgb(var(--warning-soft)) !important; color: rgb(var(--warning-foreground)) !important; }
+.badge.bg-danger, .badge.bg-danger-subtle, .badge.text-bg-danger { background-color: rgb(var(--danger-soft)) !important; color: rgb(var(--danger-foreground)) !important; }
+.badge.bg-info, .badge.bg-info-subtle, .badge.text-bg-info,
+.badge.bg-primary, .badge.bg-primary-subtle, .badge.text-bg-primary { background-color: rgb(var(--info-soft)) !important; color: rgb(var(--info-foreground)) !important; }
+.badge.bg-secondary, .badge.bg-secondary-subtle, .badge.text-bg-secondary,
+.badge.bg-light, .badge.text-bg-light { background-color: rgb(var(--muted)) !important; color: rgb(var(--foreground)) !important; }
+
+/* ── Admin chrome (layouts/app.blade.php): match AdminShell ── */
+.admin-sidebar { --bs-offcanvas-bg: rgb(var(--sidebar)); }
+.sidebar-brand .logo { color: rgb(var(--primary-foreground)) !important; }
+.admin-nav .count { background: rgb(var(--primary)); color: rgb(var(--primary-foreground)); }
+.admin-topbar { background: rgb(var(--background) / 0.9); backdrop-filter: blur(8px); }
+@media (min-width: 992px) {
+  .admin-sidebar-col { background: rgb(var(--sidebar)); }
+}
+
+/* Summary figures on Payments / Statistics: label over value, no icon tiles. */
+.stat-strip { display: flex; flex-wrap: wrap; gap: 1px; background: rgb(var(--border)); }
+.stat-strip > * { flex: 1 1 10.5rem; padding: 1rem 1.25rem; background: rgb(var(--card)); }
+.stat-strip .stat-label { display: block; font-size: 0.8125rem; font-weight: 600; color: rgb(var(--muted-foreground)); }
+.stat-strip .stat-value { display: block; margin-top: 0.25rem; font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat-strip .stat-note { display: block; margin-top: 0.25rem; font-size: 0.8125rem; color: rgb(var(--muted-foreground)); }
+a.stat-link { color: inherit; text-decoration: none; }
+a.stat-link:hover { background: rgb(var(--muted)); }
+a.stat-link .stat-label { color: rgb(var(--primary)); }
+
+/* "Record payment…" dialog (R2a): the three ways to pay as 44px+ tiles that wrap with large text. */
+.record-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: 0.5rem; }
+.record-method.form-check { position: relative; margin: 0; padding: 0; min-height: 0; }
+.record-method .form-check-input { position: absolute; top: 50%; left: 0.875rem; margin: -0.5em 0 0 0; }
+.record-method .form-check-label { display: flex; align-items: center; gap: 0.375rem; width: 100%; min-height: 2.75rem; padding: 0.5rem 0.75rem 0.5rem 2.5rem; border: 1px solid rgb(var(--border)); border-radius: var(--bs-border-radius); cursor: pointer; }
+.record-method .form-check-input:checked + .form-check-label { border-color: rgb(var(--primary)); background: rgb(var(--accent) / 0.55); font-weight: 600; }
+.record-methods.is-invalid .form-check-label { border-color: var(--bs-form-invalid-border-color); }
+
+/* Labelled horizontal bars (admin/partials/bar-list.blade.php): Statistics and the classic dashboard. */
+.bar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+.bar-list > li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.125rem 0.75rem; }
+.bar-list .bar-label { min-width: 0; flex: 1 1 8rem; overflow-wrap: anywhere; }
+.bar-list .bar-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+.bar-list .bar-track { flex: 1 0 100%; height: 0.625rem; border-radius: 999px; background: rgb(var(--muted)); overflow: hidden; }
+.bar-list .bar-fill { display: block; height: 100%; border-radius: 999px; background: rgb(var(--chart-1)); box-shadow: inset 0 0 0 1.5px rgb(var(--chart-1-stroke)); }
+.bar-list-spent .bar-fill { background: rgb(var(--chart-4)); box-shadow: inset 0 0 0 1.5px rgb(var(--chart-4-stroke)); }

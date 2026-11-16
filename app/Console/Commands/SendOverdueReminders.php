@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\OverdueReminder;
 use App\Models\Payment;
 use App\Services\AuditService;
+use App\Support\Payments\DisplayStatus;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -19,12 +20,20 @@ class SendOverdueReminders extends Command
         $sent = 0;
         $marked = 0;
 
-        // Chunk to bound memory if the table grows large.
+        // Chunk to bound memory if the table grows large. Candidates are past
+        // their due date; each club's grace period and any FPX bill in
+        // progress are checked per fee (DisplayStatus): only a fee shown as
+        // overdue is flipped and reminded. A fee whose slip is being checked
+        // is not 'pending', so it never gets here.
         Payment::with(['user', 'club'])
             ->where('status', 'pending')
             ->where('due_date', '<', now()->toDateString())
             ->chunkById(200, function ($chunk) use (&$sent, &$marked) {
+                DisplayStatus::prime($chunk);
                 foreach ($chunk as $payment) {
+                    if (DisplayStatus::of($payment) !== DisplayStatus::OVERDUE) {
+                        continue; // still within the grace period, or an FPX payment is in progress
+                    }
                     // Re-check the status in the update itself: a webhook or an
                     // admin may have settled the fee since the chunk was read,
                     // and a paid fee must never be turned back into overdue (S1).

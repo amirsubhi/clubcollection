@@ -331,7 +331,7 @@ class TransferVerificationTest extends TestCase
         $fee = $this->verifying();
         $this->actingAs($this->adminA);
 
-        $this->patch(route('admin.payments.mark-paid', $fee))->assertRedirect(route('admin.clubs.verifications.index', $this->club));
+        $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertRedirect(route('admin.clubs.verifications.index', $this->club));
         $this->assertSame('pending_verification', $fee->fresh()->status);
 
         $edit = ['due_date' => $fee->due_date->toDateString(), 'amount' => '50.00', 'status' => 'paid', 'original_status' => 'pending_verification'];
@@ -411,7 +411,7 @@ class TransferVerificationTest extends TestCase
             ->where('transfer.reference', 'YURAN-'.$this->fee->id)
             ->where('transfer.maxFiles', 3)
             ->where('verification', null)
-            ->where('payment.status', 'pending'));
+            ->where('payment.status', 'due'));
 
         $this->submit();
         $this->get(route('member.payments.review', $this->fee))->assertInertia(fn (Assert $p) => $p
@@ -440,7 +440,7 @@ class TransferVerificationTest extends TestCase
             ->where('outstanding.total', 3000)
             ->where('outstanding.count', 1)
             ->where('outstanding.verifyingCount', 1)
-            ->where('upcoming.0.status', 'pending')
+            ->where('upcoming.0.status', 'due')
             ->where('upcoming.1.status', 'verifying'));
     }
 
@@ -541,13 +541,13 @@ class TransferVerificationTest extends TestCase
         $this->actingAs($this->member);
         $this->get(route('member.payments.index', [$this->club, 'year' => now()->year]))->assertInertia(fn (Assert $p) => $p
             ->where('summary.paid', 2000)
-            ->where('summary.pending', 3000)
+            ->where('summary.due', 3000)
             ->where('summary.overdue', 0)
             ->where('summary.verifying', 5000)
             ->where('summary.total', 10000));
         $this->get(route('member.dashboard'))->assertInertia(fn (Assert $p) => $p
             ->where('clubs.0.summary.paid', 1)
-            ->where('clubs.0.summary.pending', 1)
+            ->where('clubs.0.summary.due', 1)
             ->where('clubs.0.summary.verifying', 1));
 
         $this->actingAs($this->adminA);
@@ -562,11 +562,11 @@ class TransferVerificationTest extends TestCase
         $this->actingAs($this->adminA);
         $paid = Payment::factory()->forClub($this->club)->forMember($this->member)->create(['period_start' => now()->subMonths(2)->startOfMonth()->toDateString(), 'reference' => 'ORIGINAL']);
 
-        $this->patch(route('admin.payments.mark-paid', $paid), ['reference' => 'AGAIN'])->assertSessionHas('error');
+        $this->patch(route('admin.payments.mark-paid', $paid), $this->recordPayment(['reference' => 'AGAIN']))->assertSessionHas('error');
         $this->assertSame('ORIGINAL', $paid->fresh()->reference);
         $this->assertDatabaseMissing('audit_logs', ['action' => 'payment.marked_paid', 'auditable_id' => $paid->id]);
 
-        $this->patch(route('admin.payments.mark-paid', $this->fee), ['reference' => 'CASH-1'])->assertSessionHas('success');
+        $this->patch(route('admin.payments.mark-paid', $this->fee), $this->recordPayment(['reference' => 'CASH-1']))->assertSessionHas('success');
         $this->assertSame('paid', $this->fee->fresh()->status);
         $log = AuditLog::where('action', 'payment.marked_paid')->where('auditable_id', $this->fee->id)->firstOrFail();
         $this->assertSame('pending', $log->old_values['status']);

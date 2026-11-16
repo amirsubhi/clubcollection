@@ -12,6 +12,16 @@ class ExpenseCategoryController extends Controller
 {
     use AuthorizesClubResource;
 
+    /** name: English (admin pages); name_ms: optional Bahasa Melayu name shown to members. */
+    private const RULES = ['name' => 'required|string|max:100', 'name_ms' => 'nullable|string|max:100'];
+
+    private static function clean(array $data): array
+    {
+        $ms = trim((string) ($data['name_ms'] ?? ''));
+
+        return ['name' => $data['name'], 'name_ms' => $ms === '' ? null : $ms];
+    }
+
     public function index(Club $club)
     {
         $categories = $club->expenseCategories()->withCount('expenses')->orderBy('name')->get();
@@ -20,16 +30,16 @@ class ExpenseCategoryController extends Controller
 
     public function store(Request $request, Club $club)
     {
-        $request->validate(['name' => 'required|string|max:100']);
-        $club->expenseCategories()->create(['name' => $request->name]);
+        $data = $request->validate(self::RULES);
+        $club->expenseCategories()->create(self::clean($data));
         return back()->with('success', 'Category added.');
     }
 
     public function update(Request $request, ExpenseCategory $expenseCategory)
     {
         $this->authorizeClubAdmin($expenseCategory->club);
-        $request->validate(['name' => 'required|string|max:100']);
-        $expenseCategory->update(['name' => $request->name]);
+        $data = $request->validate(self::RULES);
+        $expenseCategory->update(self::clean($data));
         return back()->with('success', 'Category updated.');
     }
 

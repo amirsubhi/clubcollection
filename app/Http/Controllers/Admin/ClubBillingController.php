@@ -6,8 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Services\AuditService;
 use App\Services\BankDetailsChangeService;
+use App\Support\Admin\AdminNav;
+use App\Support\Admin\FundFigures;
+use App\Support\Contact\WhatsAppNumber;
+use App\Support\Payments\DisplayStatus;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Validator;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * Per-club billing settings: which plans members may pay ahead with, the
@@ -18,22 +24,92 @@ class ClubBillingController extends Controller
 {
     private const FIELDS = [
         'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan', 'gateway_fee_payer', 'gateway_fee_sen',
-        'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
+        'overdue_grace_days', 'whatsapp_number', 'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
     public function __construct(private BankDetailsChangeService $bankChanges) {}
 
-    public function edit(Club $club)
+    private const PLAN_LABELS = ['monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'yearly' => 'Yearly'];
+
+    private const BANK_LABELS = [
+        'bank_name' => 'Bank name',
+        'bank_account_name' => 'Account holder',
+        'bank_account_no' => 'Account number',
+        'duitnow_id' => 'DuitNow ID',
+    ];
+
+    public function edit(Request $request, Club $club): Response
     {
         $club->load('bankChangeRequestedBy');
+        $user = $request->user();
+        $gatewayLabel = $club->activeGateway() === 'billplz' ? 'Billplz' : 'ToyyibPay';
+        $memberFeeAllowed = $club->memberFeeAllowed();
 
-        return view('admin.clubs.billing', [
-            'club' => $club,
-            'bankChangeVersion' => $this->bankChanges->version($club),
-            'bankApprovalBlocker' => $club->hasPendingBankChange() ? $this->bankChanges->approvalBlocker($club, auth()->user()) : null,
-            'plans' => Club::PLAN_MONTHS,
-            'gatewayLabel' => $club->activeGateway() === 'billplz' ? 'Billplz' : 'ToyyibPay',
-            'memberFeeAllowed' => $club->memberFeeAllowed(),
+        $pending = null;
+        if ($club->hasPendingBankChange()) {
+            $wanted = $club->pending_bank_change;
+            $blocker = $this->bankChanges->approvalBlocker($club, $user);
+            $rows = [];
+            foreach (self::BANK_LABELS as $field => $label) {
+                $rows[] = [
+                    'field' => $field,
+                    'label' => $label,
+                    'current' => $club->{$field},
+                    'requested' => $wanted[$field] ?? null,
+                    'changed' => ($club->{$field} ?? null) !== ($wanted[$field] ?? null),
+                ];
+            }
+            $pending = [
+                'requestedBy' => $club->bankChangeRequestedBy?->name ?? 'a former admin',
+                'requestedAt' => $club->bank_change_requested_at?->format('Y-m-d\TH:i'),
+                'requestedByMe' => (int) $club->bank_change_requested_by === (int) $user->id,
+                'rows' => $rows,
+                'transferNow' => (bool) $club->transfer_enabled,
+                'transferRequested' => ! empty($wanted['transfer_enabled']),
+                'canApprove' => $blocker === null,
+                'blocker' => $blocker,
+                // Sent back with Approve so a request replaced meanwhile is never approved blind.
+                'version' => $this->bankChanges->version($club),
+            ];
+        }
+
+        return Inertia::render('Admin/Clubs/Billing', [
+            'nav' => AdminNav::props($club, $user, (new FundFigures($club))->awaiting((int) $user->id)['mine']),
+            'clubName' => $club->name,
+            'gatewayLabel' => $gatewayLabel,
+            'memberFeeAllowed' => $memberFeeAllowed,
+            'memberFeeReason' => $memberFeeAllowed ? null
+                : 'Not available yet for ToyyibPay. How its "charge to customer" option behaves must first be confirmed in the sandbox. Until then the club absorbs the fee.',
+            'plans' => collect(Club::PLAN_MONTHS)->map(fn ($months, $plan) => [
+                'key' => $plan,
+                'label' => self::PLAN_LABELS[$plan],
+                'months' => $months,
+            ])->values(),
+            'settings' => [
+                'allow_monthly' => $club->allow_monthly !== false,
+                'allow_quarterly' => $club->allow_quarterly !== false,
+                'allow_yearly' => $club->allow_yearly !== false,
+                'default_plan' => $club->default_plan ?: 'yearly',
+                'gateway_fee_payer' => $memberFeeAllowed ? $club->gatewayFeePayer() : 'club',
+                'gateway_fee' => number_format($club->gatewayFeeSen() / 100, 2, '.', ''),
+                'overdue_grace_days' => (string) $club->overdueGraceDays(),
+                'whatsapp_number' => WhatsAppNumber::display($club->whatsapp_number),
+                'transfer_enabled' => (bool) $club->transfer_enabled,
+                'bank_name' => $club->bank_name ?? '',
+                'bank_account_name' => $club->bank_account_name ?? '',
+                'bank_account_no' => $club->bank_account_no ?? '',
+                'duitnow_id' => $club->duitnow_id ?? '',
+            ],
+            'transferLive' => $club->transferReady(),
+            'pendingBank' => $pending,
+            'urls' => [
+                'update' => route('admin.clubs.billing.update', $club),
+                // Only for an admin who may approve (never the requester).
+                'approve' => $pending && $pending['canApprove'] ? route('admin.clubs.billing.bank-change.approve', $club) : null,
+                'cancel' => $pending ? route('admin.clubs.billing.bank-change.cancel', $club) : null,
+                'dashboard' => route('admin.clubs.dashboard', $club),
+                'verifications' => route('admin.clubs.verifications.index', $club),
+            ],
         ]);
     }
 
@@ -47,6 +123,15 @@ class ClubBillingController extends Controller
             'gateway_fee_payer' => 'required|in:club,member',
             // Ringgit with at most 2 decimals; stored as sen. RM10 cap catches typos (e.g. 100 for RM1.00).
             'gateway_fee' => 'required|numeric|decimal:0,2|min:0|max:10',
+            // Days after the due date before a fee is "Overdue" and reminded (DisplayStatus).
+            // (Left out by older clients: the current value is kept.)
+            'overdue_grace_days' => 'sometimes|required|integer|min:0|max:'.DisplayStatus::MAX_GRACE_DAYS,
+            // Optional WhatsApp help number for members; normalised to E.164 below. (Left out by older clients: kept.)
+            'whatsapp_number' => ['sometimes', 'nullable', 'string', 'max:30', function (string $attr, mixed $value, \Closure $fail) {
+                if (trim((string) $value) !== '' && WhatsAppNumber::normalise((string) $value) === null) {
+                    $fail('Enter a phone number WhatsApp can reach, e.g. 012-345 6789 or +60 12-345 6789.');
+                }
+            }],
             // Manual bank / DuitNow transfer (P2). Members see these, so plain text.
             'transfer_enabled' => 'boolean',
             'bank_name' => 'nullable|string|max:100',
@@ -59,6 +144,7 @@ class ClubBillingController extends Controller
             'gateway_fee' => 'gateway fee',
             'default_plan' => 'default plan',
             'gateway_fee_payer' => 'who pays the gateway fee',
+            'overdue_grace_days' => 'grace period',
             'bank_account_name' => 'account holder',
             'bank_account_no' => 'account number',
             'duitnow_id' => 'DuitNow ID',
@@ -102,6 +188,10 @@ class ClubBillingController extends Controller
             'default_plan' => $data['default_plan'],
             'gateway_fee_payer' => $data['gateway_fee_payer'],
             'gateway_fee_sen' => (int) round(((float) $data['gateway_fee']) * 100),
+            'overdue_grace_days' => (int) ($data['overdue_grace_days'] ?? $club->overdueGraceDays()),
+            'whatsapp_number' => array_key_exists('whatsapp_number', $data)
+                ? WhatsAppNumber::normalise($data['whatsapp_number'])
+                : $club->whatsapp_number,
         ];
 
         $old = $club->only(self::FIELDS);
@@ -113,7 +203,7 @@ class ClubBillingController extends Controller
 
         AuditService::log(
             'club.billing_updated',
-            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
+            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; overdue after '.$new['overdue_grace_days'].' day(s); WhatsApp help '.($new['whatsapp_number'] ? 'on' : 'off').'; bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
             $club,
             $club->id,
             $old,

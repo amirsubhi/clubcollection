@@ -23,52 +23,24 @@ export function IconBubble({ Icon, tone = "accent", size = 36, className }: { Ic
   );
 }
 
-const nodes: [number, number][] = [
-  [18, 30], [70, 14], [128, 42], [196, 20], [252, 58], [318, 26], [372, 64], [40, 96], [104, 118], [170, 92], [232, 128], [300, 104], [360, 140],
-  [22, 176], [88, 196], [150, 168], [214, 202], [282, 178], [344, 206], [392, 186],
-];
-const edges: [number, number][] = [
-  [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [0, 7], [7, 8], [8, 2], [8, 9], [9, 3], [9, 10], [10, 4], [10, 11], [11, 5], [11, 12], [12, 6],
-  [7, 13], [13, 14], [14, 8], [14, 15], [15, 9], [15, 16], [16, 10], [16, 17], [17, 11], [17, 18], [18, 12], [18, 19], [12, 19],
-];
-const hot = new Set([4, 9, 16]);
-
-/** Subtle network-node pattern for the pastel lavender hero surfaces. Decorative. */
-export function NodePattern({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice" className={cn("pointer-events-none absolute inset-0 h-full w-full text-primary", className)} aria-hidden>
-      <g stroke="currentColor" strokeOpacity="0.16" strokeWidth="1">
-        {edges.map(([a, b]) => (
-          <line key={`${a}-${b}`} x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]} />
-        ))}
-      </g>
-      {nodes.map(([x, y], i) =>
-        hot.has(i) ? (
-          <g key={i}>
-            <circle cx={x} cy={y} r="7" fill="currentColor" fillOpacity="0.12" />
-            <circle cx={x} cy={y} r="3" fill="currentColor" fillOpacity="0.45" />
-          </g>
-        ) : (
-          <circle key={i} cx={x} cy={y} r="2.4" fill="currentColor" fillOpacity="0.22" />
-        ),
-      )}
-    </svg>
-  );
-}
-
 const avatarTones = ["bg-accent text-accent-foreground", "bg-secondary text-foreground"];
 
+const PARTICLES = new Set(["bin", "binti", "a/l", "a/p"]);
+
+/** Same rule as App\Support\Initials: first letters (code points) of the first two words, skipping bin / binti / a/l / a/p. */
 export function initials(name: string) {
-  const parts = name.replace(/\b(bin|binti|a\/l|a\/p)\b/gi, "").split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+  const words = name.trim().split(/\s+/u).filter((w) => w !== "" && !PARTICLES.has(w.toLowerCase()));
+  const first = (w?: string) => (w ? (Array.from(w)[0] ?? "") : "");
+  return (first(words[0]) + first(words[1])).toUpperCase();
 }
 
-export function Avatar({ name, size = 36, className, ring }: { name: string; size?: 28 | 36 | 44; className?: string; ring?: boolean }) {
+/** initials: when the server already made them (App\Support\Initials, shared with the Blade pages). */
+export function Avatar({ name, initials: given, size = 36, className, ring }: { name: string; initials?: string; size?: 28 | 36 | 44; className?: string; ring?: boolean }) {
   const tone = avatarTones[[...name].reduce((s, c) => s + c.charCodeAt(0), 0) % avatarTones.length];
   const s = size === 28 ? "h-7 w-7 text-[11px]" : size === 36 ? "h-9 w-9 text-xs" : "h-11 w-11 text-sm";
   return (
     <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-bold", s, tone, ring && "ring-2 ring-card", className)} aria-hidden>
-      {initials(name)}
+      {given ?? initials(name)}
     </span>
   );
 }

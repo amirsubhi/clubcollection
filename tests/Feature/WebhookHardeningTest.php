@@ -424,7 +424,8 @@ class WebhookHardeningTest extends TestCase
     {
         $this->fakeToyyibConfirm();
         $p = $this->pending();
-        $p->forceFill(['status' => 'paid', 'paid_via' => 'transfer', 'paid_date' => now()->toDateString()])->save();
+        // Settled by a checked slip (the member sent it).
+        $p->forceFill(['status' => 'paid', 'paid_via' => 'transfer', 'paid_date' => now()->toDateString(), 'transfer_submitted_at' => now()])->save();
 
         foreach (['X-1', 'X-2', 'X-3'] as $txn) {
             $this->toyyibCallback($p->bill_code, $p->reference, ['transaction_id' => $txn])->assertOk();

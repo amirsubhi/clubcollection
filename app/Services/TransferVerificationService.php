@@ -6,7 +6,9 @@ use App\Mail\PaymentConfirmation;
 use App\Mail\TransferRejected;
 use App\Models\Club;
 use App\Models\Payment;
+use App\Models\PaymentBill;
 use App\Models\User;
+use App\Support\Payments\OpenFeeSet;
 use App\Support\Payments\OwnFeeRule;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -30,6 +32,11 @@ use Illuminate\Validation\ValidationException;
  *   own fee (a super admin may, so a single-admin club is not stuck). A member
  *   can never mark their own fee paid.
  * - Every transition locks the row, checks the status first and is audited.
+ * - "Bayar semua" (R1b): one slip and one reference (YURAN-G{oldest fee id})
+ *   for every open fee of the member in the club. The slip is kept on the
+ *   group (a payment_bills row, method 'transfer'); all its fees move to
+ *   pending_verification together, and approve / reject always apply to the
+ *   whole set, never to part of it.
  */
 class TransferVerificationService
 {
@@ -68,7 +75,7 @@ class TransferVerificationService
                 throw ValidationException::withMessages(['status' => $payment->status === 'paid' ? 'member.already_paid' : 'member.verifying']);
             }
 
-            if ($payment->attachments()->where('kind', 'proof_of_payment')->count() + count($files) > self::MAX_SLIPS_TOTAL) {
+            if ($this->slipsEverSent([$payment->id]) + count($files) > self::MAX_SLIPS_TOTAL) {
                 throw ValidationException::withMessages(['files' => 'member.slip_limit']);
             }
 
@@ -85,6 +92,8 @@ class TransferVerificationService
                 'transfer_date' => $date->toDateString(),
                 'transfer_ref' => $transferRef,
                 'transfer_submitted_at' => $submittedAt,
+                // A slip for this fee alone: no group.
+                'transfer_group_id' => null,
                 'rejection_reason' => null,
                 'verified_by' => null,
                 'verified_at' => null,
@@ -103,8 +112,87 @@ class TransferVerificationService
         }));
     }
 
+    /**
+     * One slip for a set of fees ("Bayar semua"). $paymentIds and $totalSen
+     * are what the member confirmed: they must still be exactly the member's
+     * open fees in the club, or nothing is stored (member.set_changed).
+     *
+     * @param  array<int, int>  $paymentIds
+     * @param  array<int, UploadedFile>  $files
+     */
+    public function submitGroup(Club $club, User $member, array $paymentIds, int $totalSen, array $files, string $transferDate, ?string $transferRef): PaymentBill
+    {
+        if (count($files) < 1 || count($files) > self::MAX_SLIPS) {
+            throw ValidationException::withMessages(['files' => 'member.slip_count']);
+        }
+        $date = Carbon::parse($transferDate)->startOfDay();
+        if ($date->gt(today()) || $date->lt(today()->subYear())) {
+            throw ValidationException::withMessages(['transfer_date' => 'member.transfer_date_invalid']);
+        }
+        $transferRef = ($ref = trim((string) $transferRef)) === '' ? null : $ref;
+
+        return $this->attachments->tracked(fn () => DB::transaction(function () use ($club, $member, $paymentIds, $totalSen, $files, $date, $transferRef) {
+            $club = Club::whereKey($club->id)->firstOrFail();
+            if (! $club->transferReady()) {
+                throw ValidationException::withMessages(['method' => 'member.transfer_unavailable']);
+            }
+
+            $fees = OpenFeeSet::query($club->id, $member->id)->lockForUpdate()->get();
+            if (! OpenFeeSet::matches($fees, $paymentIds, $totalSen)) {
+                throw ValidationException::withMessages(['status' => 'member.set_changed']);
+            }
+
+            if ($this->slipsEverSent($fees->pluck('id')->all()) + count($files) > self::MAX_SLIPS_TOTAL) {
+                throw ValidationException::withMessages(['files' => 'member.slip_limit']);
+            }
+
+            $submittedAt = now();
+            $group = PaymentBill::create([
+                'club_id' => $club->id,
+                'user_id' => $member->id,
+                'method' => 'transfer',
+                'reference' => PaymentBill::groupTransferReference($fees->first()->id),
+                'amount_sen' => $totalSen,
+            ]);
+            $group->payments()->attach($fees->mapWithKeys(fn (Payment $p) => [$p->id => ['amount_sen' => $p->amountSen()]])->all());
+
+            foreach ($files as $file) {
+                $this->attachments->store($group, $club->id, $file, 'proof_of_payment');
+            }
+            $group->attachments()->whereNull('frozen_at')->update(['frozen_at' => now()]);
+
+            foreach ($fees as $payment) {
+                $old = $this->snapshot($payment);
+                $payment->forceFill([
+                    'status' => 'pending_verification',
+                    'transfer_date' => $date->toDateString(),
+                    'transfer_ref' => $transferRef,
+                    'transfer_submitted_at' => $submittedAt,
+                    'transfer_group_id' => $group->id,
+                    'rejection_reason' => null,
+                    'verified_by' => null,
+                    'verified_at' => null,
+                ])->save();
+
+                AuditService::log(
+                    'payment.transfer_submitted',
+                    "Payment #{$payment->id}: transfer slip submitted by the member for {$fees->count()} fees at once ({$group->reference}, RM ".number_format($totalSen / 100, 2).", transfer date {$date->toDateString()}); awaiting verification.",
+                    $payment,
+                    $payment->club_id,
+                    $old,
+                    $this->snapshot($payment) + ['slips' => count($files), 'group' => $group->reference, 'payment_ids' => $fees->pluck('id')->all()]
+                );
+            }
+
+            return $group;
+        }));
+    }
+
     public function approve(Payment $payment, User $admin, string $paidDate, ?string $bankRef): Payment
     {
+        if ($group = $payment->openTransferGroup()) {
+            return $this->approveGroup($group, $admin, $paidDate, $bankRef);
+        }
         $this->assertCanVerify($payment, $admin);
         $bankRef = ($ref = trim((string) $bankRef)) === '' ? null : $ref;
 
@@ -153,6 +241,9 @@ class TransferVerificationService
 
     public function reject(Payment $payment, User $admin, string $reason): Payment
     {
+        if ($group = $payment->openTransferGroup()) {
+            return $this->rejectGroup($group, $admin, $reason);
+        }
         $this->assertCanVerify($payment, $admin);
         $reason = trim($reason);
         if (mb_strlen($reason) < 5) {
@@ -194,11 +285,196 @@ class TransferVerificationService
         return $payment;
     }
 
+    /** Approve every fee of a group slip at once; returns the oldest fee. */
+    private function approveGroup(PaymentBill $group, User $admin, string $paidDate, ?string $bankRef): Payment
+    {
+        $bankRef = ($ref = trim((string) $bankRef)) === '' ? null : $ref;
+
+        $fees = DB::transaction(function () use ($group, $admin, $paidDate, $bankRef) {
+            [$group, $fees] = $this->lockGroup($group, $admin);
+            $date = Carbon::parse($paidDate);
+            foreach ($fees as $payment) {
+                if ($payment->transfer_date && $date->lt($payment->transfer_date)) {
+                    throw ValidationException::withMessages(['paid_date' => 'The date received can\'t be before the member\'s transfer date ('.$payment->transfer_date->format('j M Y').').']);
+                }
+            }
+
+            $total = 'RM '.number_format($group->amount_sen / 100, 2);
+            $skipped = count($group->itemAmounts()) - $fees->count();
+            if ($skipped > 0) {
+                // Some fees were paid online while the slip was checked: their share is flagged for a refund.
+                $total .= ', '.$skipped.' fee(s) already paid online, approved RM '.number_format($fees->sum(fn (Payment $p) => $p->amountSen()) / 100, 2);
+            }
+            foreach ($fees as $payment) {
+                $old = $this->snapshot($payment);
+                $payment->forceFill([
+                    'status' => 'paid',
+                    'paid_date' => $date->toDateString(),
+                    'paid_via' => 'transfer',
+                    'gateway' => null,
+                    'transfer_bank_ref' => $bankRef,
+                    'verified_by' => $admin->id,
+                    'verified_at' => now(),
+                    'fee_absorbed_sen' => 0,
+                    'rejection_reason' => null,
+                ])->save();
+
+                AuditService::log(
+                    'payment.transfer_approved',
+                    "Payment #{$payment->id}: transfer slip {$group->reference} ({$fees->count()} fees, {$total}) approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}).",
+                    $payment,
+                    $payment->club_id,
+                    $old,
+                    $this->snapshot($payment) + ['group' => $group->reference]
+                );
+            }
+            $group->forceFill(['paid_at' => now()])->save();
+
+            return $fees;
+        });
+
+        $fees->load(['user', 'club']);
+        $lead = $fees->first();
+        try {
+            Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $group));
+        } catch (\Throwable $e) {
+            Log::error('Payment confirmation email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
+        }
+
+        return $lead;
+    }
+
+    /** Reject a group slip: every fee goes back to pending with the reason. Returns the oldest fee. */
+    private function rejectGroup(PaymentBill $group, User $admin, string $reason): Payment
+    {
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 5) {
+            throw ValidationException::withMessages(['reason' => 'Give a reason (at least 5 characters) so the member knows what to fix.']);
+        }
+
+        $fees = DB::transaction(function () use ($group, $admin, $reason) {
+            // A set where a fee changed meanwhile (e.g. paid online) can still be
+            // rejected: the fees still being checked go back to pending.
+            [$group, $fees] = $this->lockGroup($group, $admin, requireIntact: false);
+            foreach ($fees as $payment) {
+                $old = $this->snapshot($payment);
+                $payment->forceFill([
+                    'status' => 'pending',
+                    'rejection_reason' => $reason,
+                    'verified_by' => $admin->id,
+                    'verified_at' => now(),
+                    // The set is closed; a later slip starts afresh.
+                    'transfer_group_id' => null,
+                ])->save();
+
+                AuditService::log(
+                    'payment.transfer_rejected',
+                    "Payment #{$payment->id}: transfer slip {$group->reference} ({$fees->count()} fees) rejected: {$reason}",
+                    $payment,
+                    $payment->club_id,
+                    $old,
+                    $this->snapshot($payment) + ['reason' => $reason, 'group' => $group->reference]
+                );
+            }
+            $group->forceFill(['superseded_at' => now()])->save();
+
+            return $fees;
+        });
+
+        $fees->load(['user', 'club']);
+        $lead = $fees->first();
+        if ($lead) {
+            try {
+                Mail::to($lead->user->email)->send(new TransferRejected($lead, $fees, $group));
+            } catch (\Throwable $e) {
+                Log::error('Transfer rejected email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $lead ?? Payment::findOrFail(array_key_first($group->itemAmounts()));
+    }
+
+    /**
+     * Lock a group and its fees and check $admin may decide it. With
+     * $requireIntact, every fee must still be waiting at its billed amount
+     * (approve is all-or-nothing); otherwise only the waiting fees are returned.
+     *
+     * @return array{0: PaymentBill, 1: \Illuminate\Support\Collection<int, Payment>}
+     */
+    private function lockGroup(PaymentBill $group, User $admin, bool $requireIntact = true): array
+    {
+        $group = PaymentBill::whereKey($group->id)->lockForUpdate()->firstOrFail();
+        if (! $group->isOpen()) {
+            throw ValidationException::withMessages(['status' => 'This slip was already handled by another admin.']);
+        }
+        $amounts = $group->itemAmounts();
+        $fees = Payment::whereIn('id', array_keys($amounts))->orderBy('due_date')->orderBy('period_start')->orderBy('id')->lockForUpdate()->get();
+        foreach ($fees as $payment) {
+            $this->assertCanVerify($payment, $admin);
+        }
+        // Only fees whose current slip is this group's: a fee that left the set and
+        // was later sent on its own slip is never decided here.
+        $inGroup = fn (Payment $p) => (int) $p->transfer_group_id === (int) $group->id;
+        $waiting = $fees->filter(fn (Payment $p) => $p->status === 'pending_verification' && $inGroup($p))->values();
+        if ($requireIntact) {
+            // While a slip is checked the admin pages freeze the fee, so the only
+            // way a fee leaves the set is a gateway payment that arrived meanwhile
+            // (the webhook settles it and flags the member's refund of its share).
+            // Approve then covers the fees still waiting; anything else blocks it.
+            $paidOnline = fn (Payment $p) => $p->status === 'paid' && ! in_array($p->paid_via, [null, 'transfer', 'cash', 'manual'], true);
+            $intact = $fees->count() === count($amounts) && $waiting->isNotEmpty()
+                && $fees->every(fn (Payment $p) => $paidOnline($p)
+                    || ($p->status === 'pending_verification' && $inGroup($p) && $p->amountSen() === ($amounts[$p->id] ?? -1)));
+            if (! $intact) {
+                throw ValidationException::withMessages(['status' => 'A fee in this set changed after the slip was sent. Reject the set so the member can send a new slip.']);
+            }
+        } elseif ($waiting->isEmpty()) {
+            throw ValidationException::withMessages(['status' => 'This slip was already handled by another admin.']);
+        }
+
+        return [$group, $waiting];
+    }
+
+    /**
+     * Slips ever sent for these fees, on their own or in any group slip that
+     * covers one of them (rejected ones included), for MAX_SLIPS_TOTAL.
+     *
+     * @param  array<int, int>  $paymentIds
+     */
+    private function slipsEverSent(array $paymentIds): int
+    {
+        $groupIds = \Illuminate\Support\Facades\DB::table('payment_bill_items')
+            ->join('payment_bills', 'payment_bills.id', '=', 'payment_bill_items.payment_bill_id')
+            ->where('payment_bills.method', 'transfer')
+            ->whereIn('payment_bill_items.payment_id', $paymentIds)
+            ->distinct()->pluck('payment_bills.id');
+
+        return \App\Models\Attachment::query()->where('kind', 'proof_of_payment')
+            ->where(fn ($q) => $q->where(fn ($q) => $q->where('attachable_type', Payment::class)->whereIn('attachable_id', $paymentIds))
+                ->orWhere(fn ($q) => $q->where('attachable_type', PaymentBill::class)->whereIn('attachable_id', $groupIds)))
+            ->count();
+    }
+
+    /**
+     * The other fees of a group slip, for the own-fee rule: an admin may not
+     * decide a set that holds any fee of their own.
+     *
+     * @return \Illuminate\Support\Collection<int, Payment>
+     */
+    private function groupFees(Payment $payment)
+    {
+        $group = $payment->openTransferGroup();
+
+        return $group ? Payment::whereIn('id', array_keys($group->itemAmounts()))->get() : collect([$payment]);
+    }
+
     /** Why $admin may not approve or reject $payment's slip, or null when they may. Status is not checked. */
     public function blocker(Payment $payment, User $admin): ?string
     {
-        if ($own = OwnFeeRule::blocker($payment, $admin)) {
-            return $own;
+        foreach ($this->groupFees($payment) as $fee) {
+            if ($own = OwnFeeRule::blocker($fee, $admin)) {
+                return $own;
+            }
         }
         $club = $payment->club ?? Club::find($payment->club_id);
         if (! $club || ! app(FundUsageService::class)->isClubAdmin($club, $admin)) {

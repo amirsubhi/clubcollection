@@ -2,6 +2,7 @@ import * as React from "react";
 import { getNonce } from "get-nonce";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
+import { joinIds, useFieldState } from "@/components/ui/field-context";
 import { cn } from "@/lib/utils";
 
 export const Select = SelectPrimitive.Root;
@@ -11,23 +12,31 @@ export const SelectGroup = SelectPrimitive.Group;
 export const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & { invalid?: boolean }
->(({ className, children, invalid, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    aria-invalid={invalid || undefined}
-    className={cn(
-      "flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-card px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[placeholder]:text-muted-foreground [&>span]:truncate",
-      invalid && "border-danger",
-      className,
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-));
+>(({ className, children, invalid, id, "aria-describedby": describedBy, ...props }, ref) => {
+  // Inside a <Field>: linked to its label, hint/error and required state (a button cannot take `required`, so aria-required).
+  const field = useFieldState();
+  const bad = invalid ?? field.invalid;
+  return (
+    <SelectPrimitive.Trigger
+      ref={ref}
+      id={id ?? field.id}
+      aria-invalid={bad || undefined}
+      aria-required={field.required || undefined}
+      aria-describedby={joinIds(describedBy, field.describedBy)}
+      className={cn(
+        "flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-card px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[placeholder]:text-muted-foreground [&>span]:truncate",
+        bad && "border-danger",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <SelectPrimitive.Icon asChild>
+        <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+      </SelectPrimitive.Icon>
+    </SelectPrimitive.Trigger>
+  );
+});
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
 export const SelectContent = React.forwardRef<

@@ -2,377 +2,248 @@
 @section('title', 'Platform Statistics')
 @section('page-title', 'Platform Statistics')
 
+@php
+    $rm = fn (int $sen) => 'RM '.number_format($sen / 100, 2);
+@endphp
+
 @section('content')
+<p class="text-muted mb-4">Money figures are each club's fund figures added together (the same numbers as the club dashboards and ledgers): all time, up to {{ $asOf }}.</p>
 
-{{-- Row 1: Primary KPI Cards --}}
-<div class="row g-3 mb-3">
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-primary bg-opacity-10 rounded p-2">
-                    <i class="bi bi-building fs-4 text-primary"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1">{{ $totalClubs }}</div>
-                    <div class="text-muted small mt-1">Total Clubs</div>
-                    <div style="font-size:0.72rem" class="text-success">{{ $activeClubs }} active</div>
-                </div>
-            </div>
+{{-- Money --}}
+<section class="card shadow-sm mb-3 overflow-hidden" aria-labelledby="moneyTitle">
+    <h2 id="moneyTitle" class="visually-hidden">Fund figures, all clubs</h2>
+    <div class="stat-strip">
+        <div>
+            <span class="stat-label">Collected</span>
+            <span class="stat-value money" data-testid="stat-collected">{{ $rm($totals['collected']) }}</span>
+            <span class="stat-note">Fees paid, all time</span>
+        </div>
+        <div>
+            <span class="stat-label">Spent</span>
+            <span class="stat-value money" data-testid="stat-spent">{{ $rm($totals['spent']) }}</span>
+            <span class="stat-note">Expenses {{ $rm($totals['expenses']) }} · Welfare {{ $rm($totals['welfare']) }} · Bank / gateway charges {{ $rm($totals['charges']) }}</span>
+        </div>
+        <div>
+            <span class="stat-label">Fund balance</span>
+            <span class="stat-value money {{ $totals['balance'] < 0 ? 'text-danger' : '' }}" data-testid="stat-balance">{{ $totals['balance'] < 0 ? '−' : '' }}{{ $rm(abs($totals['balance'])) }}</span>
+            <span class="stat-note">Collected minus spent, as of {{ $asOf }}</span>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-success bg-opacity-10 rounded p-2">
-                    <i class="bi bi-people fs-4 text-success"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1">{{ $totalMembers }}</div>
-                    <div class="text-muted small mt-1">Total Members</div>
-                    <div style="font-size:0.72rem" class="text-muted">across all clubs</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-info bg-opacity-10 rounded p-2">
-                    <i class="bi bi-arrow-left-right fs-4 text-info"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1">{{ $totalPayments }}</div>
-                    <div class="text-muted small mt-1">Total Transactions</div>
-                    <div style="font-size:0.72rem" class="text-success">{{ $paidCount }} paid</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-success bg-opacity-10 rounded p-2">
-                    <i class="bi bi-cash-coin fs-4 text-success"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1 text-success">RM {{ number_format($totalRevenue, 2) }}</div>
-                    <div class="text-muted small mt-1">Total Revenue Collected</div>
-                    <div style="font-size:0.72rem" class="text-muted">all time</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
-{{-- Row 2: Secondary KPI Cards --}}
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-warning bg-opacity-10 rounded p-2">
-                    <i class="bi bi-hourglass-split fs-4 text-warning"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1 text-warning">{{ $pendingCount }}</div>
-                    <div class="text-muted small mt-1">Pending Payments</div>
-                    <div style="font-size:0.72rem" class="text-muted">awaiting payment</div>
-                </div>
-            </div>
-        </div>
+{{-- Counts --}}
+<section class="card shadow-sm mb-4 overflow-hidden" aria-labelledby="countsTitle">
+    <h2 id="countsTitle" class="visually-hidden">Clubs, members and fees</h2>
+    <div class="stat-strip">
+        <div><span class="stat-label">Clubs</span><span class="stat-value">{{ $totalClubs }}</span><span class="stat-note">{{ $activeClubs }} active</span></div>
+        <div><span class="stat-label">Members</span><span class="stat-value">{{ $totalMembers }}</span><span class="stat-note">across all clubs</span></div>
+        <div><span class="stat-label">Fee records</span><span class="stat-value">{{ $totalPayments }}</span><span class="stat-note">{{ $paidCount }} paid</span></div>
+        <div><span class="stat-label">Due</span><span class="stat-value">{{ $pendingCount }}</span><span class="stat-note">unpaid, within the grace period</span></div>
+        <div><span class="stat-label">Overdue</span><span class="stat-value">{{ $overdueCount }}</span><span class="stat-note">past the grace period</span></div>
+        <div><span class="stat-label">FPX in progress</span><span class="stat-value">{{ $processingCount }}</span><span class="stat-note">bank not confirmed yet</span></div>
+        <div><span class="stat-label">Awaiting verification</span><span class="stat-value">{{ $verifyingCount }}</span><span class="stat-note">transfer slips to check</span></div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-danger bg-opacity-10 rounded p-2">
-                    <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1 text-danger">{{ $overdueCount }}</div>
-                    <div class="text-muted small mt-1">Overdue Payments</div>
-                    <div style="font-size:0.72rem" class="text-danger">requires action</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="bg-danger bg-opacity-10 rounded p-2">
-                    <i class="bi bi-receipt fs-4 text-danger"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1 text-danger">RM {{ number_format($totalExpenses, 2) }}</div>
-                    <div class="text-muted small mt-1">Total Expenses</div>
-                    <div style="font-size:0.72rem" class="text-muted">all clubs</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3 p-3">
-                <div class="{{ $netBalance >= 0 ? 'bg-success' : 'bg-danger' }} bg-opacity-10 rounded p-2">
-                    <i class="bi bi-scale fs-4 {{ $netBalance >= 0 ? 'text-success' : 'text-danger' }}"></i>
-                </div>
-                <div>
-                    <div class="fs-3 fw-bold lh-1 {{ $netBalance >= 0 ? 'text-success' : 'text-danger' }}">
-                        RM {{ number_format(abs($netBalance), 2) }}
-                    </div>
-                    <div class="text-muted small mt-1">Net Balance</div>
-                    <div style="font-size:0.72rem" class="{{ $netBalance >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $netBalance >= 0 ? 'surplus' : 'deficit' }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
-{{-- Row 3: Revenue/Expense Trend + Payment Status --}}
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
-        <div class="card shadow-sm h-100">
-            <div class="card-header fw-semibold">Revenue vs Expenses — Last 12 Months (All Clubs)</div>
+        <section class="card shadow-sm h-100" aria-labelledby="trendTitle">
+            <div class="card-header"><h2 id="trendTitle" class="h6 m-0 fw-semibold">Collected vs spent, last 12 months (all clubs)</h2></div>
             <div class="card-body">
-                <canvas id="trendChart" height="110"></canvas>
+                <div style="position:relative;height:260px">
+                    <canvas id="trendChart" role="img" aria-label="Bar chart of money collected and spent per month for the last 12 months. The same figures are in the table below the chart."></canvas>
+                </div>
+                <details class="mt-3">
+                    <summary class="small fw-semibold">Show as table</summary>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm small mb-0" data-testid="trend-table">
+                            <caption class="visually-hidden">Collected and spent per month</caption>
+                            <thead><tr><th scope="col">Month</th><th scope="col" class="text-end">Collected</th><th scope="col" class="text-end">Spent</th></tr></thead>
+                            <tbody>
+                                @foreach($monthly as $m)
+                                <tr><th scope="row" class="fw-normal">{{ $m['label'] }}</th><td class="text-end money">{{ $rm($m['collected']) }}</td><td class="text-end money">{{ $rm($m['spent']) }}</td></tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
-        </div>
+        </section>
     </div>
     <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-header fw-semibold">Payment Status — All Time</div>
-            <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                <canvas id="statusChart" height="160" style="max-width:200px"></canvas>
-                <div class="mt-3 w-100">
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-success me-1">&nbsp;</span>Paid</span>
-                        <strong>{{ $paidCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-warning me-1">&nbsp;</span>Pending</span>
-                        <strong>{{ $pendingCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span><span class="badge bg-danger me-1">&nbsp;</span>Overdue</span>
-                        <strong>{{ $overdueCount }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between small">
-                        <span><span class="badge bg-info me-1">&nbsp;</span>Awaiting verification</span>
-                        <strong>{{ $verifyingCount }}</strong>
-                    </div>
-                </div>
+        <section class="card shadow-sm h-100" aria-labelledby="statusTitle">
+            <div class="card-header"><h2 id="statusTitle" class="h6 m-0 fw-semibold">Fee status, all time</h2></div>
+            <div class="card-body">
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Fee records by status',
+                    'testid' => 'status-bars',
+                    'rows' => collect([['Paid', $paidCount], ['Due', $pendingCount], ['Overdue', $overdueCount], ['FPX in progress', $processingCount], ['Awaiting verification', $verifyingCount]])
+                        ->map(fn ($r) => ['label' => $r[0], 'value' => $r[1], 'display' => number_format($r[1])])->all(),
+                ])
             </div>
-        </div>
+        </section>
     </div>
 </div>
 
-{{-- Row 4: Per-Club Revenue Chart + Job Level Distribution --}}
 <div class="row g-4 mb-4">
     <div class="col-lg-7">
-        <div class="card shadow-sm h-100">
-            <div class="card-header fw-semibold">Revenue by Club (All Time)</div>
+        <section class="card shadow-sm h-100" aria-labelledby="clubChartTitle">
+            <div class="card-header"><h2 id="clubChartTitle" class="h6 m-0 fw-semibold">Collected by club, all time</h2></div>
             <div class="card-body">
-                <canvas id="clubRevenueChart" height="160"></canvas>
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Money collected by each club',
+                    'testid' => 'club-bars',
+                    'rows' => $clubStats->map(fn ($c) => ['label' => $c->name, 'value' => $c->collected_sen, 'display' => $rm($c->collected_sen)])->values()->all(),
+                ])
             </div>
-        </div>
+        </section>
     </div>
     <div class="col-lg-5">
-        <div class="card shadow-sm h-100">
-            <div class="card-header fw-semibold">Member Distribution by Job Level</div>
-            <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                <canvas id="jobLevelChart" height="180" style="max-width:220px"></canvas>
-                <div class="mt-3 w-100">
-                    @foreach($jobLevelLabels as $key => $label)
-                    <div class="d-flex justify-content-between small mb-1">
-                        <span>{{ $label }}</span>
-                        <strong>{{ $jobLevelDistribution[$key] }}</strong>
-                    </div>
-                    @endforeach
-                </div>
+        <section class="card shadow-sm h-100" aria-labelledby="levelTitle">
+            <div class="card-header"><h2 id="levelTitle" class="h6 m-0 fw-semibold">Members by job level</h2></div>
+            <div class="card-body">
+                @include('admin.partials.bar-list', [
+                    'caption' => 'Members by job level',
+                    'testid' => 'level-bars',
+                    'rows' => collect($jobLevelLabels)->map(fn ($label, $key) => ['label' => $label, 'value' => (int) $jobLevelDistribution[$key], 'display' => number_format($jobLevelDistribution[$key])])->values()->all(),
+                ])
             </div>
-        </div>
+        </section>
     </div>
 </div>
 
-{{-- Row 5: Per-Club Breakdown Table --}}
-<div class="card shadow-sm mb-4">
-    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-        <span>Club Breakdown</span>
-        <span class="badge bg-secondary">{{ $clubStats->count() }} clubs</span>
+<section class="card shadow-sm mb-4" aria-labelledby="breakdownTitle">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 id="breakdownTitle" class="h6 m-0 fw-semibold">Club breakdown</h2>
+        <span class="small text-muted">{{ $clubStats->count() }} {{ \Illuminate\Support\Str::plural('club', $clubStats->count()) }}</span>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 small">
+        <table class="table table-hover align-middle mb-0 small" data-testid="club-breakdown">
             <thead class="table-light">
                 <tr>
                     <th scope="col">Club</th>
                     <th scope="col" class="text-end">Members</th>
-                    <th scope="col" class="text-end">Total Revenue</th>
-                    <th scope="col" class="text-end">Total Expenses</th>
-                    <th scope="col" class="text-end">Net</th>
+                    <th scope="col" class="text-end">Collected</th>
+                    <th scope="col" class="text-end">Spent</th>
+                    <th scope="col" class="text-end">Fund balance</th>
                     <th scope="col" class="text-end">Paid</th>
-                    <th scope="col" class="text-end">Pending</th>
+                    <th scope="col" class="text-end">Due</th>
                     <th scope="col" class="text-end">Overdue</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($clubStats as $club)
-                @php $net = $club->total_revenue - $club->total_expenses; @endphp
-                <tr>
-                    <td>
-                        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="fw-semibold text-decoration-none">
-                            {{ $club->name }}
-                        </a>
+                <tr data-club="{{ $club->id }}">
+                    <th scope="row" class="fw-normal">
+                        <a href="{{ route('admin.clubs.dashboard', $club) }}" class="fw-semibold">{{ $club->name }}</a>
                         @if(!$club->is_active)
-                        <span class="badge bg-secondary ms-1" style="font-size:0.65rem">inactive</span>
+                        <span class="badge bg-secondary ms-1">Inactive</span>
                         @endif
-                    </td>
+                    </th>
                     <td class="text-end">{{ $club->members_count }}</td>
-                    <td class="text-end text-success fw-semibold">RM {{ number_format($club->total_revenue, 2) }}</td>
-                    <td class="text-end text-danger">RM {{ number_format($club->total_expenses, 2) }}</td>
-                    <td class="text-end fw-semibold {{ $net >= 0 ? 'text-success' : 'text-danger' }}">
-                        RM {{ number_format(abs($net), 2) }}
-                        @if($net < 0)<small>(deficit)</small>@endif
-                    </td>
-                    <td class="text-end"><span class="badge bg-success">{{ $club->paid_count }}</span></td>
-                    <td class="text-end"><span class="badge bg-warning text-dark">{{ $club->pending_count }}</span></td>
-                    <td class="text-end"><span class="badge bg-danger">{{ $club->overdue_count }}</span></td>
+                    <td class="text-end money">{{ $rm($club->collected_sen) }}</td>
+                    <td class="text-end money">{{ $rm($club->spent_sen) }}</td>
+                    <td class="text-end money fw-semibold {{ $club->balance_sen < 0 ? 'text-danger' : '' }}">{{ $club->balance_sen < 0 ? '−' : '' }}{{ $rm(abs($club->balance_sen)) }}</td>
+                    <td class="text-end">{{ $club->paid_count }}</td>
+                    <td class="text-end">{{ $club->pending_count }}</td>
+                    <td class="text-end">{{ $club->overdue_count }}</td>
                 </tr>
                 @empty
-                <tr><td colspan="8" class="text-center text-muted py-4">No clubs found.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No clubs yet.</td></tr>
                 @endforelse
             </tbody>
             @if($clubStats->count() > 1)
             <tfoot class="table-light fw-semibold">
                 <tr>
-                    <td>Total</td>
+                    <th scope="row">Total</th>
                     <td class="text-end">{{ $clubStats->sum('members_count') }}</td>
-                    <td class="text-end text-success">RM {{ number_format($totalRevenue, 2) }}</td>
-                    <td class="text-end text-danger">RM {{ number_format($totalExpenses, 2) }}</td>
-                    <td class="text-end {{ $netBalance >= 0 ? 'text-success' : 'text-danger' }}">
-                        RM {{ number_format(abs($netBalance), 2) }}
-                    </td>
-                    <td class="text-end">{{ $paidCount }}</td>
-                    <td class="text-end">{{ $pendingCount }}</td>
-                    <td class="text-end">{{ $overdueCount }}</td>
+                    <td class="text-end money">{{ $rm($totals['collected']) }}</td>
+                    <td class="text-end money">{{ $rm($totals['spent']) }}</td>
+                    <td class="text-end money {{ $totals['balance'] < 0 ? 'text-danger' : '' }}">{{ $totals['balance'] < 0 ? '−' : '' }}{{ $rm(abs($totals['balance'])) }}</td>
+                    <td class="text-end">{{ $clubStats->sum('paid_count') }}</td>
+                    <td class="text-end">{{ $clubStats->sum('pending_count') }}</td>
+                    <td class="text-end">{{ $clubStats->sum('overdue_count') }}</td>
                 </tr>
             </tfoot>
             @endif
         </table>
     </div>
-</div>
+</section>
 
-{{-- Row 6: Recent Transactions --}}
-<div class="card shadow-sm">
-    <div class="card-header fw-semibold">Recent Transactions (Latest 10 Paid)</div>
-    <div class="list-group list-group-flush">
+<section class="card shadow-sm" aria-labelledby="recentTitle">
+    <div class="card-header"><h2 id="recentTitle" class="h6 m-0 fw-semibold">Latest 10 fees paid</h2></div>
+    <ul class="list-group list-group-flush">
         @forelse($recentTransactions as $p)
-        <div class="list-group-item py-2 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <div class="bg-success bg-opacity-10 rounded p-1" style="line-height:1">
-                    <i class="bi bi-check-circle-fill text-success"></i>
-                </div>
-                <div>
-                    <div class="small fw-semibold">{{ $p->user->name }}</div>
-                    <div class="text-muted" style="font-size:0.75rem">
-                        {{ $p->club->name }} &middot; {{ $p->paid_date?->format('d M Y') }}
-                        @if($p->reference)
-                        &middot; <span class="font-monospace">{{ $p->reference }}</span>
-                        @endif
-                    </div>
+        <li class="list-group-item py-2 d-flex justify-content-between align-items-center gap-3">
+            <div class="min-w-0">
+                <div class="fw-semibold">{{ $p->user?->name ?? 'Former member' }}</div>
+                <div class="small text-muted">
+                    {{ $p->club->name }} &middot; {{ $p->paid_date?->format('d M Y') }}
+                    @if($p->reference)
+                    &middot; <span class="font-monospace">{{ $p->reference }}</span>
+                    @endif
                 </div>
             </div>
-            <span class="text-success fw-semibold small">+RM {{ number_format($p->amount, 2) }}</span>
-        </div>
+            <span class="text-success fw-semibold money">+RM {{ number_format($p->amount, 2) }}</span>
+        </li>
         @empty
-        <div class="list-group-item text-muted text-center py-4">No transactions recorded yet.</div>
+        <li class="list-group-item text-muted text-center py-4">No fees paid yet.</li>
         @endforelse
-    </div>
-</div>
-
+    </ul>
+</section>
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" integrity="sha384-G436+Z2nlA8+PNoeRvWdxKbvOf8E/y+lYxqht2iBwNHTQDV5CJr3+AGVj8fGZi5t" crossorigin="anonymous"></script>
 <script nonce="{{ $cspNonce }}">
-// Revenue vs Expenses trend (last 12 months)
-const trendLabels   = @json(array_keys($monthlyRevenue));
-const revenueData   = @json(array_values($monthlyRevenue));
-const expenseData   = @json(array_values($monthlyExpenses));
-
-new Chart(document.getElementById('trendChart'), {
-    type: 'bar',
-    data: {
-        labels: trendLabels,
-        datasets: [
-            { label: 'Revenue (RM)',  data: revenueData,  backgroundColor: 'rgba(25,135,84,0.7)',  borderRadius: 4 },
-            { label: 'Expenses (RM)', data: expenseData,  backgroundColor: 'rgba(220,53,69,0.7)',   borderRadius: 4 },
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { position: 'bottom' } },
-        scales: { y: { beginAtZero: true } }
+(function () {
+    if (!window.Chart) return;
+    // Colours come from the theme tokens (tokens.css), so the charts follow light / dark.
+    const fallback = { '--chart-1-stroke': '91 79 207', '--chart-4': '249 203 211', '--chart-4-stroke': '184 64 90', '--chart-grid': '232 230 243', '--chart-axis': '95 92 122' };
+    function tok(name, alpha) {
+        const v = (getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback[name]).split(/\s+/).join(', ');
+        return alpha === undefined ? `rgb(${v})` : `rgba(${v}, ${alpha})`;
     }
-});
+    const rm = (v) => 'RM ' + Number(v).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const charts = [];
 
-// Payment status doughnut
-new Chart(document.getElementById('statusChart'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Paid', 'Pending', 'Overdue', 'Awaiting verification'],
-        datasets: [{
-            data: [{{ $paidCount }}, {{ $pendingCount }}, {{ $overdueCount }}, {{ $verifyingCount }}],
-            backgroundColor: ['#198754', '#ffc107', '#dc3545', '#0dcaf0']
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        cutout: '65%'
+    const monthly = @json($monthly);
+    charts.push([new Chart(document.getElementById('trendChart'), {
+        type: 'bar',
+        data: {
+            labels: monthly.map(m => m.label),
+            datasets: [
+                { label: 'Collected', data: monthly.map(m => m.collected / 100), borderRadius: 4 },
+                { label: 'Spent', data: monthly.map(m => m.spent / 100), borderRadius: 4 },
+            ],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${rm(c.parsed.y)}` } } },
+            scales: { y: { beginAtZero: true } },
+        },
+    }), (c) => {
+        // Same marks as the React CollectedSpentChart: collected solid lavender, spent a pale rose with its stroke.
+        c.data.datasets[0].backgroundColor = tok('--chart-1-stroke');
+        c.data.datasets[1].backgroundColor = tok('--chart-4', 0.55);
+        c.data.datasets[1].borderColor = tok('--chart-4-stroke');
+        c.data.datasets[1].borderWidth = 1.5;
+    }]);
+
+    function paint() {
+        Chart.defaults.color = tok('--chart-axis');
+        Chart.defaults.borderColor = tok('--chart-grid');
+        Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+        charts.forEach(([chart, colour]) => {
+            colour(chart);
+            Object.values(chart.options.scales || {}).forEach(s => { s.grid = { ...(s.grid || {}), color: tok('--chart-grid') }; s.ticks = { ...(s.ticks || {}), color: tok('--chart-axis') }; });
+            if (chart.options.plugins.legend) chart.options.plugins.legend.labels = { ...(chart.options.plugins.legend.labels || {}), color: tok('--chart-axis') };
+            chart.update();
+        });
     }
-});
-
-// Per-club revenue horizontal bar chart
-const clubLabels    = @json($clubStats->pluck('name')->values());
-const clubRevenue   = @json($clubStats->pluck('total_revenue')->values());
-
-new Chart(document.getElementById('clubRevenueChart'), {
-    type: 'bar',
-    data: {
-        labels: clubLabels,
-        datasets: [{
-            label: 'Revenue (RM)',
-            data: clubRevenue,
-            backgroundColor: 'rgba(13,110,253,0.7)',
-            borderRadius: 4
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true } }
-    }
-});
-
-// Job level distribution doughnut
-const jobLabels = @json($jobLevelChartLabels);
-const jobCounts = @json($jobLevelChartCounts);
-
-new Chart(document.getElementById('jobLevelChart'), {
-    type: 'doughnut',
-    data: {
-        labels: jobLabels,
-        datasets: [{
-            data: jobCounts,
-            backgroundColor: ['#0d6efd','#198754','#ffc107','#fd7e14','#dc3545']
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        cutout: '60%'
-    }
-});
+    paint();
+    // Theme switched (menu or OS): repaint with the new tokens.
+    new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+})();
 </script>
 @endpush
