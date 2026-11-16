@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\FrontendAssets;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
@@ -18,7 +19,7 @@ class SecurityHeaders
     public function handle(Request $request, Closure $next): Response
     {
         // Generate a per-request nonce for inline scripts/styles so we can
-        // drop 'unsafe-inline' from the CSP while keeping Bootstrap CDN scripts.
+        // drop 'unsafe-inline' from the CSP.
         $nonce = base64_encode(random_bytes(16));
         View::share('cspNonce', $nonce);
         // Vite's <script>/<link> tags (Inertia pages) carry the same nonce.
@@ -48,12 +49,19 @@ class SecurityHeaders
         // elements; all inline blocks use the nonce attribute. style-src-attr
         // allows inline style="" attributes only (Radix positioning, Recharts),
         // which cannot execute script.
-        // cdn.jsdelivr.net is still needed by the Bootstrap (Blade) layouts until
-        // they are migrated to Inertia; Google Fonts serve the Inertia root view.
-        $scriptSrc = ["'self'", 'https://cdn.jsdelivr.net', "'nonce-{$nonce}'"];
-        $styleSrc = ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', "'nonce-{$nonce}'"];
-        $fontSrc = ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com'];
+        // Fonts, Bootstrap, Bootstrap Icons and Chart.js are served from public/build
+        // (self-hosted, bundled by Vite). cdn.jsdelivr.net is allowed only when the
+        // build is missing or predates that, so the classic pages can fall back to
+        // the pinned jsDelivr copies (with SRI).
+        $scriptSrc = ["'self'", "'nonce-{$nonce}'"];
+        $styleSrc = ["'self'", "'nonce-{$nonce}'"];
+        $fontSrc = ["'self'"];
         $connectSrc = ["'self'"];
+        if (! FrontendAssets::classicBundled()) {
+            $scriptSrc[] = 'https://cdn.jsdelivr.net';
+            $styleSrc[] = 'https://cdn.jsdelivr.net';
+            $fontSrc[] = 'https://cdn.jsdelivr.net';
+        }
 
         // Local development only: allow the Vite dev server (npm run dev) for
         // scripts, styles and its HMR websocket.

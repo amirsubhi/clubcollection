@@ -24,8 +24,10 @@ const USERS = {
   adminB: "e2e.admin.b@clubportal.test",
 };
 const GATEWAY_HOST = "dev.toyyibpay.com"; // TOYYIBPAY_SANDBOX=true
-// Sandbox-only network noise: Google Fonts, and the Bootstrap CDN still used by the remaining legacy Blade pages.
-const IGNORED_HOSTS = (process.env.E2E_IGNORE_HOSTS || "fonts.googleapis.com,fonts.gstatic.com,cdn.jsdelivr.net").split(",").filter(Boolean);
+// Fonts, Bootstrap and Chart.js are served from public/build: a request to one of these hosts fails the run.
+const THIRD_PARTY_ASSET_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdn.jsdelivr.net"];
+// Hosts whose console errors and failed requests are ignored (none by default; comma-separated).
+const IGNORED_HOSTS = (process.env.E2E_IGNORE_HOSTS || "").split(",").filter(Boolean);
 const EXPENSE_SEN = 1234; // RM 12.34
 
 mkdirSync(OUT, { recursive: true });
@@ -105,6 +107,13 @@ function guard(page, label) {
     fail(`[${label}] console error on ${page.url()}: ${msg.text()} ${url}`);
   });
   page.on("pageerror", (err) => fail(`[${label}] uncaught error on ${page.url()}: ${err.message}`));
+  page.on("request", (req) => {
+    let host = "";
+    try {
+      host = new URL(req.url()).hostname;
+    } catch {}
+    if (THIRD_PARTY_ASSET_HOSTS.includes(host)) fail(`[${label}] third-party asset request on ${page.url()}: ${req.url()}`);
+  });
   page.on("requestfailed", (req) => {
     const err = req.failure()?.errorText || "";
     if (isIgnored(req.url()) || err.includes("ERR_ABORTED")) return;

@@ -100,16 +100,69 @@ class R1ePolishTest extends TestCase
             ->assertSee("only charges the portal can't see. Absorbed gateway fees are added automatically.", false);
     }
 
-    public function test_cdn_assets_carry_subresource_integrity(): void
+    public function test_cdn_fallback_assets_carry_subresource_integrity(): void
     {
-        $this->actingAsClubAdmin($this->club);
-        $html = $this->get(route('admin.clubs.members.index', $this->club))->assertOk()->getContent();
+        // No public/build (npm run build not uploaded): the classic pages fall back to the pinned jsDelivr copies.
+        $public = sys_get_temp_dir().'/cp-public-'.uniqid();
+        mkdir($public);
+        $this->app->usePublicPath($public);
 
-        preg_match_all('#<(?:link|script)[^>]+cdn\.jsdelivr\.net[^>]*>#', $html, $tags);
-        $this->assertNotEmpty($tags[0]);
-        foreach ($tags[0] as $tag) {
-            $this->assertMatchesRegularExpression('#integrity="sha384-[A-Za-z0-9+/=]{64}"#', $tag, $tag);
-            $this->assertStringContainsString('crossorigin="anonymous"', $tag);
+        try {
+            $this->actingAsClubAdmin($this->club);
+            $response = $this->get(route('admin.clubs.members.index', $this->club))->assertOk();
+            $html = $response->getContent();
+
+            preg_match_all('#<(?:link|script)[^>]+cdn\.jsdelivr\.net[^>]*>#', $html, $tags);
+            $this->assertCount(3, $tags[0]);
+            foreach ($tags[0] as $tag) {
+                $this->assertMatchesRegularExpression('#integrity="sha384-[A-Za-z0-9+/=]{64}"#', $tag, $tag);
+                $this->assertStringContainsString('crossorigin="anonymous"', $tag);
+            }
+            $this->assertStringContainsString('https://cdn.jsdelivr.net', (string) $response->headers->get('Content-Security-Policy'));
+        } finally {
+            @rmdir($public);
+        }
+    }
+
+    public function test_classic_pages_load_bootstrap_and_fonts_from_the_build_with_no_third_party_hosts(): void
+    {
+        // A build that bundles Bootstrap (resources/js/classic.ts) and the self-hosted fonts.
+        $this->withVite();
+        $public = sys_get_temp_dir().'/cp-public-'.uniqid();
+        mkdir($public.'/build', 0777, true);
+        $entry = fn (string $src, string $file, bool $isEntry = true) => [$src => ['file' => $file, 'src' => $src] + ($isEntry ? ['isEntry' => true] : [])];
+        file_put_contents($public.'/build/manifest.json', json_encode(
+            $entry('resources/css/classic.css', 'assets/classic.css')
+            + $entry('resources/css/bootstrap-theme.css', 'assets/bootstrap-theme.css')
+            + $entry('resources/js/classic.ts', 'assets/classic.js')
+            + $entry('resources/js/classic-charts.ts', 'assets/classic-charts.js')
+            + $entry(\App\Support\FrontendAssets::BODY_FONT, 'assets/jakarta.woff2', false)
+        ));
+        $this->app->usePublicPath($public);
+
+        try {
+            $this->actingAsClubAdmin($this->club);
+            $response = $this->get(route('admin.clubs.members.index', $this->club))->assertOk();
+            $html = $response->getContent();
+            $csp = (string) $response->headers->get('Content-Security-Policy');
+
+            $this->assertStringNotContainsString('cdn.jsdelivr.net', $html);
+            $this->assertStringNotContainsString('fonts.googleapis.com', $html);
+            $this->assertStringContainsString('build/assets/classic.css', $html);
+            $this->assertStringContainsString('build/assets/classic.js', $html);
+            $this->assertMatchesRegularExpression('#<link rel="preload" href="[^"]*build/assets/jakarta\.woff2" as="font" type="font/woff2" crossorigin>#', $html);
+            $this->assertStringNotContainsString('cdn.jsdelivr.net', $csp);
+            $this->assertStringNotContainsString('fonts.g', $csp);
+
+            $this->actingAsSuperAdmin();
+            $statistics = $this->get(route('admin.statistics'))->assertOk()->getContent();
+            $this->assertStringContainsString('build/assets/classic-charts.js', $statistics);
+            $this->assertStringNotContainsString('cdn.jsdelivr.net', $statistics);
+            $this->assertStringContainsString("window.cpWhenReady('chart'", $statistics);
+        } finally {
+            @unlink($public.'/build/manifest.json');
+            @rmdir($public.'/build');
+            @rmdir($public);
         }
     }
 

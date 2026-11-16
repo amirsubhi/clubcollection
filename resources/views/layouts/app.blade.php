@@ -6,7 +6,8 @@
 --}}
 @php
     $adminNav = \App\Support\Admin\AdminNav::forRequest(request());
-    $bsTheme = is_file(public_path('hot'))
+    $classicBundled = \App\Support\FrontendAssets::classicBundled();
+    $bsTheme = $classicBundled
         || (is_file($manifest = public_path('build/manifest.json'))
             && str_contains((string) file_get_contents($manifest), 'resources/css/bootstrap-theme.css'));
 @endphp
@@ -36,13 +37,24 @@
     </script>
     @include('partials.pwa-head')
     <title>@yield('title', 'Admin') · Club Portal</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Plus+Jakarta+Sans:wght@400..700&display=swap" rel="stylesheet">
-    @if ($bsTheme)
-        @vite(['resources/css/bootstrap-theme.css'])
+    {{-- Inline page scripts that need window.bootstrap or window.Chart start from here: the bundled copies are module scripts and run after them. --}}
+    <script nonce="{{ $cspNonce }}">
+        window.cpWhenReady = function (name, fn) {
+            if (name === 'chart' ? window.Chart : window.bootstrap) fn();
+            else document.addEventListener('cp:' + name + '-ready', fn, { once: true });
+        };
+    </script>
+    @if ($classicBundled)
+        {{-- Bootstrap, Bootstrap Icons and the self-hosted fonts, bundled by Vite (resources/css/classic.css, resources/js/classic.ts). --}}
+        @include('partials.font-preload')
+        @vite(['resources/css/classic.css', 'resources/css/bootstrap-theme.css', 'resources/js/classic.ts'])
+    @else
+        {{-- public/build is missing or predates the bundled Bootstrap: the pinned jsDelivr copies (the CSP allows jsDelivr only then). --}}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.min.css" integrity="sha384-nWN3KqaaVcbEsCjLSV+2jMjh62Iny/+mN3srM8TZeM8N6aj7eDl5wwYggjAJ4/sJ" crossorigin="anonymous">
+        @if ($bsTheme)
+            @vite(['resources/css/bootstrap-theme.css'])
+        @endif
     @endif
     {{-- Page structure only (Bootstrap variables), so the layout holds even when public/build is missing. --}}
     <style nonce="{{ $cspNonce }}">
@@ -248,7 +260,9 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+@unless ($classicBundled)
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+@endunless
 <script nonce="{{ $cspNonce }}">
 // Theme menu: same choices and storage as the React pages (cp-theme).
 (function () {

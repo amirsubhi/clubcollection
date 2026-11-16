@@ -4,7 +4,8 @@ import { Ban, Pencil, Send, ShieldCheck, Trash2, UserX, Users } from "lucide-rea
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { FundStatusBadge, FundTypeBadge } from "@/components/app/StatusBadges";
+import { FundStatusBadge } from "@/components/app/FundStatusBadge";
+import { FundTypeBadge } from "@/components/app/StatusBadges";
 import { AttachmentGallery } from "@/components/app/AttachmentGallery";
 import { AuditTimeline } from "@/components/app/AuditTimeline";
 import { ApprovalRail } from "@/components/app/ApprovalRail";

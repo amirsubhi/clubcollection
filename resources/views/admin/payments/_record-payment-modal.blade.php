@@ -147,7 +147,7 @@
 
     if (modal.dataset.oldId) {
         const btn = document.querySelector('[data-record-id="' + modal.dataset.oldId + '"]');
-        if (btn && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modal).show(btn);
+        if (btn) window.cpWhenReady('bootstrap', () => window.bootstrap.Modal.getOrCreateInstance(modal).show(btn));
     }
 })();
 </script>

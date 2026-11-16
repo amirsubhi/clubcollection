@@ -10,7 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryBar, CollectedSpentChart } from "@/components/app/Charts";
 import { LangToggle } from "@/components/app/MemberShell";
 import { Money } from "@/components/app/Money";
-import { FundStatusBadge, PaymentStatusBadge } from "@/components/app/StatusBadges";
+import { FundStatusBadge } from "@/components/app/FundStatusBadge";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { useLang, useT } from "@/lib/i18n";
 import type { CategorySlice, MonthPoint } from "@/types/domain";
@@ -37,7 +39,7 @@ export default function UiKit() {
   const { lang } = useLang();
   const t = useT();
   return (
-    <>
+    <TooltipProvider delayDuration={200}>
       <Head title="UI kit" />
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 py-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -145,6 +147,6 @@ export default function UiKit() {
           </CardContent>
         </Card>
       </main>
-    </>
+    </TooltipProvider>
   );
 }

@@ -1,0 +1,6 @@
+/*
+ * Bootstrap and Bootstrap Icons for the classic Blade pages (layouts/app.blade.php, the installer),
+ * bundled from npm instead of the jsDelivr CDN. bootstrap-theme.css loads after this and re-skins it.
+ */
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "bootstrap-icons/font/bootstrap-icons.min.css";

@@ -65,6 +65,11 @@ php artisan view:cache
 
 - Re-run `php artisan config:cache` whenever `.env` changes: a cached config ignores `.env`.
 - Bump `CACHE_VERSION` in `public/sw.js` for every release (see [PWA service worker](#pwa-service-worker-publicswjs)).
+- Always upload the fresh `public/build`. With an old or missing build, the classic admin pages load Bootstrap and
+  Chart.js from jsDelivr and the app shows system fonts until the new build is in place. Delete `public/hot` too: a
+  stray one makes the app think the bundle is present and removes jsDelivr from the CSP.
+- Install at the domain root (or a subdomain). Fonts and Bootstrap Icons are referenced as `/build/assets/...`, so a
+  subfolder install would not find them.
 - Read [CHANGELOG.md](../CHANGELOG.md) for new `.env` settings.
 - Use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84` on cPanel EasyApache) if `php` on the command line is older.
 - Never run `php artisan db:seed` on the server: the demo seeder refuses to run outside `local`/`testing`.

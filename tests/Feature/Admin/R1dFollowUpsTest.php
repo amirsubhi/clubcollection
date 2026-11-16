@@ -306,7 +306,8 @@ class R1dFollowUpsTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<script nonce="[^"]+">\s*\(function \(\) \{\s*var d = document\.documentElement[\s\S]*?cp-theme[\s\S]*?data-bs-theme/', $html);
         // The theme script runs before any stylesheet.
-        $this->assertLessThan(strpos($html, 'bootstrap.min.css'), strpos($html, "localStorage.getItem('cp-theme')"));
+        // (Bootstrap now comes from the build, absent under withoutVite; the layout's own <style> is always there.)
+        $this->assertLessThan(strpos($html, '<style nonce='), strpos($html, "localStorage.getItem('cp-theme')"));
         $this->assertStringNotContainsString('#0d6efd', $html);
         $this->assertStringNotContainsString('#16213e', $html);
     }

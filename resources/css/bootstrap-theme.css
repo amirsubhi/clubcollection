@@ -1,9 +1,10 @@
 @import "./tokens.css";
+@import "./fonts.css";
 
 /*
  * Bootstrap 5.3 re-skinned with the Lavender Ledger tokens, for the classic
- * Blade admin pages (layouts/app.blade.php). Bootstrap itself still comes from
- * the CDN; this file only maps its --bs-* variables (and a few component
+ * Blade admin pages (layouts/app.blade.php). Bootstrap itself is bundled from
+ * npm by classic.css; this file only maps its --bs-* variables (and a few component
  * variables) onto tokens.css, so light and dark follow the same saved theme
  * (cp-theme / prefers-color-scheme) as the React pages.
  *

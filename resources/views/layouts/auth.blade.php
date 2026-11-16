@@ -19,10 +19,8 @@
     </script>
     @include('partials.pwa-head')
     <title>@yield('title') · {{ config('app.name') }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Plus+Jakarta+Sans:wght@400..700&display=swap" rel="stylesheet">
     @if (is_file(public_path('build/manifest.json')) || is_file(public_path('hot')))
+        @include('partials.font-preload')
         @vite(['resources/css/app.css'])
     @else
         {{-- public/build is missing (npm run build not uploaded): a bare-bones look so signing in still works. --}}

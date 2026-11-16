@@ -20,8 +20,8 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 **Final review verdict:** GO.
 
 **Follow-ups (non-blocking):**
-- Stop sending `cdn.jsdelivr.net` in the CSP for Inertia responses; remove it entirely once Blade pages are migrated.
-- Self-host the fonts (removes Google hosts from the CSP; helps the A4 PWA).
+- ✅ Done in R3d: `cdn.jsdelivr.net` is only allowed when the jsDelivr fallback is in use (no `public/build`).
+- ✅ Done in R3d: fonts are self-hosted; Google hosts removed from the CSP.
 - Align `<html lang>` with the shared `locale` (members get `ms`).
 - Add a CI workflow: `npm ci && npm run typecheck && npm run build` plus `php artisan test`.
 - Add a production-environment test that `/dev/ui-kit` returns 404.
@@ -354,7 +354,7 @@ Follow-ups (non-blocking):
 - Welfare form reuses the expense description example.
 - Check audit-log filter alignment with the date echo at 768 px.
 - Move `slipSets`/`waitingSlipCount` from the controller into a Support class.
-- 🔴 Before go-live: open one Blade admin page against the real jsDelivr with devtools to confirm no SRI errors.
+- Only if deploying without `public/build` (jsDelivr fallback): open one Blade admin page with devtools and confirm no SRI errors. Normal deploys bundle Bootstrap and Chart.js.
 
 ### R2a follow-ups (non-blocking)
 - 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
@@ -386,4 +386,11 @@ Follow-ups (non-blocking):
 - Make the Name/Member cell a row header (`th scope="row"`) so each card is announced by name; add a caption to Payments.
 - Two-column card grid from md to xl to halve scrolling on tablets/small laptops.
 - Installer still uses px font sizes; `fund-meta.ts` `bm` fields may be dead (check in R3d).
+
+### R3d (performance)
+- Member pages no longer load the tooltip library; the entry chunk fell from 158.8 to 130.1 kB gzipped and member Home's total JS from 175 to 156 kB gzipped.
+- Fonts (Plus Jakarta Sans, Bricolage Grotesque, JetBrains Mono) are self-hosted from Fontsource (OFL-1.1) with the body font preloaded; Google Fonts removed.
+- Bootstrap 5.3.8, Bootstrap Icons 1.13.2 and Chart.js 4.6.1 are bundled by Vite for the classic pages; jsDelivr (pinned, with SRI) is only a fallback when `public/build` lacks the classic entries. Zero third-party requests in the normal path.
+- lodash-es, axios and qs remain (pulled in by `@inertiajs/core` and `laravel-precognition`); the i18n dictionary is still in the entry chunk.
+- R3d follow-ups: the service worker's static cache grows with each hashed build until `CACHE_VERSION` is bumped; the `$bsTheme` manifest check in `layouts/app.blade.php` could move into `FrontendAssets`; the legacy `bootstrap-icons.woff` ships unused.
 

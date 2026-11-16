@@ -84,7 +84,8 @@ amounts in the screenshots are made up.
 - **Front end:** member pages and the main admin pages (dashboard, Fund Usage, verifications, ledger, billing) use
   Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite. Sign-in pages are Blade with the same Tailwind
   styles. The remaining admin pages and the installer are Blade with Bootstrap 5 (re-skinned to the same look and
-  sidebar) loaded from jsDelivr with Subresource Integrity hashes.
+  sidebar), bundled by Vite from npm like the rest (jsDelivr with Subresource Integrity hashes only as a fallback
+  when `public/build` is missing). Fonts are self-hosted; no page calls a third-party host in normal use.
 - **Payments:** ToyyibPay and Billplz behind one gateway interface (per-club choice and credentials), plus manual
   bank / DuitNow transfer.
 - **Other:** `pragmarx/google2fa` (TOTP 2FA), `barryvdh/laravel-dompdf` (ledger PDF), Recharts (charts).
