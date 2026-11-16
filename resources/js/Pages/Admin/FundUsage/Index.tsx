@@ -191,7 +191,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
     <AdminLayout nav={nav} active="fund-usage" title="Fund Usage">
       <PageHeader
         title="Fund Usage"
-        eyebrow={`Penggunaan Dana · ${kpis.year}`}
+        eyebrow={`Year ${kpis.year}`}
         description="Every ringgit spent, with documents and a second-admin approval."
         actions={
           <>
@@ -235,7 +235,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
             {tabDefs.map((d) => (
               <FilterButton key={d.id} active={filters.tab === d.id} onClick={() => visit({ tab: d.id })}>
                 {d.label}
-                <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{tabCounts[d.id] ?? 0}</span>
+                <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{tabCounts[d.id] ?? 0}</span>
               </FilterButton>
             ))}
           </FilterGroup>
@@ -296,7 +296,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                       <TableRow key={r.id} className="cursor-pointer" onClick={() => router.visit(r.url)}>
                         <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(r.paidDate ?? r.invoiceDate)}</TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Link href={r.url} className="font-mono text-[13px] font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                          <Link href={r.url} className="font-mono text-[0.8125rem] font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
                             {r.ref}
                           </Link>
                         </TableCell>
@@ -330,7 +330,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                                 <Avatar name={r.approvedBy} size={28} ring />
                               </span>
                             ) : (
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-input bg-card text-[11px] text-muted-foreground ring-2 ring-card" title="Not approved yet">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-input bg-card text-xs text-muted-foreground ring-2 ring-card" title="Not approved yet">
                                 ?
                               </span>
                             )}
@@ -350,7 +350,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                     <Link href={r.url} className="flex items-start gap-3 px-3 py-3 hover:bg-muted/50">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-mono text-[13px] font-medium">{r.ref}</span>
+                          <span className="font-mono text-[0.8125rem] font-medium">{r.ref}</span>
                           <FundTypeBadge type={r.type} />
                         </div>
                         <div className="mt-1 line-clamp-2 text-sm">{r.description}</div>

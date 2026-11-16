@@ -169,7 +169,7 @@ function PendingBankPanel({ pending, urls }: { pending: PendingBank; urls: Props
           </p>
         </div>
         <StatusChip Icon={Hourglass} tone="warning" size="md">
-          Menunggu kelulusan
+          Awaiting approval
         </StatusChip>
       </div>
 
@@ -194,7 +194,7 @@ function PendingBankPanel({ pending, urls }: { pending: PendingBank; urls: Props
                 <td className="px-4 py-2 sm:pr-0">
                   <span className={cn(r.changed && "font-semibold")}>{show(r.requested)}</span>
                   {r.changed && (
-                    <span className="ml-2 inline-flex items-center rounded-full border border-warning/40 bg-warning-soft px-1.5 text-[11px] font-semibold text-warning-foreground">Changed</span>
+                    <span className="ml-2 inline-flex items-center rounded-full border border-warning/40 bg-warning-soft px-1.5 text-xs font-semibold text-warning-foreground">Changed</span>
                   )}
                 </td>
               </tr>
@@ -290,7 +290,7 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
   return (
     <AdminLayout nav={nav} active="billing" title="Billing settings" wide={false}>
       <PageHeader
-        eyebrow={`Tetapan bil · ${clubName}`}
+        eyebrow={`Billing settings · ${clubName}`}
         title="Billing settings"
         description="How members can pay: the plans they may choose, who pays the online gateway fee, and the club's bank details for transfers."
       />

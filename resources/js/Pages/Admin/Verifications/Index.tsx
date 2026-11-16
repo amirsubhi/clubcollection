@@ -469,7 +469,7 @@ function shortcutsBlocked(e: KeyboardEvent): boolean {
 const SHORTCUTS_KEY = "verifications.shortcuts";
 
 function Kbd({ children }: { children: React.ReactNode }) {
-  return <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-foreground">{children}</kbd>;
+  return <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground">{children}</kbd>;
 }
 
 function WaitingQueue({ pending, today }: { pending: PendingSlip[]; today: string }) {
@@ -814,7 +814,7 @@ export default function VerificationsIndex({ nav, club, tab: initialTab, pending
   return (
     <AdminLayout nav={nav} active="verifications" title="Payment verifications">
       <PageHeader
-        eyebrow="Pengesahan bayaran"
+        eyebrow="Bank transfers and DuitNow"
         title="Payment verifications"
         description="Members who paid by bank transfer or DuitNow sent these slips. Check each one against the club's bank statement, then approve or reject it."
         actions={
@@ -844,11 +844,11 @@ export default function VerificationsIndex({ nav, club, tab: initialTab, pending
       <FilterGroup aria-label="Show slips" className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:w-auto">
         <FilterButton active={tab === "pending"} onClick={() => setTab("pending")} className="min-h-10 flex-wrap whitespace-normal text-center">
           <Clock className="h-4 w-4" aria-hidden /> Waiting
-          <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{pending.length}</span>
+          <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{pending.length}</span>
         </FilterButton>
         <FilterButton active={tab === "handled"} onClick={() => setTab("handled")} className="min-h-10 flex-wrap whitespace-normal text-center">
           <BadgeCheck className="h-4 w-4" aria-hidden /> Recently handled
-          <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{handled.length}</span>
+          <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{handled.length}</span>
         </FilterButton>
       </FilterGroup>
 

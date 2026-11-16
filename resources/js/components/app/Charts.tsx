@@ -45,7 +45,7 @@ export function KpiTile({
         </div>
         {Icon && <IconBubble Icon={Icon} tone={tone} />}
       </div>
-      <div className="figure font-display text-[28px] font-bold leading-none tracking-tight lg:text-[30px]">{value}</div>
+      <div className="figure font-display text-[1.75rem] font-bold leading-none tracking-tight lg:text-[1.875rem]">{value}</div>
       {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         {delta && (

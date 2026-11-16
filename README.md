@@ -138,9 +138,11 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
    `APP_TIMEZONE=Asia/Kuala_Lumpur`, which the installer sets (UTC when unset, i.e. 4 pm in Malaysia). Dates on
    receipts, the ledger and the dashboard follow the same time zone. No queue worker is needed.
 
-> **Until the first real production install (the next release tag):** some columns were added by editing existing
-> migrations, so an existing database from an earlier build needs `php artisan migrate:fresh --force` (this deletes
-> all data). After that release, migrations will be additive only.
+> **The March 2026 GitHub release `v1.0.0` is superseded.** Do not upgrade a `v1.0.0` site in place: some columns
+> were added by editing existing migrations, so its database will not match. Install the next release tag fresh
+> instead (an existing database from an earlier build needs `php artisan migrate:fresh --force`, which deletes all
+> data). **From the first real install onwards, every schema change is a new, additive migration**; existing
+> migrations are never edited again.
 
 ## Payments
 

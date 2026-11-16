@@ -42,7 +42,7 @@ export function AttachmentGallery({ items, frozen }: { items: Attachment[]; froz
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
                 <AttachmentPreview a={a} thumb className="h-full w-full transition-transform group-hover:scale-[1.02]" title={`${kindLabel(a.kind)} preview`} />
                 {isPdf(a) && (
-                  <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-danger-on">
+                  <span className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-danger px-1.5 py-0.5 text-xs font-bold text-danger-on">
                     <FileText className="h-3 w-3" aria-hidden /> PDF
                   </span>
                 )}

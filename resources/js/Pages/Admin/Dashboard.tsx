@@ -89,15 +89,15 @@ const delta = (pct: number | null) => (pct === null ? undefined : `${pct >= 0 ? 
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? "Selamat pagi" : h < 19 ? "Selamat petang" : "Selamat malam";
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-/** Pengesahan bayaran: transfer slips members sent, oldest first. */
+/** Payment verifications: transfer slips members sent, oldest first. */
 function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
   return (
     <Panel
       title="Transfer slips"
-      sub={slips.count > 0 ? `${slips.count} waiting to be checked · Menunggu pengesahan` : "Nothing to check · Tiada slip menunggu"}
+      sub={slips.count > 0 ? `${slips.count} waiting to be checked` : "Nothing to check"}
       action={
         <Link href={url} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
           Check <ArrowRight className="h-4 w-4" aria-hidden />
@@ -135,7 +135,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
   return (
     <AdminLayout nav={nav} active="dashboard" title="Dashboard">
       <PageHeader
-        eyebrow={`Papan pemuka · ${year}`}
+        eyebrow={`Dashboard · ${year}`}
         title={`${greeting()}, ${greetingName.split(" ")[0]}`}
         description="Where the club fund stands today, and what needs a second pair of eyes."
         actions={
@@ -195,7 +195,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
           {(slips.count > 0 || slips.transferReady) && <SlipsPanel slips={slips} url={urls.verifications} />}
           <Panel
             title="Approvals queue"
-            sub="Menunggu kelulusan"
+            sub="Waiting for a second admin"
             action={
               <Link href={urls.fundUsage} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
                 All <ArrowRight className="h-4 w-4" aria-hidden />
@@ -258,7 +258,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
             <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>
               {kpis.gatewayFees.payer === "member" && kpis.gatewayFees.absorbedYtd === 0
-                ? "Gateway fees are paid by members (dibayar ahli)."
+                ? "Gateway fees are paid by members."
                 : `Bank / gateway charges: the club absorbed ${rm(kpis.gatewayFees.absorbedYtd)} in gateway fees on online payments. They are counted in spent.`}
             </span>
           </p>
@@ -317,7 +317,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                         {a.direction === "in" ? "+" : "−"}
                         {rm(a.amount)}
                       </span>
-                      <span className="text-[11px] font-medium text-muted-foreground">{a.direction === "in" ? "Money in" : "Money out"}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{a.direction === "in" ? "Money in" : "Money out"}</span>
                     </div>
                   </>
                 );

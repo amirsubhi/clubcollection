@@ -49,7 +49,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ToyyibPay sandbox: confirm the callback `amount` unit and whether customer-borne charges are included (alongside the `status` vs `status_id` check).
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
-- `bill_amount` was added to the existing migration because there is no live data; from v1.0 use additive migrations only.
+- `bill_amount` was added to the existing migration because there is no live data; from the first real install (next release tag) use additive migrations only.
 
 ## A3 — Fund Usage backend + Inertia pages (in review)
 
@@ -380,4 +380,10 @@ Follow-ups (non-blocking):
 - The thumb route serves full-size originals (no-store); add real resized thumbnails later.
 - Add a 300% zoom step for dense bank slips.
 - "Start reviewing" and the shortcut hint show from md up only.
+
+### R3c follow-ups (non-blocking)
+- Payments wrapper is a tab stop with nothing to scroll below 1200px; drop the tabindex there.
+- Make the Name/Member cell a row header (`th scope="row"`) so each card is announced by name; add a caption to Payments.
+- Two-column card grid from md to xl to halve scrolling on tablets/small laptops.
+- Installer still uses px font sizes; `fund-meta.ts` `bm` fields may be dead (check in R3d).
 

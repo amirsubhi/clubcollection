@@ -270,7 +270,7 @@ try {
     await a.page.locator('input[type="file"][multiple]').setInputFiles([pngPath, pdfPath]);
     for (const [file, kind] of [["e2e-receipt.png", "Receipt"], ["e2e-invoice.pdf", "Invoice"]]) {
       await a.page.getByLabel(`Kind of ${file}`).click();
-      await a.page.getByRole("option", { name: new RegExp(`^${kind} ·`) }).click();
+      await a.page.getByRole("option", { name: kind, exact: true }).click();
     }
     await shot(a.page, "b3-create-filled");
     await Promise.all([a.page.waitForURL(/\/admin\/fund-usage\/\d+$/), a.page.getByRole("button", { name: "Submit for approval" }).click()]);

@@ -202,4 +202,45 @@ class BladeAccessibilityTest extends TestCase
         $this->assertStringContainsString('Something failed.', $x->query('//*[@role="alert"]')->item(0)->textContent);
         $this->assertStringContainsString('Saved.', $x->query('//*[@role="status"]')->item(0)->textContent);
     }
+
+    /** R3c: on phones Members and Payments rows become cards with labelled values, and row actions are words, not bare icons. */
+    public function test_members_and_payments_rows_stack_with_labelled_actions(): void
+    {
+        $this->actingAsClubAdmin($this->club);
+        $member = User::factory()->create(['name' => 'Siti Contoh']);
+        $this->club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => '2026-01-05', 'is_active' => true]);
+        Payment::factory()->forClub($this->club)->forMember($member)->pending()->create();
+
+        $x = $this->dom($this->get(route('admin.clubs.members.index', $this->club))->assertOk()->getContent());
+        $this->assertSame(1, $x->query('//table[contains(@class,"table-stack")]')->length);
+        // The wrapper contains the visually hidden thead, so the page never scrolls sideways at md+.
+        $this->assertSame(1, $x->query('//div[contains(@class,"table-responsive") and contains(@class,"position-relative")]/table[contains(@class,"table-stack")]')->length);
+        // Explicit roles keep table semantics once the rows are display:block (Safari).
+        $this->assertSame(1, $x->query('//table[@role="table"]/tbody[@role="rowgroup"]')->length);
+        $row = $x->query('//tr[td[contains(.,"Siti Contoh")]]')->item(0);
+        $this->assertSame('row', $row->getAttribute('role'));
+        $this->assertSame(0, $x->query('td[not(@role="cell")]', $row)->length);
+        $this->assertSame(['Email', 'Job level', 'Club role', 'Joined', 'Status'], array_map(fn ($td) => $td->getAttribute('data-label'), iterator_to_array($x->query('td[@data-label]', $row))));
+        $actions = preg_replace('/\s+/', ' ', $x->query('td[contains(@class,"stack-actions")]', $row)->item(0)->textContent);
+        $this->assertStringContainsString('Edit Siti Contoh', $actions);
+        $this->assertStringContainsString('Remove Siti Contoh', $actions);
+        $this->assertSame(1, $x->query('.//form[@method="POST"]/input[@name="_token"]', $row)->length);
+
+        $x = $this->dom($this->get(route('admin.clubs.payments.index', $this->club))->assertOk()->getContent());
+        $this->assertSame(1, $x->query('//table[contains(@class,"table-stack")]')->length);
+        $this->assertSame(0, $x->query('//*[@id="payments-scroll-hint"]')->length);
+        $this->assertGreaterThan(0, $x->query('//td[@data-label="Amount"]')->length);
+    }
+
+    /** R3c: "Forgot password?" comes after the password field, so Tab goes email → password. */
+    public function test_login_tab_order_goes_email_then_password(): void
+    {
+        $html = $this->get(route('login'))->assertOk()->getContent();
+        $email = strpos($html, 'id="email"');
+        $password = strpos($html, 'id="password"');
+        $forgot = strpos($html, route('password.request'));
+        $this->assertNotFalse($forgot);
+        $this->assertLessThan($password, $email);
+        $this->assertGreaterThan($password, $forgot);
+    }
 }

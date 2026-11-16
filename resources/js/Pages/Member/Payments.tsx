@@ -120,7 +120,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                       >
                         <input type="radio" name="frequency" value={p} checked={checked} disabled={disabled} onChange={() => form.setData("frequency", p)} className="sr-only" />
                         {p === defaultPlan && (
-                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">{t("recommended")}</span>
+                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">{t("recommended")}</span>
                         )}
                         <span className="text-base font-semibold">{t(`months_${PLAN_MONTHS[p]}`)}</span>
                         <span className="text-xs text-muted-foreground">{t(`freq_${p}`)}</span>
@@ -215,14 +215,14 @@ export default function Payments({ club, selectedYear, years, summary, payments,
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-[20px] bg-accent p-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2">
+        <div className="min-w-0 rounded-[20px] bg-accent p-4">
           <div className="text-sm font-medium text-accent-foreground">{fill(t("paidInYear"), { y: selectedYear })}</div>
-          <Money sen={summary.paid} className="figure font-display text-[26px] font-extrabold leading-tight" />
+          <Money sen={summary.paid} className="figure font-display text-[1.625rem] font-extrabold leading-tight !whitespace-normal [overflow-wrap:anywhere]" />
         </div>
-        <div className="rounded-[20px] border bg-card p-4">
+        <div className="min-w-0 rounded-[20px] border bg-card p-4">
           <div className="text-sm font-medium text-muted-foreground">{fill(t("owingInYear"), { y: selectedYear })}</div>
-          <Money sen={summary.due + summary.overdue} className="figure font-display text-[26px] font-extrabold leading-tight" />
+          <Money sen={summary.due + summary.overdue} className="figure font-display text-[1.625rem] font-extrabold leading-tight !whitespace-normal [overflow-wrap:anywhere]" />
         </div>
       </div>
 

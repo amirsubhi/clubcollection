@@ -218,7 +218,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <StatusChip Icon={ShieldCheck} tone="success" size="md">
             {t("successChip")}
           </StatusChip>
-          <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
+          <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("receiptEmailed")}</p>
         </div>
         {lines && <p className="-mt-2 text-center text-base font-semibold">{fill(t("paidTogether"), { n: lines.length })}</p>}
@@ -293,7 +293,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <StatusChip Icon={XCircle} tone="danger" size="md">
             {t("failedChip")}
           </StatusChip>
-          <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("failedTitle")}</h1>
+          <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("failedTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("failedReason")}</p>
         </div>
         {/* The return URL is unverified: say what we know (not received), never "no money was taken". */}
@@ -331,7 +331,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
         <StatusChip Icon={Clock} tone="warning" size="md">
           {t("processing")}
         </StatusChip>
-        <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("pendingTitle")}</h1>
+        <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("pendingTitle")}</h1>
         <p className="text-base text-muted-foreground">{t("pendingBody")}</p>
       </div>
       <div role="alert" className="flex items-start gap-3 rounded-[20px] border-2 border-warning bg-warning-soft p-4">

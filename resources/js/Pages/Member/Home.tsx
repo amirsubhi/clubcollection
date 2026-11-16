@@ -112,14 +112,21 @@ function Hero({
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={next.urls.billStatus ?? next.urls.invoice} className={cn(heroPrimary, "flex-[1_1_12rem]")} data-testid="check-status">
+        <div className="flex flex-col gap-3">
+          <Link href={next.urls.billStatus ?? next.urls.invoice} className={cn(heroPrimary, "w-full")} data-testid="check-status">
             <RefreshCw className="h-5 w-5" strokeWidth={2} aria-hidden /> {t("checkPaymentStatus")}
           </Link>
           {next.urls.review && (
-            <Link href={next.urls.review} className={cn(heroSecondary, "flex-[1_0_auto]")} data-testid="pay-again">
-              {t("payAgain")}
-            </Link>
+            <p className="text-base text-deep-foreground/85">
+              <span>{t("payAgainWarn")}</span>{" "}
+              <Link
+                href={next.urls.review}
+                className="inline-flex min-h-11 items-center rounded font-semibold text-deep-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="pay-again"
+              >
+                {t("payAgain")}
+              </Link>
+            </p>
           )}
         </div>
       </MemberCard>

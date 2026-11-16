@@ -82,6 +82,27 @@
             .admin-sidebar .offcanvas-body { width: 100%; }
             .admin-content { padding-top: 2rem; }
         }
+        /* .table-stack: below xl (the sidebar leaves too little room for all columns until then) each row becomes a card (label: value lines, actions underneath), so nothing scrolls sideways.
+           Trade-off: display:block drops table semantics in Safari, so the markup carries explicit table/rowgroup/row/cell
+           roles; the visible ::before labels get empty alt text ("/ ''") so screen readers hear the column header once, not twice.
+           At xl+ the actions cell may wrap instead of pushing buttons off to the right. */
+        @media (max-width: 1199.98px) {
+            .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+            .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+            .table-stack tr { padding: .875rem 1rem; border-bottom: 1px solid var(--bs-border-color); }
+            .table-stack tr:last-child { border-bottom: 0; }
+            .table-stack > :not(caption) > * > * { border-bottom-width: 0; padding: .25rem 0; }
+            .table-stack td { text-align: start !important; white-space: normal !important; min-width: 0 !important; overflow-wrap: anywhere; }
+            .table-stack td[data-label] { display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: baseline; }
+            .table-stack td[data-label]::before { content: attr(data-label); content: attr(data-label) / ""; flex: 0 0 6.5rem; font-weight: 600; font-size: .875rem; color: var(--bs-secondary-color); }
+            .table-stack td.stack-actions { padding-top: .625rem; }
+            .table-stack td.stack-actions > div { display: flex !important; flex-wrap: wrap; }
+            .table-stack td.stack-empty { text-align: center !important; }
+        }
+        @media (min-width: 1200px) {
+            .table-stack td.stack-actions { white-space: normal !important; min-width: 9.5rem; }
+            .table-stack td.stack-actions > div { flex-wrap: wrap; justify-content: flex-end; }
+        }
     </style>
     @stack('styles')
 </head>

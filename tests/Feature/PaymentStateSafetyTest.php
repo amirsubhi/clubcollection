@@ -433,7 +433,7 @@ class PaymentStateSafetyTest extends TestCase
 
         $res = $this->get(route('admin.clubs.payments.index', $this->club))->assertOk();
         $x = $this->dom($res->getContent());
-        $word = fn (Payment $p) => trim($x->query("//button[@data-record-id='{$p->id}']/ancestor::tr//td[contains(@class,'d-md-table-cell')]//span[@data-status]")->item(0)?->textContent ?? '');
+        $word = fn (Payment $p) => trim($x->query("//button[@data-record-id='{$p->id}']/ancestor::tr//td[contains(@class,'d-xl-table-cell')]//span[@data-status]")->item(0)?->textContent ?? '');
         $this->assertSame('Due', $word($due));
         $this->assertSame('Overdue', $word($overdue));
         $this->assertSame('FPX in progress', $word($processing));

@@ -59,7 +59,7 @@ function Brand({ collapsed, href, subtitle }: { collapsed?: boolean; href: strin
       <Logo />
       {!collapsed && (
         <span className="min-w-0">
-          <span className="block font-display text-[15px] font-extrabold leading-tight tracking-tight">Club Portal</span>
+          <span className="block font-display text-[0.9375rem] font-extrabold leading-tight tracking-tight">Club Portal</span>
           {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
         </span>
       )}
@@ -91,12 +91,12 @@ function NavList({ groups, active, collapsed }: { groups: AdminNavGroup[]; activ
                   {isActive && <span className="absolute -left-3 top-2 h-6 w-1 rounded-r-full bg-primary" aria-hidden />}
                   <it.Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
                   {!collapsed && <span className="truncate">{it.label}</span>}
-                  {!collapsed && it.disabled && <span className="ml-auto text-[11px]">soon</span>}
+                  {!collapsed && it.disabled && <span className="ml-auto text-xs">soon</span>}
                   {it.badge ? (
                     collapsed ? (
                       <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" aria-label={`${it.badge} waiting`} />
                     ) : (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">{it.badge}</span>
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">{it.badge}</span>
                     )
                   ) : null}
                 </>

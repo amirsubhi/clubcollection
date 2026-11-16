@@ -16,15 +16,14 @@
     </div>
 
     <div>
-        <div class="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3">
-            <label for="password" class="auth-label mb-0">{{ __('Password') }}</label>
-            @if (Route::has('password.request'))
-                <a href="{{ route('password.request') }}" class="auth-link text-sm">{{ __('Forgot password?') }}</a>
-            @endif
-        </div>
+        <label for="password" class="auth-label">{{ __('Password') }}</label>
         <input id="password" type="password" name="password" class="auth-input"
                required autocomplete="current-password"
                @error('password') aria-invalid="true" aria-describedby="auth-error" @enderror>
+        {{-- After the password field, so Tab goes email → password without a stop in between. --}}
+        @if (Route::has('password.request'))
+            <p class="mt-2 text-sm"><a href="{{ route('password.request') }}" class="auth-link inline-flex min-h-11 items-center">{{ __('Forgot password?') }}</a></p>
+        @endif
     </div>
 
     <label class="flex min-h-11 cursor-pointer items-center gap-3 text-base">

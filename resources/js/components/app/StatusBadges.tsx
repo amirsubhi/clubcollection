@@ -38,7 +38,7 @@ const fundIcon: Record<FundStatus, { Icon: LucideIcon; tone: ChipTone }> = {
   void: { Icon: Ban, tone: "danger" },
 };
 
-export function FundStatusBadge({ status, showBm = false, returned = false }: { status: FundStatus; showBm?: boolean; returned?: boolean }) {
+export function FundStatusBadge({ status, returned = false }: { status: FundStatus; returned?: boolean }) {
   const m = statusMeta[status];
   const { Icon, tone } = returned ? { Icon: Undo2, tone: "warning" as const } : fundIcon[status];
   const label = returned ? "Returned" : m.label;
@@ -49,7 +49,6 @@ export function FundStatusBadge({ status, showBm = false, returned = false }: { 
         <span tabIndex={0} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <StatusChip Icon={Icon} tone={tone}>
             {label}
-            {showBm && <span className="font-medium">· {bm}</span>}
           </StatusChip>
         </span>
       </TooltipTrigger>

@@ -226,7 +226,7 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
                     <SelectContent>
                       {attachmentKinds.map((k) => (
                         <SelectItem key={k.value} value={k.value}>
-                          {k.label} · {k.bm}
+                          {k.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -31,7 +31,7 @@ export function AuditTimeline({ events }: { events: AuditEvent[] }) {
             <div className="min-w-0 pt-0.5 text-sm">
               <div className="flex flex-wrap items-center gap-x-1.5">
                 <span className="font-semibold">{auditLabels[e.action]}</span>
-                {idx === 0 && <span className="rounded-full bg-accent px-1.5 text-[11px] font-semibold text-accent-foreground">Latest</span>}
+                {idx === 0 && <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground">Latest</span>}
               </div>
               <div className="text-muted-foreground">
                 {e.who}

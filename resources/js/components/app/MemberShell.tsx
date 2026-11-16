@@ -121,7 +121,7 @@ export function MemberShell({
         <div className="mx-auto flex max-w-md flex-col gap-5">{children}</div>
       </main>
       {!hideNav && (
-        <nav ref={navRef} aria-label="Member" className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pt-1.5 backdrop-blur">
+        <nav ref={navRef} aria-label={t("memberNav")} className="safe-x pb-safe-nav fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pt-1.5 backdrop-blur">
           <ul className="mx-auto grid max-w-md gap-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
             {visibleTabs.map(({ id, label, Icon }) => {
               const active = id === tab;

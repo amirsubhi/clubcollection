@@ -83,6 +83,7 @@ const dict = {
   monthlyTitle: { bm: "Kutipan & belanja bulanan", en: "Monthly collected & spent" },
   checkedAt: { bm: "Disemak", en: "Checked" },
   back: { bm: "Kembali", en: "Back" },
+  memberNav: { bm: "Navigasi ahli", en: "Member navigation" },
   overdueBadge: { bm: "Lewat", en: "Overdue" },
   statusDue: { bm: "Perlu dibayar", en: "Due" },
   statusProcessing: { bm: "Dalam proses", en: "In progress" },

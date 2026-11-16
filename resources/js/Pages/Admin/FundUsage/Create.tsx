@@ -189,7 +189,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
           </Link>
         }
         title={title}
-        description={isWelfare ? "Sumbangan kebajikan. A different admin must approve before it counts." : "Record spending with its documents. A different admin must approve before it counts."}
+        description={isWelfare ? "Welfare payout. A different admin must approve before it counts." : "Record spending with its documents. A different admin must approve before it counts."}
       />
 
       {item?.returned && item.returnReason && (
@@ -238,7 +238,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
                 onChange={(v) => form.setData("type", v)}
                 options={[
                   { value: "expense", label: "Expense", icon: <Receipt aria-hidden /> },
-                  { value: "welfare", label: "Welfare (kebajikan)", icon: <HandHeart aria-hidden /> },
+                  { value: "welfare", label: "Welfare", icon: <HandHeart aria-hidden /> },
                 ]}
               />
             </Field>
@@ -279,11 +279,11 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
           <Card>
             <CardHeader className="pb-2">
               <CardTitle>Welfare details</CardTitle>
-              <CardDescription>Butiran kebajikan. Stored encrypted; visible to admins only.</CardDescription>
+              <CardDescription>Welfare details. Stored encrypted; visible to admins only.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="beneficiary" label="Beneficiary member" required hint="Ahli yang menerima manfaat" error={err["welfare.beneficiary_user_id"]}>
+                <Field id="beneficiary" label="Beneficiary member" required hint="The member who receives the help" error={err["welfare.beneficiary_user_id"]}>
                   <Select value={d.welfare.beneficiary_user_id || undefined} onValueChange={(v) => setW("beneficiary_user_id", v)}>
                     <SelectTrigger id="beneficiary" invalid={!!err["welfare.beneficiary_user_id"]}>
                       <SelectValue placeholder="Choose member" />

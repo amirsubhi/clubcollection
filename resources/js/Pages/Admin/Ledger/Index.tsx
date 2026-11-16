@@ -284,7 +284,7 @@ function MonthlySection({ monthly, range, className }: { monthly: MonthRow[]; ra
         <CollectedSpentChart data={points} labels={{ collected: "Money in", spent: "Money out" }} windowLabel={range} showTable={false} height={260} />
       ) : (
         <div className="-mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full text-[13px] sm:min-w-[34rem] sm:text-sm">
+          <table className="w-full text-[0.8125rem] sm:min-w-[34rem] sm:text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th scope="col" className="px-4 py-2 font-semibold sm:pl-0">Month</th>
@@ -515,7 +515,7 @@ export default function LedgerIndex({ nav, clubName, filters, presets, maxMonths
   return (
     <AdminLayout nav={nav} active="ledger" title="Ledger">
       <PageHeader
-        eyebrow={`Lejar kewangan · ${clubName}`}
+        eyebrow={clubName}
         title="Ledger"
         description="Every ringgit in and out for the period, with the running balance. The same figures as the dashboard, ready for the AGM."
         actions={

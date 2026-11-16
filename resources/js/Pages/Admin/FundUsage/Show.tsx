@@ -207,12 +207,12 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
             Fund Usage
           </Link>
         }
-        title={<span className="font-mono text-[26px] font-medium tracking-normal sm:text-[30px]">{item.ref}</span>}
+        title={<span className="font-mono text-[1.625rem] font-medium tracking-normal sm:text-[1.875rem]">{item.ref}</span>}
         description={item.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <FundTypeBadge type={item.type} />
-            <FundStatusBadge status={item.status} showBm returned={item.returned} />
+            <FundStatusBadge status={item.status} returned={item.returned} />
           </div>
         }
       />
@@ -221,7 +221,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
         <Alert variant="warning">
           <UserX aria-hidden />
           <div>
-            <AlertTitle>Needs second approver · Perlu pelulus kedua</AlertTitle>
+            <AlertTitle>Needs second approver</AlertTitle>
             <AlertDescription>
               {item.recordedByMe ? "You recorded this, so another admin must approve it. " : ""}
               {eligibleApprovers === 0
@@ -255,7 +255,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
         <Alert variant="danger">
           <Ban aria-hidden />
           <div>
-            <AlertTitle>Voided · Dibatalkan</AlertTitle>
+            <AlertTitle>Voided</AlertTitle>
             <AlertDescription>
               {item.voidReason}. Requested by {item.voidRequestedBy}, confirmed by {item.voidApprovedBy}. Excluded from all totals.
             </AlertDescription>
@@ -269,14 +269,14 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
             <CardContent className="flex flex-col gap-5 p-4 pt-5 sm:p-6">
               <div className="flex flex-col gap-1 pr-24 sm:pr-36">
                 <span className="text-sm text-muted-foreground">{item.type === "welfare" ? "Welfare payout" : item.paidDate ? "Amount paid" : "Amount"}</span>
-                <Money sen={item.amount} className="figure font-display text-[40px] font-extrabold leading-none tracking-tight" />
+                <Money sen={item.amount} className="figure font-display text-[2.5rem] font-extrabold leading-none tracking-tight" />
                 <span className="text-sm">
                   to <span className="font-semibold">{fi.payee}</span> · {item.category}
                 </span>
               </div>
               {(item.status === "approved" || item.status === "void") && (
                 <Stamp key={item.status} tone={item.status === "void" ? "danger" : "success"} className="absolute right-4 top-6 sm:right-8 sm:top-8 sm:text-3xl">
-                  {item.status === "void" ? "Batal" : "Lulus"}
+                  {item.status === "void" ? "Void" : "Approved"}
                 </Stamp>
               )}
               <div className="rounded-lg border bg-muted/40 p-3 sm:p-4">
@@ -287,7 +287,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
                 <Row label="Paid to">{fi.payee}</Row>
                 {item.invoiceNo && (
                   <Row label="Invoice no.">
-                    <span className="font-mono text-[13px]">{item.invoiceNo}</span>
+                    <span className="font-mono text-[0.8125rem]">{item.invoiceNo}</span>
                   </Row>
                 )}
                 <Row label={item.type === "welfare" ? "Committee approval date" : "Invoice date"}>{fmtDate(item.invoiceDate)}</Row>
