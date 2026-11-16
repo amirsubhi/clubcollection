@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock,
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { KpiTile } from "@/components/app/Charts";
+import { KpiTile, SpentSplit } from "@/components/app/Charts";
 import { FundStatusBadge, FundTypeBadge, StatusChip } from "@/components/app/StatusBadges";
 import { Avatar } from "@/components/app/Visuals";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { statusMeta } from "@/lib/fund-meta";
 import { fmtDate, rm } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { AdminNavProps, FundRow, Option } from "@/types/admin";
+import type { AdminNavProps, FigureWindow, FundRow, Option } from "@/types/admin";
 import type { FundStatus } from "@/types/domain";
 
 type TabId = "all" | "expense" | "welfare" | "mine" | "void";
@@ -33,7 +33,22 @@ interface Filters {
 
 interface Props {
   nav: AdminNavProps;
-  kpis: { collectedYtd: number; spentYtd: number; welfareYtd: number; welfareCountYtd: number; balance: number; awaiting: number; awaitingMine: number; year: number };
+  /** FundFigures: same figures and windows as the dashboard. spentYtd = expenses + welfare + bank charges. */
+  kpis: {
+    window: FigureWindow;
+    collectedYtd: number;
+    spentYtd: number;
+    expensesYtd: number;
+    chargesYtd: number;
+    welfareYtd: number;
+    welfareCountYtd: number;
+    balance: number;
+    balanceAsOf: string;
+    awaiting: number;
+    awaitingSum: number;
+    awaitingMine: number;
+    year: number;
+  };
   tabCounts: Record<TabId, number>;
   filters: Filters;
   categories: Option[];
@@ -194,12 +209,24 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <KpiTile label="Collected (YTD)" value={rm(kpis.collectedYtd)} hint="Paid fees" Icon={Wallet} />
-        <KpiTile label="Spent (approved)" value={rm(kpis.spentYtd)} hint="Expenses only" Icon={TrendingDown} />
-        <KpiTile label="Welfare paid" value={rm(kpis.welfareYtd)} hint={`${kpis.welfareCountYtd} case${kpis.welfareCountYtd === 1 ? "" : "s"}`} Icon={HandHeart} />
-        <KpiTile label="Fund balance" value={rm(kpis.balance)} hint="All time, approved only" Icon={Landmark} />
-        <KpiTile label="Awaiting approval" value={`${kpis.awaiting}`} hint={`Menunggu kelulusan · ${kpis.awaitingMine} for you`} Icon={Clock} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTile label="Collected" window={kpis.window.range} value={rm(kpis.collectedYtd)} hint="Paid fees" Icon={Wallet} />
+        <KpiTile
+          label="Spent"
+          window={kpis.window.range}
+          value={rm(kpis.spentYtd)}
+          detail={<SpentSplit expenses={kpis.expensesYtd} welfare={kpis.welfareYtd} charges={kpis.chargesYtd} />}
+          hint={`Approved records + bank charges · ${kpis.welfareCountYtd} welfare case${kpis.welfareCountYtd === 1 ? "" : "s"}`}
+          Icon={TrendingDown}
+        />
+        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint="All fees collected minus everything spent" Icon={Landmark} />
+        <KpiTile
+          label="Awaiting approval"
+          window="Waiting now"
+          value={`${kpis.awaiting} record${kpis.awaiting === 1 ? "" : "s"}`}
+          hint={kpis.awaiting === 0 ? "Nothing to approve" : `${rm(kpis.awaitingSum)} · ${kpis.awaitingMine} for you`}
+          Icon={Clock}
+        />
       </div>
 
       <section className="flex min-w-0 flex-col gap-3">

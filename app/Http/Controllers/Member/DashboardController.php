@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
-use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Models\Payment;
-use App\Support\Admin\FundUsageStats;
+use App\Support\Admin\FundFigures;
 use App\Support\Member\MemberPaymentPresenter as P;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,37 +34,32 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('club_id');
 
-        // "Where your money goes": club-wide aggregates for this year only.
-        // Totals per club and per expense category; no descriptions, payees,
-        // receipts or other members' names leave the database.
-        $collected = Payment::whereIn('club_id', $clubIds)
-            ->where('status', 'paid')
-            ->whereYear('paid_date', $year)
-            ->selectRaw('club_id, SUM(amount) as total')
-            ->groupBy('club_id')
-            ->pluck('total', 'club_id');
+        // "Where your money goes": club-wide aggregates for this year so far,
+        // from FundFigures (the same figures the club's admins see). Totals per
+        // club and per expense category only; no descriptions, payees, receipts
+        // or other members' names leave the database.
+        $ytd = FundFigures::yearToDate();
+        $fundFor = function ($club) use ($ytd) {
+            $figures = new FundFigures($club);
+            $w = $figures->forWindow($ytd);
 
-        // Approved (counted) spending only: drafts, pending and void never show.
-        $spending = Expense::query()
-            ->counted()
-            ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
-            ->whereIn('expenses.club_id', $clubIds)
-            // By cash date (paid_date, else invoice date), as on the admin pages.
-            ->tap(fn ($q) => FundUsageStats::inRange($q, FundUsageStats::cashDate(), now()->startOfYear(), now()->endOfYear()))
-            ->selectRaw('expenses.club_id as club_id, expense_categories.name as category, SUM(expenses.amount) as total')
-            ->groupBy('expenses.club_id', 'expense_categories.name')
-            ->get()
-            ->groupBy('club_id');
+            return [
+                'window' => $w['window'],
+                'collected' => $w['collected'],
+                'spent' => $w['spent'],
+                'expenses' => $w['expenses'],
+                'welfare' => $w['welfare'],
+                'charges' => $w['charges'],
+                // Spending above what came in this year was paid from earlier savings.
+                'fromReserves' => max(0, $w['spent'] - $w['collected']),
+                'categories' => $figures->byCategoryBetween($ytd['from'], $ytd['to']),
+            ];
+        };
 
         $jobLevels = FeeRate::jobLevelLabels();
 
-        $clubCards = $clubs->map(function ($club) use ($rawStats, $collected, $spending, $jobLevels) {
+        $clubCards = $clubs->map(function ($club) use ($rawStats, $fundFor, $jobLevels) {
             $s = $rawStats[$club->id] ?? null;
-            $categories = collect($spending[$club->id] ?? [])
-                ->map(fn ($row) => ['name' => $row->category, 'amount' => P::sen($row->total)])
-                ->sortByDesc('amount')
-                ->values();
-
             return [
                 'id' => $club->id,
                 'name' => $club->name,
@@ -79,11 +73,7 @@ class DashboardController extends Controller
                     'verifying' => (int) ($s->verifying_count ?? 0),
                     'totalPaid' => P::sen($s->total_paid ?? 0),
                 ],
-                'fund' => [
-                    'collected' => P::sen($collected[$club->id] ?? 0),
-                    'spent' => $categories->sum('amount'),
-                    'categories' => $categories,
-                ],
+                'fund' => $fundFor($club),
             ];
         })->values();
 

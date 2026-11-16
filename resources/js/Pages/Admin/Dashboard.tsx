@@ -4,14 +4,14 @@ import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart,
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { CollectedSpentChart, KpiTile } from "@/components/app/Charts";
+import { CollectedSpentChart, KpiTile, SpentSplit } from "@/components/app/Charts";
 import { CategoryBar } from "@/components/app/CategoryBar";
 import { toSlices } from "@/components/app/MemberParts";
 import { FundStatusBadge, StatusChip } from "@/components/app/StatusBadges";
 import { Avatar, IconBubble, type Tone } from "@/components/app/Visuals";
 import { Button } from "@/components/ui/button";
 import { fmtDate, fmtDateTime, fmtPeriod, rm } from "@/lib/format";
-import type { AdminNavProps, FundRow } from "@/types/admin";
+import type { AdminNavProps, FigureWindow, FundRow } from "@/types/admin";
 import type { MonthPoint } from "@/types/domain";
 
 interface Activity {
@@ -33,8 +33,14 @@ interface Props {
   year: number;
   kpis: {
     balance: number;
+    balanceAsOf: string;
+    window: FigureWindow;
     collectedYtd: number;
+    /** Spent: approved expenses + welfare + absorbed bank / gateway charges (FundFigures). */
     spentYtd: number;
+    expensesYtd: number;
+    /** Gateway fees the club absorbed: bank charges, part of spentYtd. */
+    chargesYtd: number;
     collectedDeltaPct: number | null;
     spentDeltaPct: number | null;
     awaiting: { count: number; sum: number; mine: number };
@@ -43,6 +49,7 @@ interface Props {
     gatewayFees: { absorbedYtd: number; payer: "club" | "member"; perBill: number };
   };
   monthly: MonthPoint[];
+  monthlyWindow: FigureWindow;
   categories: { name: string; amount: number }[];
   queue: (FundRow & { canApprove: boolean })[];
   /** Transfer slips waiting for an admin (TransferVerificationController::card, without files). */
@@ -121,7 +128,7 @@ function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
   );
 }
 
-export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, categories, queue, slips, activity, urls }: Props) {
+export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
   const slices = toSlices(categories, { bm: "Lain-lain", en: "Others" });
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
   return (
@@ -132,11 +139,13 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
         description="Where the club fund stands today, and what needs a second pair of eyes."
         actions={
           <>
-            <Button asChild variant="outline">
-              <Link href={urls.awaitingMine}>
-                <Clock aria-hidden /> Review {kpis.awaiting.mine} waiting
-              </Link>
-            </Button>
+            {kpis.awaiting.mine > 0 && (
+              <Button asChild variant="outline">
+                <Link href={urls.awaitingMine}>
+                  <Clock aria-hidden /> Review {kpis.awaiting.mine} waiting
+                </Link>
+              </Button>
+            )}
             <Button asChild>
               <Link href={urls.createExpense}>
                 <FilePlus2 aria-hidden /> New expense
@@ -146,26 +155,39 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <KpiTile label="Fund balance" value={rm(kpis.balance)} hint="All time, approved spending only" Icon={Landmark} />
-        <KpiTile label="Collected this year" value={rm(kpis.collectedYtd)} delta={delta(kpis.collectedDeltaPct)} deltaGood={(kpis.collectedDeltaPct ?? 0) >= 0} hint={kpis.collectedDeltaPct === null ? "Paid fees" : "vs same period last year"} Icon={Wallet} />
-        <KpiTile label="Spent this year" value={rm(kpis.spentYtd)} delta={delta(kpis.spentDeltaPct)} deltaGood={(kpis.spentDeltaPct ?? 0) <= 0} hint={kpis.spentDeltaPct === null ? "Approved only" : "vs same period last year"} Icon={TrendingDown} />
-        <KpiTile label="Awaiting approval" value={`${kpis.awaiting.count} record${kpis.awaiting.count === 1 ? "" : "s"}`} hint={`${rm(kpis.awaiting.sum)} · ${kpis.awaiting.mine} need you`} Icon={Clock} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint="All fees collected minus everything spent" Icon={Landmark} />
         <KpiTile
-          label="Gateway fees this year"
-          value={rm(kpis.gatewayFees.absorbedYtd)}
-          hint={
-            kpis.gatewayFees.payer === "member" && kpis.gatewayFees.absorbedYtd === 0
-              ? "Paid by members (dibayar ahli)"
-              : "Absorbed by the club, online payments"
-          }
-          Icon={CreditCard}
+          label="Collected"
+          window={kpis.window.range}
+          value={rm(kpis.collectedYtd)}
+          delta={delta(kpis.collectedDeltaPct)}
+          deltaGood={(kpis.collectedDeltaPct ?? 0) >= 0}
+          hint={kpis.collectedDeltaPct === null ? "Paid fees" : "vs same days last year"}
+          Icon={Wallet}
+        />
+        <KpiTile
+          label="Spent"
+          window={kpis.window.range}
+          value={rm(kpis.spentYtd)}
+          detail={<SpentSplit expenses={kpis.expensesYtd} welfare={kpis.welfareYtd} charges={kpis.chargesYtd} />}
+          delta={delta(kpis.spentDeltaPct)}
+          deltaGood={(kpis.spentDeltaPct ?? 0) <= 0}
+          hint={kpis.spentDeltaPct === null ? "Approved records + bank charges" : "vs same days last year"}
+          Icon={TrendingDown}
+        />
+        <KpiTile
+          label="Awaiting approval"
+          window="Waiting now"
+          value={`${kpis.awaiting.count} record${kpis.awaiting.count === 1 ? "" : "s"}`}
+          hint={kpis.awaiting.count === 0 ? "Nothing to approve" : `${rm(kpis.awaiting.sum)} · ${kpis.awaiting.mine} need you`}
+          Icon={Clock}
         />
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
-        <Panel title="Collected vs spent" sub="Approved items only · last 12 months, RM per month" className="lg:col-span-2">
-          <CollectedSpentChart data={monthly} lang="en" height={280} />
+        <Panel title="Collected vs spent" sub={`${monthlyWindow.label} · RM per month · spent is approved expenses, welfare and bank charges`} className="lg:col-span-2">
+          <CollectedSpentChart data={monthly} lang="en" height={280} windowLabel={`${monthlyWindow.label} (${monthlyWindow.range})`} />
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-4">
@@ -219,28 +241,36 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
-        <Panel title="Where the money went" sub={`Share of approved spending, ${year}`}>
+        <Panel title="Where the money went" sub={`Share of spending · ${kpis.window.range}`}>
           {spentTotal > 0 ? (
             <>
               <CategoryBar slices={slices} lang="en" />
               <p className="text-sm text-muted-foreground">
-                {rm(spentTotal)} approved this year
+                {rm(spentTotal)} spent
                 {kpis.welfareCountYtd > 0 ? `, including ${rm(kpis.welfareYtd)} welfare (${kpis.welfareCountYtd} case${kpis.welfareCountYtd === 1 ? "" : "s"})` : ""}.
               </p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">No approved spending yet this year.</p>
           )}
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>
+              {kpis.gatewayFees.payer === "member" && kpis.gatewayFees.absorbedYtd === 0
+                ? "Gateway fees are paid by members (dibayar ahli)."
+                : `Bank / gateway charges: the club absorbed ${rm(kpis.gatewayFees.absorbedYtd)} in gateway fees on online payments. They are counted in spent.`}
+            </span>
+          </p>
           <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <a href={urls.ledger} className="font-semibold text-primary hover:underline">
+            <Link href={urls.ledger} className="font-semibold text-primary hover:underline">
               Ledger
-            </a>
+            </Link>
             <a href={urls.classic} className="font-semibold text-primary hover:underline">
               Monthly report (classic)
             </a>
-            <a href={urls.billing} className="font-semibold text-primary hover:underline">
+            <Link href={urls.billing} className="font-semibold text-primary hover:underline">
               Billing settings
-            </a>
+            </Link>
           </div>
         </Panel>
 

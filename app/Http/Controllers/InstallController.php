@@ -92,6 +92,7 @@ class InstallController extends Controller
             'APP_URL'  => rtrim($data['app_url'], '/'),
             'APP_ENV'  => 'production',
             'APP_DEBUG' => 'false',
+            'APP_TIMEZONE' => 'Asia/Kuala_Lumpur',
             'SESSION_SECURE_COOKIE' => $https ? 'true' : 'false',
             'LOG_LEVEL' => 'warning',
         ]);

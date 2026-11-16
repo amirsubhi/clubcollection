@@ -80,7 +80,9 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Dates (paid dates, "today", report windows) and the scheduler use this.
+    // Malaysian clubs: APP_TIMEZONE=Asia/Kuala_Lumpur (set by the install wizard).
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

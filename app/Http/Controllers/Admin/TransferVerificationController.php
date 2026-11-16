@@ -12,7 +12,7 @@ use App\Models\PaymentBill;
 use App\Services\TransferVerificationService;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundUsagePresenter;
-use App\Support\Admin\FundUsageStats;
+use App\Support\Admin\FundFigures;
 use App\Support\Member\MemberPaymentPresenter as P;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,7 +76,7 @@ class TransferVerificationController extends Controller
             ->values();
 
         return Inertia::render('Admin/Verifications/Index', [
-            'nav' => AdminNav::props($club, $user, (new FundUsageStats($club))->awaiting((int) $user->id)['mine']),
+            'nav' => AdminNav::props($club, $user, (new FundFigures($club))->awaiting((int) $user->id)['mine']),
             'club' => ['name' => $club->name, 'transferReady' => $club->transferReady()],
             'tab' => $request->query('tab') === 'handled' ? 'handled' : 'pending',
             'pending' => $pending,

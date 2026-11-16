@@ -145,6 +145,7 @@ APP_NAME="Club Portal"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://club.example.com        # the exact address members will type, with https://
+APP_TIMEZONE=Asia/Kuala_Lumpur          # dates, "today" and the 08:00 reminder run
 LOG_LEVEL=warning
 SESSION_SECURE_COOKIE=true
 
@@ -184,7 +185,7 @@ whoever reaches the page first still needs the token.
 2. Enter the **install token**, the application name and URL (the same `https://` address as `APP_URL`), and the
    super admin's name, email and password (12+ characters with upper and lower case, numbers and symbols).
 3. **Install Application** runs the migrations, creates the super admin, writes `APP_ENV=production`,
-   `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true` (for an https URL) and `LOG_LEVEL=warning`, creates
+   `APP_DEBUG=false`, `APP_TIMEZONE=Asia/Kuala_Lumpur`, `SESSION_SECURE_COOKIE=true` (for an https URL) and `LOG_LEVEL=warning`, creates
    `storage/app/.installed` and blanks the token. It can't run again afterwards.
 
 Never run `php artisan db:seed` on the server: the demo seeder refuses to run outside `local`/`testing` anyway.
@@ -248,8 +249,8 @@ cPanel → **Cron Jobs** → add one that runs **every minute**:
 ```
 
 Use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84`) if `php` is older. The scheduler runs the overdue-fee
-reminders (`payments:send-overdue-reminders`) daily at 08:00 in the app's time zone, which is **UTC**
-(`config/app.php`), so 4 pm Malaysia time.
+reminders (`payments:send-overdue-reminders`) daily at 08:00 in the app's time zone (`APP_TIMEZONE`). With the
+recommended `APP_TIMEZONE=Asia/Kuala_Lumpur` that is 8 am Malaysia time; without it the app uses UTC (4 pm in Malaysia).
 
 ---
 

@@ -8,7 +8,7 @@ use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundUsagePresenter as P;
-use App\Support\Admin\FundUsageStats as Stats;
+use App\Support\Admin\FundFigures as Figures;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -25,17 +25,14 @@ class DashboardController extends Controller
     public function index(Request $request, Club $club): Response
     {
         $me = (int) $request->user()->id;
-        $stats = new Stats($club);
-        $yearStart = now()->startOfYear();
-        $yearEnd = now()->endOfYear();
-        $lastYearStart = $yearStart->copy()->subYear();
-        $lastYearSameDay = now()->subYear();
-
-        $collected = $stats->collectedBetween($yearStart, $yearEnd);
-        $spent = $stats->spentBetween($yearStart, $yearEnd);
-        $collectedLast = $stats->collectedBetween($lastYearStart, $lastYearSameDay);
-        $spentLast = $stats->spentBetween($lastYearStart, $lastYearSameDay);
-        $awaiting = $stats->awaiting($me);
+        $figures = new Figures($club);
+        // Every figure on the page comes from FundFigures with its window.
+        $ytd = Figures::yearToDate();
+        $earlier = Figures::yearEarlier($ytd);
+        $now = $figures->forWindow($ytd);
+        $before = $figures->forWindow($earlier);
+        $awaiting = $figures->awaiting($me);
+        $chartWindow = Figures::lastMonths(12);
 
         $queue = Expense::query()->where('club_id', $club->id)->where('status', 'submitted')
             ->with(['category:id,name', 'recordedBy:id,name', 'approver:id,name', 'welfareCase:id,expense_id,beneficiary_user_id'])
@@ -62,24 +59,32 @@ class DashboardController extends Controller
             'greetingName' => $request->user()->name,
             'year' => now()->year,
             'kpis' => [
-                'balance' => $stats->balance(),
-                'collectedYtd' => $collected,
-                'spentYtd' => $spent,
-                'collectedDeltaPct' => $this->pct($collected, $collectedLast),
-                'spentDeltaPct' => $this->pct($spent, $spentLast),
+                // Today's baki dana: all collected minus all approved spending to date.
+                'balance' => $figures->balance(),
+                'balanceAsOf' => now()->toDateString(),
+                'window' => $now['window'],
+                'collectedYtd' => $now['collected'],
+                // Spent always includes welfare; the split is shown beside it.
+                'spentYtd' => $now['spent'],
+                'expensesYtd' => $now['expenses'],
+                'welfareYtd' => $now['welfare'],
+                // Gateway fees the club absorbed: bank charges, part of spent.
+                'chargesYtd' => $now['charges'],
+                'welfareCountYtd' => $now['welfareCount'],
+                'collectedDeltaPct' => $this->pct($now['collected'], $before['collected']),
+                'spentDeltaPct' => $this->pct($now['spent'], $before['spent']),
                 'awaiting' => $awaiting,
-                'welfareYtd' => $stats->spentBetween($yearStart, $yearEnd, 'welfare'),
-                'welfareCountYtd' => $stats->welfareCountBetween($yearStart, $yearEnd),
-                // Fees on online payments this year that the club absorbed; when
-                // members pay the fee the page shows "dibayar ahli" instead.
+                // Who bears the gateway fee; absorbed fees are counted in spent
+                // (chargesYtd). When members pay it the page says "dibayar ahli".
                 'gatewayFees' => [
-                    'absorbedYtd' => $stats->gatewayFeesAbsorbedBetween($yearStart, $yearEnd),
+                    'absorbedYtd' => $now['charges'],
                     'payer' => $club->gatewayFeePayer(),
                     'perBill' => $club->gatewayFeeSen(),
                 ],
             ],
-            'monthly' => $stats->monthly(12),
-            'categories' => $stats->byCategoryBetween($yearStart, $yearEnd),
+            'monthly' => $figures->monthly(12),
+            'monthlyWindow' => Figures::windowProps($chartWindow),
+            'categories' => $figures->byCategoryBetween($ytd['from'], $ytd['to']),
             'queue' => $queue,
             'slips' => $slips,
             'activity' => $this->recentActivity($club),
@@ -169,24 +174,25 @@ class DashboardController extends Controller
 
         // ── Income KPIs — 1 query ────────────────────────────────────────────
         $paid = $club->payments()->where('status', 'paid');
-        [$inMonth, $inYear] = Stats::sumByRanges($paid, 'paid_date', $periods);
+        [$inMonth, $inYear] = Figures::sumByRanges($paid, 'paid_date', $periods);
         $incomeThisMonth = $inMonth / 100;
         $incomeThisYear  = $inYear / 100;
         $incomeAllTime   = P::sen((clone $paid)->sum('amount')) / 100;
 
         // ── Expense KPIs (approved only) — 1 query ───────────────────────────
         $counted = $club->expenses()->counted();
-        [$outMonth, $outYear] = Stats::sumByRanges($counted, Stats::cashDate(), $periods);
+        [$outMonth, $outYear] = Figures::sumByRanges($counted, Figures::cashDate(), $periods);
         $expenseThisMonth = $outMonth / 100;
         $expenseThisYear  = $outYear / 100;
         $expenseAllTime   = P::sen((clone $counted)->sum('amount')) / 100;
 
-        $balance = (P::sen($incomeAllTime) - P::sen($expenseAllTime)) / 100;
+        // Fund balance as defined once in FundFigures (to date, approved spending of both types).
+        $balance = (new Figures($club))->balance() / 100;
 
         // ── Monthly trend charts — 2 queries ─────────────────────────────────
         $monthlyIncome  = [];
         $monthlyExpense = [];
-        foreach ((new Stats($club))->monthly(12) as $i => $row) {
+        foreach ((new Figures($club))->monthly(12) as $i => $row) {
             $label = now()->startOfMonth()->subMonthsNoOverflow(11 - $i)->format('M Y');
             $monthlyIncome[$label]  = $row['collected'] / 100;
             $monthlyExpense[$label] = $row['spent'] / 100;
@@ -209,7 +215,7 @@ class DashboardController extends Controller
 
         // ── Members paid vs unpaid this month ─────────────────────────────────
         // Two targeted queries instead of loading all members then filtering in PHP
-        $paidMemberIds = Stats::inRange($club->payments()->where('status', 'paid'), 'paid_date', $monthStart, $monthEnd)
+        $paidMemberIds = Figures::inRange($club->payments()->where('status', 'paid'), 'paid_date', $monthStart, $monthEnd)
             ->pluck('user_id');
 
         $paidMembers   = $club->members()->wherePivot('is_active', true)->whereIn('users.id', $paidMemberIds)->get();
@@ -219,7 +225,7 @@ class DashboardController extends Controller
         $jobLevels          = FeeRate::jobLevelLabels();
         $incomeByJobLevelRaw = $club->payments()
             ->where('payments.status', 'paid')
-            ->tap(fn ($q) => Stats::inRange($q, 'payments.paid_date', $monthStart, $monthEnd))
+            ->tap(fn ($q) => Figures::inRange($q, 'payments.paid_date', $monthStart, $monthEnd))
             ->join('club_user', function ($join) use ($club) {
                 $join->on('payments.user_id', '=', 'club_user.user_id')
                      ->where('club_user.club_id', '=', $club->id);
@@ -235,7 +241,7 @@ class DashboardController extends Controller
 
         // ── Expenses by category ──────────────────────────────────────────────
         $expenseByCategory = $club->expenseCategories()
-            ->withSum(['expenses as total' => fn($q) => Stats::inRange($q->counted(), Stats::cashDate(), $monthStart, $monthEnd)], 'amount')
+            ->withSum(['expenses as total' => fn($q) => Figures::inRange($q->counted(), Figures::cashDate(), $monthStart, $monthEnd)], 'amount')
             ->get();
 
         // ── Recent transactions ───────────────────────────────────────────────

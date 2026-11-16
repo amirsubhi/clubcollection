@@ -155,6 +155,12 @@ const dict = {
   nothingDue: { bm: "Tiada yuran perlu dibayar.", en: "Nothing due." },
   noRecent: { bm: "Belum ada bayaran.", en: "No payments yet." },
   moneyGoesYear: { bm: "Tahun {y} setakat ini, jumlah keseluruhan sahaja", en: "{y} so far, totals only" },
+  moneyGoesWindow: { bm: "{from} hingga {to}: item yang diluluskan dan caj bank", en: "{from} to {to}: approved items and bank charges" },
+  spentSplit: { bm: "Perbelanjaan {a} + Kebajikan {b} + Caj bank {c}", en: "Expenses {a} + Welfare {b} + Bank charges {c}" },
+  fromReserves: {
+    bm: "Perbelanjaan melebihi kutipan sebanyak {x}. Bezanya dibayar daripada simpanan kelab tahun-tahun lepas.",
+    en: "Spending is {x} more than was collected. The difference came from the club's savings from earlier years.",
+  },
   noSpending: { bm: "Belum ada perbelanjaan direkodkan tahun ini.", en: "No spending recorded this year yet." },
   others: { bm: "Lain-lain", en: "Others" },
   viewPayments: { bm: "Lihat bayaran", en: "View payments" },

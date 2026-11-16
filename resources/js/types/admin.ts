@@ -10,6 +10,17 @@ export interface AdminNavProps {
   logoutUrl: string;
 }
 
+/** FundFigures::windowProps(): the period a figure covers. */
+export interface FigureWindow {
+  key: string;
+  /** e.g. "This year so far", "Last 12 months". */
+  label: string;
+  /** e.g. "1 Jan – 15 Nov 2026". */
+  range: string;
+  from: string;
+  to: string;
+}
+
 /** FundUsagePresenter::row(): no welfare personal data. */
 export interface FundRow {
   id: number;

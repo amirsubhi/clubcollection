@@ -50,7 +50,19 @@ export interface HomeClub {
   role: string;
   paymentsUrl: string;
   summary: { paid: number; pending: number; overdue: number; verifying: number; totalPaid: Sen };
-  fund: { collected: Sen; spent: Sen; categories: FundCategory[] };
+  /** FundFigures for this year so far: the same figures the club's admins see. spent = expenses + welfare + charges. */
+  fund: {
+    window: { from: string; to: string; range: string };
+    collected: Sen;
+    spent: Sen;
+    expenses: Sen;
+    welfare: Sen;
+    /** Bank / gateway charges the club absorbed. */
+    charges: Sen;
+    /** Spending above what came in this year (paid from earlier savings); 0 when none. */
+    fromReserves: Sen;
+    categories: FundCategory[];
+  };
 }
 
 /** PaymentController::transferProps(): the club's bank details for a manual transfer. */

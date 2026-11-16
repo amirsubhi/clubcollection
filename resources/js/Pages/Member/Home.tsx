@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PiggyBank, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
@@ -8,7 +8,7 @@ import { Money } from "@/components/app/Money";
 import { CategoryBar } from "@/components/app/CategoryBar";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { rm } from "@/lib/format";
+import { fmtDate, rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { HomeClub, MemberPaymentRow, PayAllOffer } from "@/types/member";
@@ -164,7 +164,7 @@ function Hero({
   );
 }
 
-function ClubCard({ club, year, multi }: { club: HomeClub; year: number; multi: boolean }) {
+function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const slices = toSlices(club.fund.categories, { bm: "Lain-lain", en: "Others" });
@@ -212,7 +212,9 @@ function ClubCard({ club, year, multi }: { club: HomeClub; year: number; multi: 
           <h3 id={`${hid}-fund`} className="font-display text-xl font-bold tracking-tight">
             {t("moneyGoes")}
           </h3>
-          <p className="text-sm text-muted-foreground">{fill(t("moneyGoesYear"), { y: year })}</p>
+          <p className="text-sm text-muted-foreground">
+            {fill(t("moneyGoesWindow"), { from: fmtDate(club.fund.window.from, lang), to: fmtDate(club.fund.window.to, lang) })}
+          </p>
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-2">
           <div className="rounded-2xl bg-accent px-3 py-2.5">
@@ -224,6 +226,13 @@ function ClubCard({ club, year, multi }: { club: HomeClub; year: number; multi: 
             <Money sen={club.fund.spent} className="font-display text-lg font-bold" />
           </div>
         </div>
+        <p className="text-sm text-muted-foreground">{fill(t("spentSplit"), { a: rm(club.fund.expenses), b: rm(club.fund.welfare), c: rm(club.fund.charges) })}</p>
+        {club.fund.fromReserves > 0 && (
+          <p className="flex items-start gap-2 rounded-2xl bg-info-soft px-3 py-2.5 text-sm text-info-foreground">
+            <PiggyBank className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>{fill(t("fromReserves"), { x: rm(club.fund.fromReserves) })}</span>
+          </p>
+        )}
         {slices.length > 0 ? (
           <CategoryBar slices={slices} lang={lang} interactive={false} />
         ) : (
@@ -235,7 +244,7 @@ function ClubCard({ club, year, multi }: { club: HomeClub; year: number; multi: 
   );
 }
 
-export default function Home({ year, outstanding, upcoming, recentPaid, payAll, clubs, dashboardUrl, account }: Props) {
+export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs, dashboardUrl, account }: Props) {
   const t = useT();
   const { lang } = useLang();
   const { auth } = usePage().props;
@@ -307,7 +316,7 @@ export default function Home({ year, outstanding, upcoming, recentPaid, payAll, 
             <h2 className="-mb-2 px-1 pt-2 font-display text-2xl font-bold tracking-tight">{t("myClubs")}</h2>
           )}
           {clubs.map((c) => (
-            <ClubCard key={c.id} club={c} year={year} multi={multi} />
+            <ClubCard key={c.id} club={c} multi={multi} />
           ))}
         </>
       )}

@@ -41,7 +41,7 @@ app/Services/                  AuditService, AttachmentService, FundUsageService
 app/Support/                   presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                WebhookSecret, BillplzSignature, ...), Export/CsvSafe
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
-routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 (app timezone UTC)
+routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC)
 database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSeeder (e2e fixtures)
 public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release)
 scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)

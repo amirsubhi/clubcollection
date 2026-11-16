@@ -126,7 +126,8 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
    `BILLPLZ_X_SIGNATURE_KEY` if you use Billplz, PHP `upload_max_filesize = 12M` / `post_max_size = 32M`, and
    `TRUSTED_PROXIES` if your host has a proxy in front of PHP. Run `php artisan config:cache` after **any** `.env` change.
 6. Add a cron job every minute: `cd /path/to/app && php artisan schedule:run`. It sends the overdue-fee reminders
-   daily at 08:00 UTC (4 pm Malaysia time). No queue worker is needed.
+   daily at 08:00 in the app time zone (`APP_TIMEZONE`): 8 am Malaysia time with the recommended
+   `APP_TIMEZONE=Asia/Kuala_Lumpur` (UTC when unset). No queue worker is needed.
 
 > **Until the first real production install (the next release tag):** some columns were added by editing existing
 > migrations, so an existing database from an earlier build needs `php artisan migrate:fresh --force` (this deletes

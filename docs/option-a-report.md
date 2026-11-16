@@ -325,3 +325,11 @@ Follow-ups (non-blocking):
 - `flagGroup` refund-flag dedupe scans the latest 500 flag rows per club; revisit if volume grows.
 - Admin dashboard slips panel still lists one row per fee; only the Verifications page groups pay-all slips.
 
+### R1c follow-ups (non-blocking; to pick up in R1d/R1e)
+- Reverting an online-paid fee clears `paid_via`, so its absorbed gateway charge drops out of the figures if it is later marked paid by hand. Warn on revert, or keep the charge.
+- Statistics page sums expenses without bank charges; align with FundFigures or label it.
+- `FundFigures::spentSplitBetween` still returns `welfareCount` (admin only); fix the docblock or drop it.
+- Ledger rows use `$p->user->name`; use a "Former member" fallback, and confirm member removal only deactivates so paid fees stay in AGM history.
+- Bank-charge row wording wraps on phones; add a BM label for the charges category on the member card.
+- USER-GUIDE: say which figure to quote at the AGM when a manual opening balance is used, and how gateway settlement dates differ from the bank statement.
+

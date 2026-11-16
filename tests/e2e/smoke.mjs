@@ -166,7 +166,7 @@ async function login(page, email) {
 }
 const parseRm = (s) => Math.round(parseFloat(String(s).replace(/[^0-9.]/g, "")) * 100);
 async function spentThisYear(page) {
-  const tile = page.locator("div.rounded-lg.border", { has: page.getByText("Spent this year", { exact: true }) }).first();
+  const tile = page.locator("div.rounded-lg.border", { has: page.getByText("Spent", { exact: true }) }).first();
   return parseRm(await tile.locator(".figure").innerText());
 }
 async function step(name, fn) {
@@ -302,6 +302,24 @@ try {
     log("spent this year after:", after / 100);
     if (after - spentBefore !== EXPENSE_SEN) throw new Error(`spent went ${spentBefore / 100} → ${after / 100}, expected +${EXPENSE_SEN / 100}`);
     await shot(b.page, "c4-admin-dashboard-after");
+  });
+  await step("ledger closing balance matches the dashboard fund balance", async () => {
+    const tile = (label) => b.page.locator("div.rounded-lg.border", { has: b.page.getByText(label, { exact: true }) }).first();
+    const balance = parseRm(await tile("Fund balance").locator(".figure").innerText());
+    await b.page.getByRole("link", { name: "Ledger", exact: true }).first().click();
+    await b.page.getByRole("heading", { name: "Ledger", level: 1 }).waitFor();
+    const closing = parseRm(await tile("Closing balance").locator(".figure").innerText());
+    log("fund balance:", balance / 100, "ledger closing:", closing / 100);
+    if (closing !== balance) throw new Error(`ledger closing ${closing / 100} != dashboard balance ${balance / 100}`);
+    await b.page.getByRole("button", { name: "Show as chart" }).click();
+    await b.page.locator(".recharts-bar-rectangle path").first().waitFor({ state: "attached" });
+    await shot(b.page, "c5-ledger");
+  });
+  await step("billing settings open as an app page", async () => {
+    await b.page.getByRole("link", { name: "Billing settings", exact: true }).first().click();
+    await b.page.getByRole("heading", { name: "Billing settings", level: 1 }).waitFor();
+    await b.page.getByRole("heading", { name: "Plans members can choose" }).waitFor();
+    await shot(b.page, "c6-billing");
   });
   await b.ctx.close();
 

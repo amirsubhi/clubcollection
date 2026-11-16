@@ -7,7 +7,7 @@ use App\Models\Club;
 use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Models\Payment;
-use App\Support\Admin\FundUsageStats;
+use App\Support\Admin\FundFigures;
 use Illuminate\Support\Facades\DB;
 
 class StatisticsController extends Controller
@@ -49,8 +49,8 @@ class StatisticsController extends Controller
             $m        = now()->startOfMonth()->subMonthsNoOverflow($i);
             $ranges[] = [$m->copy(), $m->copy()->endOfMonth()];
         }
-        $revenueByMonth  = FundUsageStats::sumByRanges(Payment::where('status', 'paid'), 'paid_date', $ranges);
-        $expensesByMonth = FundUsageStats::sumByRanges(Expense::counted(), FundUsageStats::cashDate(), $ranges);
+        $revenueByMonth  = FundFigures::sumByRanges(Payment::where('status', 'paid'), 'paid_date', $ranges);
+        $expensesByMonth = FundFigures::sumByRanges(Expense::counted(), FundFigures::cashDate(), $ranges);
 
         $monthlyRevenue  = [];
         $monthlyExpenses = [];

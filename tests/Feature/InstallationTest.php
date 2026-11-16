@@ -182,6 +182,7 @@ class InstallationTest extends BaseTestCase
         $env = file_get_contents(base_path('.env'));
         $this->assertMatchesRegularExpression('/^APP_ENV=production$/m', $env);
         $this->assertMatchesRegularExpression('/^APP_DEBUG=false$/m', $env);
+        $this->assertMatchesRegularExpression('/^APP_TIMEZONE=Asia\/Kuala_Lumpur$/m', $env);
         $this->assertMatchesRegularExpression('/^SESSION_SECURE_COOKIE=true$/m', $env);
         $this->assertMatchesRegularExpression('/^LOG_LEVEL=warning$/m', $env);
         $this->assertMatchesRegularExpression('/^APP_URL=https:\/\/example\.test$/m', $env);

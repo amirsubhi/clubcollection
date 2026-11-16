@@ -126,6 +126,7 @@
                         Period: {{ $filters['from']->format('d M Y') }} — {{ $filters['to']->format('d M Y') }}
                         &nbsp;&nbsp;|&nbsp;&nbsp;
                         Opening Balance: RM {{ number_format($filters['openingBalance'], 2) }}
+                        @if(($filters['openingSource'] ?? null) === 'manual') (diubah secara manual) @endif
                         &nbsp;&nbsp;|&nbsp;&nbsp;
                         Generated: {{ $generatedAt }} by {{ $generatedBy }}
                     </div>
@@ -145,6 +146,11 @@
             <td>
                 <div class="summary-label">Opening Balance</div>
                 <div class="summary-value">RM {{ number_format($filters['openingBalance'], 2) }}</div>
+                @if(($filters['openingSource'] ?? null) === 'manual')
+                <div class="summary-label">(diubah secara manual)</div>
+                @else
+                <div class="summary-label">Fund balance on {{ $filters['from']->copy()->subDay()->format('d M Y') }}</div>
+                @endif
             </td>
             <td>
                 <div class="summary-label">Total In</div>

@@ -186,8 +186,10 @@ class SecurityHardeningTest extends TestCase
 
         $response = $this->get(route('admin.clubs.ledger', $club).'?from='.now()->startOfYear()->toDateString().'&to='.now()->toDateString())->assertOk();
 
-        $this->assertSame(3.0, $response->viewData('totalIncome'));
-        $this->assertSame(3.0, $response->viewData('closingBalance'));
+        $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('summary.in', 300)
+            ->where('summary.closing', 300)
+            ->where('transactions.29.balance', 300));
     }
 
     public function test_csv_cells_that_look_like_formulas_get_an_apostrophe(): void

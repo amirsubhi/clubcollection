@@ -112,6 +112,8 @@ export interface Line {
 export interface MonthPoint {
   month: string;
   monthEn: string;
+  /** Calendar year of the month (FundFigures::monthly); shown in tooltips and the table. */
+  year?: number;
   collected: Sen;
   spent: Sen;
 }
