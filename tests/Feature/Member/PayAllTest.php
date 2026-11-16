@@ -504,6 +504,23 @@ class PayAllTest extends TestCase
         $this->actingAs($other)->get(route('member.payments.slip', $slip))->assertForbidden();
     }
 
+    public function test_admin_dashboard_lists_a_group_slip_as_one_row_with_its_total(): void
+    {
+        $this->sendGroupSlip();
+        $admin = $this->join(User::factory()->create(['role' => 'admin']), $this->club, 'admin');
+
+        $this->actingAs($admin)->get(route('admin.clubs.dashboard', $this->club))
+            ->assertInertia(fn (Assert $page) => $page->component('Admin/Dashboard')
+                ->where('slips.count', 1)
+                ->has('slips.items', 1)
+                ->where('slips.items.0.id', $this->fees[0]->id)
+                ->where('slips.items.0.feeCount', 3)
+                ->where('slips.items.0.amount', 6000)
+                // The sidebar badge counts slips too: one for the three-fee set.
+                ->where('nav.groups.0.items.2.key', 'verifications')
+                ->where('nav.groups.0.items.2.badge', 1));
+    }
+
     public function test_admin_approves_the_whole_set_at_once(): void
     {
         $group = $this->sendGroupSlip();
@@ -744,6 +761,21 @@ class PayAllTest extends TestCase
 
         $this->assertNull(Payment::find($this->fees[2]->id));
         $this->assertTrue($bill->fresh()->isSuperseded());
+    }
+
+    public function test_a_settled_group_no_longer_reads_paid_once_an_admin_reverts_one_fee(): void
+    {
+        $bill = $this->payAll();
+        $this->fakeToyyibConfirm();
+        $this->webhook($bill, ['transaction_id' => 'TXN-G2', 'amount' => '60.00'])->assertOk();
+        $this->assertSame(['paid', 'paid', 'paid'], $this->statuses());
+
+        // An admin later reverts one fee to pending.
+        $this->fees[1]->fresh()->forceFill(['status' => 'pending', 'paid_date' => null])->save();
+
+        $this->actingAs($this->member)->get(route('member.payments.group-result', $bill))
+            ->assertRedirect(route('member.payments.index', $this->club));
+        $this->getJson(route('member.payments.group-status', $bill))->assertJson(['status' => 'pending']);
     }
 
     public function test_after_a_revert_a_single_slip_no_longer_uses_the_old_group(): void

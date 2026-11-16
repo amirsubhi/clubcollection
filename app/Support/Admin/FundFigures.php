@@ -361,8 +361,8 @@ final class FundFigures
 
     /**
      * Spending in the range by category (largest first): approved expenses and
-     * welfare by their category, plus one "Bank / gateway charges" line, which
-     * also carries its BM name (nameMs) for member pages.
+     * welfare by their category, plus one "Bank / gateway charges" line. Each
+     * line carries its BM name (nameMs) for member pages when there is one.
      *
      * @return array<int, array{name: string, nameMs?: string, amount: int}>
      */
@@ -371,11 +371,12 @@ final class FundFigures
         return $this->club->expenses()->counted()
             ->join('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
             ->tap(fn ($q) => self::inRange($q, self::cashDate(), $from, $to))
-            ->groupBy('expense_categories.name')
-            ->selectRaw('expense_categories.name as name, SUM(expenses.amount) as total')
+            ->groupBy('expense_categories.name', 'expense_categories.name_ms')
+            ->selectRaw('expense_categories.name as name, expense_categories.name_ms as name_ms, SUM(expenses.amount) as total')
             ->orderByDesc('total')
             ->get()
-            ->map(fn ($r) => ['name' => $r->name, 'amount' => FundUsagePresenter::sen($r->total)])
+            // nameMs: the category's BM name for member pages (they fall back to name when it is not set).
+            ->map(fn ($r) => array_filter(['name' => $r->name, 'nameMs' => $r->name_ms, 'amount' => FundUsagePresenter::sen($r->total)], fn ($v) => $v !== null))
             // Absorbed gateway charges are spending too, so the shares add up to spent.
             ->when($charges = $this->gatewayFeesAbsorbedBetween($from, $to), fn ($c) => $c->push(['name' => self::CHARGES_LABEL, 'nameMs' => self::CHARGES_LABEL_MS, 'amount' => $charges]))
             ->sortByDesc('amount')

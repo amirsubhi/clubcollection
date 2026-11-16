@@ -448,9 +448,12 @@ class MemberController extends Controller
             return $resolved;
         }
 
-        // Club admin: the member must belong to a club THIS user administers.
+        // Club admin: the member must belong to a club THIS user still administers
+        // (active admin pivot, active club), the same test as managesClub().
         $resolved = $user->clubs()
             ->wherePivot('role', 'admin')
+            ->wherePivot('is_active', true)
+            ->where('clubs.is_active', true)
             ->whereHas('members', fn ($q) => $q->where('users.id', $member->id))
             ->first();
 

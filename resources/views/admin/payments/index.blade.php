@@ -65,7 +65,9 @@
 </div>
 
 <div class="card shadow-sm">
-    <div class="table-responsive">
+    {{-- Phones: the status sits under the member's name and the table scrolls sideways for the rest. --}}
+    <p class="d-md-none small text-body-secondary px-3 pt-3 mb-0" id="payments-scroll-hint"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Swipe the table sideways to see due dates and actions.</p>
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Payments" aria-describedby="payments-scroll-hint">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
@@ -74,16 +76,26 @@
                     <th scope="col">Frequency</th>
                     <th scope="col">Amount</th>
                     <th scope="col">Due Date</th>
-                    <th scope="col">Status</th>
+                    <th scope="col" class="d-none d-md-table-cell">Status</th>
                     <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($payments as $payment)
+                @php
+                    [$badgeClass, $badgeLabel] = match ($payment->status) {
+                        'paid' => ['bg-success-subtle text-success border border-success-subtle', 'Paid'],
+                        'overdue' => ['bg-danger-subtle text-danger border border-danger-subtle', 'Overdue'],
+                        'pending_verification' => ['bg-info-subtle text-info-emphasis border border-info-subtle', 'Awaiting verification'],
+                        default => ['bg-warning-subtle text-warning border border-warning-subtle', 'Pending'],
+                    };
+                    $statusBadge = '<span class="badge '.$badgeClass.'">'.e($badgeLabel).'</span>';
+                @endphp
                 <tr>
                     <td>
                         <div class="fw-semibold">{{ $payment->user?->name ?? 'Former member' }}</div>
                         <div class="text-muted small">{{ $payment->user?->email }}</div>
+                        <div class="d-md-none mt-1">{!! $statusBadge !!}</div>
                     </td>
                     <td class="small text-nowrap">{{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</td>
                     <td><span class="badge bg-light text-dark border">{{ ucfirst($payment->frequency) }}</span></td>
@@ -91,17 +103,7 @@
                     <td class="small {{ $payment->isOverdue() ? 'text-danger fw-semibold' : '' }}">
                         {{ $payment->due_date->format('d M Y') }}
                     </td>
-                    <td>
-                        @if($payment->status === 'paid')
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">Paid</span>
-                        @elseif($payment->status === 'overdue')
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Overdue</span>
-                        @elseif($payment->status === 'pending_verification')
-                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Awaiting verification</span>
-                        @else
-                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
-                        @endif
-                    </td>
+                    <td class="d-none d-md-table-cell">{!! $statusBadge !!}</td>
                     <td class="text-end text-nowrap">
                         <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-secondary" aria-label="View payment"><i class="bi bi-eye"></i></a>
                         @if($payment->status === 'pending_verification')

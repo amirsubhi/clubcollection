@@ -40,14 +40,15 @@ export function ReceiptCard({
       <header className="flex items-center gap-3 border-b border-dashed pb-4">
         <ClubMark className="h-10 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="font-display text-base font-bold leading-snug">{club.name}</div>
+          <h2 className="font-display text-base font-bold leading-snug">{club.name}</h2>
           {club.regNo && <div className="text-xs text-muted-foreground">No. pendaftaran {club.regNo}</div>}
         </div>
         <span className="inline-flex h-7 items-center gap-1 rounded-full border border-success/30 bg-success-soft px-2.5 text-sm font-semibold text-success-foreground">
           <CheckCircle2 className="h-4 w-4" aria-hidden /> {t("paid")}
         </span>
       </header>
-      <div className="flex items-end justify-between gap-3 py-4">
+      {/* Wraps with large text: the amount drops under the receipt number instead of running off the card. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1 py-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("receipt")}</div>
           <div className="font-mono text-base">{r.receiptNo}</div>

@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('club_id')->constrained()->cascadeOnDelete();
             $table->string('name');
+            // Bahasa Melayu name for member pages (optional; they fall back to name).
+            $table->string('name_ms')->nullable();
             $table->timestamps();
         });
     }

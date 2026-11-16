@@ -95,7 +95,7 @@ export function AdminLayout({ nav, active, title, wide = true, children }: { nav
         nav={groups}
         user={nav.user}
         homeHref={nav.homeHref}
-        brandSubtitle={nav.brandSubtitle}
+        brandSubtitle={nav.brandSubtitle ?? undefined}
         memberHref={nav.memberHref}
         onLogout={() => postForm(nav.logoutUrl)}
         wide={wide}

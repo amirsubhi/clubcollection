@@ -56,7 +56,8 @@ interface Props {
   slips: {
     count: number;
     transferReady: boolean;
-    items: { id: number; member: { name: string }; periodStart: string; periodEnd: string; amount: number; transferDate: string | null; submittedAt: string | null }[];
+    /** One row per slip: a "Bayar semua" slip lists its lead (oldest) fee, how many fees it covers and their total. */
+    items: { id: number; member: { name: string }; periodStart: string; periodEnd: string; amount: number; feeCount: number; transferDate: string | null; submittedAt: string | null }[];
   };
   activity: Activity[];
   urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string; billing: string; verifications: string };
@@ -96,7 +97,7 @@ function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
   return (
     <Panel
       title="Transfer slips"
-      sub={slips.count > 0 ? `Slip menunggu pengesahan · ${slips.count} waiting` : "Slip menunggu pengesahan"}
+      sub={slips.count > 0 ? `${slips.count} waiting to be checked · Menunggu pengesahan` : "Nothing to check · Tiada slip menunggu"}
       action={
         <Link href={url} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
           Check <ArrowRight className="h-4 w-4" aria-hidden />
@@ -114,7 +115,7 @@ function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">{s.member.name}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    Fee {fmtPeriod(s.periodStart, s.periodEnd)}
+                    {s.feeCount > 1 ? `Pay all · ${s.feeCount} fees from ${fmtPeriod(s.periodStart, s.periodEnd)}` : `Fee ${fmtPeriod(s.periodStart, s.periodEnd)}`}
                     {s.transferDate ? ` · transferred ${fmtDate(s.transferDate)}` : ""}
                   </div>
                 </div>

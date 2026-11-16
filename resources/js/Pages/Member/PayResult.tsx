@@ -143,7 +143,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
 
   if (outcome === "verifying" && group) {
     return (
-      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("paymentStatus")}>
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("paymentStatus")}>
         <Head title={t("paymentStatus")} />
         <h1 className="sr-only">{t("paymentStatus")}</h1>
         <FlashBanner />
@@ -208,7 +208,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
     const lines = "lines" in receipt ? receipt.lines : null;
     const viaTransfer = receipt.method === "transfer";
     return (
-      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("successChip")}>
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("successChip")}>
         <Head title={t("successTitle")} />
         <div className="flex flex-col items-center gap-3 pt-2 text-center" aria-live="polite">
           <AnimatedTick />
@@ -279,7 +279,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
 
   if (outcome === "failed") {
     return (
-      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("failedTitle")} hideNav>
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("failedTitle")} hideNav>
         <Head title={t("failedTitle")} />
         <div className="flex flex-col items-center gap-3 pt-2 text-center" aria-live="polite">
           <span className="flex h-24 w-24 items-center justify-center rounded-full bg-danger-soft text-danger ring-8 ring-danger-soft/50">
@@ -317,7 +317,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
 
   // Pending (also the fallback when the redirect back says nothing conclusive).
   return (
-    <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("processing")} hideNav>
+    <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("processing")} hideNav>
       <Head title={t("processing")} />
       <div className="flex flex-col items-center gap-3 pt-2 text-center" aria-live="polite">
         <span className="flex h-24 w-24 items-center justify-center rounded-full bg-warning-soft text-warning ring-8 ring-warning-soft/50">

@@ -16,6 +16,7 @@ use App\Support\Admin\FundFigures;
 use App\Support\Member\MemberPaymentPresenter as P;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,19 +49,9 @@ class TransferVerificationController extends Controller
             ->orderBy('id')
             ->get();
 
-        // "Bayar semua": fees sent with one slip are checked, approved and
-        // rejected as one card (payments.transfer_group_id, open groups only).
-        $groups = PaymentBill::whereIn('id', $waiting->pluck('transfer_group_id')->filter()->unique())
-            ->where('method', 'transfer')->whereNull('paid_at')->whereNull('superseded_at')
-            ->get()->keyBy('id');
-        $groupOf = $waiting->filter(fn (Payment $p) => isset($groups[$p->transfer_group_id]))
-            ->mapWithKeys(fn (Payment $p) => [$p->id => $p->transfer_group_id]);
-
-        $pending = $waiting
-            ->groupBy(fn (Payment $p) => isset($groupOf[$p->id]) ? 'g'.$groupOf[$p->id] : 'p'.$p->id)
-            ->map(function ($fees) use ($groupOf, $groups, $user) {
-                $lead = $fees->sortBy(fn (Payment $p) => [$p->due_date->toDateString(), $p->id])->first();
-                $group = isset($groupOf[$lead->id]) ? $groups[$groupOf[$lead->id]] ?? null : null;
+        $pending = self::slipSets($waiting)
+            ->map(function (array $set) use ($user) {
+                ['lead' => $lead, 'group' => $group] = $set;
 
                 return self::card($lead) + [
                     'group' => $group ? self::groupCard($group) : null,
@@ -113,6 +104,44 @@ class TransferVerificationController extends Controller
             $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']]);
             $this->service->reject($payment, $request->user(), $data['reason']);
         }, 'Slip rejected. '.$this->who($payment).' was emailed the reason and can send a new slip.');
+    }
+
+    /**
+     * How many slips wait in a club, counted as slipSets() does but in SQL: a fee in an open
+     * group slip counts once per group, any other waiting fee once. For the sidebar badge.
+     */
+    public static function waitingSlipCount(Club $club): int
+    {
+        $openGroup = 'payments.transfer_group_id IS NOT NULL AND EXISTS (SELECT 1 FROM payment_bills b WHERE b.id = payments.transfer_group_id'
+            ." AND b.method = 'transfer' AND b.paid_at IS NULL AND b.superseded_at IS NULL)";
+        $row = $club->payments()->where('status', 'pending_verification')->toBase()
+            ->selectRaw("COUNT(DISTINCT CASE WHEN {$openGroup} THEN payments.transfer_group_id END) AS g_count, SUM(CASE WHEN {$openGroup} THEN 0 ELSE 1 END) AS p_count")
+            ->first();
+
+        return (int) ($row->g_count ?? 0) + (int) ($row->p_count ?? 0);
+    }
+
+    /**
+     * Waiting fees as the slips an admin checks: "Bayar semua" fees sent with one slip
+     * (payments.transfer_group_id, open groups only) form one set; any other fee is its own.
+     * Each set has its lead fee (oldest due), its fees and the group bill, if any.
+     *
+     * @param  Collection<int, Payment>  $waiting
+     * @return Collection<string, array{lead: Payment, fees: Collection<int, Payment>, group: ?PaymentBill}>
+     */
+    public static function slipSets(Collection $waiting): Collection
+    {
+        $groups = PaymentBill::whereIn('id', $waiting->pluck('transfer_group_id')->filter()->unique())
+            ->where('method', 'transfer')->whereNull('paid_at')->whereNull('superseded_at')
+            ->get()->keyBy('id');
+
+        return $waiting
+            ->groupBy(fn (Payment $p) => $p->transfer_group_id && isset($groups[$p->transfer_group_id]) ? 'g'.$p->transfer_group_id : 'p'.$p->id)
+            ->map(function (Collection $fees, string $key) use ($groups) {
+                $lead = $fees->sortBy(fn (Payment $p) => [$p->due_date->toDateString(), $p->id])->first();
+
+                return ['lead' => $lead, 'fees' => $fees->values(), 'group' => str_starts_with($key, 'g') ? $groups[(int) substr($key, 1)] : null];
+            });
     }
 
     /**

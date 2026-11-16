@@ -112,4 +112,64 @@ class AuthPagesTest extends TestCase
             ->post('/two-factor-challenge', [])
             ->assertSessionHasErrors(['code' => 'Sila masukkan kod pengesah atau kod pemulihan.']);
     }
+
+    public function test_sign_in_falls_back_to_a_built_in_style_when_the_build_is_missing(): void
+    {
+        // A public folder with no build/manifest.json and no hot file (npm run build not uploaded).
+        $public = sys_get_temp_dir().'/cp-public-'.uniqid();
+        mkdir($public);
+        $this->app->usePublicPath($public);
+
+        try {
+            $this->get('/login')
+                ->assertOk()
+                ->assertSee('body > div { max-width: 420px;', false)
+                ->assertSee('<style nonce="', false)
+                ->assertSee('name="email"', false);
+        } finally {
+            @rmdir($public);
+        }
+    }
+
+    public function test_an_invalid_language_cookie_is_not_copied_to_the_member_app(): void
+    {
+        $this->withUnencryptedCookie(AuthPageLocale::COOKIE, 'xx')
+            ->get('/login')
+            ->assertSee('<html lang="ms">', false)
+            ->assertDontSee("localStorage.setItem('cp-lang'", false);
+
+        $this->withUnencryptedCookie(AuthPageLocale::COOKIE, 'en')
+            ->get('/login')
+            ->assertSee("localStorage.setItem('cp-lang', \"en\")", false);
+    }
+
+    public function test_too_many_sign_in_attempts_page_is_translated_and_styled(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->post('/login', ['email' => 'nobody@example.test', 'password' => 'wrong']);
+        }
+
+        $this->post('/login', ['email' => 'nobody@example.test', 'password' => 'wrong'])
+            ->assertStatus(429)
+            ->assertSee('<html lang="ms">', false)
+            ->assertSee('Terlalu banyak cubaan')
+            ->assertSee('Sila tunggu kira-kira')
+            ->assertSee('class="auth-card"', false)
+            ->assertSee('role="alert"', false)
+            ->assertDontSee('Too Many Requests');
+    }
+
+    public function test_too_many_attempts_page_follows_the_saved_language(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->withUnencryptedCookie(AuthPageLocale::COOKIE, 'en')->post('/login', ['email' => 'nobody@example.test', 'password' => 'wrong']);
+        }
+
+        $this->withUnencryptedCookie(AuthPageLocale::COOKIE, 'en')
+            ->post('/login', ['email' => 'nobody@example.test', 'password' => 'wrong'])
+            ->assertStatus(429)
+            ->assertSee('<html lang="en">', false)
+            ->assertSee('Too many attempts')
+            ->assertSee('Please wait about');
+    }
 }

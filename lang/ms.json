@@ -31,5 +31,8 @@
     "Please enter an authentication code or recovery code.": "Sila masukkan kod pengesah atau kod pemulihan.",
     "Confirm your password": "Sahkan kata laluan anda",
     "Please enter your password again before you continue.": "Sila masukkan kata laluan anda sekali lagi sebelum meneruskan.",
-    "Confirm": "Sahkan"
+    "Confirm": "Sahkan",
+    "Too many attempts": "Terlalu banyak cubaan",
+    "For your security we have paused this for a moment.": "Demi keselamatan anda, kami hentikan seketika.",
+    "Please wait about :seconds seconds, then try again.": "Sila tunggu kira-kira :seconds saat, kemudian cuba lagi."
 }

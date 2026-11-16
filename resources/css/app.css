@@ -139,6 +139,17 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Spinners stay put (no rotation) but keep a gentle fade so a busy state still reads as busy, not frozen. */
+  .animate-spin {
+    animation-name: cp-busy-fade !important;
+    animation-duration: 1.6s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+@keyframes cp-busy-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 /* Printing an invoice or receipt from the member portal: drop the app chrome. */

@@ -3,6 +3,7 @@ import { Camera, FileText, ImageIcon, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { attachmentKinds } from "@/lib/fund-meta";
+import { usePageLang } from "@/lib/i18n";
 import type { AttachmentKind } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
@@ -30,16 +31,29 @@ export interface UploaderText {
   tooLarge: (names: string, mb: number) => string;
 }
 
-const defaultText = (maxFiles: number): UploaderText => ({
-  dropPrefix: "Drag files here or",
-  browse: "browse",
-  limits: `PDF, JPG, PNG or WebP · up to 10 MB each · max ${maxFiles} files`,
-  takePhoto: "Take photo",
-  cameraHint: "On a phone this opens the camera.",
-  chooseFile: "Choose a file",
-  remove: (name) => `Remove ${name}`,
-  tooLarge: (names, mb) => `${names}: larger than ${mb} MB, so not added. Choose a smaller file.`,
-});
+/** Defaults in the page's language (admin pages are English; member pages normally pass their own copy). */
+const defaultText = (maxFiles: number, lang: "ms" | "en"): UploaderText =>
+  lang === "ms"
+    ? {
+        dropPrefix: "Seret fail ke sini atau",
+        browse: "pilih fail",
+        limits: `PDF, JPG, PNG atau WebP · sehingga 10 MB setiap satu · maksimum ${maxFiles} fail`,
+        takePhoto: "Ambil gambar",
+        cameraHint: "Pada telefon, ini membuka kamera.",
+        chooseFile: "Pilih fail",
+        remove: (name) => `Buang ${name}`,
+        tooLarge: (names, mb) => `${names}: melebihi ${mb} MB, jadi tidak ditambah. Pilih fail yang lebih kecil.`,
+      }
+    : {
+        dropPrefix: "Drag files here or",
+        browse: "browse",
+        limits: `PDF, JPG, PNG or WebP · up to 10 MB each · max ${maxFiles} files`,
+        takePhoto: "Take photo",
+        cameraHint: "On a phone this opens the camera.",
+        chooseFile: "Choose a file",
+        remove: (name) => `Remove ${name}`,
+        tooLarge: (names, mb) => `${names}: larger than ${mb} MB, so not added. Choose a smaller file.`,
+      };
 
 export interface FileUploaderProps {
   files: UploadItem[];
@@ -72,7 +86,9 @@ function toItems(list: FileList | null): UploadItem[] {
 /** Multi-file uploader: drag-drop or browse, camera capture on phones, per-file kind and remove. Upload is left to the parent form (e.g. Inertia useForm). */
 export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, error, maxFiles = 10, showKind = true, text, comfortable = false, maxKb }: FileUploaderProps) {
   const inputId = useId();
-  const tx = { ...defaultText(maxFiles), ...text };
+  const errorId = `${inputId}-error`;
+  const hintId = `${inputId}-hint`;
+  const tx = { ...defaultText(maxFiles, usePageLang()), ...text };
   const camRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -86,6 +102,8 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
     if (ok.length) onAddAll(ok);
   };
   const shownError = error ?? sizeError ?? undefined;
+  // Every way in (hidden input, drop zone, touch buttons) is described by the limits and, when present, the error.
+  const describedBy = shownError ? `${errorId} ${hintId}` : hintId;
   return (
     <div className="flex flex-col gap-3">
       <input
@@ -97,6 +115,8 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
         // Comfortable mode: the drop zone (desktop) or the buttons (touch) are the tab stops, not this hidden input.
         tabIndex={comfortable ? -1 : undefined}
         className={cn("peer sr-only", comfortable && "touch:hidden")}
+        aria-invalid={shownError ? true : undefined}
+        aria-describedby={describedBy}
         onChange={(e) => {
           onAdd(toItems(e.target.files));
           e.target.value = "";
@@ -105,10 +125,10 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
       {comfortable && (
         // Phones: no dragging, so the camera is the main way in and the picker sits under it.
         <div className="hidden flex-col gap-2 touch:flex" data-testid="uploader-touch">
-          <Button type="button" size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg" onClick={() => camRef.current?.click()}>
+          <Button type="button" size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg" aria-describedby={shownError ? errorId : undefined} onClick={() => camRef.current?.click()}>
             <Camera aria-hidden /> {tx.takePhoto}
           </Button>
-          <Button type="button" variant="outline" size="lg" className="h-auto min-h-12 w-full whitespace-normal rounded-full py-2.5" onClick={() => fileRef.current?.click()}>
+          <Button type="button" variant="outline" size="lg" className="h-auto min-h-12 w-full whitespace-normal rounded-full py-2.5" aria-describedby={shownError ? errorId : undefined} onClick={() => fileRef.current?.click()}>
             <UploadCloud aria-hidden /> {tx.chooseFile}
           </Button>
           <span className="text-center text-sm text-muted-foreground">{tx.limits}</span>
@@ -120,6 +140,8 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
           ? {
               tabIndex: 0,
               role: "button",
+              "aria-describedby": describedBy,
+              "aria-invalid": shownError ? true : undefined,
               onKeyDown: (e: KeyboardEvent) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -149,7 +171,9 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
         <span className={comfortable ? "text-base font-medium" : "text-sm font-medium"}>
           {tx.dropPrefix} <span className="text-primary underline">{tx.browse}</span>
         </span>
-        <span className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{tx.limits}</span>
+        <span id={hintId} className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>
+          {tx.limits}
+        </span>
       </label>
       <div className={cn("flex flex-wrap items-center gap-2", comfortable && "touch:hidden")}>
         <Button type="button" variant="outline" size={comfortable ? "lg" : "sm"} className={comfortable ? "h-auto min-h-11 whitespace-normal rounded-full py-2" : undefined} onClick={() => camRef.current?.click()}>
@@ -171,7 +195,7 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
         }}
       />
       {shownError && (
-        <p role="alert" className={cn("font-medium text-danger-foreground", comfortable ? "text-sm" : "text-xs")}>
+        <p id={errorId} role="alert" className={cn("font-medium text-danger-foreground", comfortable ? "text-sm" : "text-xs")}>
           {shownError}
         </p>
       )}

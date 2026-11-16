@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { CollectedSpentChart, KpiTile, SpentSplit } from "@/components/app/Charts";
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
-import { Input, Label, FieldError, FieldHint } from "@/components/ui/input";
+import { DateHint, Input, Label, FieldError, FieldHint } from "@/components/ui/input";
 import { fmtDate, fmtMonth, rm } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AdminNavProps, FigureWindow } from "@/types/admin";
@@ -180,12 +180,15 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ledger-from">From</Label>
               <Input id="ledger-from" type="date" value={from} max={to || today} onChange={(e) => setFrom(e.target.value)} invalid={!!rangeError} className="sm:w-44" />
+              <DateHint value={from} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ledger-to">To</Label>
               <Input id="ledger-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} invalid={!!rangeError} className="sm:w-44" />
+              <DateHint value={to} />
             </div>
-            <Button type="submit" disabled={!!rangeError}>
+            {/* Lines up with the inputs, above the written-out dates. */}
+            <Button type="submit" disabled={!!rangeError} className="sm:mb-[1.375rem]">
               <CalendarRange aria-hidden /> Show this period
             </Button>
           </div>
@@ -198,7 +201,9 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
           <span className="font-medium">Opening balance</span>
           <span className="money font-semibold">{rm(opening.amount)}</span>
           {opening.source === "manual" ? (
-            <span className="text-muted-foreground">(diubah secara manual) · the records say {rm(opening.computed)}</span>
+            <span className="text-muted-foreground">
+              Set by hand; the records say {rm(opening.computed)} · <span lang="ms">diubah secara manual</span>
+            </span>
           ) : (
             <span className="text-muted-foreground">Fund balance at the end of {fmtDate(opening.asOf)}, from the records</span>
           )}

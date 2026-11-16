@@ -161,6 +161,12 @@ class PayAllController extends Controller
         $club = Club::findOrFail($bill->club_id);
         $fees = $bill->orderedPayments()->get();
 
+        // Settled, but an admin has since reverted a fee in the set: "paid" would no longer be true,
+        // so send the member to their fee list, where that fee shows as open again.
+        if ($bill->paid_at && ! self::allStillPaid($fees)) {
+            return redirect()->route('member.payments.index', $club);
+        }
+
         if ($bill->isTransfer()) {
             // A rejected slip: the fees are open again, so the review page shows them.
             if ($bill->isSuperseded()) {
@@ -206,9 +212,16 @@ class PayAllController extends Controller
     public function status(PaymentBill $paymentBill): JsonResponse
     {
         self::authorizeGroup($paymentBill);
+        $paid = $paymentBill->paid_at && self::allStillPaid($paymentBill->orderedPayments()->get());
 
-        return response()->json(['status' => $paymentBill->paid_at ? 'paid' : ($paymentBill->isTransfer() && $paymentBill->isOpen() ? 'verifying' : 'pending')])
+        return response()->json(['status' => $paid ? 'paid' : ($paymentBill->isTransfer() && $paymentBill->isOpen() ? 'verifying' : 'pending')])
             ->header('Cache-Control', 'no-store');
+    }
+
+    /** Every fee of a settled group is still paid (none reverted by an admin since). */
+    private static function allStillPaid($fees): bool
+    {
+        return $fees->isNotEmpty() && $fees->every(fn ($f) => $f->status === 'paid');
     }
 
     /** pay() under the member+club lock. */

@@ -64,7 +64,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="min-w-0">
             <div className="break-words text-sm text-muted-foreground">{payClub.name}</div>
-            <div className="break-all font-mono text-lg">{payment.invoiceNo}</div>
+            <h2 className="break-all font-mono text-lg font-normal">{payment.invoiceNo}</h2>
           </div>
           <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))}
             size="sm"

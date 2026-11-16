@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { setNonce } from "get-nonce";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { LangContext, type Lang } from "@/lib/i18n";
+import { LangContext, PageLangContext, type Lang } from "@/lib/i18n";
 import { captureInstallPrompt, registerServiceWorker } from "@/lib/pwa";
 import { readPref, writePref } from "@/lib/storage";
 import { bootTheme, ThemeProvider } from "@/lib/theme";
@@ -50,9 +50,10 @@ function Providers({ locale, component, children }: { locale: unknown; component
   };
   // Track the current page so <html lang> matches what is on screen after Inertia visits.
   useEffect(() => router.on("navigate", (e) => setPage({ component: e.detail.page.component, locale: e.detail.page.props.locale })), []);
+  const pageLang = htmlLang(page.component, page.locale, lang);
   useEffect(() => {
-    document.documentElement.lang = htmlLang(page.component, page.locale, lang);
-  }, [page, lang]);
+    document.documentElement.lang = pageLang;
+  }, [pageLang]);
   // A choice saved before the cookie existed: share it once on load.
   useEffect(() => {
     const saved = readPref("cp-lang");
@@ -61,9 +62,11 @@ function Providers({ locale, component, children }: { locale: unknown; component
   return (
     <ThemeProvider>
       <LangContext.Provider value={{ lang, setLang }}>
-        <TooltipProvider delayDuration={200}>
-          <div className="app-shell">{children}</div>
-        </TooltipProvider>
+        <PageLangContext.Provider value={pageLang}>
+          <TooltipProvider delayDuration={200}>
+            <div className="app-shell">{children}</div>
+          </TooltipProvider>
+        </PageLangContext.Provider>
       </LangContext.Provider>
     </ThemeProvider>
   );

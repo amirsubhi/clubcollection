@@ -146,7 +146,7 @@ export function ThemeMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Theme: ${theme}`}>
+        <Button variant="ghost" size="icon" aria-label={`Theme (${theme.charAt(0).toUpperCase()}${theme.slice(1)})`}>
           <Cur className="h-[18px] w-[18px]" strokeWidth={1.75} />
         </Button>
       </DropdownMenuTrigger>

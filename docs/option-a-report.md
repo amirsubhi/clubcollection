@@ -315,29 +315,44 @@ Follow-ups (non-blocking):
 - Link `/licenses.txt` from the app footer or an About page.
 
 ### R1a follow-ups (non-blocking)
-- ReviewPay StickyBar: keep padding/border identical pinned vs unpinned (or measure inner height) so it cannot flip near the 18% threshold on notch phones.
-- `authLangChosen` should use the normalised `cp_lang` value; guard `__($message)` in `auth/partials/alerts.blade.php` with `is_string`.
-- Add a feature test for the sign-in fallback style when `public/build/manifest.json` is missing.
-- Translate the 429 "too many attempts" page (still Laravel's English default).
+- ✅ **Done in R1e.** ReviewPay StickyBar: same border, padding and safe-area inset pinned or not (only position and background change), so it cannot flip near the 18% threshold.
+- ✅ **Done in R1e.** `authLangChosen` uses the normalised `cp_lang` value; `__($message)` and the status line in `auth/partials/alerts.blade.php` are guarded with `is_string`.
+- ✅ **Done in R1e.** Feature test for the sign-in fallback style when `public/build/manifest.json` is missing (`AuthPagesTest`).
+- ✅ **Done in R1e.** Translated 429 page (`errors/429.blade.php`, auth layout, BM/EN from the sign-in language or `cp_lang`), with tests.
 
 ### R1b follow-ups (non-blocking)
-- Group result page reads "paid" from the bill even if an admin later reverts one fee (cosmetic).
-- `flagGroup` refund-flag dedupe scans the latest 500 flag rows per club; revisit if volume grows.
-- Admin dashboard slips panel still lists one row per fee; only the Verifications page groups pay-all slips.
+- ✅ **Done in R1e.** Group result page and status poll read "paid" only while every fee in the set is still paid; otherwise the member is sent to their fee list (test in `PayAllTest`).
+- ⏸ **Deferred.** `flagGroup` refund-flag dedupe scans the latest 500 flag rows per club; revisit if volume grows.
+- ✅ **Done in R1e.** Admin dashboard slips panel groups pay-all slips into one row with fee count and total (shared `TransferVerificationController::slipSets`).
 
 ### R1c follow-ups (non-blocking; to pick up in R1d/R1e)
-- Reverting an online-paid fee clears `paid_via`, so its absorbed gateway charge drops out of the figures if it is later marked paid by hand. Warn on revert, or keep the charge.
-- Statistics page sums expenses without bank charges; align with FundFigures or label it.
-- `FundFigures::spentSplitBetween` still returns `welfareCount` (admin only); fix the docblock or drop it.
-- Ledger rows use `$p->user->name`; use a "Former member" fallback, and confirm member removal only deactivates so paid fees stay in AGM history.
-- Bank-charge row wording wraps on phones; add a BM label for the charges category on the member card.
-- USER-GUIDE: say which figure to quote at the AGM when a manual opening balance is used, and how gateway settlement dates differ from the bank statement.
+- ✅ **Done in R1d.** Reverting an online-paid fee warns and a hand re-mark keeps its charge; the remaining case is documented in R1e (USER-GUIDE, "Bank and gateway charges").
+- ✅ **Done in R1d.** Statistics uses FundFigures (bank charges included).
+- ✅ **Done.** `FundFigures::spentSplitBetween` docblock describes `welfareCount` (admin screens only).
+- ✅ **Done in R1d/R1e.** Ledger rows use a "Former member" fallback; removing a member only detaches them from the club (payments keep `user_id`), so paid fees stay in AGM history. Decision: keep detach; documented in USER-GUIDE, covered by `R1ePolishTest`.
+- ✅ **Done.** BM label for the charges line on the member card ("Caj bank / gateway"); the split line reads "Caj bank". Wrapping at 390 px checked in R1e (no overflow at 200% text).
+- ✅ **Done in R1e.** USER-GUIDE says which figure to quote at the AGM with a manual opening balance, and how gateway settlement dates differ from the bank statement.
 
 ### R1d follow-ups (non-blocking; for R1e)
-- Retake the statistics screenshots (taken before the cross-club sidebar fix) before any docs use.
-- A restored absorbed charge after a hand re-mark is dated on the new paid date; if a reverted fee is later settled by slip or a new online bill, the first gateway charge is zeroed/overwritten. Document in USER-GUIDE: record such a charge as a manual bank-charge expense.
-- Club name appears three times on desktop admin pages; drop one.
-- `resolveClubForMember` club-admin fallback should also filter active pivot/club like `managesClub`.
-- Statistics runs ~8-10 queries per club; batch/cache if clubs grow.
-- Theme button label "Theme (System)"; dd/mm/yyyy hint on date inputs; SRI on CDN tags; status column/scroll hint on the mobile payments table.
+- ✅ **Done in R1e.** Docs screenshots retaken (all 16 plus `member-pay-all.png`).
+- ✅ **Done in R1e.** USER-GUIDE: record a lost first gateway charge as a manual bank-charge expense.
+- ✅ **Done in R1e.** Club name shown at most twice on desktop admin (brand subtitle dropped; nav group and page eyebrow remain).
+- ✅ **Done in R1e.** `resolveClubForMember` club-admin fallback filters active pivot and active club like `managesClub` (test in `R1ePolishTest`).
+- ⏸ **Deferred.** Statistics runs ~8-10 queries per club; batch/cache if clubs grow.
+- ✅ **Done in R1e.** Theme button label "Theme (System)" (Blade and React); date hint on admin date inputs: the picked date written out ("16 Nov 2026") under the field (Blade layout script and React `DateHint`), so it never contradicts the browser's own date order; SRI (sha384, `crossorigin="anonymous"`) on the Bootstrap, Bootstrap Icons and Chart.js CDN tags, hashes computed from the npm package files jsDelivr serves (Chart.js switched to the package's own `dist/chart.umd.js`); payments table shows status under the member's name on phones with a scroll hint and a focusable scroll region.
+
+### R1e notes
+- Spending categories have an optional `name_ms` (migration edited in place: existing databases need `migrate:fresh` before the first release, as noted in README).
+- Checker round: the Verifications sidebar badge counts slip sets (`TransferVerificationController::waitingSlipCount`, one SQL query); "Bank charges" category note on the Fund Usage form and Expense categories page; date hints echo the picked date; screenshots retaken with real encrypted demo attachments and `en-GB` admin locale.
+- Re-review (Impeccable critique A/B and audit) still to run separately.
+
+### R1e follow-ups (non-blocking)
+- Member card may show both "Caj bank" (hand-entered category) and "Caj bank / gateway" (automatic); merge or rename the automatic line to "Caj gateway".
+- Bank-charges hint matches the English category name; use a category flag instead.
+- `byCategoryBetween` groups by (name, name_ms); same-named categories with different BM names split.
+- Fund Usage list shows a red "0" attachments count on approved records; make it muted.
+- Welfare form reuses the expense description example.
+- Check audit-log filter alignment with the date echo at 768 px.
+- Move `slipSets`/`waitingSlipCount` from the controller into a Support class.
+- 🔴 Before go-live: open one Blade admin page against the real jsDelivr with devtools to confirm no SRI errors.
 

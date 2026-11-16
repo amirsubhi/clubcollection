@@ -65,6 +65,7 @@ export function MemberShell({
   children,
   hideNav = false,
   bare = false,
+  titleIsHeading = true,
 }: {
   /** Short club name shown above the page title. */
   clubName: string;
@@ -77,6 +78,8 @@ export function MemberShell({
   hideNav?: boolean;
   /** Skip the page padding (for screens that draw their own full-bleed layout). */
   bare?: boolean;
+  /** The header title is the page's <h1>. Pass false when the page draws its own h1 (PayResult's big status titles). */
+  titleIsHeading?: boolean;
 }) {
   const t = useT();
   // Pinned while it is one compact row; with large text it scrolls away with the page.
@@ -105,7 +108,11 @@ export function MemberShell({
           )}
           <div className="min-w-0 flex-[1_1_8rem]">
             <div className="break-words text-sm leading-snug text-muted-foreground">{clubName}</div>
-            <div className="break-words font-display text-lg font-bold leading-tight tracking-tight">{title ?? t("navHome")}</div>
+            {titleIsHeading ? (
+              <h1 className="break-words font-display text-lg font-bold leading-tight tracking-tight">{title ?? t("navHome")}</h1>
+            ) : (
+              <div className="break-words font-display text-lg font-bold leading-tight tracking-tight">{title ?? t("navHome")}</div>
+            )}
           </div>
           <LangToggle />
         </div>

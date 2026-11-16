@@ -139,7 +139,7 @@ function EmptyState({ tab }: { tab: TabId }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
         <Ban className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} aria-hidden />
       </div>
-      <h3 className="font-display text-lg font-bold">No voided records</h3>
+      <h2 className="font-display text-lg font-bold">No voided records</h2>
       <p className="max-w-sm text-sm text-muted-foreground">Approved records can't be edited or deleted. If one is wrong, open it and choose Void; a second admin must confirm.</p>
     </div>
   );

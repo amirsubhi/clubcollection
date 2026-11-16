@@ -4,10 +4,11 @@ Short, task-based instructions. Member pages are in Bahasa Melayu by default (sw
 their labels are quoted in BM as they appear. Admin pages are in English. Everyone in the screenshots is fictional.
 
 - [Members](#members): [pay by FPX](#pay-by-fpx) · [pay by bank transfer](#pay-by-bank-transfer--duitnow) ·
-  [receipts](#view-an-invoice-or-receipt) · [pay ahead](#pay-ahead) · [install as an app](#install-as-an-app-pwa) · [2FA](#turn-on-two-factor-authentication)
+  [pay all at once](#pay-all-open-fees-at-once-bayar-semua) · [receipts](#view-an-invoice-or-receipt) · [pay ahead](#pay-ahead) · [install as an app](#install-as-an-app-pwa) · [2FA](#turn-on-two-factor-authentication)
 - [Treasurer / club admin](#treasurer--club-admin): [verify slips](#verify-transfer-slips) ·
   [record an expense or welfare case](#record-an-expense-or-welfare-case) · [approve a record](#approve-someone-elses-record) ·
-  [bank details](#change-the-clubs-bank-details) · [plans and gateway fee](#billing-plans-and-gateway-fee) · [ledger](#export-the-ledger)
+  [bank details](#change-the-clubs-bank-details) · [plans and gateway fee](#billing-plans-and-gateway-fee) ·
+  [bank charges](#bank-and-gateway-charges) · [ledger and the AGM](#the-ledger-and-the-agm) · [reminders](#overdue-reminders)
 - [Super admin](#super-admin): [install](#install-the-app) · [create a club](#create-a-club) · [grant club admin](#make-someone-a-club-admin)
 
 ---
@@ -18,9 +19,11 @@ their labels are quoted in BM as they appear. Admin pages are in English. Everyo
 
 Log in with the email and temporary password from your welcome email. **Utama** (home) shows:
 
-- **Jumlah perlu dibayar**: what you owe now, with a **Bayar RM …** button for the oldest fee and **Invois**;
+- your membership card with **Jumlah perlu dibayar**: what you owe now, with a **Bayar RM …** button for the oldest
+  fee and **Invois** (or **Bayar semua RM …** when more than one fee is open, see below);
 - **Akan datang**: fees still open; **Aktiviti terkini**: your recent payments;
-- **Ke mana wang anda pergi**: how much the club collected and spent this year, by category (totals only);
+- **Ke mana wang anda pergi**: how much the club collected and spent this year (expenses + welfare + bank charges),
+  by category in BM (totals only);
 - **Akaun saya**: theme (system / light / dark), **Keselamatan & 2FA** and **Log keluar**.
 
 **Bayaran** (bottom bar) lists all your fees by year.
@@ -72,6 +75,23 @@ for that payment instead of transferring as well.
 
 <br clear="right">
 
+### Pay all open fees at once (Bayar semua)
+
+<img src="screenshots/member-pay-all.png" width="260" align="right" alt="Member home with Bayar semua">
+
+When more than one fee is open (pending or overdue), **Utama** shows **Bayar semua RM …** with the total, and
+**Bayar satu sahaja (yang paling lama)** for just the oldest fee. Open fees are always listed oldest first.
+
+- **Semak & bayar semua** lists every fee in the set and the total.
+- **FPX:** one bill, so one gateway charge for the whole set. When the gateway confirms it, every fee is marked paid
+  together and the receipt has one line per fee.
+- **Bank transfer:** one transfer and one slip for the whole set, with the reference `YURAN-G…` shown on the page.
+  The treasurer approves or rejects the set together.
+- If a fee changes after you opened the page (for example the treasurer edits an amount), you are asked to check the
+  new total before paying. A fee already being checked from an earlier slip is left out.
+
+<br clear="right">
+
 ### View an invoice or receipt
 
 <img src="screenshots/member-receipt.png" width="260" align="right" alt="Official receipt">
@@ -117,15 +137,17 @@ After 5 wrong codes the challenge locks for 15 minutes.
 
 Admins log in at the same address and land on a page listing their clubs; open a club's **Dashboard**. The sidebar has **Dashboard**, **Fund Usage**,
 **Verifications**, **Payments**, **Members**, **Fee Rates**, **Billing settings**, **Discounts**, **Expense
-categories**, **Ledger** and **Audit Log** (the classic pages use a slightly different sidebar). **Portal home** goes
-back to the list of your clubs. To see your own member view (admins pay fees too), use **Member view** in the account
-menu (your initials, top right) or **My Member Portal** in the classic sidebar.
+categories**, **Ledger**, **Audit Log**, **Portal home** (back to the list of your clubs) and **Security & 2FA**, the
+same on every admin page. To see your own member view (admins pay fees too), use **Member view** in the account menu
+(your initials, top right). The screen icon next to it switches the theme (light, dark or system).
 
 ![Admin dashboard](screenshots/admin-dashboard.png)
 
-The **Dashboard** shows the fund balance (all time, approved spending only), collected and spent this year, records
-awaiting approval, gateway fees the club absorbed, a 12-month collected vs spent chart (**Show as table** for the
-numbers), transfer slips and approvals waiting for you, and recent money events.
+The **Dashboard** shows the fund balance today (everything collected minus everything approved as spent), collected
+and spent this year (spent = expenses + welfare + bank charges, with the split), records awaiting approval, a
+12-month collected vs spent chart (**Show as table** for the numbers), transfer slips and approvals waiting for you,
+and recent money events. Every figure says which period it covers, and the same figures appear on Fund Usage, the
+Ledger and the member card.
 
 **Two-person rule.** Anything that moves or redirects money needs a second admin: approving a Fund Usage record,
 voiding one, changing the bank details, and approving a slip for your own fee. You can never check your own work or
@@ -145,13 +167,19 @@ your own fee.
 
 **Recently handled** lists past decisions. You can't approve a slip for your own fee; another admin must.
 
+A **Bayar semua** slip shows as one card with every fee it covers and the total (also one row on the dashboard).
+Approving or rejecting it moves all the fees together. If one of them was paid online in the meantime, the card says
+so and shows the amount to refund; the rest can still be approved.
+
 ### Record an expense or welfare case
 
 ![Fund Usage list](screenshots/admin-fund-usage.png)
 
 1. **Fund Usage → New expense** (or **New welfare case** for a "sumbangan kebajikan").
 2. Fill in the category, payee, description, amount, invoice/bill number, invoice date, **Date paid** (when the money
-   left the account) and the **Meeting minute ref.** if the committee approved it in a meeting.
+   left the account) and the **Meeting minute ref.** if the committee approved it in a meeting. Under each date
+   field the picked date is written out (e.g. "16 Nov 2026"), so day and month can't be mixed up. If something is missing when you submit, a list of what to fix
+   appears at the top and the cursor moves to it.
 3. Attach the documents (PDF, JPG, PNG or WebP, up to 10 MB each, at most 10 per record) and set each one's kind
    (Invoice, Receipt, Bank slip, Acknowledgement, Other). Files are stored encrypted and only club admins can open them.
 4. **Save draft** to finish later, or **Submit for approval**. Once submitted, documents are locked.
@@ -189,11 +217,12 @@ record, one admin uses **Void** with a reason and a different admin confirms it;
 
 Members pay into whatever these say, so a change needs a second admin.
 
-1. **Billing settings → Pindahan bank / DuitNow**: edit the bank name, account holder, account number and/or DuitNow
+1. **Billing settings → Bank transfer / DuitNow**: edit the bank name, account holder, account number and/or DuitNow
    ID, then **Save billing settings**.
 2. The change is held. Members keep seeing the current details, and every club admin is emailed.
 3. Another club admin (or the super admin) opens **Billing settings**, compares **Now (members see)** with
-   **Requested** and clicks **Approve**. Anyone, including the requester, can **Cancel request**.
+   **Requested** and clicks **Approve new details**. The requester can't approve their own change, only **Cancel my
+   request**; other admins can also **Cancel this change**.
 
 Switching **Offer bank transfer / DuitNow to members** off takes effect at once (no approval needed).
 
@@ -209,29 +238,69 @@ Also on **Billing settings**:
 - **Gateway fee per bill (RM)**: what your gateway plan charges per bill (e.g. RM1.00). Used for the review page,
   savings hints and the dashboard's fee total; the gateway applies its own fee.
 
-- **Reverting a fee paid online**: the gateway charge the club absorbed leaves the fund figures while the fee is not
-  paid, and counts again if you mark it paid by hand. If the member settles it instead by transfer slip or a new online
-  bill, that payment replaces the earlier gateway charge (none for a slip, the new bill's charge for a new bill).
-
 See [payment-options.md](payment-options.md) for a comparison of charges.
 
-### Export the ledger
+### Bank and gateway charges
+
+When the club absorbs the gateway fee, each online payment's charge counts as spending: it appears in **Spent** as
+**Bank charges** (dashboard, Fund Usage, member card) and as one **Bank / gateway charges** row per month in the
+ledger. You don't record these yourself.
+
+Record a charge by hand, as a normal expense in a **Bank charges** category (create it under **Expense categories**
+if your club doesn't have it), when:
+
+- the bank charges the club something the portal can't see (monthly account fee, DuitNow or IBG charges); or
+- you **reverted a fee that was paid online**: its gateway charge leaves the figures while the fee is not paid, and
+  counts again if you mark the fee paid by hand. But if the member then settles it by transfer slip or a new online
+  bill, that payment replaces the earlier charge (none for a slip, the new bill's own charge), so the first gateway
+  charge is no longer counted. The gateway still kept it: record it as a bank-charges expense with the gateway
+  statement as the document.
+
+Each category can have a **Name in Bahasa Melayu** (Expense categories page); members see that name on their
+"Ke mana wang anda pergi" card, and the English name when it is empty.
+
+### The ledger and the AGM
 
 ![Ledger](screenshots/admin-ledger.png)
 
-1. **Ledger**: set **From** and **To** (up to 24 months) and the **Opening Balance (RM)**, i.e. the club's balance
-   before that date, then **Apply**.
-2. Read the summary, **Monthly Breakdown**, **Outstanding Payments** and the full transaction list with a running
-   balance.
-3. **Export CSV** (opens in Excel / Google Sheets) or **Export PDF** (A4 landscape for the AGM). Both use the same
-   filters.
+1. **Ledger**: choose **This year**, **Last 12 months** or **Custom dates** (up to 24 months).
+2. The **Opening balance** is worked out from the records (everything collected minus everything approved as spent
+   before the start date), so it matches the dashboard. **Set manually** overrides it, e.g. with the balance from
+   last year's audited accounts; the page and the exports then mark it "(diubah secara manual)" and show what the
+   records say.
+3. Read the summary tiles (money in, money out with the expenses / welfare / bank charges split, closing balance),
+   **Month by month** (**Show as chart** for a chart) and the transactions with a running balance. **Fees not yet
+   received** lists open fees; they are not in the balance until paid.
+4. **Export CSV** (opens in Excel / Google Sheets) or **Export PDF** (A4 landscape for the AGM). Both use the same
+   period and opening balance as the page.
+
+**Which figure to quote at the AGM.** Use the **closing balance** for the financial year (**This year**, or **Custom
+dates** for your club's year), exported as PDF. If last year's accounts were audited, set the opening balance
+manually to the audited figure and say so ("opening balance per audited accounts"); the closing balance is then
+that figure plus this year's money in minus money out. If you don't set it, quote the computed figures: they are
+the same ones the dashboard and members see.
+
+**Dates differ from the bank statement.** Fees paid online are dated when the gateway confirmed the payment, but the
+gateway pays the club later (often the next working day, in batches, net of its fees for some plans). Transfers are
+dated with the **Date received** you entered when approving the slip. So a month-end balance can differ from the bank
+statement by payments still in transit; match them by the bill reference or `YURAN-…` reference, not by date.
+
+### Overdue reminders
+
+Every day at **08:00 Malaysia time** the portal marks fees past their due date as overdue and emails each member a
+reminder. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` (set by the installer; see
+[INSTALL.md](INSTALL.md)). Without the time zone it runs at 08:00 UTC, which is 4 pm in Malaysia.
 
 ### Other admin tasks
 
 - **Members**: add a member (they get a welcome email with a temporary password) or **Import** a CSV (template on the
   import page; up to 1,000 rows). Club admins can't add or change club admins; only the super admin can.
+  **Removing** a member only takes them out of the club: their fees and payments stay (shown as theirs, or "Former
+  member" if the account is deleted later), so the fund figures, ledger and AGM history don't change. To stop
+  someone being billed while keeping them listed, set them inactive instead.
 - **Fee Rates**: monthly fee per job level. **Discounts**: fixed or percentage discounts.
-- **Payments**: all fees, generate fee records, mark a fee paid by hand (not your own).
+- **Payments**: all fees, generate fee records, mark a fee paid by hand (not your own). On a phone the status shows
+  under the member's name and the table scrolls sideways for the rest.
 - **Audit Log**: every change in the club, who made it and when.
 
 ---

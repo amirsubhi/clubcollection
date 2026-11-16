@@ -77,7 +77,8 @@ final class AdminNav
         return [
             'groups' => self::groups($club, $user, $awaiting),
             'homeHref' => route('admin.clubs.dashboard', $club),
-            'brandSubtitle' => $club->name,
+            // The club name already heads the nav group and the page; a third copy under the brand is noise.
+            'brandSubtitle' => null,
             'user' => self::userProps($user),
             'memberHref' => route('member.dashboard'),
             'logoutUrl' => route('logout'),
@@ -96,7 +97,8 @@ final class AdminNav
 
         if ($club !== null) {
             // Transfer slips waiting for an admin (one count query per page).
-            $slips = $club->payments()->where('status', 'pending_verification')->count();
+            // Slips, not fees: a "Bayar semua" slip for three fees counts once (as on the dashboard and Verifications page).
+            $slips = \App\Http\Controllers\Admin\TransferVerificationController::waitingSlipCount($club);
 
             $groups[] = ['title' => $club->name, 'items' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('admin.clubs.dashboard', $club), 'icon' => 'dashboard', 'external' => false],
@@ -130,7 +132,7 @@ final class AdminNav
      * Everything the Blade layout needs: the same groups as the Inertia pages
      * for the club in context, the active item and the user block.
      *
-     * @return array{groups: list<array>, active: ?string, club: ?Club, homeHref: string, brandSubtitle: ?string, user: array, memberHref: string, logoutUrl: string}
+     * @return array{groups: list<array>, active: ?string, club: ?Club, homeHref: string, brandSubtitle: null, user: array, memberHref: string, logoutUrl: string}
      */
     public static function forRequest(Request $request): array
     {
@@ -147,7 +149,7 @@ final class AdminNav
             'active' => self::activeKey($request->route()?->getName()),
             'club' => $club,
             'homeHref' => $club ? route('admin.clubs.dashboard', $club) : route('home'),
-            'brandSubtitle' => $club?->name,
+            'brandSubtitle' => null,
             'user' => self::userProps($user),
             'memberHref' => route('member.dashboard'),
             'logoutUrl' => route('logout'),

@@ -118,7 +118,7 @@ function SlipCard({ s, today }: { s: PendingSlip; today: string }) {
           <Avatar name={s.member.name} size={44} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h3 className="truncate font-display text-lg font-bold tracking-tight">{s.member.name}</h3>
+              <h2 className="truncate font-display text-lg font-bold tracking-tight">{s.member.name}</h2>
               <Money sen={amount} className="font-display text-2xl font-bold" />
             </div>
             <div className="text-sm text-muted-foreground">
@@ -238,9 +238,9 @@ function SlipCard({ s, today }: { s: PendingSlip; today: string }) {
       </div>
 
       <div className="min-w-0">
-        <h4 className="mb-2 text-sm font-semibold">
+        <h3 className="mb-2 text-sm font-semibold">
           Slip{s.slips.length === 1 ? "" : "s"} ({s.slips.length})
-        </h4>
+        </h3>
         <AttachmentGallery items={s.slips} frozen />
       </div>
     </li>

@@ -36,8 +36,8 @@
     </script>
     @include('partials.pwa-head')
     <title>@yield('title', 'Admin') · Club Portal</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Plus+Jakarta+Sans:wght@400..700&display=swap" rel="stylesheet">
@@ -72,6 +72,7 @@
         .page-head { margin-bottom: 1.5rem; }
         .page-head h1 { margin: 0; font-size: clamp(1.375rem, 1.1rem + 1vw, 1.75rem); font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
         .page-head .page-club { margin: 0 0 0.25rem; font-size: 0.875rem; color: var(--bs-secondary-color); }
+        .date-echo { min-height: 1.25em; margin-top: 0.25rem; font-size: 0.8125rem; color: var(--bs-secondary-color); }
         @media (min-width: 992px) {
             /* The column stretches to the page height (so its colour never stops short); the menu inside stays in view. */
             .admin-sidebar-col { width: 16rem; border-right: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
@@ -149,7 +150,7 @@
             @stack('topbar-actions')
 
             <div class="dropdown">
-                <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Theme" id="themeMenuBtn">
+                <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Theme (System)" id="themeMenuBtn">
                     <i class="bi bi-circle-half" aria-hidden="true" id="themeMenuIcon"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeMenuBtn">
@@ -221,7 +222,7 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script nonce="{{ $cspNonce }}">
 // Theme menu: same choices and storage as the React pages (cp-theme).
 (function () {
@@ -236,13 +237,30 @@
             el.querySelector('.theme-check').style.visibility = on ? 'visible' : 'hidden';
             if (on && icon) icon.className = 'bi ' + el.dataset.icon;
         });
-        btn?.setAttribute('aria-label', 'Theme: ' + pref);
+        btn?.setAttribute('aria-label', 'Theme (' + pref.charAt(0).toUpperCase() + pref.slice(1) + ')');
     }
     document.querySelectorAll('[data-theme-choice]').forEach(el => {
         el.addEventListener('click', () => { window.cpSetTheme(el.dataset.themeChoice); sync(); });
     });
     sync();
 })();
+
+// Date fields: write the picked date out ("16 Nov 2026") under the field. The browser's own date
+// control shows day/month or month/day depending on its language; this removes any doubt.
+document.querySelectorAll('input[type="date"]').forEach(input => {
+    const echo = document.createElement('div');
+    echo.className = 'date-echo';
+    echo.setAttribute('aria-hidden', 'true');
+    echo.dataset.dateEcho = input.id || input.name;
+    const show = () => {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.value);
+        echo.textContent = m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '\u00a0';
+    };
+    input.insertAdjacentElement('afterend', echo);
+    input.addEventListener('input', show);
+    input.addEventListener('change', show);
+    show();
+});
 
 // CSP-safe replacements for inline event handlers.
 // Forms with data-confirm prompt before submission.

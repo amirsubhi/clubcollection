@@ -78,22 +78,12 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Default expense categories
-        $categories = [
-            'Event',
-            'Food & Beverage',
-            'Supplies',
-            'Decoration',
-            'Transportation',
-            'Printing & Stationery',
-            'Maintenance',
-            'Miscellaneous',
-        ];
-
-        foreach ($categories as $name) {
+        // Default expense categories (English for admins, BM for members)
+        foreach (ExpenseCategory::DEFAULTS as $name => $nameMs) {
             ExpenseCategory::create([
                 'club_id' => $club->id,
                 'name'    => $name,
+                'name_ms' => $nameMs,
             ]);
         }
 

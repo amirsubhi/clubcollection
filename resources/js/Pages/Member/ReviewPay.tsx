@@ -412,9 +412,11 @@ function StickyBar({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={ref}
+      // Same box pinned or not (border, padding, safe-area inset): only position and background change, so its
+      // measured height never moves across the threshold and it cannot flip between the two states.
       className={cn(
-        "bleed-x z-10 flex flex-col gap-2 py-3",
-        pinned && "sticky bottom-0 border-t bg-background/95 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] backdrop-blur supports-[backdrop-filter]:bg-background/85",
+        "bleed-x z-10 flex flex-col gap-2 border-t border-transparent pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3",
+        pinned && "sticky bottom-0 border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85",
       )}
       data-testid="pay-bar"
       data-pinned={pinned}
@@ -487,8 +489,6 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
   return (
     <MemberShell tab="payments" navHrefs={{ home: dashboardUrl, payments: paymentsUrl }} clubName={payClub.name} title={title} backHref={payment ? payment.urls.invoice : dashboardUrl} hideNav>
       <Head title={title} />
-      {/* The header already shows the title; this is the page heading for screen readers. */}
-      <h1 className="sr-only">{title}</h1>
 
       <FlashBanner />
 

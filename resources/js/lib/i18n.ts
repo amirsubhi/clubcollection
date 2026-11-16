@@ -401,6 +401,16 @@ export function isDictKey(key: string): key is DictKey {
   return Object.prototype.hasOwnProperty.call(dict, key);
 }
 
+/**
+ * The language of the page on screen ("ms" or "en"), as set on <html lang>: member pages follow the BM/EN toggle,
+ * admin pages the server locale. Shared UI parts (dialog "Close", uploader defaults) read it so they match the page.
+ */
+export const PageLangContext = createContext<"ms" | "en">("en");
+
+export function usePageLang() {
+  return useContext(PageLangContext);
+}
+
 export function useLang() {
   return useContext(LangContext);
 }

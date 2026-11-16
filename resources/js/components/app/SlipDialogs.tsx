@@ -3,7 +3,7 @@ import { Check, X } from "lucide-react";
 import { Money } from "./Money";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input, Label } from "@/components/ui/input";
+import { DateHint, Input, Label } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fmtDate } from "@/lib/format";
 
@@ -76,8 +76,11 @@ export function ApproveSlipDialog({ slip, today, triggerProps, onConfirm }: Base
               max={today}
               onChange={(e) => setPaidDate(e.target.value)}
               invalid={!valid}
+              required
+              aria-describedby={`paid-${slip.id}-note`}
             />
-            <p className={beforeTransfer ? "text-xs font-medium text-danger-foreground" : "text-xs text-muted-foreground"}>
+            <DateHint value={paidDate} className="-mt-0.5" />
+            <p id={`paid-${slip.id}-note`} className={beforeTransfer ? "text-xs font-medium text-danger-foreground" : "text-xs text-muted-foreground"}>
               {beforeTransfer && slip.transferDate ? `Can't be before the transfer date (${fmtDate(slip.transferDate)}).` : "When the money reached the club's account."}
             </p>
           </div>

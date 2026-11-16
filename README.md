@@ -16,6 +16,7 @@ Billplz sandbox run on your own host.
     <td align="center"><img src="docs/screenshots/member-home.png" width="220" alt="Member home with the amount due"><br><sub>Member home</sub></td>
     <td align="center"><img src="docs/screenshots/member-review-transfer.png" width="220" alt="Review and pay by bank transfer"><br><sub>Pay by transfer, no charge</sub></td>
     <td align="center"><img src="docs/screenshots/member-receipt.png" width="220" alt="Official receipt"><br><sub>Official receipt</sub></td>
+    <td align="center"><img src="docs/screenshots/member-pay-all.png" width="220" alt="Member home offering Bayar semua for three open fees"><br><sub>Bayar semua: every open fee at once</sub></td>
     <td align="center"><img src="docs/screenshots/member-home-dark.png" width="220" alt="Member home in dark mode"><br><sub>Dark theme</sub></td>
   </tr>
 </table>
@@ -25,8 +26,10 @@ Billplz sandbox run on your own host.
 ## Features
 
 **For members** (installable web app, Bahasa Melayu by default, English toggle, light/dark theme)
-- Home shows the amount due, upcoming fees, recent payments and club-wide totals of where the money went
-  (totals only: no payees, documents or other members' names).
+- Home shows the amount due on a membership card, upcoming fees (oldest first), recent payments and club-wide totals
+  of where the money went, with category names in BM (totals only: no payees, documents or other members' names).
+- **Bayar semua**: with more than one fee open, pay them all with one FPX bill (one gateway charge) or one transfer
+  slip (`YURAN-G{id}`); "Bayar satu sahaja" still pays just the oldest.
 - **Review & pay** ("Semak & bayar") with a choice of:
   - **FPX** through the club's gateway (ToyyibPay or Billplz);
   - **bank / DuitNow transfer** ("Pindahan bank / DuitNow"): the page shows the club's account and a `YURAN-{id}`
@@ -37,20 +40,24 @@ Billplz sandbox run on your own host.
 - Add to home screen (PWA) with a small install tip.
 
 **For club admins (treasurer, secretary)**
-- **Dashboard**: fund balance, collected and spent this year, gateway fees absorbed, a 12-month chart, transfer slips
-  and approvals waiting, recent money events.
+- **Dashboard**: fund balance, collected and spent this year (expenses + welfare + bank charges), records awaiting
+  approval, a 12-month chart, transfer slips (a "Bayar semua" slip is one row) and approvals waiting, recent money
+  events. Dashboard, Fund Usage, Ledger and the member card all use one set of fund figures, each with its period.
 - **Fund Usage** (expenses and welfare / "kebajikan" contributions) with **maker-checker**: one admin records it with
   invoices, receipts or bank slips, a different admin approves it with a conflict-of-interest declaration (or returns
   it with a reason). Approved records can't be edited; voiding needs two admins. Only approved records count in
   balances and reports.
 - **Payment verifications**: check members' transfer slips against the bank statement, approve (the member gets the
-  receipt by email) or reject with a reason (the member is emailed and can send a new slip).
+  receipt by email) or reject with a reason (the member is emailed and can send a new slip). A "Bayar semua" slip is
+  approved or rejected as one set.
 - **Billing settings**: which plans members may choose, the default plan, who pays the gateway fee, and the club's
   bank / DuitNow details. A change to the bank details waits for a second admin to approve it.
 - Members (add one by one or import CSV, welcome email with a temporary password), fee rates by job level,
-  discounts, payments, expense categories.
-- **Ledger** with running balance, monthly breakdown and outstanding fees, exported as CSV (Excel-ready) or PDF
-  (A4 landscape for the AGM).
+  discounts, payments, expense categories (with an optional BM name for members).
+- **Ledger** with period presets, an opening balance worked out from the records (or set by hand, clearly marked),
+  money in / out tiles, month-by-month table or chart, running balance, monthly bank-charge rows and outstanding fees,
+  exported as CSV (Excel-ready) or PDF (A4 landscape for the AGM). The user guide says
+  [which figure to quote at the AGM](docs/USER-GUIDE.md#the-ledger-and-the-agm).
 - Per-club audit log.
 
 **For the super admin**
@@ -74,9 +81,10 @@ amounts in the screenshots are made up.
 ## Tech stack
 
 - **Backend:** Laravel 13 (PHP 8.4), SQLite by default (MySQL / PostgreSQL via `.env`), database sessions, cache and queue.
-- **Front end:** member pages and the main admin pages (dashboard, Fund Usage, verifications) use Inertia 2 + React 18 +
-  TypeScript + Tailwind 3, built with Vite. The remaining admin pages, login and installer are Blade with Bootstrap 5
-  loaded from jsDelivr.
+- **Front end:** member pages and the main admin pages (dashboard, Fund Usage, verifications, ledger, billing) use
+  Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite. Sign-in pages are Blade with the same Tailwind
+  styles. The remaining admin pages and the installer are Blade with Bootstrap 5 (re-skinned to the same look and
+  sidebar) loaded from jsDelivr with Subresource Integrity hashes.
 - **Payments:** ToyyibPay and Billplz behind one gateway interface (per-club choice and credentials), plus manual
   bank / DuitNow transfer.
 - **Other:** `pragmarx/google2fa` (TOTP 2FA), `barryvdh/laravel-dompdf` (ledger PDF), Recharts (charts).
@@ -127,7 +135,8 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
    `TRUSTED_PROXIES` if your host has a proxy in front of PHP. Run `php artisan config:cache` after **any** `.env` change.
 6. Add a cron job every minute: `cd /path/to/app && php artisan schedule:run`. It sends the overdue-fee reminders
    daily at 08:00 in the app time zone (`APP_TIMEZONE`): 8 am Malaysia time with the recommended
-   `APP_TIMEZONE=Asia/Kuala_Lumpur` (UTC when unset). No queue worker is needed.
+   `APP_TIMEZONE=Asia/Kuala_Lumpur`, which the installer sets (UTC when unset, i.e. 4 pm in Malaysia). Dates on
+   receipts, the ledger and the dashboard follow the same time zone. No queue worker is needed.
 
 > **Until the first real production install (the next release tag):** some columns were added by editing existing
 > migrations, so an existing database from an earlier build needs `php artisan migrate:fresh --force` (this deletes
@@ -142,6 +151,11 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
 - **Gateway fee:** the club chooses whether it absorbs the per-bill fee or members pay it. For ToyyibPay, "member pays"
   stays disabled until `TOYYIBPAY_CHARGE_VERIFIED=true` (after a sandbox check).
 - **Bank / DuitNow transfer** costs nothing: members upload a slip and an admin verifies it.
+- **"Bayar semua"** puts every open fee in one bill (one gateway charge) or one slip; the webhook settles the whole
+  set in one transaction, or none of it.
+- **Bank charges:** gateway fees the club absorbs count as spending (shown as "Bank charges" and as monthly ledger
+  rows). Other bank charges are recorded as a normal expense; see the
+  [user guide](docs/USER-GUIDE.md#bank-and-gateway-charges).
 - Fee comparison and advice for committees: [docs/payment-options.md](docs/payment-options.md).
 
 ## Security highlights

@@ -24,12 +24,14 @@ class AuthPageLocale
     public function handle(Request $request, Closure $next): Response
     {
         $asked = self::normalise($request->query('lang'));
-        $lang = $asked ?? self::normalise($request->cookie(self::COOKIE)) ?? 'bm';
+        $saved = self::normalise($request->cookie(self::COOKIE));
+        $lang = $asked ?? $saved ?? 'bm';
 
         App::setLocale($lang === 'en' ? 'en' : 'ms');
         View::share('authLang', $lang);
         // Chosen on purpose (switch or earlier cookie): the page also copies it to the member app's saved choice.
-        View::share('authLangChosen', $asked !== null || $request->cookie(self::COOKIE) !== null);
+        // A cookie holding anything but bm/en is ignored, so it does not count as a choice.
+        View::share('authLangChosen', $asked !== null || $saved !== null);
 
         $response = $next($request);
 

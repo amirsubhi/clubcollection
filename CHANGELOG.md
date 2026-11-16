@@ -26,6 +26,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Docs:** README rewrite with screenshots, `docs/USER-GUIDE.md`, `docs/payment-options.md`, end-to-end smoke test
   (`tests/e2e/`).
 
+### Design fix round (R1a–R1e, from the design review)
+- **R1a, sign-in and member basics:** sign-in, 2FA and password pages work on phones (one column, Lavender look with
+  dark mode, "Club Portal" brand, BM/EN switch shared with the member app, accessible errors, a plain fallback style
+  when the build is missing); `<html lang>` follows the language toggle; member pages hold up at 200% text; the
+  network-dots hero is replaced by a membership card; Review & pay has a sticky pay bar, no duplicate amount, FPX
+  disabled with a reason when unavailable, and camera-first slip upload on phones.
+- **R1b, "Bayar semua":** pay every open fee with one gateway bill (one gateway charge) or one transfer slip
+  (`YURAN-G{id}`); group bills in `payment_bills` + `payment_bill_items`; the webhook settles a set atomically with the
+  same token, confirmation, amount and dedupe checks; the treasurer approves or rejects a group slip as one set.
+- **R1c, one set of fund figures:** `FundFigures` is the single source for the balance, collected and spent
+  (approved expenses + welfare + absorbed gateway charges), each with its period; Ledger and Billing settings rebuilt
+  on Inertia (computed opening balance, period presets, monthly bank-charge rows); `APP_TIMEZONE`
+  (`Asia/Kuala_Lumpur` from the installer) so dates and the 08:00 reminder follow Malaysia time.
+- **R1d, classic admin pages:** Bootstrap pages use the same tokens, dark mode, sidebar (one `AdminNav` source),
+  headings and accessible forms as the React pages; Statistics uses `FundFigures`; members list links fixed.
+- **R1e, polish:**
+  - Forms: `Field` links each control to its label, hint and error (`aria-describedby`), sets `required` /
+    `aria-required` and `aria-invalid` on inputs, textareas and selects; the Fund Usage "Record type" switch is a
+    labelled radio group with arrow keys; a failed submit moves focus to the error summary. The file uploader ties
+    its error and limits to every way in.
+  - One `h1` per page and no skipped heading levels (member header title is the `h1`, card titles are `h2`).
+  - "Close" on dialogs and sheets and the uploader's default text follow the page language (BM on member pages).
+  - With reduced motion, spinners stop turning but gently fade, so a busy state never looks frozen.
+  - Admin date fields write the picked date out under the field ("16 Nov 2026", React and Blade), so day and
+    month can't be mixed up whatever order the browser's date control uses.
+  - The Verifications sidebar badge counts slips, not fees (a "Bayar semua" slip counts once).
+  - A note on the "Bank charges" category (Fund Usage form and Expense categories page): only charges the portal
+    can't see; absorbed gateway fees are added automatically.
+  - Expense categories have an optional Bahasa Melayu name (`expense_categories.name_ms`, edited on the Expense
+    categories page); members see it on "Ke mana wang anda pergi". Demo and e2e seeders include BM names and a
+    "Bank charges" category.
+  - Admin lines no longer mix BM and English in one phrase (dashboard slips panel, ledger manual opening balance).
+  - The dashboard slips panel shows a "Bayar semua" slip as one row with its fee count and total; a settled group
+    no longer reads "paid" after an admin reverts one of its fees.
+  - Sign-in: the saved language only counts when it is `bm`/`en`; alert messages are guarded; a translated, styled
+    429 "too many attempts" page.
+  - Classic pages: Subresource Integrity on the Bootstrap, Bootstrap Icons and Chart.js CDN tags (Chart.js now loads
+    the package's own `chart.umd.js`); the club name is no longer repeated under the brand; the theme button reads
+    "Theme (System)"; on phones the payments table shows each status under the member's name, with a scroll hint.
+  - The member page's club fallback for admins only uses clubs they still actively manage.
+  - The review page's sticky pay bar keeps the same size pinned or not, so it can't flicker at the threshold; the
+    receipt amount wraps at large text sizes.
+  - Docs: screenshots retaken (new `member-pay-all.png`); README and user guide cover "Bayar semua", the new ledger
+    and billing pages, bank charges, the 08:00 Malaysia-time reminder, which figure to quote at the AGM, and that
+    removing a member keeps their payment history.
+
 ### Documentation and licensing
 - New `docs/INSTALL.md`: one complete first-install guide (requirements and PHP extensions, local and cPanel paths,
   MySQL, after-install setup, backups, troubleshooting). README keeps a short summary; `docs/RELEASE.md` now covers

@@ -73,7 +73,7 @@ class E2eSeeder extends Seeder
         ]);
 
         foreach (['Event', 'Supplies', 'Miscellaneous'] as $name) {
-            ExpenseCategory::create(['club_id' => $club->id, 'name' => $name]);
+            ExpenseCategory::create(['club_id' => $club->id, 'name' => $name, 'name_ms' => ExpenseCategory::DEFAULTS[$name]]);
         }
 
         $member = $this->user('E2E Ahli Ujian', self::MEMBER_EMAIL, 'member');

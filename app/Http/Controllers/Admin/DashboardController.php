@@ -45,12 +45,18 @@ class DashboardController extends Controller
             ])
             ->values();
 
-        // Transfer slips waiting for an admin: count and the oldest five.
-        $slipQuery = $club->payments()->where('status', 'pending_verification');
+        // Transfer slips waiting for an admin: how many and the oldest five. A "Bayar semua"
+        // slip covering several fees is one row (as on the Verifications page), with its total.
+        $sets = TransferVerificationController::slipSets(
+            $club->payments()->where('status', 'pending_verification')
+                ->with('user:id,name,email')->orderBy('transfer_submitted_at')->orderBy('id')->get()
+        )->sortBy(fn (array $set) => [$set['lead']->transfer_submitted_at?->getTimestamp() ?? 0, $set['lead']->id])->values();
         $slips = [
-            'count' => (clone $slipQuery)->count(),
-            'items' => (clone $slipQuery)->with('user:id,name,email')->orderBy('transfer_submitted_at')->orderBy('id')->limit(5)->get()
-                ->map(fn ($p) => TransferVerificationController::card($p, false))->values(),
+            'count' => $sets->count(),
+            'items' => $sets->take(5)->map(fn (array $set) => [
+                'feeCount' => $set['fees']->count(),
+                'amount' => $set['fees']->sum(fn ($p) => $p->amountSen()),
+            ] + TransferVerificationController::card($set['lead'], false))->values(),
             'transferReady' => $club->transferReady(),
         ];
 
