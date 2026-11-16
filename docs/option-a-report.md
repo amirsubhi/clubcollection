@@ -368,3 +368,11 @@ Follow-ups (non-blocking):
 - Billing WhatsApp field: hint that landlines need WhatsApp Business; help copy: a shared receipt link needs the member's own login.
 - Statistics "Collected vs spent" trend is still a Chart.js bar chart (token colours); convert if wanted.
 
+### R3a follow-ups (non-blocking)
+- A 429 on the member security forms shows Inertia's error modal with the English page; map it to a BM `member.too_many_tries` flash.
+- Tie `two_factor_verified` to the user id and regenerate the session after confirm.
+- Expire `two_factor_setup_pending` after ~10 minutes.
+- Consider requiring a code (or recovery code) to turn 2FA off.
+- Add a "simpan di tempat selamat" hint next to the recovery-codes download.
+- Encrypted history needs HTTPS in production (Inertia stores plain history over http).
+

@@ -173,7 +173,7 @@ function PendingBankPanel({ pending, urls }: { pending: PendingBank; urls: Props
         </StatusChip>
       </div>
 
-      <div className="-mx-4 overflow-x-auto sm:mx-0">
+      <div className="-mx-4 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0" tabIndex={0} role="region" aria-label="Current and new bank details (scrolls sideways)">
         <table className="w-full min-w-[30rem] text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-muted-foreground">

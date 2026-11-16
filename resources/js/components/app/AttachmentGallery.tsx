@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Download, FileText, Lock } from "lucide-react";
 import { AttachmentArt } from "./AttachmentArt";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,8 @@ function AttachmentPreview({ a, className, title, thumb = false }: { a: Attachme
 
 export function AttachmentGallery({ items, frozen }: { items: Attachment[]; frozen: boolean }) {
   const [open, setOpen] = useState<Attachment | null>(null);
+  // The tile that opened the preview: focus goes back to it when the preview closes (the dialog has no trigger).
+  const opener = useRef<HTMLElement | null>(null);
   if (items.length === 0) return <p className="text-sm text-muted-foreground">No documents attached yet.</p>;
   return (
     <>
@@ -30,7 +32,10 @@ export function AttachmentGallery({ items, frozen }: { items: Attachment[]; froz
           <li key={a.id}>
             <button
               type="button"
-              onClick={() => setOpen(a)}
+              onClick={(e) => {
+                opener.current = e.currentTarget;
+                setOpen(a);
+              }}
               className="group flex w-full flex-col overflow-hidden rounded-lg border bg-card text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Preview ${a.name}`}
             >
@@ -53,7 +58,15 @@ export function AttachmentGallery({ items, frozen }: { items: Attachment[]; froz
         ))}
       </ul>
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent
+          className="max-w-xl"
+          onCloseAutoFocus={(e) => {
+            if (opener.current?.isConnected) {
+              e.preventDefault();
+              opener.current.focus();
+            }
+          }}
+        >
           {open && (
             <>
               <DialogHeader>

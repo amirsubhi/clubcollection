@@ -371,7 +371,7 @@ try {
     await dialog.getByRole("button", { name: /^Approve/ }).click();
     await dialog.waitFor({ state: "detached" });
     await e.page.getByText(/^Slip approved\./).first().waitFor();
-    await e.page.getByRole("tab", { name: /Recently handled/ }).click();
+    await e.page.getByRole("button", { name: /Recently handled/ }).click();
     await e.page.getByText("Approved", { exact: true }).first().waitFor();
     await shot(e.page, "e3-verifications-handled");
   });

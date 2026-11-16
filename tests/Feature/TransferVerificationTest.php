@@ -145,7 +145,9 @@ class TransferVerificationTest extends TestCase
         $this->submit(['files' => [UploadedFile::fake()->create('big.pdf', 11 * 1024, 'application/pdf')]])->assertSessionHasErrors('files.0');
         $this->submit(['files' => []])->assertSessionHasErrors('files');
         $this->submit(['files' => [$this->slip('a.png'), $this->slip('b.png'), $this->slip('c.png'), $this->slip('d.png')]])->assertSessionHasErrors('files');
-        $this->submit(['transfer_date' => now()->addDay()->toDateString()])->assertSessionHasErrors('transfer_date');
+        $this->submit(['transfer_date' => now()->addDay()->toDateString()])->assertSessionHasErrors(['transfer_date' => 'member.transfer_date_invalid']);
+        // An empty date gets its own message ("Masukkan tarikh pindahan").
+        $this->submit(['transfer_date' => ''])->assertSessionHasErrors(['transfer_date' => 'member.transfer_date_required']);
         $this->submit(['transfer_date' => now()->subYear()->subDays(2)->toDateString()])->assertSessionHasErrors('transfer_date');
         $this->submit(['transfer_ref' => str_repeat('x', 61)])->assertSessionHasErrors('transfer_ref');
 

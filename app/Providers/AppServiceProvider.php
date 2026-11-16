@@ -37,6 +37,8 @@ class AppServiceProvider extends ServiceProvider
         // must never be cut off; the limit only stops a flood from one source.
         RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(300)->by('webhook|'.$request->ip()));
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by('password|'.$request->ip()));
+        // Turning 2FA on checks the password (and a TOTP code): 5 tries a minute per user, its own bucket.
+        RateLimiter::for('two-factor-setup', fn (Request $request) => Limit::perMinute(5)->by('2fa-setup|'.($request->user()?->id ?? $request->ip())));
 
         self::configureTrustedProxies();
 

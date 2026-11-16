@@ -162,7 +162,7 @@
                 <span class="fw-semibold">Paid This Month</span>
                 <span class="badge bg-success">{{ $paidMembers->count() }} / {{ $paidMembers->count() + $unpaidMembers->count() }}</span>
             </div>
-            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto">
+            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto" tabindex="0" role="region" aria-label="Members who paid this month">
                 @forelse($paidMembers as $m)
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
                     <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
@@ -182,7 +182,7 @@
                 <span class="fw-semibold">Not Yet Paid</span>
                 <span class="badge bg-warning text-dark">{{ $unpaidMembers->count() }}</span>
             </div>
-            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto">
+            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto" tabindex="0" role="region" aria-label="Members not yet paid this month">
                 @forelse($unpaidMembers as $m)
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
                     <i class="bi bi-circle text-muted" aria-hidden="true"></i>

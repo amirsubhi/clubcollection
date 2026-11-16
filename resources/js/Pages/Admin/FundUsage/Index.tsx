@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FilterButton, FilterGroup } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { statusMeta } from "@/lib/fund-meta";
 import { fmtDate, rm } from "@/lib/format";
@@ -230,18 +230,16 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
       </div>
 
       <section className="flex min-w-0 flex-col gap-3">
-        <Tabs value={filters.tab} onValueChange={(v) => visit({ tab: v as TabId })}>
-          <div className="scrollbar-none -mx-1 overflow-x-auto px-1 pb-1">
-            <TabsList>
-              {tabDefs.map((d) => (
-                <TabsTrigger key={d.id} value={d.id}>
-                  {d.label}
-                  <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{tabCounts[d.id] ?? 0}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-        </Tabs>
+        <div className="scrollbar-none -mx-1 overflow-x-auto px-1 pb-1">
+          <FilterGroup aria-label="Show records">
+            {tabDefs.map((d) => (
+              <FilterButton key={d.id} active={filters.tab === d.id} onClick={() => visit({ tab: d.id })}>
+                {d.label}
+                <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{tabCounts[d.id] ?? 0}</span>
+              </FilterButton>
+            ))}
+          </FilterGroup>
+        </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative w-full sm:w-64">

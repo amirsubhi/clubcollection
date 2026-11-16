@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Head, usePage } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 import {
   AlertTriangle,
   BarChart3,
@@ -117,7 +117,10 @@ export function AdminLayout({
         homeHref={nav.homeHref}
         brandSubtitle={nav.brandSubtitle ?? undefined}
         memberHref={nav.memberHref}
-        onLogout={() => postForm(nav.logoutUrl)}
+        onLogout={() => {
+          router.clearHistory();
+          postForm(nav.logoutUrl);
+        }}
         wide={wide}
       >
         <AdminFlash ownErrors={ownErrors} />

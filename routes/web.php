@@ -100,9 +100,10 @@ Route::middleware('check_installed')->group(function () {
 
         // ── Profile / 2FA setup ──────────────────────────────────────────────
         Route::get('/profile/security', [ProfileController::class, 'security'])->name('profile.security');
-        Route::post('/profile/two-factor/enable', [ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
-        Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
-        Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
+        // Throttled like the challenge: both check the password, and confirm also checks a TOTP code.
+        Route::post('/profile/two-factor/enable', [ProfileController::class, 'enableTwoFactor'])->middleware('throttle:two-factor-setup')->name('profile.2fa.enable');
+        Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->middleware('throttle:two-factor-setup')->name('profile.2fa.confirm');
+        Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->middleware('throttle:two-factor-setup')->name('profile.2fa.disable');
 
         // ── Member Portal ────────────────────────────────────────────
         Route::middleware(['member'])->prefix('my')->name('member.')->group(function () {

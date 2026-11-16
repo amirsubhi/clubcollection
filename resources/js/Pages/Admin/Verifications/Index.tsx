@@ -9,7 +9,7 @@ import { ApproveSlipDialog, RejectSlipDialog, type SlipSummary } from "@/compone
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Avatar } from "@/components/app/Visuals";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FilterButton, FilterGroup } from "@/components/ui/tabs";
 import { fmtDate, fmtDateTime, fmtPeriod } from "@/lib/format";
 import type { AdminNavProps, FundAttachment } from "@/types/admin";
 
@@ -392,19 +392,17 @@ export default function VerificationsIndex({ nav, club, tab: initialTab, pending
         </Alert>
       )}
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Props["tab"])}>
-        {/* Two equal halves that may wrap their label on a narrow phone, instead of clipping "Recently handled". */}
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:w-auto">
-          <TabsTrigger value="pending" className="min-h-10 flex-wrap whitespace-normal text-center">
-            <Clock className="h-4 w-4" aria-hidden /> Waiting
-            <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{pending.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="handled" className="min-h-10 flex-wrap whitespace-normal text-center">
-            <BadgeCheck className="h-4 w-4" aria-hidden /> Recently handled
-            <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{handled.length}</span>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Two equal halves that may wrap their label on a narrow phone, instead of clipping "Recently handled". */}
+      <FilterGroup aria-label="Show slips" className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:w-auto">
+        <FilterButton active={tab === "pending"} onClick={() => setTab("pending")} className="min-h-10 flex-wrap whitespace-normal text-center">
+          <Clock className="h-4 w-4" aria-hidden /> Waiting
+          <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{pending.length}</span>
+        </FilterButton>
+        <FilterButton active={tab === "handled"} onClick={() => setTab("handled")} className="min-h-10 flex-wrap whitespace-normal text-center">
+          <BadgeCheck className="h-4 w-4" aria-hidden /> Recently handled
+          <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{handled.length}</span>
+        </FilterButton>
+      </FilterGroup>
 
       {tab === "pending" ? (
         pending.length === 0 ? (

@@ -12,7 +12,7 @@ import { ApprovalFlowDiagram } from "@/components/app/Diagrams";
 import { Stamp } from "@/components/app/Visuals";
 import { ApproveDialog, ReturnDialog, VoidDialog } from "@/components/app/FundDialogs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmtDate, fmtDateTime } from "@/lib/format";
@@ -98,6 +98,20 @@ function ConfirmDialog({ trigger, title, body, confirm, destructive, onConfirm }
   );
 }
 
+/**
+ * Approve / Return that this admin can't use: still focusable and announced with the reason (aria-disabled +
+ * aria-describedby), but a click does nothing (preventDefault stops the dialog trigger from opening).
+ */
+function blockedTrigger(blocked: boolean): ButtonProps {
+  if (!blocked) return { className: "w-full" };
+  return {
+    className: "w-full cursor-not-allowed opacity-50",
+    "aria-disabled": true,
+    "aria-describedby": "approval-blocker",
+    onClick: (e) => e.preventDefault(),
+  };
+}
+
 export default function FundUsageShow({ nav, item, events, can, approvalBlocker, needsSecondApprover, eligibleApprovers, urls }: Props) {
   const fi = toFundItem(item);
   const w = item.welfare;
@@ -140,8 +154,8 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
       )}
       {item.status === "submitted" && (
         <>
-          <ApproveDialog item={fi} triggerProps={{ disabled: !can.approve, className: "w-full" }} onConfirm={() => post(urls.approve, { declaration: true })} />
-          <ReturnDialog item={fi} triggerProps={{ disabled: !can.return, className: "w-full" }} onConfirm={(r) => post(urls.return, { reason: r ?? "" })} />
+          <ApproveDialog item={fi} triggerProps={blockedTrigger(!can.approve)} onConfirm={() => post(urls.approve, { declaration: true })} />
+          <ReturnDialog item={fi} triggerProps={blockedTrigger(!can.return)} onConfirm={(r) => post(urls.return, { reason: r ?? "" })} />
           {can.edit && (
             <Button variant="ghost" asChild>
               <Link href={urls.edit}>
@@ -149,7 +163,11 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
               </Link>
             </Button>
           )}
-          {approvalBlocker && <p className="text-xs text-muted-foreground">{approvalBlocker}</p>}
+          {(approvalBlocker || !can.approve || !can.return) && (
+            <p id="approval-blocker" className="text-xs text-muted-foreground">
+              {approvalBlocker ?? "Another admin has to approve or return this record."}
+            </p>
+          )}
         </>
       )}
       {item.status === "approved" &&

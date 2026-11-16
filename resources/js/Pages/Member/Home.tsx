@@ -387,7 +387,11 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
             <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
           </a>
         )}
-        <Button variant="outline" size="lg" className="h-12 w-full rounded-full" type="button" onClick={() => router.post(account.logoutUrl)}>
+        <Button variant="outline" size="lg" className="h-12 w-full rounded-full" type="button" onClick={() => {
+            // Drop the encrypted page history (e.g. the 2FA page) before signing out.
+            router.clearHistory();
+            router.post(account.logoutUrl);
+          }}>
           <LogOut aria-hidden /> {t("signOut")}
         </Button>
       </section>
