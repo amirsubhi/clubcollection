@@ -40,6 +40,8 @@ export interface PaymentContext {
 
 export interface FundCategory {
   name: string;
+  /** BM name when it differs (FundFigures::CHARGES_LABEL_MS for bank / gateway charges). */
+  nameMs?: string;
   amount: Sen;
 }
 

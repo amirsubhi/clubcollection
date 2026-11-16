@@ -19,6 +19,7 @@ import {
   Coins,
   SlidersHorizontal,
   BadgeCheck,
+  UserCog,
 } from "lucide-react";
 import { AdminShell, type AdminNavGroup } from "./AdminShell";
 import { Alert } from "@/components/ui/alert";
@@ -38,6 +39,7 @@ const icons: Record<string, typeof Menu> = {
   audit: ScrollText,
   home: Home,
   clubs: Building2,
+  admins: UserCog,
   statistics: BarChart3,
   security: ShieldCheck,
 };

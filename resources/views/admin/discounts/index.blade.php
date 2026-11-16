@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Discounts')
-@section('page-title', $club->name . ' — Discounts')
+@section('page-title', 'Discounts')
+@section('page-club', $club->name)
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">

@@ -236,7 +236,7 @@ class FundFiguresTest extends TestCase
         $this->paidOnline('2026-03-20', 150);
         $this->paidOnline('2026-04-02', 100);
         $this->paidOnline('2026-04-05', 0);    // member paid the fee: no charge
-        $this->paid(50.00, '2026-04-06', ['fee_absorbed_sen' => 100]); // settled by hand (no paid_via): not a charge
+        $this->paid(50.00, '2026-04-06', ['fee_absorbed_sen' => null]); // settled by hand: no gateway charge
 
         $f = new FundFigures($this->club);
         $w = $f->forWindow(FundFigures::yearToDate());
@@ -248,7 +248,7 @@ class FundFiguresTest extends TestCase
         $this->assertSame($balance, $f->balance());
         $this->assertSame(55000 - 10000 - 100, $f->openingBalance(Carbon::create(2026, 1, 1)));
         $this->assertSame(250, $f->monthly(12)[3]['spent'], 'March: the two absorbed charges');
-        $this->assertContains(['name' => FundFigures::CHARGES_LABEL, 'amount' => 350], $f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
+        $this->assertContains(['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'amount' => 350], $f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
 
         $this->actingAsClubAdmin($this->club);
         $this->get(route('admin.clubs.dashboard', $this->club))

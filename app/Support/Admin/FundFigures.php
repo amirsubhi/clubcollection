@@ -34,8 +34,11 @@ use Illuminate\Support\Carbon;
  */
 final class FundFigures
 {
-    /** Name of the bank / gateway charges spending line (BM: Caj bank / gateway). */
+    /** Name of the bank / gateway charges spending line. */
     public const CHARGES_LABEL = 'Bank / gateway charges';
+
+    /** The same line in Bahasa Melayu (member pages). */
+    public const CHARGES_LABEL_MS = 'Caj bank / gateway';
 
     /** SQL expression for an expense's cash date: COALESCE(paid_date, expense_date). */
     public static function cashDate(string $table = 'expenses'): string
@@ -144,12 +147,18 @@ final class FundFigures
             ->sum('fee_absorbed_sen');
     }
 
-    /** Paid fees carrying a gateway charge the club absorbed (fee_absorbed_sen, already sen). */
+    /**
+     * Paid fees carrying a gateway charge the club absorbed (fee_absorbed_sen, already sen).
+     * Not filtered on paid_via: an admin who reverts an online-paid fee and then
+     * marks it paid by hand clears paid_via, but the gateway still took its charge,
+     * so the charge counts again (the edit form warns about this before reverting).
+     * A transfer-slip approval resets fee_absorbed_sen to 0, and a new online
+     * payment overwrites it.
+     */
     private function chargesQuery()
     {
         return $this->club->payments()
             ->where('status', 'paid')
-            ->whereNotNull('paid_via')
             ->where('fee_absorbed_sen', '>', 0);
     }
 
@@ -164,6 +173,8 @@ final class FundFigures
 
     /**
      * Everything spent in the range, split: expenses + welfare + bank / gateway charges.
+     * welfareCount is the number of approved welfare records in the range (for
+     * admin screens only; member pages must not receive it).
      *
      * @return array{spent: int, expenses: int, welfare: int, charges: int, welfareCount: int}
      */
@@ -350,9 +361,10 @@ final class FundFigures
 
     /**
      * Spending in the range by category (largest first): approved expenses and
-     * welfare by their category, plus one "Bank / gateway charges" line.
+     * welfare by their category, plus one "Bank / gateway charges" line, which
+     * also carries its BM name (nameMs) for member pages.
      *
-     * @return array<int, array{name: string, amount: int}>
+     * @return array<int, array{name: string, nameMs?: string, amount: int}>
      */
     public function byCategoryBetween(CarbonInterface $from, CarbonInterface $to): array
     {
@@ -365,7 +377,7 @@ final class FundFigures
             ->get()
             ->map(fn ($r) => ['name' => $r->name, 'amount' => FundUsagePresenter::sen($r->total)])
             // Absorbed gateway charges are spending too, so the shares add up to spent.
-            ->when($charges = $this->gatewayFeesAbsorbedBetween($from, $to), fn ($c) => $c->push(['name' => self::CHARGES_LABEL, 'amount' => $charges]))
+            ->when($charges = $this->gatewayFeesAbsorbedBetween($from, $to), fn ($c) => $c->push(['name' => self::CHARGES_LABEL, 'nameMs' => self::CHARGES_LABEL_MS, 'amount' => $charges]))
             ->sortByDesc('amount')
             ->values()
             ->all();

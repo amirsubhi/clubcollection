@@ -206,7 +206,7 @@ class LedgerController extends Controller
                     CsvSafe::put($h, ['OVERDUE']);
                     CsvSafe::put($h, ['#', 'Member', 'Period', 'Due Date', 'Amount (RM)']);
                     foreach ($data['overduePayments'] as $i => $p) {
-                        CsvSafe::put($h, [$i + 1, $p->user->name, $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
+                        CsvSafe::put($h, [$i + 1, $p->user?->name ?? 'Former member', $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
                     }
                     CsvSafe::put($h, ['', '', '', 'TOTAL OVERDUE (RM)', number_format($data['overdueTotal'], 2)]);
                     CsvSafe::put($h, []);
@@ -216,7 +216,7 @@ class LedgerController extends Controller
                     CsvSafe::put($h, ['PENDING']);
                     CsvSafe::put($h, ['#', 'Member', 'Period', 'Due Date', 'Amount (RM)']);
                     foreach ($data['pendingPayments'] as $i => $p) {
-                        CsvSafe::put($h, [$i + 1, $p->user->name, $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
+                        CsvSafe::put($h, [$i + 1, $p->user?->name ?? 'Former member', $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
                     }
                     CsvSafe::put($h, ['', '', '', 'TOTAL PENDING (RM)', number_format($data['pendingTotal'], 2)]);
                     CsvSafe::put($h, []);
@@ -226,7 +226,7 @@ class LedgerController extends Controller
                     CsvSafe::put($h, ['AWAITING VERIFICATION (transfer slip not checked yet)']);
                     CsvSafe::put($h, ['#', 'Member', 'Period', 'Due Date', 'Amount (RM)']);
                     foreach ($data['verifyingPayments'] as $i => $p) {
-                        CsvSafe::put($h, [$i + 1, $p->user->name, $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
+                        CsvSafe::put($h, [$i + 1, $p->user?->name ?? 'Former member', $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
                     }
                     CsvSafe::put($h, ['', '', '', 'TOTAL AWAITING VERIFICATION (RM)', number_format($data['verifyingTotal'], 2)]);
                 }
@@ -362,7 +362,7 @@ class LedgerController extends Controller
                 'type'       => 'Income',
                 'kind'       => 'fee',
                 'description'=> 'Fee payment (' . $p->frequency . ') — ' . $p->period_start->format('M Y'),
-                'party'      => $p->user->name,
+                'party'      => $p->user?->name ?? 'Former member',
                 'reference'  => $p->reference ?? '',
                 'amount_in'  => (float) $p->amount,
                 'amount_out' => null,
@@ -393,7 +393,8 @@ class LedgerController extends Controller
         // Bank / gateway charges: the gateway fee the club absorbed on fees paid
         // online (fee_absorbed_sen). One "out" row per month, dated on the last
         // such payment of that month, so the statement stays readable.
-        $payments->filter(fn ($p) => $p->paid_via !== null && (int) $p->fee_absorbed_sen > 0)
+        // Same rule as FundFigures::chargesQuery(): paid fees with an absorbed charge.
+        $payments->filter(fn ($p) => (int) $p->fee_absorbed_sen > 0)
             ->groupBy(fn ($p) => $p->paid_date->format('Y-m'))
             ->each(function ($group, $month) use ($rows) {
                 $last = $group->max(fn ($p) => $p->paid_date->format('Y-m-d'));

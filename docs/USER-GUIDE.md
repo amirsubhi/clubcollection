@@ -209,6 +209,10 @@ Also on **Billing settings**:
 - **Gateway fee per bill (RM)**: what your gateway plan charges per bill (e.g. RM1.00). Used for the review page,
   savings hints and the dashboard's fee total; the gateway applies its own fee.
 
+- **Reverting a fee paid online**: the gateway charge the club absorbed leaves the fund figures while the fee is not
+  paid, and counts again if you mark it paid by hand. If the member settles it instead by transfer slip or a new online
+  bill, that payment replaces the earlier gateway charge (none for a slip, the new bill's charge for a new bill).
+
 See [payment-options.md](payment-options.md) for a comparison of charges.
 
 ### Export the ledger

@@ -13,7 +13,7 @@
                     <i class="bi bi-building fs-1 text-white"></i>
                 </div>
             @endif
-            <h5 class="fw-bold">{{ $club->name }}</h5>
+            <h2 class="h5 fw-bold">{{ $club->name }}</h2>
             <p class="text-muted small">{{ $club->email ?? 'No email set' }}</p>
             <span class="badge {{ $club->is_active ? 'bg-success' : 'bg-secondary' }}">
                 {{ $club->is_active ? 'Active' : 'Inactive' }}
@@ -28,7 +28,7 @@
     <div class="col-md-8">
         <div class="card shadow-sm mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold">Members ({{ $club->members->count() }})</h6>
+                <h2 class="h6 mb-0 fw-semibold">Members ({{ $club->members->count() }})</h2>
                 <a href="{{ route('admin.clubs.members.create', $club) }}" class="btn btn-sm btn-primary">
                     <i class="bi bi-plus-lg me-1"></i>Add Member
                 </a>
@@ -56,7 +56,7 @@
 
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold">Fee Rates</h6>
+                <h2 class="h6 mb-0 fw-semibold">Fee Rates</h2>
                 <a href="{{ route('admin.clubs.fee-rates.index', $club) }}" class="btn btn-sm btn-outline-secondary">
                     Manage Rates
                 </a>

@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', $club->name . ' - Financial Dashboard')
-@section('page-title', $club->name . ' — Financial Dashboard')
+@section('page-title', 'Financial Dashboard')
+@section('page-club', $club->name)
 
 @section('content')
 {{-- Period Selector + Ledger shortcut --}}
@@ -212,8 +213,8 @@
                 @forelse($recentPayments as $p)
                 <div class="list-group-item py-2 d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="small fw-semibold">{{ $p->user->name }}</div>
-                        <div class="text-muted" style="font-size:0.75rem">{{ $p->paid_date?->format('d M Y') }}</div>
+                        <div class="small fw-semibold">{{ $p->user?->name ?? 'Former member' }}</div>
+                        <div class="text-muted small">{{ $p->paid_date?->format('d M Y') }}</div>
                     </div>
                     <span class="text-success fw-semibold small">+RM {{ number_format($p->amount,2) }}</span>
                 </div>
@@ -235,7 +236,7 @@
                 <div class="list-group-item py-2 d-flex justify-content-between align-items-center">
                     <div>
                         <div class="small fw-semibold">{{ Str::limit($e->description, 35) }}</div>
-                        <div class="text-muted" style="font-size:0.75rem">{{ $e->category->name }} &middot; {{ $e->expense_date->format('d M Y') }}</div>
+                        <div class="text-muted small">{{ $e->category->name }} &middot; {{ $e->expense_date->format('d M Y') }}</div>
                     </div>
                     <span class="text-danger fw-semibold small">-RM {{ number_format($e->amount,2) }}</span>
                 </div>

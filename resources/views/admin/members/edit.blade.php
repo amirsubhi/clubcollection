@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Edit Member')
-@section('page-title', $club->name . ' — Edit Member')
+@section('page-title', 'Edit Member')
+@section('page-club', $club->name)
 
 @section('content')
 <div class="row justify-content-center">
@@ -11,38 +12,38 @@
                     <div class="fw-semibold">{{ $member->name }}</div>
                     <div class="text-muted small">{{ $member->email }}</div>
                 </div>
-                <form action="{{ route('admin.members.update', [$club, $member]) }}" method="POST">
+                <form action="{{ route('admin.members.update', ['member' => $member, 'club' => $club->id]) }}" method="POST">
                     @csrf @method('PUT')
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Job Level <span class="text-danger">*</span></label>
-                        <select name="job_level" class="form-select @error('job_level') is-invalid @enderror">
+                        <label for="f-job-level" class="form-label fw-semibold">Job Level <span class="text-danger">*</span></label>
+                        <select id="f-job-level" aria-describedby="f-job-level-help @error('job_level') f-job-level-error @enderror" @error('job_level') aria-invalid="true" @enderror name="job_level" class="form-select @error('job_level') is-invalid @enderror">
                             @foreach($jobLevels as $key => $label)
                                 <option value="{{ $key }}" {{ old('job_level', $pivot?->job_level) == $key ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
-                        <div class="form-text">Changing this will apply the new fee rate to future payment records.</div>
-                        @error('job_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div id="f-job-level-help" class="form-text">Changing this will apply the new fee rate to future payment records.</div>
+                        @error('job_level')<div id="f-job-level-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     {{-- Only the super admin grants or changes the club-admin role (S1). --}}
                     @if(auth()->user()->isSuperAdmin())
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Club Role <span class="text-danger">*</span></label>
-                        <select name="role" class="form-select @error('role') is-invalid @enderror">
+                        <label for="f-role" class="form-label fw-semibold">Club Role <span class="text-danger">*</span></label>
+                        <select id="f-role" aria-describedby="f-role-help @error('role') f-role-error @enderror" @error('role') aria-invalid="true" @enderror name="role" class="form-select @error('role') is-invalid @enderror">
                             <option value="member" {{ old('role', $pivot?->role) == 'member' ? 'selected' : '' }}>Member</option>
                             <option value="admin" {{ old('role', $pivot?->role) == 'admin' ? 'selected' : '' }}>Admin</option>
                         </select>
-                        <div class="form-text">Admin role grants ability to manage payments, expenses, and members for this club.</div>
-                        @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div id="f-role-help" class="form-text">Admin role grants ability to manage payments, expenses, and members for this club.</div>
+                        @error('role')<div id="f-role-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     @else
                     <p class="small text-muted mb-3"><i class="bi bi-shield-lock me-1"></i>Club role: <strong>{{ ucfirst($pivot?->role ?? 'member') }}</strong>. Only the super admin can make someone a club admin.</p>
                     @endif
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Date Joined <span class="text-danger">*</span></label>
-                        <input type="date" name="joined_date" class="form-control @error('joined_date') is-invalid @enderror"
+                        <label for="f-joined-date" class="form-label fw-semibold">Date Joined <span class="text-danger">*</span></label>
+                        <input id="f-joined-date" aria-describedby="f-joined-date-help @error('joined_date') f-joined-date-error @enderror" @error('joined_date') aria-invalid="true" @enderror type="date" name="joined_date" class="form-control @error('joined_date') is-invalid @enderror"
                                value="{{ old('joined_date', $pivot?->joined_date) }}">
-                        <div class="form-text">The official membership start date for this club.</div>
-                        @error('joined_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div id="f-joined-date-help" class="form-text">The official membership start date for this club.</div>
+                        @error('joined_date')<div id="f-joined-date-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-4">
                         <div class="form-check form-switch">

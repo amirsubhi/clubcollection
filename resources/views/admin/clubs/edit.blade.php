@@ -10,29 +10,29 @@
                 <form action="{{ route('admin.clubs.update', $club) }}" method="POST" enctype="multipart/form-data">
                     @csrf @method('PUT')
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Club Name <span class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                        <label for="f-name" class="form-label fw-semibold">Club Name <span class="text-danger">*</span></label>
+                        <input id="f-name" @error('name') aria-invalid="true" aria-describedby="f-name-error" @enderror type="text" name="name" class="form-control @error('name') is-invalid @enderror"
                                value="{{ old('name', $club->name) }}">
-                        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('name')<div id="f-name-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Club Email</label>
-                        <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
+                        <label for="f-email" class="form-label fw-semibold">Club Email</label>
+                        <input id="f-email" @error('email') aria-invalid="true" aria-describedby="f-email-error" @enderror type="email" name="email" class="form-control @error('email') is-invalid @enderror"
                                value="{{ old('email', $club->email) }}">
-                        @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('email')<div id="f-email-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Club Logo</label>
+                        <label for="f-logo" class="form-label fw-semibold">Club Logo</label>
                         @if($club->logo)
                             <div class="mb-2">
                                 <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->name }} logo" height="60" class="rounded border">
                                 <small class="text-muted ms-2">Current logo</small>
                             </div>
                         @endif
-                        <input type="file" name="logo" class="form-control @error('logo') is-invalid @enderror"
+                        <input id="f-logo" aria-describedby="f-logo-help @error('logo') f-logo-error @enderror" @error('logo') aria-invalid="true" @enderror type="file" name="logo" class="form-control @error('logo') is-invalid @enderror"
                                accept="image/*">
-                        <div class="form-text">Upload a new logo to replace existing. JPG, PNG or GIF. Max 2MB.</div>
-                        @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div id="f-logo-help" class="form-text">Upload a new logo to replace existing. JPG, PNG or GIF. Max 2MB.</div>
+                        @error('logo')<div id="f-logo-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-4">
                         <div class="form-check form-switch">
@@ -46,14 +46,14 @@
 
                     {{-- Payment gateway selector --}}
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Gateway <span class="text-danger">*</span></label>
-                        <select name="payment_gateway" id="paymentGatewaySelect"
+                        <label for="paymentGatewaySelect" class="form-label fw-semibold">Payment Gateway <span class="text-danger">*</span></label>
+                        <select aria-describedby="paymentGatewaySelect-help @error('payment_gateway') paymentGatewaySelect-error @enderror" @error('payment_gateway') aria-invalid="true" @enderror name="payment_gateway" id="paymentGatewaySelect"
                                 class="form-select @error('payment_gateway') is-invalid @enderror">
                             <option value="toyyibpay" {{ $activeGateway === 'toyyibpay' ? 'selected' : '' }}>ToyyibPay</option>
                             <option value="billplz"   {{ $activeGateway === 'billplz' ? 'selected' : '' }}>Billplz</option>
                         </select>
-                        <div class="form-text">Switching gateways does not erase the inactive gateway's stored credentials.</div>
-                        @error('payment_gateway')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div id="paymentGatewaySelect-help" class="form-text">Switching gateways does not erase the inactive gateway's stored credentials.</div>
+                        @error('payment_gateway')<div id="paymentGatewaySelect-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     {{-- ToyyibPay --}}
@@ -75,9 +75,9 @@
                             Leave the secret key blank to keep the existing one.
                         </p>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold small">User Secret Key</label>
+                            <label for="toyyibpaySecretInput" class="form-label fw-semibold small">User Secret Key</label>
                             <div class="input-group input-group-sm">
-                                <input type="password" name="toyyibpay_secret_key" id="toyyibpaySecretInput"
+                                <input @error('toyyibpay_secret_key') aria-invalid="true" aria-describedby="toyyibpaySecretInput-error" @enderror type="password" name="toyyibpay_secret_key" id="toyyibpaySecretInput"
                                        class="form-control @error('toyyibpay_secret_key') is-invalid @enderror"
                                        value="{{ old('toyyibpay_secret_key') }}"
                                        placeholder="{{ $club->hasToyyibPayCredentials() ? '••••••••••••••••  (leave blank to keep current)' : 'Enter User Secret Key' }}"
@@ -88,16 +88,16 @@
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
-                            @error('toyyibpay_secret_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @error('toyyibpay_secret_key')<div id="toyyibpaySecretInput-error" role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="mb-0">
-                            <label class="form-label fw-semibold small">Category Code</label>
-                            <input type="text" name="toyyibpay_category_code"
+                            <label for="f-toyyibpay-category-code" class="form-label fw-semibold small">Category Code</label>
+                            <input id="f-toyyibpay-category-code" aria-describedby="f-toyyibpay-category-code-help @error('toyyibpay_category_code') f-toyyibpay-category-code-error @enderror" @error('toyyibpay_category_code') aria-invalid="true" @enderror type="text" name="toyyibpay_category_code"
                                    class="form-control form-control-sm @error('toyyibpay_category_code') is-invalid @enderror"
                                    value="{{ old('toyyibpay_category_code', $club->toyyibpay_category_code) }}"
                                    placeholder="e.g. abc123xyz">
-                            <div class="form-text">From ToyyibPay → My Category → Category Code.</div>
-                            @error('toyyibpay_category_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div id="f-toyyibpay-category-code-help" class="form-text">From ToyyibPay → My Category → Category Code.</div>
+                            @error('toyyibpay_category_code')<div id="f-toyyibpay-category-code-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -120,9 +120,9 @@
                             secret blank to keep the existing one.
                         </p>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold small">API Key</label>
+                            <label for="billplzApiKeyInput" class="form-label fw-semibold small">API Key</label>
                             <div class="input-group input-group-sm">
-                                <input type="password" name="billplz_api_key" id="billplzApiKeyInput"
+                                <input @error('billplz_api_key') aria-invalid="true" aria-describedby="billplzApiKeyInput-error" @enderror type="password" name="billplz_api_key" id="billplzApiKeyInput"
                                        class="form-control @error('billplz_api_key') is-invalid @enderror"
                                        value="{{ old('billplz_api_key') }}"
                                        placeholder="{{ $club->billplz_api_key ? '••••••••••••••••  (leave blank to keep current)' : 'Enter API Key' }}"
@@ -133,21 +133,21 @@
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
-                            @error('billplz_api_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @error('billplz_api_key')<div id="billplzApiKeyInput-error" role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold small">Collection ID</label>
-                            <input type="text" name="billplz_collection_id"
+                            <label for="f-billplz-collection-id" class="form-label fw-semibold small">Collection ID</label>
+                            <input id="f-billplz-collection-id" aria-describedby="f-billplz-collection-id-help @error('billplz_collection_id') f-billplz-collection-id-error @enderror" @error('billplz_collection_id') aria-invalid="true" @enderror type="text" name="billplz_collection_id"
                                    class="form-control form-control-sm @error('billplz_collection_id') is-invalid @enderror"
                                    value="{{ old('billplz_collection_id', $club->billplz_collection_id) }}"
                                    placeholder="e.g. abc12345">
-                            <div class="form-text">From Billplz → Billing → Collections.</div>
-                            @error('billplz_collection_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div id="f-billplz-collection-id-help" class="form-text">From Billplz → Billing → Collections.</div>
+                            @error('billplz_collection_id')<div id="f-billplz-collection-id-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="mb-0">
-                            <label class="form-label fw-semibold small">X-Signature Key</label>
+                            <label for="billplzSigKeyInput" class="form-label fw-semibold small">X-Signature Key</label>
                             <div class="input-group input-group-sm">
-                                <input type="password" name="billplz_x_signature_key" id="billplzSigKeyInput"
+                                <input aria-describedby="billplzSigKeyInput-help @error('billplz_x_signature_key') billplzSigKeyInput-error @enderror" @error('billplz_x_signature_key') aria-invalid="true" @enderror type="password" name="billplz_x_signature_key" id="billplzSigKeyInput"
                                        class="form-control @error('billplz_x_signature_key') is-invalid @enderror"
                                        value="{{ old('billplz_x_signature_key') }}"
                                        placeholder="{{ $club->billplz_x_signature_key ? '••••••••••••••••  (leave blank to keep current)' : 'Enter X-Signature Key' }}"
@@ -158,8 +158,8 @@
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
-                            <div class="form-text">Used to verify webhook authenticity.</div>
-                            @error('billplz_x_signature_key')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <div id="billplzSigKeyInput-help" class="form-text">Used to verify webhook authenticity.</div>
+                            @error('billplz_x_signature_key')<div id="billplzSigKeyInput-error" role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                     </div>
 

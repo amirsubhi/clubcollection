@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Club;
-use App\Models\Expense;
 use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Support\Admin\FundFigures;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class StatisticsController extends Controller
@@ -27,8 +27,7 @@ class StatisticsController extends Controller
             SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
             SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_count,
-            SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count,
-            SUM(CASE WHEN status = 'paid'    THEN amount ELSE 0 END) as total_revenue
+            SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count
         ")->first();
 
         $totalPayments = (int)   ($paymentStats->total ?? 0);
@@ -37,45 +36,45 @@ class StatisticsController extends Controller
         $overdueCount  = (int)   ($paymentStats->overdue_count ?? 0);
         // Transfer slips waiting for a club admin: not paid yet, shown on their own.
         $verifyingCount = (int)  ($paymentStats->verifying_count ?? 0);
-        $totalRevenue  = (float) ($paymentStats->total_revenue ?? 0);
-        // Approved (counted) Fund Usage records only.
-        $totalExpenses = (float) Expense::counted()->sum('amount');
-        $netBalance    = $totalRevenue - $totalExpenses;
 
-        // ── Monthly Trends — 2 queries instead of 24 ─────────────────────────
-        // Date-range buckets (portable; no strftime).
-        $ranges = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $m        = now()->startOfMonth()->subMonthsNoOverflow($i);
-            $ranges[] = [$m->copy(), $m->copy()->endOfMonth()];
-        }
-        $revenueByMonth  = FundFigures::sumByRanges(Payment::where('status', 'paid'), 'paid_date', $ranges);
-        $expensesByMonth = FundFigures::sumByRanges(Expense::counted(), FundFigures::cashDate(), $ranges);
-
-        $monthlyRevenue  = [];
-        $monthlyExpenses = [];
-        foreach ($ranges as $i => [$m]) {
-            $label = $m->format('M Y');
-            $monthlyRevenue[$label]  = $revenueByMonth[$i] / 100;
-            $monthlyExpenses[$label] = $expensesByMonth[$i] / 100;
-        }
-
-        // ── Per-Club Breakdown — 1 query instead of 5N+1 ─────────────────────
-        // withCount/withSum injects subqueries into a single SELECT — no N+1.
+        // ── Money: FundFigures per club, so these match each club's dashboard and ledger ──
+        // Spent = approved expenses + welfare + bank / gateway charges the club absorbed.
+        $today = now()->startOfDay();
+        $since = Carbon::create(2000, 1, 1);
+        $months = 12;
         $clubStats = Club::withCount('members')
             ->withCount(['payments as paid_count'    => fn($q) => $q->where('status', 'paid')])
             ->withCount(['payments as pending_count' => fn($q) => $q->where('status', 'pending')])
             ->withCount(['payments as overdue_count' => fn($q) => $q->where('status', 'overdue')])
-            ->withSum(['payments as total_revenue'   => fn($q) => $q->where('status', 'paid')], 'amount')
-            ->withSum(['expenses as total_expenses' => fn($q) => $q->counted()], 'amount')
-            ->get()
-            ->each(function ($club) {
-                // Cast nulls (clubs with no payments/expenses) to numeric types
-                $club->total_revenue  = (float) ($club->total_revenue ?? 0);
-                $club->total_expenses = (float) ($club->total_expenses ?? 0);
-            })
-            ->sortByDesc('total_revenue')
-            ->values();
+            ->orderBy('name')
+            ->get();
+
+        $totals = ['collected' => 0, 'spent' => 0, 'expenses' => 0, 'welfare' => 0, 'charges' => 0, 'balance' => 0];
+        $monthly = null;
+        foreach ($clubStats as $club) {
+            $figures = FundFigures::for($club);
+            $split = $figures->spentSplitBetween($since, $today);
+            $club->collected_sen = $figures->collectedBetween($since, $today);
+            $club->spent_sen = $split['spent'];
+            $club->balance_sen = $figures->balanceAt($today);
+            foreach (['expenses', 'welfare', 'charges'] as $k) {
+                $totals[$k] += $split[$k];
+            }
+            $totals['collected'] += $club->collected_sen;
+            $totals['spent'] += $club->spent_sen;
+            $totals['balance'] += $club->balance_sen;
+
+            $rows = $figures->monthly($months);
+            $monthly ??= array_map(fn ($r) => ['label' => $r['monthEn'].' '.$r['year'], 'collected' => 0, 'spent' => 0], $rows);
+            foreach ($rows as $i => $r) {
+                $monthly[$i]['collected'] += $r['collected'];
+                $monthly[$i]['spent'] += $r['spent'];
+            }
+        }
+        $clubStats = $clubStats->sortByDesc('collected_sen')->values();
+        // No clubs yet: the same 12 empty months.
+        $monthly ??= array_map(fn ($i) => ['label' => $today->copy()->startOfMonth()->subMonthsNoOverflow($i)->format('M Y'), 'collected' => 0, 'spent' => 0], range($months - 1, 0));
+        $asOf = $today->format('j M Y');
 
         // ── Job Level Distribution ────────────────────────────────────────────
         $jobLevelLabels  = FeeRate::jobLevelLabels();
@@ -101,9 +100,8 @@ class StatisticsController extends Controller
 
         return view('admin.statistics.index', compact(
             'totalClubs', 'activeClubs', 'totalMembers', 'totalPayments',
-            'totalRevenue', 'paidCount', 'pendingCount', 'overdueCount', 'verifyingCount',
-            'totalExpenses', 'netBalance',
-            'monthlyRevenue', 'monthlyExpenses',
+            'paidCount', 'pendingCount', 'overdueCount', 'verifyingCount',
+            'totals', 'monthly', 'asOf',
             'clubStats', 'jobLevelLabels', 'jobLevelDistribution',
             'jobLevelChartLabels', 'jobLevelChartCounts',
             'recentTransactions'

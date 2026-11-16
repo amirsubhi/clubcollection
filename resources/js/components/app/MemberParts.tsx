@@ -104,7 +104,7 @@ export function toSlices(categories: FundCategory[], othersLabel: { bm: string; 
   const sorted = [...categories].sort((a, b) => b.amount - a.amount);
   const top = sorted.length > 4 ? sorted.slice(0, 3) : sorted;
   const rest = sorted.length > 4 ? sorted.slice(3).reduce((s, c) => s + c.amount, 0) : 0;
-  const slices = top.map((c, i) => ({ key: `c${i}`, bm: c.name, en: c.name, amount: c.amount }));
+  const slices = top.map((c, i) => ({ key: `c${i}`, bm: c.nameMs ?? c.name, en: c.name, amount: c.amount }));
   if (rest > 0) slices.push({ key: "others", ...othersLabel, amount: rest });
   return slices.map((s, i) => ({ ...s, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
 }

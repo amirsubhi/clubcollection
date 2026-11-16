@@ -414,6 +414,15 @@ class MemberController extends Controller
      * also contains $member. Aborts 404 if none — never silently scope down to
      * "any club admin happens to share with the target".
      */
+    private function managesClub(User $user, Club $club): bool
+    {
+        return $user->isSuperAdmin() || ($club->is_active && $club->members()
+            ->where('users.id', $user->id)
+            ->wherePivot('role', 'admin')
+            ->wherePivot('is_active', true)
+            ->exists());
+    }
+
     private function resolveClubForMember(Club $club, User $member): Club
     {
         if ($club->exists) {
@@ -421,6 +430,15 @@ class MemberController extends Controller
         }
 
         $user = auth()->user();
+
+        // The members list links here with ?club={id}. Honoured only for a club
+        // the current user manages, so it can't be used to probe who belongs to
+        // other clubs: otherwise it is ignored and the fallbacks below apply.
+        if (($id = request()->integer('club')) && ($asked = Club::find($id))
+            && $this->managesClub($user, $asked)
+            && $asked->members()->where('users.id', $member->id)->exists()) {
+            return $asked;
+        }
 
         // Super admin: the member's first club. (Super admins always pass
         // authorizeClubAdmin downstream.)

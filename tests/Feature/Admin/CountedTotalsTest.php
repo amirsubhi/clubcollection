@@ -109,10 +109,11 @@ class CountedTotalsTest extends TestCase
         $res = $this->get(route('admin.statistics'));
 
         $res->assertOk();
-        $this->assertEquals(100.0, $res->viewData('totalExpenses'));
-        $this->assertEquals(900.0, $res->viewData('netBalance'));
-        $this->assertEquals(100.0, array_sum($res->viewData('monthlyExpenses')));
-        $this->assertEquals(100.0, $res->viewData('clubStats')->firstWhere('id', $this->club->id)->total_expenses);
+        // FundFigures (sen): spent = approved expenses + welfare + bank charges.
+        $this->assertSame(10000, $res->viewData('totals')['spent']);
+        $this->assertSame(90000, $res->viewData('totals')['balance']);
+        $this->assertSame(10000, array_sum(array_column($res->viewData('monthly'), 'spent')));
+        $this->assertSame(10000, $res->viewData('clubStats')->firstWhere('id', $this->club->id)->spent_sen);
     }
 
     public function test_pdf_ledger_export_excludes_unapproved(): void
@@ -162,6 +163,6 @@ class CountedTotalsTest extends TestCase
         $this->assertEquals(107.0, $classic->viewData('expenseThisYear'));
 
         $this->actingAsSuperAdmin();
-        $this->assertEquals(107.0, array_sum($this->get(route('admin.statistics'))->viewData('monthlyExpenses')));
+        $this->assertSame(10700, array_sum(array_column($this->get(route('admin.statistics'))->viewData('monthly'), 'spent')));
     }
 }

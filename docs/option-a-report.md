@@ -333,3 +333,11 @@ Follow-ups (non-blocking):
 - Bank-charge row wording wraps on phones; add a BM label for the charges category on the member card.
 - USER-GUIDE: say which figure to quote at the AGM when a manual opening balance is used, and how gateway settlement dates differ from the bank statement.
 
+### R1d follow-ups (non-blocking; for R1e)
+- Retake the statistics screenshots (taken before the cross-club sidebar fix) before any docs use.
+- A restored absorbed charge after a hand re-mark is dated on the new paid date; if a reverted fee is later settled by slip or a new online bill, the first gateway charge is zeroed/overwritten. Document in USER-GUIDE: record such a charge as a manual bank-charge expense.
+- Club name appears three times on desktop admin pages; drop one.
+- `resolveClubForMember` club-admin fallback should also filter active pivot/club like `managesClub`.
+- Statistics runs ~8-10 queries per club; batch/cache if clubs grow.
+- Theme button label "Theme (System)"; dd/mm/yyyy hint on date inputs; SRI on CDN tags; status column/scroll hint on the mobile payments table.
+

@@ -1,13 +1,14 @@
 @extends('layouts.app')
 @section('title', 'Payment Details')
-@section('page-title', 'Payment Details')
+@section('page-title', 'Payment #' . $payment->id)
+@section('page-club', $payment->club->name)
 
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold">Payment #{{ $payment->id }}</h6>
+                <h2 class="h6 mb-0 fw-semibold">{{ $payment->period_start->format('M Y') }} fee</h2>
                 @if($payment->status === 'paid')
                     <span class="badge bg-success">Paid</span>
                 @elseif($payment->status === 'overdue')
@@ -21,7 +22,7 @@
             <div class="card-body p-4">
                 <dl class="row mb-0">
                     <dt class="col-5 text-muted">Member</dt>
-                    <dd class="col-7">{{ $payment->user->name }}</dd>
+                    <dd class="col-7">{{ $payment->user?->name ?? 'Former member' }}</dd>
 
                     <dt class="col-5 text-muted">Club</dt>
                     <dd class="col-7">{{ $payment->club->name }}</dd>
@@ -81,7 +82,7 @@
                     @endif
 
                     <dt class="col-5 text-muted">Recorded By</dt>
-                    <dd class="col-7">{{ $payment->recordedBy->name }}</dd>
+                    <dd class="col-7">{{ $payment->recordedBy?->name ?? '—' }}</dd>
                 </dl>
             </div>
             @if($slips->isNotEmpty())
@@ -109,7 +110,7 @@
                 <div class="form-text">Opening a slip is logged in the audit trail.</div>
             </div>
             @endif
-            <div class="card-footer d-flex gap-2">
+            <div class="card-footer d-flex flex-wrap gap-2">
                 @if($payment->status === 'pending_verification')
                 <a href="{{ route('admin.clubs.verifications.index', $payment->club) }}" class="btn btn-info btn-sm">
                     <i class="bi bi-patch-check me-1"></i>Check transfer slip

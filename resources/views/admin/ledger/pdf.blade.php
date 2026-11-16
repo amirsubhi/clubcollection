@@ -230,7 +230,7 @@
                     <tbody>
                     @foreach($overduePayments as $p)
                     <tr>
-                        <td class="fw-bold">{{ $p->user->name }}</td>
+                        <td class="fw-bold">{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
                         <td class="text-right text-red">{{ number_format($p->amount, 2) }}</td>
@@ -239,7 +239,7 @@
                     @endforeach
                     @foreach($pendingPayments as $p)
                     <tr>
-                        <td>{{ $p->user->name }}</td>
+                        <td>{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
                         <td class="text-right">{{ number_format($p->amount, 2) }}</td>
@@ -248,7 +248,7 @@
                     @endforeach
                     @foreach($verifyingPayments as $p)
                     <tr>
-                        <td>{{ $p->user->name }}</td>
+                        <td>{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
                         <td class="text-right">{{ number_format($p->amount, 2) }}</td>
