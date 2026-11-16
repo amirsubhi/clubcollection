@@ -25,7 +25,7 @@ class PaymentBill extends Model
 
     protected $fillable = [
         'payment_id', 'club_id', 'user_id', 'method', 'gateway', 'bill_code', 'reference', 'amount_sen',
-        'fee_payer', 'fee_sen', 'transaction_id', 'paid_at', 'superseded_at',
+        'fee_payer', 'fee_sen', 'transaction_id', 'paid_at', 'superseded_at', 'opened_at',
     ];
 
     protected function casts(): array
@@ -35,7 +35,14 @@ class PaymentBill extends Model
             'fee_sen' => 'integer',
             'paid_at' => 'datetime',
             'superseded_at' => 'datetime',
+            'opened_at' => 'datetime',
         ];
+    }
+
+    /** The member was sent to pay this bill now (new or reused): DisplayStatus measures "in progress" from here. */
+    public function markOpened(): void
+    {
+        $this->forceFill(['opened_at' => now()])->saveQuietly();
     }
 
     public function payment()

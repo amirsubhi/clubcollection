@@ -26,6 +26,9 @@ return new class extends Migration
             // (added on top). gateway_fee_sen is the expected fee per bill.
             $table->string('gateway_fee_payer', 10)->default('club');
             $table->unsignedInteger('gateway_fee_sen')->default(100);
+            // Days after the due date before an unpaid fee is called overdue
+            // ("Lewat") and reminded; until then it is just "due" (R2a).
+            $table->unsignedSmallInteger('overdue_grace_days')->default(7);
             // Manual bank / DuitNow transfer (P2). Plain text on purpose: members
             // are shown these details so they can pay. See Club::transferReady().
             $table->boolean('transfer_enabled')->default(false);

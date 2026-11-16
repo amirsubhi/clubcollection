@@ -24,6 +24,8 @@ interface Settings {
   gateway_fee_payer: "club" | "member";
   /** Ringgit, 2 decimals, as typed. */
   gateway_fee: string;
+  /** Days after the due date before a fee is "Overdue" (Lewat) and reminded; 0–60, as typed. */
+  overdue_grace_days: string;
   transfer_enabled: boolean;
   bank_name: string;
   bank_account_name: string;
@@ -133,6 +135,12 @@ function ConfirmButton({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** "9 Dec": the first overdue day for a fee due on 1 Dec with this grace period. */
+function graceExample(days: number): string {
+  const d = new Date(2026, 11, 1 + Math.min(days, 60) + 1);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 const show = (v: string | null) => (v && v.trim() !== "" ? v : "—");
@@ -372,6 +380,38 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
               value={data.gateway_fee}
               onChange={(e) => setData("gateway_fee", e.target.value)}
               invalid={!!errors.gateway_fee}
+              className="sm:w-40"
+            />
+          </Field>
+        </Section>
+
+        <Section
+          id="grace"
+          title="When a fee counts as overdue"
+          sub="Until then members see “Perlu dibayar” (Due). After it, they see “Lewat” (Overdue), get one reminder email, and the fee is counted as overdue on the admin pages."
+        >
+          <Field
+            id="overdue_grace_days"
+            label="Grace period after the due date (days)"
+            error={errors.overdue_grace_days}
+            hint={
+              /^\d+$/.test(data.overdue_grace_days)
+                ? Number(data.overdue_grace_days) === 0
+                  ? "0 days: overdue the day after the due date."
+                  : `A fee due on 1 Dec becomes overdue on ${graceExample(Number(data.overdue_grace_days))}. Between 0 and 60 days.`
+                : "A whole number of days, from 0 to 60."
+            }
+          >
+            <Input
+              id="overdue_grace_days"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={60}
+              step={1}
+              value={data.overdue_grace_days}
+              onChange={(e) => setData("overdue_grace_days", e.target.value)}
+              invalid={!!errors.overdue_grace_days}
               className="sm:w-40"
             />
           </Field>

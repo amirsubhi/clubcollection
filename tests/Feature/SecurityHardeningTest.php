@@ -100,7 +100,7 @@ class SecurityHardeningTest extends TestCase
         $admin = $this->actingAsClubAdmin($club);
         $own = Payment::factory()->forClub($club)->forMember($admin)->pending()->create();
 
-        $this->patch(route('admin.payments.mark-paid', $own))->assertSessionHas('error');
+        $this->patch(route('admin.payments.mark-paid', $own), $this->recordPayment())->assertSessionHas('error');
         $this->assertSame('pending', $own->fresh()->status);
 
         $this->put(route('admin.payments.update', $own), $this->editPayload($own, ['status' => 'paid']))
@@ -139,12 +139,12 @@ class SecurityHardeningTest extends TestCase
         $own = Payment::factory()->forClub($club)->forMember($adminA)->pending()->create();
         $this->actingAsClubAdmin($club);
 
-        $this->patch(route('admin.payments.mark-paid', $own))->assertSessionHas('success');
+        $this->patch(route('admin.payments.mark-paid', $own), $this->recordPayment())->assertSessionHas('success');
         $this->assertSame('paid', $own->fresh()->status);
 
         $super = $this->actingAsSuperAdmin();
         $superFee = Payment::factory()->forClub($club)->forMember($super)->pending()->create(['period_start' => now()->addMonths(2)->startOfMonth()->toDateString()]);
-        $this->patch(route('admin.payments.mark-paid', $superFee))->assertSessionHas('success');
+        $this->patch(route('admin.payments.mark-paid', $superFee), $this->recordPayment())->assertSessionHas('success');
     }
 
     // ── Reminder race ────────────────────────────────────────────────────

@@ -421,7 +421,7 @@ class TransferVerificationService
             // way a fee leaves the set is a gateway payment that arrived meanwhile
             // (the webhook settles it and flags the member's refund of its share).
             // Approve then covers the fees still waiting; anything else blocks it.
-            $paidOnline = fn (Payment $p) => $p->status === 'paid' && $p->paid_via !== null && $p->paid_via !== 'transfer';
+            $paidOnline = fn (Payment $p) => $p->status === 'paid' && ! in_array($p->paid_via, [null, 'transfer', 'cash', 'manual'], true);
             $intact = $fees->count() === count($amounts) && $waiting->isNotEmpty()
                 && $fees->every(fn (Payment $p) => $paidOnline($p)
                     || ($p->status === 'pending_verification' && $inGroup($p) && $p->amountSen() === ($amounts[$p->id] ?? -1)));

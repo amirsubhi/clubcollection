@@ -146,6 +146,27 @@ class MemberPayFlowTest extends TestCase
         $this->assertSame($reference, $payment->fresh()->reference);
     }
 
+    /** R2a: pressing pay again on the same bill restarts its "in progress" window. */
+    public function test_reusing_the_bill_restamps_when_it_was_opened(): void
+    {
+        Http::fake(['dev.toyyibpay.com/index.php/api/createBill' => Http::response([['BillCode' => 'FIRSTBILL']], 200)]);
+        $club = $this->toyyibClub();
+        $payment = $this->pending($this->actingAsMember($club), $club);
+
+        $this->post(route('member.payments.pay', $payment))->assertRedirect('https://dev.toyyibpay.com/FIRSTBILL');
+        $bill = $payment->bills()->sole();
+        $this->assertNotNull($bill->opened_at);
+
+        $this->travel(2)->days();
+        $this->post(route('member.payments.pay', $payment))->assertRedirect('https://dev.toyyibpay.com/FIRSTBILL');
+        $this->assertTrue($bill->fresh()->opened_at->isSameMinute(now()));
+        $this->travel(2)->days();
+        $this->assertSame('processing', \App\Support\Payments\DisplayStatus::of($payment->fresh()));
+        $this->travel(2)->days();
+        $this->get(route('member.payments.review', $payment))->assertInertia(fn (Assert $p) => $p
+            ->where('processing', false)->where('hasOpenBill', true)->where('openBillUrl', route('member.payments.thankyou', $payment)));
+    }
+
     public function test_pay_creates_a_new_bill_when_the_amount_changed_after_the_bill(): void
     {
         Http::fake([
@@ -265,7 +286,7 @@ class MemberPayFlowTest extends TestCase
 
         $this->getJson(route('member.payments.status', $payment))
             ->assertOk()
-            ->assertExactJson(['status' => 'pending']);
+            ->assertExactJson(['status' => 'due']);
 
         $payment->update(['status' => 'paid', 'paid_date' => now()->toDateString()]);
 
@@ -330,27 +351,37 @@ class MemberPayFlowTest extends TestCase
             ->assertRedirect(route('member.payments.review', $payment));
     }
 
-    public function test_past_due_pending_fees_count_as_overdue_in_summaries(): void
+    public function test_pending_fees_past_the_grace_period_count_as_overdue_in_summaries(): void
     {
-        $club = Club::factory()->create();
+        $club = Club::factory()->create(); // default grace: 7 days
         $member = $this->actingAsMember($club);
-        $this->pending($member, $club, ['amount' => 10.00, 'due_date' => now()->subDays(3)->toDateString()]);
-        $this->pending($member, $club, ['amount' => 20.00, 'due_date' => now()->addDays(3)->toDateString(),
-            'period_start' => now()->addMonthNoOverflow()->startOfMonth()->toDateString(),
-            'period_end' => now()->addMonthNoOverflow()->endOfMonth()->toDateString()]);
+        $month = fn (int $n) => ['period_start' => now()->startOfMonth()->addMonthsNoOverflow($n)->toDateString(),
+            'period_end' => now()->startOfMonth()->addMonthsNoOverflow($n)->endOfMonth()->toDateString()];
+        // 8 days late: overdue. 7 days late: still due (last day of grace). Not due yet: due.
+        $this->pending($member, $club, ['amount' => 10.00, 'due_date' => today()->subDays(8)->toDateString()] + $month(-2));
+        $this->pending($member, $club, ['amount' => 5.00, 'due_date' => today()->subDays(7)->toDateString()] + $month(-1));
+        $this->pending($member, $club, ['amount' => 20.00, 'due_date' => today()->addDays(3)->toDateString()] + $month(1));
 
         $this->get(route('member.dashboard'))
             ->assertInertia(fn (Assert $page) => $page
                 ->where('clubs.0.summary.overdue', 1)
-                ->where('clubs.0.summary.pending', 1)
+                ->where('clubs.0.summary.due', 2)
                 ->where('outstanding.overdueCount', 1)
+                ->where('outstanding.count', 3)
+                ->where('upcoming.0.status', 'overdue')
+                ->where('upcoming.1.status', 'due')
             );
 
-        $this->get(route('member.payments.index', $club))
+        $year = today()->year;
+        $this->get(route('member.payments.index', [$club, 'year' => $year]))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('summary.overdue', 1000)
-                ->where('summary.pending', 2000)
+                ->where('summary.overdue', today()->subDays(8)->year === $year ? 1000 : 0)
             );
+
+        // A club with a shorter grace period: the 7-days-late fee is overdue there.
+        $club->update(['overdue_grace_days' => 3]);
+        $this->get(route('member.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page->where('outstanding.overdueCount', 2));
     }
 
     public function test_logout_from_an_inertia_page_returns_an_external_location(): void

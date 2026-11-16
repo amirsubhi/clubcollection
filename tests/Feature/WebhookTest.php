@@ -227,7 +227,8 @@ class WebhookTest extends TestCase
     public function test_webhook_after_an_approved_transfer_is_flagged_once(): void
     {
         $payment = $this->makePendingPayment();
-        $payment->forceFill(['status' => 'paid', 'paid_via' => 'transfer', 'paid_date' => now()->toDateString()])->save();
+        // A checked slip: the member sent it (transfer_submitted_at); an admin approved it.
+        $payment->forceFill(['status' => 'paid', 'paid_via' => 'transfer', 'paid_date' => now()->toDateString(), 'transfer_submitted_at' => now()])->save();
         $payload = $this->payload($payment, ['transaction_id' => 'TXN-DUP-1']);
 
         $this->post($this->url($payment), $payload)->assertOk();

@@ -356,3 +356,7 @@ Follow-ups (non-blocking):
 - Move `slipSets`/`waitingSlipCount` from the controller into a Support class.
 - 🔴 Before go-live: open one Blade admin page against the real jsDelivr with devtools to confirm no SRI errors.
 
+### R2a follow-ups (non-blocking)
+- 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
+- Blade Payments summary total is a separate query from the status counts (harmless race).
+

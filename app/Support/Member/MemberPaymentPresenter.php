@@ -4,6 +4,7 @@ namespace App\Support\Member;
 
 use App\Models\Payment;
 use App\Models\PaymentBill;
+use App\Support\Payments\DisplayStatus;
 use Illuminate\Support\Collection;
 
 /**
@@ -21,21 +22,13 @@ final class MemberPaymentPresenter
     }
 
     /**
-     * The status a member should see: a pending fee whose due date is before
-     * today is shown as overdue even before the nightly reminder job flips it.
-     * The summary SQL in the member controllers uses the same rule.
+     * The status a member should see: paid, verifying, processing (an FPX
+     * bill is open), due (within the club's grace period) or overdue. One
+     * rule for every page: App\Support\Payments\DisplayStatus.
      */
     public static function displayStatus(Payment $payment): string
     {
-        if ($payment->status === 'paid') {
-            return 'paid';
-        }
-        // A transfer slip is waiting for the treasurer: not paid, not overdue.
-        if ($payment->status === 'pending_verification') {
-            return 'verifying';
-        }
-
-        return ($payment->status === 'overdue' || $payment->due_date->lt(today())) ? 'overdue' : 'pending';
+        return DisplayStatus::of($payment);
     }
 
     public static function invoiceNo(Payment $payment): string
@@ -79,6 +72,8 @@ final class MemberPaymentPresenter
             'urls' => [
                 'invoice' => route('member.payments.invoice', $payment),
                 'review' => $status === 'paid' ? null : route('member.payments.review', $payment),
+                // An FPX payment was started: where to check it before paying again.
+                'billStatus' => $status === DisplayStatus::PROCESSING ? DisplayStatus::memberBillUrl($payment) : null,
             ],
         ];
     }

@@ -99,8 +99,10 @@ export default function UiKit() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <PaymentStatusBadge status="paid" label={t("paid")} />
-                <PaymentStatusBadge status="pending" label={t("pending")} />
-                <PaymentStatusBadge status="overdue" label={t("overdue")} />
+                <PaymentStatusBadge status="due" label={t("statusDue")} />
+                <PaymentStatusBadge status="processing" label={t("statusProcessing")} />
+                <PaymentStatusBadge status="overdue" label={t("overdueBadge")} />
+                <PaymentStatusBadge status="verifying" label={t("verifyingBadge")} />
                 <FundStatusBadge status="submitted" />
               </div>
               <div className="text-2xl font-bold">

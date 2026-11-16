@@ -14,7 +14,8 @@ export interface MemberPaymentRow {
   clubId: number;
   /** Present on Home rows. */
   clubName?: string;
-  urls: { invoice: string; review: string | null };
+  /** billStatus: where to check an FPX payment in progress (status "processing" only). */
+  urls: { invoice: string; review: string | null; billStatus?: string | null };
 }
 
 /** MemberPaymentPresenter::receipt(): only for paid fees. */
@@ -51,7 +52,7 @@ export interface HomeClub {
   jobLevel: string;
   role: string;
   paymentsUrl: string;
-  summary: { paid: number; pending: number; overdue: number; verifying: number; totalPaid: Sen };
+  summary: { paid: number; due: number; overdue: number; processing: number; verifying: number; totalPaid: Sen };
   /** FundFigures for this year so far: the same figures the club's admins see. spent = expenses + welfare + charges. */
   fund: {
     window: { from: string; to: string; range: string };

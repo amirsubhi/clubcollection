@@ -12,6 +12,7 @@ use App\Services\AuditService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Services\TransferVerificationService;
 use App\Support\Member\MemberPaymentPresenter as P;
+use App\Support\Payments\DisplayStatus;
 use App\Support\Payments\GatewayFee;
 use App\Support\Payments\OpenFeeSet;
 use Illuminate\Database\Eloquent\Builder;
@@ -66,6 +67,10 @@ class PayAllController extends Controller
         $sumSen = $fees->sum(fn (Payment $p) => $p->amountSen());
         // A bill (single or group) was already opened for one of these fees: warn before paying again.
         $hasOpenBill = $openBill !== null || $fees->contains(fn (Payment $p) => ! empty($p->bill_code));
+        // An FPX payment for this set, or for one of its fees, started recently
+        // and is not confirmed yet: checking it comes first (R2a).
+        $statuses = DisplayStatus::many($fees);
+        $inProgress = $fees->first(fn (Payment $p) => $statuses[$p->id] === DisplayStatus::PROCESSING);
 
         return Inertia::render('Member/ReviewPay', [
             'payment' => null,
@@ -82,7 +87,11 @@ class PayAllController extends Controller
             ],
             'hasOpenBill' => $hasOpenBill,
             // Where the member can check the payment they already started for this set.
-            'openBillUrl' => $openBill ? route('member.payments.group-result', $openBill) : null,
+            'openBillUrl' => $inProgress ? DisplayStatus::memberBillUrl($inProgress)
+                : ($openBill ? route('member.payments.group-result', $openBill) : null),
+            'processing' => $inProgress !== null,
+            // Paying the set again is refused while another bill is in progress for one of its fees.
+            'payAgainBlocked' => self::inProgressElsewhere($fees, $openBill),
             'payUrl' => route('member.payments.pay-all', $club),
             'transfer' => $club->transferReady() ? [
                 'bankName' => $club->bank_name,
@@ -241,7 +250,13 @@ class PayAllController extends Controller
             if (! OpenFeeSet::matches($fees, $ids, $totalSen)) {
                 return [null, null];
             }
-            if ($open = $this->matchingOpenBill($club, $user->id, $fees, $gateway->name())) {
+            $open = $this->matchingOpenBill($club, $user->id, $fees, $gateway->name());
+            // An FPX payment for one of these fees is in progress through another
+            // bill: paying the set now could take that fee twice (R2a).
+            if (self::inProgressElsewhere($fees, $open)) {
+                return [false, null];
+            }
+            if ($open) {
                 return [$fees, $open];
             }
 
@@ -263,10 +278,16 @@ class PayAllController extends Controller
             return [$fees, $bill];
         });
 
+        if ($fees === false) {
+            return $back('member.check_status_first');
+        }
         if (! $fees) {
             return $back('member.set_changed');
         }
         if ($bill->bill_code) {
+            // The bill already opened for this set: "in progress" counts from now.
+            $bill->markOpened();
+
             return Inertia::location($gateway->paymentUrl($bill->bill_code));
         }
 
@@ -298,7 +319,7 @@ class PayAllController extends Controller
             return $back('member.bill_failed');
         }
 
-        $bill->forceFill(['bill_code' => $result->billCode, 'gateway' => $result->gateway])->save();
+        $bill->forceFill(['bill_code' => $result->billCode, 'gateway' => $result->gateway, 'opened_at' => now()])->save();
 
         AuditService::log(
             'payment.group_bill_opened',
@@ -331,6 +352,14 @@ class PayAllController extends Controller
             'payment_ids.*' => 'member.set_changed',
             'total_sen' => 'member.set_changed',
         ]);
+    }
+
+    /** A fee of the set has an FPX payment in progress through a bill other than $reuse (the set's own bill). */
+    private static function inProgressElsewhere(Collection $fees, ?PaymentBill $reuse): bool
+    {
+        DisplayStatus::prime($fees);
+
+        return $fees->contains(fn (Payment $p) => ($b = DisplayStatus::openBill($p)) !== null && (int) $b->id !== (int) $reuse?->id);
     }
 
     /** Open (unpaid, not superseded) gateway group bills of a member in a club. */

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundFigures;
+use App\Support\Payments\DisplayStatus;
 use App\Support\Export\CsvSafe;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -106,12 +107,15 @@ class LedgerController extends Controller
                 'balance' => $t['balance_sen'],
             ])->all(),
             'outstanding' => [
-                'rows' => $outstanding($data['overduePayments'], 'overdue')
-                    ->concat($outstanding($data['pendingPayments'], 'pending'))
-                    ->concat($outstanding($data['verifyingPayments'], 'verifying'))
+                'rows' => $outstanding($data['overduePayments'], DisplayStatus::OVERDUE)
+                    ->concat($outstanding($data['pendingPayments'], DisplayStatus::DUE))
+                    ->concat($outstanding($data['processingPayments'], DisplayStatus::PROCESSING))
+                    ->concat($outstanding($data['verifyingPayments'], DisplayStatus::VERIFYING))
                     ->values()->all(),
                 'overdue' => self::sen($data['overdueTotal']),
-                'pending' => self::sen($data['pendingTotal']),
+                'due' => self::sen($data['pendingTotal']),
+                'processing' => self::sen($data['processingTotal']),
+                'graceDays' => $club->overdueGraceDays(),
                 'verifying' => self::sen($data['verifyingTotal']),
                 'total' => self::sen($data['outstandingTotal']),
             ],
@@ -198,7 +202,7 @@ class LedgerController extends Controller
             CsvSafe::put($h, []);
 
             // ── Outstanding ───────────────────────────────────────────────
-            $hasOutstanding = $data['overduePayments']->isNotEmpty() || $data['pendingPayments']->isNotEmpty() || $data['verifyingPayments']->isNotEmpty();
+            $hasOutstanding = $data['overduePayments']->isNotEmpty() || $data['pendingPayments']->isNotEmpty() || $data['processingPayments']->isNotEmpty() || $data['verifyingPayments']->isNotEmpty();
             if ($hasOutstanding) {
                 CsvSafe::put($h, ['OUTSTANDING PAYMENTS (all time)']);
 
@@ -213,12 +217,22 @@ class LedgerController extends Controller
                 }
 
                 if ($data['pendingPayments']->isNotEmpty()) {
-                    CsvSafe::put($h, ['PENDING']);
+                    CsvSafe::put($h, ['DUE']);
                     CsvSafe::put($h, ['#', 'Member', 'Period', 'Due Date', 'Amount (RM)']);
                     foreach ($data['pendingPayments'] as $i => $p) {
                         CsvSafe::put($h, [$i + 1, $p->user?->name ?? 'Former member', $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
                     }
-                    CsvSafe::put($h, ['', '', '', 'TOTAL PENDING (RM)', number_format($data['pendingTotal'], 2)]);
+                    CsvSafe::put($h, ['', '', '', 'TOTAL DUE (RM)', number_format($data['pendingTotal'], 2)]);
+                    CsvSafe::put($h, []);
+                }
+
+                if ($data['processingPayments']->isNotEmpty()) {
+                    CsvSafe::put($h, ['FPX IN PROGRESS (online payment started, bank not confirmed yet)']);
+                    CsvSafe::put($h, ['#', 'Member', 'Period', 'Due Date', 'Amount (RM)']);
+                    foreach ($data['processingPayments'] as $i => $p) {
+                        CsvSafe::put($h, [$i + 1, $p->user?->name ?? 'Former member', $p->period_start->format('M Y'), $p->due_date->format('d M Y'), number_format($p->amount, 2)]);
+                    }
+                    CsvSafe::put($h, ['', '', '', 'TOTAL FPX IN PROGRESS (RM)', number_format($data['processingTotal'], 2)]);
                     CsvSafe::put($h, []);
                 }
 
@@ -465,23 +479,27 @@ class LedgerController extends Controller
         }
 
         // ── Outstanding (all-time, not date-filtered) ─────────────────────
-        $pendingPayments = $club->payments()->with('user')
-            ->where('status', 'pending')->orderBy('due_date')->get();
-
-        $overduePayments = $club->payments()->with('user')
-            ->where('status', 'overdue')->orderBy('due_date')->get();
-
+        // Bucketed by DisplayStatus, the words members and Payments use: due
+        // (within the grace period), overdue, FPX in progress, slip being checked.
+        $open = $club->payments()->with('user')
+            ->whereIn('status', ['pending', 'overdue', 'pending_verification'])
+            ->orderBy('due_date')->orderBy('id')->get();
+        $statuses = DisplayStatus::many($open);
+        $bucket = fn (string $status) => $open->filter(fn ($p) => $statuses[$p->id] === $status)->values();
+        $overduePayments = $bucket(DisplayStatus::OVERDUE);
+        $pendingPayments = $bucket(DisplayStatus::DUE);
+        $processingPayments = $bucket(DisplayStatus::PROCESSING);
         // Transfer slip uploaded, not checked yet: still outstanding until approved.
-        $verifyingPayments = $club->payments()->with('user')
-            ->where('status', 'pending_verification')->orderBy('due_date')->get();
+        $verifyingPayments = $bucket(DisplayStatus::VERIFYING);
 
         $transactions = $rows->all();
 
         $totalOf = fn ($payments) => self::rm((int) $payments->sum(fn ($p) => self::sen($p->amount)));
         $overdueTotal = $totalOf($overduePayments);
         $pendingTotal = $totalOf($pendingPayments);
+        $processingTotal = $totalOf($processingPayments);
         $verifyingTotal = $totalOf($verifyingPayments);
-        $outstandingTotal = self::rm((int) $overduePayments->concat($pendingPayments)->concat($verifyingPayments)->sum(fn ($p) => self::sen($p->amount)));
+        $outstandingTotal = self::rm((int) $open->sum(fn ($p) => self::sen($p->amount)));
 
         return compact(
             'incomeSen',
@@ -498,6 +516,8 @@ class LedgerController extends Controller
             'pendingPayments',
             'overduePayments',
             'verifyingPayments',
+            'processingPayments',
+            'processingTotal',
             'overdueTotal',
             'pendingTotal',
             'verifyingTotal',

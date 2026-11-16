@@ -41,6 +41,9 @@ return new class extends Migration
             $table->string('transaction_id')->nullable();
             $table->timestamp('paid_at')->nullable();
             $table->timestamp('created_at')->nullable();
+            // Last time the member was sent to pay this bill (created, or reused by
+            // pressing pay again): an FPX payment counts as in progress from here (R2a).
+            $table->timestamp('opened_at')->nullable();
             // Replaced by a newer bill, or (group) one of its fees changed or was
             // settled elsewhere, or (transfer group) the slip was rejected.
             $table->timestamp('superseded_at')->nullable();

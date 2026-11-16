@@ -17,7 +17,8 @@ running `php artisan serve`:
 5. **Admin B (verifier):** Verifications page → Approve with a bank reference → "Recently handled" shows
    it → the member's invoice is now the official receipt ("Pindahan bank / DuitNow").
 6. **"Bayar semua" by FPX:** a member with three open fees → Home "Bayar semua RM 150.00" → the review lists the
-   three fees → one gateway bill → one webhook (HMAC of the group reference) settles all three → one receipt with a
+   three fees → one gateway bill → back on Home the payment shows as in progress ("Semak status bayaran", no
+   "Bayar semua") → one webhook (HMAC of the group reference) settles all three → one receipt with a
    line per fee.
 7. **"Bayar semua" by transfer:** another member sends one slip (`YURAN-G{id}`) for three fees → Admin B sees one
    card listing the fees and the total and approves the set → the group page is now the receipt.

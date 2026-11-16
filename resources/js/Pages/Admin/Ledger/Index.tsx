@@ -1,10 +1,10 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { router } from "@inertiajs/react";
-import { ArrowDownLeft, ArrowUpRight, BarChart3, CalendarRange, CheckCircle2, Clock, FileDown, FileSpreadsheet, Hourglass, Landmark, PencilLine, Table2, TriangleAlert, Undo2 } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, BarChart3, CalendarRange, CheckCircle2, FileDown, FileSpreadsheet, Landmark, PencilLine, Table2, Undo2 } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { CollectedSpentChart, KpiTile, SpentSplit } from "@/components/app/Charts";
-import { StatusChip } from "@/components/app/StatusBadges";
+import { adminPayLabel, payMeta, StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { DateHint, Input, Label, FieldError, FieldHint } from "@/components/ui/input";
 import { fmtDate, fmtMonth, rm } from "@/lib/format";
@@ -42,7 +42,8 @@ interface OutstandingRow {
   periodStart: string;
   dueDate: string | null;
   amount: number;
-  status: "overdue" | "pending" | "verifying";
+  /** DisplayStatus: the same word members and the Payments page use. */
+  status: "overdue" | "due" | "processing" | "verifying";
 }
 
 interface Props {
@@ -58,7 +59,8 @@ interface Props {
   summary: { opening: number; in: number; out: number; outExpenses: number; outWelfare: number; outCharges: number; net: number; closing: number; inCount: number; outCount: number };
   monthly: MonthRow[];
   transactions: Txn[];
-  outstanding: { rows: OutstandingRow[]; overdue: number; pending: number; verifying: number; total: number };
+  /** Sen per DisplayStatus; graceDays: days after the due date before a fee is overdue. */
+  outstanding: { rows: OutstandingRow[]; overdue: number; due: number; processing: number; verifying: number; total: number; graceDays: number };
   urls: { index: string; csv: string; pdf: string; dashboard: string };
 }
 
@@ -314,12 +316,6 @@ function MonthlySection({ monthly, range, className }: { monthly: MonthRow[]; ra
   );
 }
 
-const outstandingMeta: Record<OutstandingRow["status"], { label: string; tone: "danger" | "warning" | "info"; Icon: typeof Clock }> = {
-  overdue: { label: "Overdue", tone: "danger", Icon: TriangleAlert },
-  pending: { label: "Not paid yet", tone: "warning", Icon: Clock },
-  verifying: { label: "Slip being checked", tone: "info", Icon: Hourglass },
-};
-
 function OutstandingSection({ outstanding, className }: { outstanding: Props["outstanding"]; className?: string }) {
   const [all, setAll] = useState(false);
   const rows = all ? outstanding.rows : outstanding.rows.slice(0, 8);
@@ -328,7 +324,7 @@ function OutstandingSection({ outstanding, className }: { outstanding: Props["ou
       id="ledger-outstanding"
       className={className}
       title="Fees not yet received"
-      sub="All open fees, whatever the period. They are not in the balance until paid."
+      sub={`All open fees, whatever the period. They are not in the balance until paid. Overdue means more than ${outstanding.graceDays} ${outstanding.graceDays === 1 ? "day" : "days"} after the due date.`}
       action={outstanding.rows.length > 0 ? <span className="money text-sm font-semibold">{rm(outstanding.total)}</span> : undefined}
     >
       {outstanding.rows.length === 0 ? (
@@ -338,13 +334,17 @@ function OutstandingSection({ outstanding, className }: { outstanding: Props["ou
       ) : (
         <>
           <div className="flex flex-wrap gap-2 text-xs">
-            {outstanding.overdue > 0 && <StatusChip Icon={TriangleAlert} tone="danger">Overdue {rm(outstanding.overdue)}</StatusChip>}
-            {outstanding.pending > 0 && <StatusChip Icon={Clock} tone="warning">Not paid yet {rm(outstanding.pending)}</StatusChip>}
-            {outstanding.verifying > 0 && <StatusChip Icon={Hourglass} tone="info">Slip being checked {rm(outstanding.verifying)}</StatusChip>}
+            {(["overdue", "due", "processing", "verifying"] as const).map((s) =>
+              outstanding[s] > 0 ? (
+                <StatusChip key={s} Icon={payMeta[s].Icon} tone={payMeta[s].tone}>
+                  {adminPayLabel[s]} {rm(outstanding[s])}
+                </StatusChip>
+              ) : null,
+            )}
           </div>
           <ul className="flex flex-col divide-y">
             {rows.map((r) => {
-              const m = outstandingMeta[r.status];
+              const m = payMeta[r.status];
               return (
                 <li key={r.id} className="flex flex-col gap-1 py-2.5 text-sm">
                   <div className="flex items-baseline justify-between gap-3">
@@ -359,7 +359,7 @@ function OutstandingSection({ outstanding, className }: { outstanding: Props["ou
                       {r.dueDate ? ` · due ${fmtDate(r.dueDate)}` : ""}
                     </span>
                     <StatusChip Icon={m.Icon} tone={m.tone}>
-                      {m.label}
+                      {adminPayLabel[r.status]}
                     </StatusChip>
                   </div>
                 </li>

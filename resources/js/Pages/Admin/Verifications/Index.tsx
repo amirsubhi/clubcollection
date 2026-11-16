@@ -58,7 +58,9 @@ export interface SlipGroup {
 export interface HandledSlip {
   id: number;
   paymentId: number;
-  outcome: "approved" | "rejected" | "gateway_paid";
+  outcome: "approved" | "rejected" | "gateway_paid" | "gateway_paid_after_manual" | "group_refund" | "underpaid";
+  /** gateway_paid_after_manual: how an admin had recorded it ("cash", "bank transfer", "other"). */
+  recordedAs?: string | null;
   member: string;
   amount: number;
   periodStart: string | null;
@@ -262,6 +264,21 @@ const outcomeMeta: Record<
     tone: "warning",
     Icon: AlertTriangle,
   },
+  gateway_paid_after_manual: {
+    label: "Refund the online payment",
+    tone: "warning",
+    Icon: AlertTriangle,
+  },
+  group_refund: {
+    label: "Group payment not applied",
+    tone: "warning",
+    Icon: AlertTriangle,
+  },
+  underpaid: {
+    label: "Paid less than the bill",
+    tone: "warning",
+    Icon: AlertTriangle,
+  },
 };
 
 function HandledList({ items }: { items: HandledSlip[] }) {
@@ -297,6 +314,22 @@ function HandledList({ items }: { items: HandledSlip[] }) {
                   <p className="mt-1 text-sm text-muted-foreground">
                     Paid {h.paidDate ? fmtDate(h.paidDate) : ""}
                     {h.reference ? ` · ref ${h.reference}` : ""}
+                  </p>
+                )}
+                {h.outcome === "group_refund" && (
+                  <p className="mt-1 text-sm text-warning-foreground">
+                    Online payment received for a group bill{h.reference ? ` (txn ${h.reference})` : ""}, but nothing was marked paid: refund it, or record the fees.
+                  </p>
+                )}
+                {h.outcome === "underpaid" && (
+                  <p className="mt-1 text-sm text-warning-foreground">
+                    Online payment was less than the bill{h.reference ? ` (txn ${h.reference})` : ""}: nothing was marked paid.
+                  </p>
+                )}
+                {h.outcome === "gateway_paid_after_manual" && (
+                  <p className="mt-1 text-sm text-warning-foreground">
+                    Paid online after it was recorded as {h.recordedAs ?? "paid by hand"}
+                    {h.reference ? ` (txn ${h.reference})` : ""}. Both payments reached the club: refund the online payment.
                   </p>
                 )}
                 {h.outcome === "gateway_paid" && (

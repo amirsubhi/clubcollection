@@ -191,8 +191,9 @@ class Payment extends Model
         return $this->belongsTo(Discount::class);
     }
 
+    /** Shown as overdue: unpaid, no FPX bill in progress, past the club's grace period (DisplayStatus). */
     public function isOverdue(): bool
     {
-        return $this->status === 'pending' && $this->due_date->isPast();
+        return \App\Support\Payments\DisplayStatus::of($this) === \App\Support\Payments\DisplayStatus::OVERDUE;
     }
 }

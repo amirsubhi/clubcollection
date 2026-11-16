@@ -224,7 +224,8 @@ class PaymentControllerTest extends TestCase
 
     // ── Update ─────────────────────────────────────────────────────────────
 
-    public function test_update_changes_status_to_paid_and_auto_fills_paid_date(): void
+    /** R2a: money received is recorded with "Record payment…" only; the edit form refuses Paid. */
+    public function test_update_cannot_change_status_to_paid(): void
     {
         $club    = Club::factory()->create();
         $admin   = $this->actingAsClubAdmin($club);
@@ -237,13 +238,10 @@ class PaymentControllerTest extends TestCase
             'amount'   => $payment->amount,
             'status'   => 'paid',
             'original_status' => 'pending',
-        ])->assertRedirect();
+        ])->assertSessionHasErrors('status');
 
-        $this->assertDatabaseHas('payments', [
-            'id'       => $payment->id,
-            'status'   => 'paid',
-        ]);
-        $this->assertNotNull($payment->fresh()->paid_date);
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertNull($payment->fresh()->paid_date);
     }
 
     // ── Mark Paid ──────────────────────────────────────────────────────────
@@ -256,7 +254,7 @@ class PaymentControllerTest extends TestCase
         $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
         $payment = Payment::factory()->forClub($club)->forMember($member)->pending()->create();
 
-        $this->patch(route('admin.payments.mark-paid', $payment))
+        $this->patch(route('admin.payments.mark-paid', $payment), $this->recordPayment())
             ->assertRedirect();
 
         $fresh = $payment->fresh();
@@ -272,7 +270,7 @@ class PaymentControllerTest extends TestCase
         $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
         $payment = Payment::factory()->forClub($club)->forMember($member)->pending()->create();
 
-        $this->patch(route('admin.payments.mark-paid', $payment), ['reference' => 'TXN-12345'])
+        $this->patch(route('admin.payments.mark-paid', $payment), $this->recordPayment(['reference' => 'TXN-12345']))
             ->assertRedirect();
 
         $this->assertDatabaseHas('payments', ['id' => $payment->id, 'reference' => 'TXN-12345']);

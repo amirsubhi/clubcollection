@@ -4,7 +4,8 @@
 @section('page-club', $club->name)
 
 @section('content')
-{{-- Summary --}}
+{{-- Summary: the same status words as the table, members and the Ledger (DisplayStatus). --}}
+@php $c = $summary['counts']; @endphp
 <section class="card shadow-sm mb-4 overflow-hidden" aria-label="Summary">
     <div class="stat-strip">
         <div>
@@ -12,16 +13,21 @@
             <span class="stat-value money">RM {{ number_format($summary['total_paid'], 2) }}</span>
         </div>
         <div>
-            <span class="stat-label">Pending</span>
-            <span class="stat-value">{{ $summary['total_pending'] }}</span>
+            <span class="stat-label">Due</span>
+            <span class="stat-value">{{ $c['due'] }}</span>
         </div>
         <div>
             <span class="stat-label">Overdue</span>
-            <span class="stat-value {{ $summary['total_overdue'] ? 'text-danger' : '' }}">{{ $summary['total_overdue'] }}</span>
+            <span class="stat-value">{{ $c['overdue'] }}</span>
+            <span class="stat-note">over {{ $summary['grace_days'] }} {{ $summary['grace_days'] === 1 ? 'day' : 'days' }} late</span>
+        </div>
+        <div>
+            <span class="stat-label">FPX in progress</span>
+            <span class="stat-value">{{ $c['processing'] }}</span>
         </div>
         <a href="{{ route('admin.clubs.verifications.index', $club) }}" class="stat-link">
             <span class="stat-label">Awaiting verification <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
-            <span class="stat-value">{{ $summary['total_verifying'] }}</span>
+            <span class="stat-value">{{ $c['verifying'] }}</span>
         </a>
     </div>
 </section>
@@ -38,10 +44,9 @@
                 <label for="f-status" class="form-label small mb-1">Status</label>
                 <select id="f-status" name="status" class="form-select form-select-sm">
                     <option value="">All</option>
-                    <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="paid" {{ $status == 'paid' ? 'selected' : '' }}>Paid</option>
-                    <option value="overdue" {{ $status == 'overdue' ? 'selected' : '' }}>Overdue</option>
-                    <option value="pending_verification" {{ $status == 'pending_verification' ? 'selected' : '' }}>Awaiting verification</option>
+                    @foreach(['due', 'overdue', 'processing', 'verifying', 'paid'] as $s)
+                    <option value="{{ $s }}" {{ $status === $s ? 'selected' : '' }}>{{ \App\Support\Payments\DisplayStatus::adminLabel($s) }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="col-md-3">
@@ -67,7 +72,7 @@
 <div class="card shadow-sm">
     {{-- Phones: the status sits under the member's name and the table scrolls sideways for the rest. --}}
     <p class="d-md-none small text-body-secondary px-3 pt-3 mb-0" id="payments-scroll-hint"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Swipe the table sideways to see due dates and actions.</p>
-    <div class="table-responsive" tabindex="0" role="region" aria-label="Payments" aria-describedby="payments-scroll-hint">
+    <div class="table-responsive position-relative" tabindex="0" role="region" aria-label="Payments" aria-describedby="payments-scroll-hint">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
@@ -83,43 +88,44 @@
             <tbody>
                 @forelse($payments as $payment)
                 @php
-                    [$badgeClass, $badgeLabel] = match ($payment->status) {
-                        'paid' => ['bg-success-subtle text-success border border-success-subtle', 'Paid'],
-                        'overdue' => ['bg-danger-subtle text-danger border border-danger-subtle', 'Overdue'],
-                        'pending_verification' => ['bg-info-subtle text-info-emphasis border border-info-subtle', 'Awaiting verification'],
-                        default => ['bg-warning-subtle text-warning border border-warning-subtle', 'Pending'],
-                    };
-                    $statusBadge = '<span class="badge '.$badgeClass.'">'.e($badgeLabel).'</span>';
+                    $display = \App\Support\Payments\DisplayStatus::of($payment);
+                    $who = ($payment->user?->name ?? 'Former member').', '.$payment->period_start->format('M Y');
                 @endphp
                 <tr>
                     <td>
                         <div class="fw-semibold">{{ $payment->user?->name ?? 'Former member' }}</div>
                         <div class="text-muted small">{{ $payment->user?->email }}</div>
-                        <div class="d-md-none mt-1">{!! $statusBadge !!}</div>
+                        <div class="d-md-none mt-1">@include('admin.payments._status-badge', ['status' => $display])</div>
                     </td>
                     <td class="small text-nowrap">{{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</td>
                     <td><span class="badge bg-light text-dark border">{{ ucfirst($payment->frequency) }}</span></td>
-                    <td class="fw-semibold money">RM {{ number_format($payment->amount, 2) }}</td>
-                    <td class="small {{ $payment->isOverdue() ? 'text-danger fw-semibold' : '' }}">
+                    <td class="fw-semibold money text-nowrap">RM {{ number_format($payment->amount, 2) }}</td>
+                    <td class="small {{ $display === 'overdue' ? 'fw-semibold' : '' }}">
                         {{ $payment->due_date->format('d M Y') }}
                     </td>
-                    <td class="d-none d-md-table-cell">{!! $statusBadge !!}</td>
+                    <td class="d-none d-md-table-cell">@include('admin.payments._status-badge', ['status' => $display])</td>
                     <td class="text-end text-nowrap">
-                        <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-secondary" aria-label="View payment"><i class="bi bi-eye"></i></a>
-                        @if($payment->status === 'pending_verification')
-                        <a href="{{ route('admin.clubs.verifications.index', $club) }}" class="btn btn-sm btn-info" title="Check the transfer slip" aria-label="Check the transfer slip"><i class="bi bi-patch-check"></i></a>
-                        @elseif($payment->status !== 'paid')
-                        <form action="{{ route('admin.payments.mark-paid', $payment) }}" method="POST" class="d-inline">
-                            @csrf @method('PATCH')
-                            <button class="btn btn-sm btn-success" title="Mark Paid" aria-label="Mark payment as paid"><i class="bi bi-check-lg"></i></button>
-                        </form>
-                        @endif
-                        <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-sm btn-outline-primary" aria-label="Edit payment"><i class="bi bi-pencil"></i></a>
-                        <form action="{{ route('admin.payments.destroy', $payment) }}" method="POST" class="d-inline"
-                              data-confirm="Delete this payment record?">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger" aria-label="Delete payment"><i class="bi bi-trash"></i></button>
-                        </form>
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <a href="{{ route('admin.payments.show', $payment) }}" class="btn btn-sm btn-outline-secondary">View<span class="visually-hidden"> payment for {{ $who }}</span></a>
+                            @if($payment->status === 'pending_verification')
+                            <a href="{{ route('admin.clubs.verifications.index', $club) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-patch-check me-1" aria-hidden="true"></i>Check slip<span class="visually-hidden"> for {{ $who }}</span></a>
+                            @elseif($payment->status !== 'paid')
+                            @include('admin.payments._record-payment-button', ['payment' => $payment, 'status' => $display, 'class' => 'btn btn-sm btn-outline-primary'])
+                            @endif
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                                        data-bs-popper-config='{"strategy":"fixed"}'>More<span class="visually-hidden"> actions for {{ $who }}</span></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ route('admin.payments.edit', $payment) }}"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Edit</a></li>
+                                    <li>
+                                        <form action="{{ route('admin.payments.destroy', $payment) }}" method="POST" data-confirm="Delete this payment record for {{ $who }}?">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2" aria-hidden="true"></i>Delete</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 @empty
@@ -130,4 +136,5 @@
     </div>
 </div>
 <div class="mt-3">{{ $payments->links() }}</div>
+@include('admin.payments._record-payment-modal')
 @endsection

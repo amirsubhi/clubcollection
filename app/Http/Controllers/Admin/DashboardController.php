@@ -9,6 +9,7 @@ use App\Models\FeeRate;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundUsagePresenter as P;
 use App\Support\Admin\FundFigures as Figures;
+use App\Support\Payments\DisplayStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -204,20 +205,13 @@ class DashboardController extends Controller
             $monthlyExpense[$label] = $row['spent'] / 100;
         }
 
-        // ── Payment status counts — 1 query instead of 3 ─────────────────────
-        $statusStats = $club->payments()
-            ->selectRaw("
-                SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-                SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_count,
-                SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count
-            ")
-            ->first();
-
-        $paidCount    = (int) ($statusStats->paid_count    ?? 0);
-        $pendingCount = (int) ($statusStats->pending_count ?? 0);
-        $overdueCount = (int) ($statusStats->overdue_count ?? 0);
-        $verifyingCount = (int) ($statusStats->verifying_count ?? 0);
+        // ── Payment status counts: the same words as Payments and the Ledger ──
+        $statusCounts = DisplayStatus::counts($club->payments()->getQuery());
+        $paidCount    = $statusCounts[DisplayStatus::PAID];
+        $pendingCount = $statusCounts[DisplayStatus::DUE];
+        $overdueCount = $statusCounts[DisplayStatus::OVERDUE];
+        $processingCount = $statusCounts[DisplayStatus::PROCESSING];
+        $verifyingCount = $statusCounts[DisplayStatus::VERIFYING];
 
         // ── Members paid vs unpaid this month ─────────────────────────────────
         // Two targeted queries instead of loading all members then filtering in PHP
@@ -265,7 +259,7 @@ class DashboardController extends Controller
             'expenseThisMonth', 'expenseThisYear', 'expenseAllTime',
             'balance',
             'monthlyIncome', 'monthlyExpense',
-            'paidCount', 'pendingCount', 'overdueCount', 'verifyingCount',
+            'paidCount', 'pendingCount', 'overdueCount', 'processingCount', 'verifyingCount',
             'paidMembers', 'unpaidMembers',
             'jobLevels', 'incomeByJobLevel',
             'expenseByCategory',

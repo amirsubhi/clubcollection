@@ -413,11 +413,15 @@ try {
     groupBillCode = decodeURIComponent(new URL(f.page.url()).pathname.slice(1));
     if (!/^e2e[a-z0-9]{8}$/.test(groupBillCode)) throw new Error(`unexpected group bill code "${groupBillCode}"`);
     await f.page.unroute(`https://${GATEWAY_HOST}/**`);
-    // Back on the review page, the warning links to the bill already opened.
+    // Back on Home, the started payment is shown as in progress (R2a): checking it is the main action,
+    // "Bayar semua" is gone, and paying again is the secondary choice.
     await f.page.goto(`${BASE}/my/dashboard`);
-    await f.page.getByTestId("pay-all").click();
-    await f.page.getByTestId("open-bill-status").waitFor();
-    groupResultUrl = await f.page.getByTestId("open-bill-status").getAttribute("href");
+    await f.page.getByTestId("check-status").waitFor();
+    await f.page.getByTestId("processing-line").getByText("3 dalam proses").waitFor();
+    if (await f.page.getByTestId("pay-all").count()) throw new Error("Bayar semua is still offered while the group bill is in progress");
+    groupResultUrl = await f.page.getByTestId("check-status").getAttribute("href");
+    if (!/\/my\/pay-all\/\d+$/.test(groupResultUrl || "")) throw new Error(`check-status points to "${groupResultUrl}"`);
+    await shot(f.page, "f2b-home-in-progress");
   });
   await step("one webhook settles all three fees", async () => {
     await f.page.goto(groupResultUrl);

@@ -13,6 +13,7 @@ use App\Services\AuditService;
 use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
+use App\Support\Payments\DisplayStatus;
 use App\Support\Payments\GatewayFee;
 use App\Support\Payments\OpenFeeSet;
 use Carbon\Carbon;
@@ -56,33 +57,30 @@ class PaymentController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Annual summary — 1 query instead of 5
-        $annualStats = $club->payments()
+        // Annual summary by DisplayStatus (grace period, FPX bills in progress):
+        // one year of one member's fees, so loading them is cheap.
+        $yearFees = $club->payments()
             ->where('user_id', $user->id)
             ->whereYear('due_date', $selectedYear)
-            // A pending fee past its due date counts as overdue (see MemberPaymentPresenter::displayStatus).
-            ->selectRaw("
-                SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as paid,
-                SUM(CASE WHEN status = 'pending' AND due_date >= ? THEN amount ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < ?) THEN amount ELSE 0 END) as overdue,
-                SUM(CASE WHEN status = 'pending_verification' THEN amount ELSE 0 END) as verifying,
-                SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
-                SUM(amount) as total
-            ", [today()->toDateString(), today()->toDateString()])
-            ->first();
+            ->get(['id', 'club_id', 'status', 'due_date', 'amount']);
+        $yearStatuses = DisplayStatus::many($yearFees);
+        $sumOf = fn (string $status) => $yearFees->filter(fn (Payment $p) => $yearStatuses[$p->id] === $status)->sum(fn (Payment $p) => P::sen($p->amount));
+        DisplayStatus::prime($payments->getCollection());
 
         return Inertia::render('Member/Payments', [
             'club' => $club->only(['id', 'name']),
             'selectedYear' => $selectedYear,
             'years' => $years,
             'summary' => [
-                'paid' => P::sen($annualStats->paid ?? 0),
-                'pending' => P::sen($annualStats->pending ?? 0),
-                'overdue' => P::sen($annualStats->overdue ?? 0),
+                'paid' => $sumOf(DisplayStatus::PAID),
+                'due' => $sumOf(DisplayStatus::DUE),
+                'overdue' => $sumOf(DisplayStatus::OVERDUE),
+                // FPX payment started, bank not confirmed yet: maybe paid already.
+                'processing' => $sumOf(DisplayStatus::PROCESSING),
                 // Slip sent, treasurer still checking: neither paid nor owed.
-                'verifying' => P::sen($annualStats->verifying ?? 0),
-                'paidCount' => (int) ($annualStats->paid_count ?? 0),
-                'total' => P::sen($annualStats->total ?? 0),
+                'verifying' => $sumOf(DisplayStatus::VERIFYING),
+                'paidCount' => count(array_filter($yearStatuses, fn ($st) => $st === DisplayStatus::PAID)),
+                'total' => $yearFees->sum(fn (Payment $p) => P::sen($p->amount)),
             ],
             'payments' => collect($payments->items())->map(fn (Payment $p) => P::summary($p))->values(),
             'pagination' => [
@@ -138,6 +136,9 @@ class PaymentController extends Controller
         $hasOpenBill = $this->openBillFor($payment, $gateway) !== null;
         $openGroup = $payment->status === 'paid' || $payment->isVerifying() ? null
             : PaymentBill::openGatewayGroupsContaining($payment->id)->whereNotNull('bill_code')->latest('id')->first();
+        // An FPX payment started recently and not confirmed yet: checking it
+        // comes first, paying again is the secondary choice (R2a).
+        $processing = DisplayStatus::of($payment) === DisplayStatus::PROCESSING;
         // An open bill is reused as it is, so show the fee mode it was created
         // with; otherwise the club's current setting (what a new bill will use).
         $fee = $hasOpenBill ? self::storedFee($payment) : GatewayFee::forClub($payment->club);
@@ -160,7 +161,10 @@ class PaymentController extends Controller
             // A bill was already opened for this fee, on its own or in a "Bayar
             // semua" bill: warn before paying again, and link to the group's status.
             'hasOpenBill' => $hasOpenBill || $openGroup !== null,
-            'openBillUrl' => $openGroup ? route('member.payments.group-result', $openGroup) : null,
+            'openBillUrl' => $processing ? DisplayStatus::memberBillUrl($payment)
+                : ($openGroup ? route('member.payments.group-result', $openGroup)
+                    : ($hasOpenBill ? route('member.payments.thankyou', $payment) : null)),
+            'processing' => $processing,
             'payUrl' => route('member.payments.pay', $payment),
             // Manual bank / DuitNow transfer (P2): null when the club doesn't accept it.
             'transfer' => $this->transferProps($payment),
@@ -366,6 +370,9 @@ class PaymentController extends Controller
         // second one. A replaced bill stays in payment_bills, so a late payment
         // against it is still matched by the webhook.
         if ($url = $this->openBillFor($payment, $gateway)) {
+            // Sent to pay it again: "in progress" counts from now.
+            $payment->bills()->where('bill_code', $payment->bill_code)->whereNull('superseded_at')->first()?->markOpened();
+
             return Inertia::location($url);
         }
 
@@ -412,6 +419,7 @@ class PaymentController extends Controller
                 'amount_sen' => $payment->amountSen(),
                 'fee_payer' => $fee->payer,
                 'fee_sen' => $fee->feeSen,
+                'opened_at' => now(),
             ]);
             $payment->update([
                 'bill_code' => $result->billCode,
@@ -543,8 +551,12 @@ class PaymentController extends Controller
     private function payAllProps(Club $club, $user): ?array
     {
         $active = $club->is_active && $club->members()->where('users.id', $user->id)->where('club_user.is_active', true)->exists();
-        $open = $active ? OpenFeeSet::query($club->id, $user->id)->get(['id', 'amount']) : collect();
+        $open = $active ? OpenFeeSet::query($club->id, $user->id)->get(['id', 'club_id', 'status', 'due_date', 'amount']) : collect();
         if ($open->count() < 2) {
+            return null;
+        }
+        // An FPX payment is in progress for one of them: check it before paying the set (R2a).
+        if (in_array(DisplayStatus::PROCESSING, DisplayStatus::many($open), true)) {
             return null;
         }
 

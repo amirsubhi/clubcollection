@@ -139,13 +139,38 @@ const dict = {
   lateCount: { bm: "1 lewat", en: "1 late" },
   checkedAt: { bm: "Disemak", en: "Checked" },
   back: { bm: "Kembali", en: "Back" },
-  overdueBadge: { bm: "Lewat", en: "Late" },
+  overdueBadge: { bm: "Lewat", en: "Overdue" },
+  statusDue: { bm: "Perlu dibayar", en: "Due" },
+  statusProcessing: { bm: "Dalam proses", en: "In progress" },
   forMonths: { bm: "Okt & Nov 2026", en: "Oct & Nov 2026" },
   // ── Member pay flow (A2) ── "{x}" placeholders are filled with fill().
   hi: { bm: "Hai", en: "Hi" },
   allPaid: { bm: "Semua yuran telah dibayar", en: "All fees are paid" },
   allPaidBody: { bm: "Terima kasih. Tiada apa-apa perlu dibayar sekarang.", en: "Thank you. Nothing to pay right now." },
-  lateN: { bm: "{n} lewat", en: "{n} late" },
+  lateN: { bm: "{n} lewat", en: "{n} overdue" },
+  processingN: { bm: "{n} dalam proses", en: "{n} in progress" },
+  heroProcessingTitle: { bm: "Bayaran dalam proses", en: "Payment in progress" },
+  heroProcessingBody: {
+    bm: "Anda telah memulakan bayaran FPX. Bank belum mengesahkannya. Semak status dahulu sebelum bayar lagi.",
+    en: "You started an FPX payment. The bank hasn't confirmed it yet. Check its status before paying again.",
+  },
+  checkPaymentStatus: { bm: "Semak status bayaran", en: "Check payment status" },
+  payAgain: { bm: "Bayar sekali lagi", en: "Pay again" },
+  processingRow: { bm: "Bayaran FPX belum disahkan", en: "FPX payment not confirmed yet" },
+  processingGroup: { bm: "Dalam proses", en: "In progress" },
+  processingGroupNote: {
+    bm: "Anda telah memulakan bayaran FPX untuk yuran ini. Status dikemas kini sendiri apabila bank mengesahkannya.",
+    en: "You started an FPX payment for these fees. The status updates by itself once the bank confirms it.",
+  },
+  processingWarnTitle: { bm: "Bayaran FPX anda sedang diproses", en: "Your FPX payment is in progress" },
+  processingWarnBody: {
+    bm: "Jika wang telah keluar dari akaun anda, jangan bayar lagi. Semak status bayaran dahulu: ia dikemas kini sendiri apabila bank mengesahkannya.",
+    en: "If money already left your account, don't pay again. Check the payment status first: it updates by itself once the bank confirms it.",
+  },
+  payAgainWarn: {
+    bm: "Bayar sekali lagi hanya jika anda pasti bayaran tadi tidak berjaya.",
+    en: "Pay again only if you're sure the earlier payment didn't go through.",
+  },
   openN: { bm: "{n} yuran belum dibayar", en: "{n} fees to pay" },
   payOldestFirst: { bm: "Bayar satu per satu, bermula dengan yang paling lama.", en: "Pay one at a time, oldest first." },
   membershipFee: { bm: "Yuran keahlian", en: "Membership fee" },
@@ -250,9 +275,9 @@ const dict = {
   flash_period_overlaps: { bm: "Anda sudah ada bayaran untuk sebahagian tempoh ini.", en: "You already have a payment covering part of this period." },
   flash_future_created: { bm: "Invois baharu dicipta. Teruskan untuk membayar.", en: "New invoice created. Continue to pay." },
   // ── Manual bank / DuitNow transfer (P2) ──
-  verifying: { bm: "Menunggu pengesahan", en: "Awaiting confirmation" },
+  verifying: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
   // Short chip for list rows; the invoice uses the full "verifying" label.
-  verifyingBadge: { bm: "Disemak", en: "Checking" },
+  verifyingBadge: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
   slipBeingChecked: { bm: "Slip dihantar", en: "Slip sent" },
   chooseMethod: { bm: "Pilih cara bayar", en: "Choose how to pay" },
   methodFpx: { bm: "FPX (perbankan dalam talian)", en: "FPX (online banking)" },
@@ -314,8 +339,8 @@ const dict = {
   rejectedTitle: { bm: "Slip anda belum diterima", en: "Your slip wasn't accepted" },
   rejectedBody: { bm: "Sila hantar slip yang betul, atau bayar dalam talian.", en: "Please send the right slip, or pay online." },
   reason: { bm: "Sebab", en: "Reason" },
-  verifyingN: { bm: "{n} menunggu pengesahan", en: "{n} awaiting confirmation" },
-  heroVerifyingTitle: { bm: "Menunggu pengesahan", en: "Awaiting confirmation" },
+  verifyingN: { bm: "{n} menunggu pengesahan", en: "{n} awaiting verification" },
+  heroVerifyingTitle: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
   heroVerifyingBody: {
     bm: "Slip pindahan anda sedang disemak bendahari. Tiada apa-apa perlu dibayar sekarang.",
     en: "The treasurer is checking your transfer slip. Nothing to pay right now.",
@@ -363,6 +388,14 @@ const dict = {
   },
   checkEarlierPayment: { bm: "Semak status bayaran tadi", en: "Check that payment's status" },
   feesInSet: { bm: "Yuran yang dibayar", en: "Fees being paid" },
+  flash_check_status_first: {
+    bm: "Satu bayaran FPX untuk yuran ini masih dalam proses. Semak status bayaran itu dahulu sebelum bayar lagi.",
+    en: "An FPX payment for one of these fees is still in progress. Check that payment's status before paying again.",
+  },
+  staleBillHint: {
+    bm: "Jika bayaran berjaya tetapi status belum berubah, hubungi bendahari.",
+    en: "If you paid but the status hasn't changed, contact the treasurer.",
+  },
   flash_set_changed: {
     bm: "Senarai yuran anda telah berubah. Sila semak jumlah baharu sebelum membayar.",
     en: "Your list of fees has changed. Please check the new total before paying.",

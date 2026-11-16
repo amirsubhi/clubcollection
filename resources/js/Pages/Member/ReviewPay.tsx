@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { AlertTriangle, Check, Copy, FileText, Hourglass, ImageIcon, Landmark, Loader2, Lock, Send, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Check, Copy, FileText, Hourglass, ImageIcon, Landmark, Loader2, Lock, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, useFeeLabel, useServerText } from "@/components/app/MemberParts";
@@ -24,8 +24,12 @@ interface Props extends PaymentContext {
   /** feeSen is the gateway charge the member pays on top (0 when the club absorbs it). */
   charges: { payer: "club" | "member"; feeSen: number; totalSen: number };
   hasOpenBill: boolean;
-  /** "Bayar semua": the result page of the bill already opened for this set. */
+  /** Where to check the payment already started (single fee's pay result, or the group's result page). */
   openBillUrl?: string | null;
+  /** An FPX payment for this fee (or set) is in progress (DisplayStatus "processing"): checking it is the main action. */
+  processing?: boolean;
+  /** "Bayar semua": a fee of the set is being paid through another bill, so paying the set again is refused. */
+  payAgainBlocked?: boolean;
   payUrl: string;
   /** Bank / DuitNow transfer details; null when the club doesn't take transfers. */
   transfer: TransferOption | null;
@@ -120,19 +124,7 @@ function MethodOption({
 }
 
 /** Bank details, the reference to type, and the slip form. */
-function TransferForm({
-  transfer,
-  amount,
-  hasOpenBill,
-  openBillUrl,
-  group,
-}: {
-  transfer: TransferOption;
-  amount: number;
-  hasOpenBill: boolean;
-  openBillUrl?: string | null;
-  group?: PaymentGroup | null;
-}) {
+function TransferForm({ transfer, amount, group }: { transfer: TransferOption; amount: number; group?: PaymentGroup | null }) {
   const t = useT();
   const { lang } = useLang();
   const text = useServerText();
@@ -175,20 +167,6 @@ function TransferForm({
   return (
     // "contents": the steps sit straight in the page column, so the sticky send bar stays in reach across the whole page.
     <form id="transfer-form" onSubmit={submit} className="contents" noValidate>
-      {hasOpenBill && (
-        <Alert variant="warning" className="text-base" data-testid="transfer-open-bill">
-          <AlertTriangle aria-hidden />
-          <div>
-            <p>{t("openBillTransferWarn")}</p>
-            {openBillUrl && (
-              <Link href={openBillUrl} className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
-                {t("checkEarlierPayment")}
-              </Link>
-            )}
-          </div>
-        </Alert>
-      )}
-
       <section aria-labelledby="tx-step1" className="flex flex-col gap-3 rounded-[20px] border bg-card p-4">
         <h2 id="tx-step1" className="flex items-center gap-2 text-base font-semibold">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground" aria-hidden>
@@ -442,7 +420,7 @@ function GroupLines({ group }: { group: PaymentGroup }) {
                 {feeLabel(f)}
                 <span className="block text-sm text-muted-foreground">
                   {f.invoiceNo} · {t("due")} {fmtDate(f.dueDate, lang)}
-                  {f.status === "overdue" && <span className="font-semibold text-danger-foreground"> · {t("overdueBadge")}</span>}
+                  {f.status === "overdue" && <span className="font-semibold text-warning-foreground"> · {t("overdueBadge")}</span>}
                 </span>
               </span>
               <Money sen={f.amount} className="font-semibold" />
@@ -459,7 +437,7 @@ function GroupLines({ group }: { group: PaymentGroup }) {
 }
 
 /** Review & pay: a confirm step that is clearly not a receipt. The amount is in the summary and on the one pay button. */
-export default function ReviewPay({ payment, group, gateway, charges, hasOpenBill, openBillUrl, payUrl, transfer, verification, rejection, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function ReviewPay({ payment, group, gateway, charges, hasOpenBill, openBillUrl, processing = false, payAgainBlocked = false, payUrl, transfer, verification, rejection, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -475,6 +453,8 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
   const total = verification || isTransfer ? feesSen : charges.totalSen;
   // A slip is with the treasurer: this page is now about where the payment stands, not paying.
   const title = verification ? t("paymentStatus") : group ? t("reviewPayAll") : t("reviewPay");
+  // An FPX payment is still with the bank: the main button checks it; paying again is secondary.
+  const checkFirst = processing && !!openBillUrl;
 
   const pay = () => {
     if (sent || !gateway.available) return;
@@ -561,6 +541,24 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
             </Alert>
           )}
 
+          {/* A payment was already started: said before the member picks how to pay (again). */}
+          {hasOpenBill && (
+            <Alert variant="warning" className="text-base" data-testid={isTransfer ? "transfer-open-bill" : "open-bill-warning"} id="open-bill-warning">
+              {processing ? <RefreshCw aria-hidden /> : <AlertTriangle aria-hidden />}
+              <div>
+                {processing && <p className="font-semibold">{t("processingWarnTitle")}</p>}
+                <p>{processing ? t("processingWarnBody") : isTransfer ? t("openBillTransferWarn") : t("openBillWarn")}</p>
+                {/* No longer counted as in progress: if it did go through, the treasurer can confirm it. */}
+                {!processing && <p className="mt-1" data-testid="stale-bill-hint">{t("staleBillHint")}</p>}
+                {openBillUrl && !processing && (
+                  <Link href={openBillUrl} className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" data-testid="open-bill-status">
+                    {t("checkEarlierPayment")}
+                  </Link>
+                )}
+              </div>
+            </Alert>
+          )}
+
           {transfer && (
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 px-1 text-base font-semibold">{t("chooseMethod")}</legend>
@@ -585,7 +583,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
           )}
 
           {isTransfer && transfer ? (
-            <TransferForm transfer={transfer} amount={feesSen} hasOpenBill={hasOpenBill} openBillUrl={openBillUrl} group={group} />
+            <TransferForm transfer={transfer} amount={feesSen} group={group} />
           ) : (
             <>
               <div className="flex flex-col gap-3 rounded-[20px] border bg-card p-4">
@@ -601,19 +599,6 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                 </div>
               </div>
 
-              {hasOpenBill && (
-                <Alert variant="warning" className="text-base">
-                  <AlertTriangle aria-hidden />
-                  <div>
-                    <p>{t("openBillWarn")}</p>
-                    {openBillUrl && (
-                      <Link href={openBillUrl} className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4" data-testid="open-bill-status">
-                        {t("checkEarlierPayment")}
-                      </Link>
-                    )}
-                  </div>
-                </Alert>
-              )}
               {!gateway.available && (
                 <Alert variant="danger" className="text-base" id="gateway-unavailable">
                   <AlertTriangle aria-hidden />
@@ -621,6 +606,46 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                 </Alert>
               )}
 
+              {checkFirst && openBillUrl ? (
+                <>
+                  {/* Paying again stays possible, but as the second choice, with the warning attached. */}
+                  {!payAgainBlocked && (
+                  <div className="flex flex-col gap-2 rounded-[20px] border bg-card p-4" data-testid="pay-again-box">
+                    <p id="pay-again-warn" className="text-base">
+                      {t("payAgainWarn")}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xl"
+                      className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg"
+                      onClick={pay}
+                      disabled={sent || !gateway.available}
+                      aria-describedby={!gateway.available ? "gateway-unavailable pay-again-warn" : "pay-again-warn open-bill-warning"}
+                      aria-live="polite"
+                      data-testid="pay-again"
+                    >
+                      {sent ? (
+                        <>
+                          <Loader2 className="animate-spin" aria-hidden /> {fill(t("redirectingGw"), gw)}
+                        </>
+                      ) : (
+                        <>
+                          {t("payAgain")} {rm(total)}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  )}
+                  <StickyBar>
+                    <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
+                      <Link href={openBillUrl} data-testid="check-status">
+                        <RefreshCw aria-hidden /> {t("checkPaymentStatus")}
+                      </Link>
+                    </Button>
+                  </StickyBar>
+                </>
+              ) : (
               <StickyBar>
                 <Button
                   size="xl"
@@ -641,6 +666,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                   )}
                 </Button>
               </StickyBar>
+              )}
             </>
           )}
         </>

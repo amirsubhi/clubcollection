@@ -35,7 +35,13 @@ class TransferVerificationController extends Controller
         'payment.transfer_approved' => 'approved',
         'payment.transfer_rejected' => 'rejected',
         'payment.gateway_paid_during_verification' => 'gateway_paid',
+        'payment.gateway_paid_after_manual' => 'gateway_paid_after_manual',
+        'payment.group_bill_refund' => 'group_refund',
+        'payment.underpaid_webhook' => 'underpaid',
     ];
+
+    /** How a fee recorded by hand was paid (payments.paid_via), in admin words. */
+    public const RECORDED_AS = ['cash' => 'cash', 'transfer' => 'bank transfer', 'manual' => 'other'];
 
     public function __construct(private TransferVerificationService $service) {}
 
@@ -234,6 +240,8 @@ class TransferVerificationController extends Controller
                 'reason' => $new['reason'] ?? null,
                 'reference' => $new['transfer_bank_ref'] ?? $new['transfer_ref'] ?? $new['transaction_id'] ?? null,
                 'paidDate' => $new['paid_date'] ?? null,
+                // gateway_paid_after_manual: how the admin had recorded it.
+                'recordedAs' => isset($new['paid_via']) ? (self::RECORDED_AS[$new['paid_via']] ?? null) : null,
                 'url' => $p ? route('admin.payments.show', $p) : null,
             ];
         })->values()->all();

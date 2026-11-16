@@ -1,4 +1,4 @@
-import { Hourglass, Lock, Printer } from "lucide-react";
+import { Hourglass, Lock, Printer, RefreshCw } from "lucide-react";
 import { Head, Link } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
@@ -80,7 +80,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
           </div>
           <div>
             <dt className="text-sm text-muted-foreground">{t("due")}</dt>
-            <dd className={payment.status === "overdue" ? "font-semibold text-danger-foreground" : "font-semibold"}>{fmtDate(payment.dueDate, lang)}</dd>
+            <dd className="font-semibold">{fmtDate(payment.dueDate, lang)}</dd>
             {issuedOn && (
               <>
                 <dt className="mt-2 text-sm text-muted-foreground">{t("issuedOn")}</dt>
@@ -143,7 +143,28 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
           </div>
         </section>
       )}
-      {payment.urls.review && payment.status !== "verifying" && (
+      {payment.status === "processing" && payment.urls.billStatus && (
+        <section aria-labelledby="inv-pr" className="flex flex-col gap-3 rounded-[20px] bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30 print:hidden" data-testid="invoice-processing">
+          <div className="flex items-start gap-3">
+            <RefreshCw className="mt-0.5 h-6 w-6 shrink-0" strokeWidth={1.75} aria-hidden />
+            <div className="min-w-0">
+              <h2 id="inv-pr" className="text-base font-semibold">
+                {t("processingWarnTitle")}
+              </h2>
+              <p className="text-base">{t("processingWarnBody")}</p>
+            </div>
+          </div>
+          <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg">
+            <Link href={payment.urls.billStatus}>{t("checkPaymentStatus")}</Link>
+          </Button>
+        </section>
+      )}
+      {payment.urls.review && payment.status === "processing" && (
+        <Button asChild variant="outline" size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg print:hidden">
+          <Link href={payment.urls.review}>{t("payAgain")}</Link>
+        </Button>
+      )}
+      {payment.urls.review && payment.status !== "verifying" && payment.status !== "processing" && (
         <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg print:hidden">
           <Link href={payment.urls.review}>
             <Lock aria-hidden /> {t("reviewPay")} {rm(payment.amount)}

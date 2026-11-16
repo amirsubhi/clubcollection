@@ -491,16 +491,18 @@ class WebhookController extends Controller
     {
         $txn = $result->transactionId ?? 'n/a';
         $billCode = $bill?->bill_code ?? $result->billCode;
-        $byTransfer = $payment->paid_via === 'transfer';
+        // Recorded by an admin ("Record payment…": cash, transfer, other) or settled
+        // by a checked slip: any gateway payment on top is the member paying twice.
+        $byTransfer = in_array($payment->paid_via, ['transfer', 'cash', 'manual'], true);
 
         if (! $byTransfer && $payment->paid_via !== $result->gateway) {
-            return; // marked paid by hand (cash etc.): nothing reliable to compare with
+            return; // legacy row marked paid by hand with no method: nothing reliable to compare with
         }
         if (! $byTransfer && $txn !== 'n/a' && $txn === $payment->transaction_id) {
             return; // the payment that settled the fee
         }
 
-        $flags = AuditLog::whereIn('action', ['payment.gateway_paid_during_verification', 'payment.gateway_paid_twice'])
+        $flags = AuditLog::whereIn('action', ['payment.gateway_paid_during_verification', 'payment.gateway_paid_twice', 'payment.gateway_paid_after_manual'])
             ->where('auditable_type', Payment::class)
             ->where('auditable_id', $payment->id)
             ->get();
@@ -524,6 +526,23 @@ class WebhookController extends Controller
         }
 
         $label = $this->gatewayLabel($result->gateway);
+        // Recorded by an admin with "Record payment…" (cash, other, or a transfer
+        // without a slip; a slip transfer has transfer_submitted_at / verified_by): both payments reached the club.
+        $recordedByHand = in_array($payment->paid_via, ['cash', 'manual'], true)
+            || ($payment->paid_via === 'transfer' && $payment->verified_by === null && $payment->transfer_submitted_at === null);
+        if ($recordedByHand) {
+            $as = ['cash' => 'cash', 'transfer' => 'bank transfer', 'manual' => 'other'][$payment->paid_via];
+            AuditService::log(
+                'payment.gateway_paid_after_manual',
+                "Payment #{$payment->id} was paid online via {$label} (txn: {$txn}) after it was recorded as {$as}. Both payments reached the club: refund the online payment to the member.",
+                $payment,
+                $payment->club_id,
+                ['status' => 'paid', 'paid_via' => $payment->paid_via],
+                ['paid_via' => $payment->paid_via, 'gateway' => $result->gateway, 'transaction_id' => $result->transactionId, 'bill_code' => $billCode, 'paid_amount_sen' => $result->paidAmountSen]
+            );
+
+            return;
+        }
         if ($byTransfer) {
             AuditService::log(
                 'payment.gateway_paid_during_verification',

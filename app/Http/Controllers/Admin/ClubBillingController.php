@@ -8,6 +8,7 @@ use App\Services\AuditService;
 use App\Services\BankDetailsChangeService;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundFigures;
+use App\Support\Payments\DisplayStatus;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Validator;
 use Inertia\Inertia;
@@ -22,7 +23,7 @@ class ClubBillingController extends Controller
 {
     private const FIELDS = [
         'allow_monthly', 'allow_quarterly', 'allow_yearly', 'default_plan', 'gateway_fee_payer', 'gateway_fee_sen',
-        'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
+        'overdue_grace_days', 'transfer_enabled', 'bank_name', 'bank_account_name', 'bank_account_no', 'duitnow_id',
     ];
 
     public function __construct(private BankDetailsChangeService $bankChanges) {}
@@ -90,6 +91,7 @@ class ClubBillingController extends Controller
                 'default_plan' => $club->default_plan ?: 'yearly',
                 'gateway_fee_payer' => $memberFeeAllowed ? $club->gatewayFeePayer() : 'club',
                 'gateway_fee' => number_format($club->gatewayFeeSen() / 100, 2, '.', ''),
+                'overdue_grace_days' => (string) $club->overdueGraceDays(),
                 'transfer_enabled' => (bool) $club->transfer_enabled,
                 'bank_name' => $club->bank_name ?? '',
                 'bank_account_name' => $club->bank_account_name ?? '',
@@ -119,6 +121,9 @@ class ClubBillingController extends Controller
             'gateway_fee_payer' => 'required|in:club,member',
             // Ringgit with at most 2 decimals; stored as sen. RM10 cap catches typos (e.g. 100 for RM1.00).
             'gateway_fee' => 'required|numeric|decimal:0,2|min:0|max:10',
+            // Days after the due date before a fee is "Overdue" and reminded (DisplayStatus).
+            // (Left out by older clients: the current value is kept.)
+            'overdue_grace_days' => 'sometimes|required|integer|min:0|max:'.DisplayStatus::MAX_GRACE_DAYS,
             // Manual bank / DuitNow transfer (P2). Members see these, so plain text.
             'transfer_enabled' => 'boolean',
             'bank_name' => 'nullable|string|max:100',
@@ -131,6 +136,7 @@ class ClubBillingController extends Controller
             'gateway_fee' => 'gateway fee',
             'default_plan' => 'default plan',
             'gateway_fee_payer' => 'who pays the gateway fee',
+            'overdue_grace_days' => 'grace period',
             'bank_account_name' => 'account holder',
             'bank_account_no' => 'account number',
             'duitnow_id' => 'DuitNow ID',
@@ -174,6 +180,7 @@ class ClubBillingController extends Controller
             'default_plan' => $data['default_plan'],
             'gateway_fee_payer' => $data['gateway_fee_payer'],
             'gateway_fee_sen' => (int) round(((float) $data['gateway_fee']) * 100),
+            'overdue_grace_days' => (int) ($data['overdue_grace_days'] ?? $club->overdueGraceDays()),
         ];
 
         $old = $club->only(self::FIELDS);
@@ -185,7 +192,7 @@ class ClubBillingController extends Controller
 
         AuditService::log(
             'club.billing_updated',
-            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
+            "Club '{$club->name}' billing settings updated (fee paid by {$new['gateway_fee_payer']}, RM".number_format($new['gateway_fee_sen'] / 100, 2).' per bill; overdue after '.$new['overdue_grace_days'].' day(s); bank transfer '.($club->transfer_enabled ? 'on' : 'off').($pending ? '; new bank details waiting for approval' : '').').',
             $club,
             $club->id,
             $old,

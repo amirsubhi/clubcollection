@@ -78,8 +78,8 @@
 
     /* ── Outstanding badges ── */
     .badge-verifying { background: #0dcaf0; color: #000; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
-    .badge-overdue { background: #dc3545; color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
-    .badge-pending { background: #ffc107; color: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
+    .badge-overdue { background: #f59e0b; color: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
+    .badge-pending { background: #e5e7eb; color: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: 7pt; }
 
     /* ── Footer ── */
     .page-footer {
@@ -209,12 +209,14 @@
                     Outstanding Payments (All Time)
                     @if($overduePayments->isNotEmpty()) — {{ $overduePayments->count() }} overdue
                     @endif
-                    @if($pendingPayments->isNotEmpty()) — {{ $pendingPayments->count() }} pending
+                    @if($pendingPayments->isNotEmpty()) — {{ $pendingPayments->count() }} due
+                    @endif
+                    @if($processingPayments->isNotEmpty()) — {{ $processingPayments->count() }} FPX in progress
                     @endif
                     @if($verifyingPayments->isNotEmpty()) — {{ $verifyingPayments->count() }} awaiting verification
                     @endif
                 </div>
-                @if($overduePayments->isEmpty() && $pendingPayments->isEmpty() && $verifyingPayments->isEmpty())
+                @if($overduePayments->isEmpty() && $pendingPayments->isEmpty() && $processingPayments->isEmpty() && $verifyingPayments->isEmpty())
                 <table class="data"><tr><td class="text-center text-muted">No outstanding payments.</td></tr></table>
                 @else
                 <table class="data">
@@ -233,7 +235,7 @@
                         <td class="fw-bold">{{ $p->user?->name ?? 'Former member' }}</td>
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
-                        <td class="text-right text-red">{{ number_format($p->amount, 2) }}</td>
+                        <td class="text-right">{{ number_format($p->amount, 2) }}</td>
                         <td class="text-center"><span class="badge-overdue">Overdue</span></td>
                     </tr>
                     @endforeach
@@ -243,7 +245,16 @@
                         <td>{{ $p->period_start->format('M Y') }}</td>
                         <td>{{ $p->due_date->format('d M Y') }}</td>
                         <td class="text-right">{{ number_format($p->amount, 2) }}</td>
-                        <td class="text-center"><span class="badge-pending">Pending</span></td>
+                        <td class="text-center"><span class="badge-pending">Due</span></td>
+                    </tr>
+                    @endforeach
+                    @foreach($processingPayments as $p)
+                    <tr>
+                        <td>{{ $p->user?->name ?? 'Former member' }}</td>
+                        <td>{{ $p->period_start->format('M Y') }}</td>
+                        <td>{{ $p->due_date->format('d M Y') }}</td>
+                        <td class="text-right">{{ number_format($p->amount, 2) }}</td>
+                        <td class="text-center"><span class="badge-verifying">FPX in progress</span></td>
                     </tr>
                     @endforeach
                     @foreach($verifyingPayments as $p)

@@ -220,6 +220,43 @@ class PayAllTest extends TestCase
         $this->assertTrue($bill->fresh()->isOpen());
     }
 
+    /** R2a: pressing pay again on the same group bill restarts its "in progress" window. */
+    public function test_reusing_the_group_bill_restamps_when_it_was_opened(): void
+    {
+        $bill = $this->payAll('GRP1');
+        $this->assertNotNull($bill->opened_at);
+        $this->travel(2)->days();
+        $this->actingAs($this->member)->post(route('member.payments.pay-all', $this->club), $this->set())
+            ->assertRedirect('https://dev.toyyibpay.com/GRP1');
+        $this->assertTrue($bill->fresh()->opened_at->isSameMinute(now()));
+
+        // 4 days after creation, 2 after the reuse: still in progress.
+        $this->travel(2)->days();
+        $this->assertSame('processing', \App\Support\Payments\DisplayStatus::of($this->fees[0]->fresh()));
+        $this->travel(2)->days();
+        $this->assertNotSame('processing', \App\Support\Payments\DisplayStatus::of($this->fees[0]->fresh()));
+        // No longer in progress: the review keeps the warning and says to ask the treasurer.
+        $this->actingAs($this->member)->get(route('member.payments.review-all', $this->club))
+            ->assertInertia(fn (Assert $page) => $page->where('processing', false)->where('hasOpenBill', true));
+    }
+
+    /** R2a: a set with a fee being paid through another bill is not billed again. */
+    public function test_pay_all_is_refused_while_a_fee_is_in_progress_through_another_bill(): void
+    {
+        $fee = $this->fees[0];
+        $fee->bills()->create(['gateway' => 'toyyibpay', 'bill_code' => 'SINGLE1', 'reference' => 'PAY-'.$fee->id.'-1', 'amount_sen' => $fee->amountSen(), 'opened_at' => now()]);
+        $fee->forceFill(['bill_code' => 'SINGLE1', 'gateway' => 'toyyibpay'])->saveQuietly();
+        $this->fakeToyyib('GRP1');
+
+        $this->actingAs($this->member)->get(route('member.payments.review-all', $this->club))
+            ->assertInertia(fn (Assert $page) => $page->where('processing', true)->where('payAgainBlocked', true));
+        $this->actingAs($this->member)->post(route('member.payments.pay-all', $this->club), $this->set())
+            ->assertRedirect(route('member.payments.review-all', $this->club))
+            ->assertSessionHas('error', 'member.check_status_first');
+        Http::assertNothingSent();
+        $this->assertSame(0, PaymentBill::whereNull('payment_id')->count());
+    }
+
     public function test_paid_and_verifying_fees_are_left_out_of_the_set(): void
     {
         $this->fees[1]->update(['status' => 'paid', 'paid_date' => now()->toDateString()]);

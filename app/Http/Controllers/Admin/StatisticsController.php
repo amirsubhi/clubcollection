@@ -7,6 +7,7 @@ use App\Models\Club;
 use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Support\Admin\FundFigures;
+use App\Support\Payments\DisplayStatus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -21,21 +22,22 @@ class StatisticsController extends Controller
 
         $totalMembers = DB::table('club_user')->distinct('user_id')->count('user_id');
 
-        // ── Payment KPIs — 1 query instead of 5 ──────────────────────────────
-        $paymentStats = Payment::selectRaw("
-            COUNT(*) as total,
-            SUM(CASE WHEN status = 'paid'    THEN 1 ELSE 0 END) as paid_count,
-            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-            SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_count,
-            SUM(CASE WHEN status = 'pending_verification' THEN 1 ELSE 0 END) as verifying_count
-        ")->first();
-
-        $totalPayments = (int)   ($paymentStats->total ?? 0);
-        $paidCount     = (int)   ($paymentStats->paid_count ?? 0);
-        $pendingCount  = (int)   ($paymentStats->pending_count ?? 0);
-        $overdueCount  = (int)   ($paymentStats->overdue_count ?? 0);
+        // ── Payment KPIs: the same words as each club's Payments page (DisplayStatus) ──
+        $totalPayments = Payment::count();
+        // One pass over every club's fees, grouped by club (also used for the table below).
+        $countsByClub  = DisplayStatus::countsByClub(Payment::query());
+        $statusCounts  = array_fill_keys(DisplayStatus::ALL, 0);
+        foreach ($countsByClub as $c) {
+            foreach ($c as $k => $n) {
+                $statusCounts[$k] += $n;
+            }
+        }
+        $paidCount     = $statusCounts[DisplayStatus::PAID];
+        $pendingCount  = $statusCounts[DisplayStatus::DUE];
+        $overdueCount  = $statusCounts[DisplayStatus::OVERDUE];
+        $processingCount = $statusCounts[DisplayStatus::PROCESSING];
         // Transfer slips waiting for a club admin: not paid yet, shown on their own.
-        $verifyingCount = (int)  ($paymentStats->verifying_count ?? 0);
+        $verifyingCount = $statusCounts[DisplayStatus::VERIFYING];
 
         // ── Money: FundFigures per club, so these match each club's dashboard and ledger ──
         // Spent = approved expenses + welfare + bank / gateway charges the club absorbed.
@@ -44,10 +46,12 @@ class StatisticsController extends Controller
         $months = 12;
         $clubStats = Club::withCount('members')
             ->withCount(['payments as paid_count'    => fn($q) => $q->where('status', 'paid')])
-            ->withCount(['payments as pending_count' => fn($q) => $q->where('status', 'pending')])
-            ->withCount(['payments as overdue_count' => fn($q) => $q->where('status', 'overdue')])
             ->orderBy('name')
             ->get();
+        foreach ($clubStats as $club) {
+            $club->pending_count = $countsByClub[$club->id][DisplayStatus::DUE] ?? 0;
+            $club->overdue_count = $countsByClub[$club->id][DisplayStatus::OVERDUE] ?? 0;
+        }
 
         $totals = ['collected' => 0, 'spent' => 0, 'expenses' => 0, 'welfare' => 0, 'charges' => 0, 'balance' => 0];
         $monthly = null;
@@ -100,7 +104,7 @@ class StatisticsController extends Controller
 
         return view('admin.statistics.index', compact(
             'totalClubs', 'activeClubs', 'totalMembers', 'totalPayments',
-            'paidCount', 'pendingCount', 'overdueCount', 'verifyingCount',
+            'paidCount', 'pendingCount', 'overdueCount', 'processingCount', 'verifyingCount',
             'totals', 'monthly', 'asOf',
             'clubStats', 'jobLevelLabels', 'jobLevelDistribution',
             'jobLevelChartLabels', 'jobLevelChartCounts',

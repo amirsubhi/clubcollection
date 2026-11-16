@@ -37,9 +37,12 @@
                     <div class="mb-3">
                         <label for="f-status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
                         <select id="f-status" aria-describedby="f-status-help @if($absorbedSen) f-status-charge @endif @error('status') f-status-error @enderror" @error('status') aria-invalid="true" @enderror name="status" class="form-select @error('status') is-invalid @enderror">
-                            <option value="pending" {{ old('status', $payment->status) == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="pending" {{ old('status', $payment->status) == 'pending' ? 'selected' : '' }}>Not paid</option>
+                            {{-- A fee is marked paid only with "Record payment…" (method and date); here Paid can only be kept or undone. --}}
+                            @if($payment->status === 'paid')
                             <option value="paid" {{ old('status', $payment->status) == 'paid' ? 'selected' : '' }}>Paid</option>
-                            <option value="overdue" {{ old('status', $payment->status) == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                            @endif
+                            <option value="overdue" {{ old('status', $payment->status) == 'overdue' ? 'selected' : '' }}>Not paid (no more reminders)</option>
                             @if($payment->status === 'pending_verification')
                             <option value="pending_verification" selected>Awaiting verification (set by the member's slip)</option>
                             @endif
@@ -55,7 +58,7 @@
                         <div class="form-text text-info-emphasis">A transfer slip is waiting. Approve or reject it in <a href="{{ route('admin.clubs.verifications.index', $payment->club) }}">Verifications</a>.</div>
                         @endif
                         @error('status')<div id="f-status-error" role="alert" class="text-danger small">{{ $message }}</div>@enderror
-                        <div id="f-status-help" class="form-text">Pending = awaiting payment. Paid = received. Overdue = past due date without payment.</div>
+                        <div id="f-status-help" class="form-text">Shown to members and on the lists as {{ \App\Support\Payments\DisplayStatus::adminLabel(\App\Support\Payments\DisplayStatus::of($payment)) }}: a fee not paid is "Due" until {{ $payment->club->overdueGraceDays() }} {{ $payment->club->overdueGraceDays() === 1 ? 'day' : 'days' }} after its due date, then "Overdue". To record money received, use <a href="{{ route('admin.payments.show', $payment) }}">Record payment…</a> on the payment page.</div>
                     </div>
                     <div class="mb-3">
                         <label for="f-paid-date" class="form-label fw-semibold">Paid Date</label>

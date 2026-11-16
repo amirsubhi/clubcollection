@@ -20,13 +20,13 @@ class SendOverdueRemindersTest extends TestCase
             'role' => 'member', 'job_level' => 'executive',
             'joined_date' => now()->toDateString(), 'is_active' => true,
         ]);
-        // Pending and past due — eligible to be flipped to overdue.
+        // Pending and past the default 7-day grace period: eligible to be flipped to overdue.
         return Payment::factory()
             ->forClub($club)
             ->forMember($member)
             ->pending()
             ->create([
-                'due_date' => now()->subDays(5)->toDateString(),
+                'due_date' => now()->subDays(8)->toDateString(),
                 'paid_date' => null,
             ]);
     }

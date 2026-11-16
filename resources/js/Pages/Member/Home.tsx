@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PiggyBank, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PiggyBank, RefreshCw, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
@@ -15,8 +15,11 @@ import type { HomeClub, MemberPaymentRow, PayAllOffer } from "@/types/member";
 
 interface Props {
   year: number;
-  /** Fees still owed; fees whose transfer slip is being checked are only in verifyingCount. */
-  outstanding: { total: number; count: number; overdueCount: number; verifyingCount: number };
+  /**
+   * Fees still owed (due or overdue). Fees whose transfer slip is being checked are only in verifyingCount;
+   * fees with an FPX payment in progress (the bank has not confirmed it) only in processingCount / processingTotal.
+   */
+  outstanding: { total: number; count: number; overdueCount: number; verifyingCount: number; processingCount: number; processingTotal: number };
   upcoming: MemberPaymentRow[];
   recentPaid: MemberPaymentRow[];
   /** "Bayar semua": every fee owed in the club of the oldest one; null with fewer than two. */
@@ -32,6 +35,16 @@ function VerifyingLine({ n }: { n: number }) {
   return (
     <span className="inline-flex h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="verifying-line">
       <Hourglass className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("verifyingN"), { n })}
+    </span>
+  );
+}
+
+/** "1 dalam proses": fees with an FPX payment the bank has not confirmed yet. */
+function ProcessingLine({ n }: { n: number }) {
+  const t = useT();
+  return (
+    <span className="inline-flex min-h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="processing-line">
+      <RefreshCw className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("processingN"), { n })}
     </span>
   );
 }
@@ -78,6 +91,40 @@ function Hero({
   memberName: string;
 }) {
   const t = useT();
+  // Nothing else owed, but an FPX payment is still with the bank: checking it comes first, paying again second.
+  if (outstanding.count === 0 && outstanding.processingCount > 0 && next?.status === "processing") {
+    return (
+      <MemberCard clubName={clubName} memberName={memberName}>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h2 id="due-h" className="font-sans text-base font-semibold text-deep-foreground/80">
+            {t("heroProcessingTitle")}
+          </h2>
+          <ProcessingLine n={outstanding.processingCount} />
+        </div>
+        <div>
+          <div className="break-words font-display text-[clamp(2.25rem,1rem+9vw,3.25rem)] font-extrabold leading-none tracking-tight text-deep-foreground [font-variant-numeric:proportional-nums]">
+            {rm(outstanding.processingTotal)}
+          </div>
+          <p className="mt-2 text-base text-deep-foreground/80">{t("heroProcessingBody")}</p>
+          {outstanding.verifyingCount > 0 && (
+            <div className="mt-2 flex">
+              <VerifyingLine n={outstanding.verifyingCount} />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href={next.urls.billStatus ?? next.urls.invoice} className={cn(heroPrimary, "flex-[1_1_12rem]")} data-testid="check-status">
+            <RefreshCw className="h-5 w-5" strokeWidth={2} aria-hidden /> {t("checkPaymentStatus")}
+          </Link>
+          {next.urls.review && (
+            <Link href={next.urls.review} className={cn(heroSecondary, "flex-[1_0_auto]")} data-testid="pay-again">
+              {t("payAgain")}
+            </Link>
+          )}
+        </div>
+      </MemberCard>
+    );
+  }
   if (!next || outstanding.count === 0) {
     const verifying = outstanding.verifyingCount > 0;
     return (
@@ -109,7 +156,7 @@ function Hero({
           {t("amountDue")}
         </h2>
         {outstanding.overdueCount > 0 && (
-          <span className="inline-flex min-h-7 items-center gap-1 rounded-full bg-danger-soft px-2.5 text-sm font-bold text-danger-foreground ring-1 ring-danger/25">
+          <span className="inline-flex min-h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="late-line">
             <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("lateN"), { n: outstanding.overdueCount })}
           </span>
         )}
@@ -124,9 +171,10 @@ function Hero({
           {outstanding.count > 1 && !payAll && <span className="block">{t("payOldestFirst")}</span>}
           {payAll && <span className="block">{fill(t("payAllHint"), { n: payAll.count })}</span>}
         </div>
-        {outstanding.verifyingCount > 0 && (
-          <div className="mt-2 flex">
-            <VerifyingLine n={outstanding.verifyingCount} />
+        {(outstanding.verifyingCount > 0 || outstanding.processingCount > 0) && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {outstanding.processingCount > 0 && <ProcessingLine n={outstanding.processingCount} />}
+            {outstanding.verifyingCount > 0 && <VerifyingLine n={outstanding.verifyingCount} />}
           </div>
         )}
       </div>
@@ -168,7 +216,7 @@ function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const slices = toSlices(club.fund.categories, { bm: "Lain-lain", en: "Others" });
-  const open = club.summary.pending + club.summary.overdue;
+  const open = club.summary.due + club.summary.overdue + club.summary.processing;
   const hid = `club-${club.id}`;
   return (
     <section aria-labelledby={hid} className="flex flex-col gap-3">

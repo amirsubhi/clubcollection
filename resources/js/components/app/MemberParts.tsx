@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Hourglass, Mail } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Hourglass, Mail, RefreshCw } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
 import { Money } from "./Money";
 import { PaymentStatusBadge } from "./StatusBadges";
@@ -17,8 +17,17 @@ export function useFeeLabel() {
   return (p: Pick<MemberPaymentRow, "periodStart" | "periodEnd">) => `${t("membershipFee")} ${fmtPeriod(p.periodStart, p.periodEnd, lang)}`;
 }
 
+/** The one status word (DisplayStatus) as a dictionary key. */
+const statusKeys: Record<PaymentStatus, DictKey> = {
+  paid: "paid",
+  due: "statusDue",
+  overdue: "overdueBadge",
+  processing: "statusProcessing",
+  verifying: "verifyingBadge",
+};
+
 export function statusLabelKey(s: PaymentStatus): DictKey {
-  return s === "overdue" ? "overdueBadge" : s === "verifying" ? "verifyingBadge" : s;
+  return statusKeys[s];
 }
 
 /** Translate a "member.*" code from the server (flash or validation error); anything else is returned as-is. */
@@ -55,18 +64,22 @@ export function FlashBanner() {
 
 const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "mint" | "danger" | "info" | "warning" }> = {
   paid: { Icon: CheckCircle2, tone: "mint" },
-  overdue: { Icon: AlertTriangle, tone: "danger" },
-  pending: { Icon: CalendarClock, tone: "info" },
+  overdue: { Icon: AlertTriangle, tone: "warning" },
+  due: { Icon: CalendarClock, tone: "info" },
+  processing: { Icon: RefreshCw, tone: "warning" },
   verifying: { Icon: Hourglass, tone: "warning" },
 };
 
-/** One fee as a tappable row: open fees go to Review & pay, paid ones to the receipt. */
+/**
+ * One fee as a tappable row: open fees go to Review & pay, paid ones to the receipt,
+ * and a fee with an FPX payment in progress to that payment's status (paying again is on Review & pay).
+ */
 export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showClub?: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
   const b = bubble[p.status];
-  const href = p.status === "paid" || !p.urls.review ? p.urls.invoice : p.urls.review;
+  const href = p.status === "processing" && p.urls.billStatus ? p.urls.billStatus : p.status === "paid" || !p.urls.review ? p.urls.invoice : p.urls.review;
   return (
     <Link
       href={href}
@@ -83,7 +96,9 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
               ? `${t("paidOn")} ${fmtDate(p.paidDate, lang)}`
               : p.status === "verifying"
                 ? t("slipBeingChecked")
-                : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
+                : p.status === "processing"
+                  ? t("processingRow")
+                  : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
             {showClub && p.clubName ? ` · ${p.clubName}` : ""}
           </div>
         </div>

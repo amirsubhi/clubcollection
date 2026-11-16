@@ -38,8 +38,9 @@
         <div><span class="stat-label">Clubs</span><span class="stat-value">{{ $totalClubs }}</span><span class="stat-note">{{ $activeClubs }} active</span></div>
         <div><span class="stat-label">Members</span><span class="stat-value">{{ $totalMembers }}</span><span class="stat-note">across all clubs</span></div>
         <div><span class="stat-label">Fee records</span><span class="stat-value">{{ $totalPayments }}</span><span class="stat-note">{{ $paidCount }} paid</span></div>
-        <div><span class="stat-label">Pending</span><span class="stat-value">{{ $pendingCount }}</span><span class="stat-note">not yet due or unpaid</span></div>
-        <div><span class="stat-label">Overdue</span><span class="stat-value {{ $overdueCount ? 'text-danger' : '' }}">{{ $overdueCount }}</span><span class="stat-note">past the due date</span></div>
+        <div><span class="stat-label">Due</span><span class="stat-value">{{ $pendingCount }}</span><span class="stat-note">unpaid, within the grace period</span></div>
+        <div><span class="stat-label">Overdue</span><span class="stat-value">{{ $overdueCount }}</span><span class="stat-note">past the grace period</span></div>
+        <div><span class="stat-label">FPX in progress</span><span class="stat-value">{{ $processingCount }}</span><span class="stat-note">bank not confirmed yet</span></div>
         <div><span class="stat-label">Awaiting verification</span><span class="stat-value">{{ $verifyingCount }}</span><span class="stat-note">transfer slips to check</span></div>
     </div>
 </section>
@@ -77,7 +78,7 @@
                     <canvas id="statusChart" role="img" aria-label="Doughnut chart of fee records by status" aria-describedby="statusList"></canvas>
                 </div>
                 <ul class="list-unstyled w-100 mt-3 mb-0 small" id="statusList">
-                    @foreach([['Paid', $paidCount, 'success'], ['Pending', $pendingCount, 'warning'], ['Overdue', $overdueCount, 'danger'], ['Awaiting verification', $verifyingCount, 'info']] as [$label, $count, $tone])
+                    @foreach([['Paid', $paidCount, 'success'], ['Due', $pendingCount, 'secondary'], ['Overdue', $overdueCount, 'warning'], ['FPX in progress', $processingCount, 'primary'], ['Awaiting verification', $verifyingCount, 'info']] as [$label, $count, $tone])
                     <li class="d-flex justify-content-between align-items-center py-1">
                         <span class="d-inline-flex align-items-center gap-2"><span class="legend-dot legend-{{ $tone }}" aria-hidden="true"></span>{{ $label }}</span>
                         <strong>{{ $count }}</strong>
@@ -135,7 +136,7 @@
                     <th scope="col" class="text-end">Spent</th>
                     <th scope="col" class="text-end">Fund balance</th>
                     <th scope="col" class="text-end">Paid</th>
-                    <th scope="col" class="text-end">Pending</th>
+                    <th scope="col" class="text-end">Due</th>
                     <th scope="col" class="text-end">Overdue</th>
                 </tr>
             </thead>
@@ -207,6 +208,8 @@
     .legend-success { --dot: rgb(var(--chart-2-stroke, 31 138 100)); }
     .legend-warning { --dot: rgb(var(--warning, 138 90 0)); }
     .legend-danger { --dot: rgb(var(--chart-4-stroke, 184 64 90)); }
+    .legend-secondary { --dot: rgb(var(--muted-foreground, 100 100 110)); }
+    .legend-primary { --dot: rgb(var(--chart-3-stroke, 47 111 184)); }
     .legend-info { --dot: rgb(var(--chart-1-stroke, 91 79 207)); }
     .legend-c0 { --dot: rgb(var(--chart-1-stroke, 91 79 207)); }
     .legend-c1 { --dot: rgb(var(--chart-2-stroke, 31 138 100)); }
@@ -253,12 +256,12 @@
     charts.push([new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Paid', 'Pending', 'Overdue', 'Awaiting verification'],
-            datasets: [{ data: @js([$paidCount, $pendingCount, $overdueCount, $verifyingCount]), borderWidth: 2 }],
+            labels: ['Paid', 'Due', 'Overdue', 'FPX in progress', 'Awaiting verification'],
+            datasets: [{ data: @js([$paidCount, $pendingCount, $overdueCount, $processingCount, $verifyingCount]), borderWidth: 2 }],
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '65%' },
     }), (c) => {
-        c.data.datasets[0].backgroundColor = [tok('--chart-2-stroke'), tok('--warning'), tok('--chart-4-stroke'), tok('--chart-1-stroke')];
+        c.data.datasets[0].backgroundColor = [tok('--chart-2-stroke'), tok('--muted-foreground'), tok('--warning'), tok('--chart-3-stroke'), tok('--chart-1-stroke')];
         c.data.datasets[0].borderColor = tok('--card');
     }]);
 

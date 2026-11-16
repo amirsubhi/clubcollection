@@ -126,7 +126,7 @@ class R1dFollowUpsTest extends TestCase
         $this->get(route('admin.payments.edit', $fee))->assertDontSee('data-testid="revert-charge-warning"', false);
 
         // Marked paid again by hand: the gateway still took its charge, so it counts again.
-        $this->patch(route('admin.payments.mark-paid', $fee))->assertRedirect();
+        $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertRedirect();
         $this->assertSame('paid', $fee->fresh()->status);
         $this->assertSame(120, $f->forWindow($ytd)['charges']);
         $this->assertSame(5000 - 120, $f->balance());
@@ -233,8 +233,8 @@ class R1dFollowUpsTest extends TestCase
         ])->assertRedirect(route('admin.payments.show', $fee));
 
         $revert();
-        $this->patch(route('admin.payments.mark-paid', $fee))->assertRedirect();
-        $this->assertNull($fee->fresh()->paid_via);
+        $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertRedirect();
+        $this->assertSame('cash', $fee->fresh()->paid_via);
         $this->assertSame(120, $f->forWindow($ytd)['charges']);
         // Paid by hand now, but the charge is in the figures: the warning still shows.
         $this->get(route('admin.payments.edit', $fee))->assertSee('data-testid="revert-charge-warning"', false)->assertSee('RM 1.20');
