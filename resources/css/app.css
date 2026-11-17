@@ -104,6 +104,8 @@
     @apply inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 text-muted-foreground hover:text-foreground;
   }
   .auth-lang.is-active { @apply bg-primary text-primary-foreground hover:text-primary-foreground; }
+  .auth-help > summary { list-style: none; }
+  .auth-help > summary::-webkit-details-marker { display: none; }
   .auth-alert { @apply flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-base ring-1; }
   .auth-alert-danger { @apply bg-danger-soft text-danger-foreground ring-danger/25; }
   .auth-alert-success { @apply bg-success-soft text-success-foreground ring-success/25; }

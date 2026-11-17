@@ -267,6 +267,9 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
   // "Bayaran" tab: the club of the oldest open fee (what the member most likely needs), else the first club.
   const payClub = clubs.find((c) => c.id === upcoming[0]?.clubId) ?? clubs[0];
   const navHrefs = { home: dashboardUrl, ...(payClub ? { payments: payClub.paymentsUrl } : {}) };
+  // A fee past its due date is no longer "upcoming": it goes under "Perlu dibayar".
+  const needToPay = upcoming.filter((p) => p.pastDue);
+  const comingUp = upcoming.filter((p) => !p.pastDue);
 
   return (
     <MemberShell
@@ -288,6 +291,18 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
           <Hero outstanding={outstanding} next={upcoming[0]} payAll={payAll} multi={multi} clubName={payClub?.name ?? ""} memberName={auth.user?.name ?? ""} />
           <InstallPrompt />
 
+          {needToPay.length > 0 && (
+            <SectionCard id="need-h" title={t("needToPay")}>
+              <ul className="divide-y pb-1" data-testid="home-need-to-pay">
+                {needToPay.map((p) => (
+                  <li key={p.id}>
+                    <PaymentRow p={p} showClub={multi} />
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+
           <SectionCard
             id="up-h"
             title={t("upcoming")}
@@ -299,11 +314,11 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
               ) : undefined
             }
           >
-            {upcoming.length === 0 ? (
-              <p className="px-4 pb-4 text-base text-muted-foreground">{t("nothingDue")}</p>
+            {comingUp.length === 0 ? (
+              <p className="px-4 pb-4 text-base text-muted-foreground">{t(needToPay.length > 0 ? "nothingUpcoming" : "nothingDue")}</p>
             ) : (
               <ul className="divide-y pb-1">
-                {upcoming.map((p) => (
+                {comingUp.map((p) => (
                   <li key={p.id}>
                     <PaymentRow p={p} showClub={multi} />
                   </li>

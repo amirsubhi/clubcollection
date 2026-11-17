@@ -1,3 +1,4 @@
+import type { FundCategory } from "@/types/member";
 import type { ReactNode } from "react";
 import { Link } from "@inertiajs/react";
 import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart, Hourglass, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
@@ -52,7 +53,7 @@ interface Props {
   };
   monthly: MonthPoint[];
   monthlyWindow: FigureWindow;
-  categories: { name: string; amount: number }[];
+  categories: FundCategory[];
   queue: (FundRow & { canApprove: boolean })[];
   /** Transfer slips waiting for an admin (TransferVerificationController::card, without files). */
   slips: {

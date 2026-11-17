@@ -442,7 +442,7 @@ class MemberPayFlowTest extends TestCase
                 ->where('club.id', $club->id)
                 ->where('fund.spent', 12550)
                 ->where('fund.collected', 4000)
-                ->where('fund.categories', [['name' => 'Events', 'amount' => 12550]])
+                ->where('fund.categories', [['name' => 'Events', 'kind' => 'expense', 'amount' => 12550]])
             );
 
         $this->assertNotNull($member);

@@ -6,7 +6,7 @@ running `php artisan serve`:
 1. **Member pays:** log in → Home shows the amount due → Review & pay → POST pay → redirect to the
    (faked) ToyyibPay bill page → the pending PayResult page gives the bill reference → a ToyyibPay callback with
    that bill's own token (HMAC of the reference) is POSTed to `/webhook/toyyibpay` (a wrong token and the raw secret
-   must both get 403) → PayResult shows **Berjaya** → Home shows "Semua yuran telah dibayar".
+   must both get 403) → PayResult shows **Bayaran berjaya** → Home shows "Semua yuran telah dibayar".
 2. **Admin A (maker):** dashboard → Fund Usage → new expense (RM 12.34) with a generated PNG and PDF →
    Submit for approval.
 3. **Admin B (checker):** opens the record → Approve with the conflict-of-interest declaration →

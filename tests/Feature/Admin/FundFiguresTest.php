@@ -204,6 +204,7 @@ class FundFiguresTest extends TestCase
                 ->where('fund.charges', 0)
                 ->missing('fund.welfareCount')
                 ->where('fund.fromReserves', 0)
+                ->where('fund.balance', 57000)
                 ->where('fund.window.from', '2026-01-01')
                 ->where('fund.window.to', '2026-11-16'));
     }
@@ -248,7 +249,7 @@ class FundFiguresTest extends TestCase
         $this->assertSame($balance, $f->balance());
         $this->assertSame(55000 - 10000 - 100, $f->openingBalance(Carbon::create(2026, 1, 1)));
         $this->assertSame(250, $f->monthly(12)[3]['spent'], 'March: the two absorbed charges');
-        $this->assertContains(['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'amount' => 350], $f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
+        $this->assertContains(['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'kind' => 'charges', 'amount' => 350], $f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
 
         $this->actingAsClubAdmin($this->club);
         $this->get(route('admin.clubs.dashboard', $this->club))
@@ -303,7 +304,40 @@ class FundFiguresTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('fund.spent', 53000)
                 ->where('fund.collected', 30000)
-                ->where('fund.fromReserves', 23000));
+                ->where('fund.fromReserves', 23000)
+                // Paid from the fund balance: what is left as of today.
+                ->where('fund.balance', 57000 - 40000));
+    }
+
+    /** Welfare and bank charges are their own lines (welfare a total only, no case count); the lines add up to spent. */
+    public function test_spending_lines_keep_welfare_and_charges_separate(): void
+    {
+        $other = ExpenseCategory::factory()->for($this->club)->create(['name' => 'Equipment']);
+        Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $other->id, 'amount' => 20.00, 'expense_date' => '2026-06-01', 'type' => 'welfare']);
+        $this->paidOnline('2026-03-10', 150);
+
+        $f = new FundFigures($this->club);
+        $lines = collect($f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
+        $this->assertSame([
+            ['name' => 'Events', 'kind' => 'expense', 'amount' => 8000],
+            ['name' => FundFigures::WELFARE_LABEL, 'nameMs' => FundFigures::WELFARE_LABEL_MS, 'kind' => 'welfare', 'amount' => 7000],
+            ['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'kind' => 'charges', 'amount' => 150],
+        ], $lines->all(), 'welfare in any category is one welfare line; Equipment holds no expense');
+        $w = $f->forWindow(FundFigures::yearToDate());
+        $this->assertSame($w['spent'], $lines->sum('amount'));
+
+        $this->actingAsMember($this->club);
+        $this->get(route('member.clubs.fund', $this->club))
+            ->assertInertia(fn (Assert $page) => $page
+                ->missing('fund.welfareCount')
+                ->where('fund.welfare', 7000)
+                ->where('fund.categories', fn ($c) => collect($c)->sum('amount') === $w['spent']
+                    && collect($c)->every(fn ($r) => array_keys($r) === array_values(array_intersect(['name', 'nameMs', 'kind', 'amount'], array_keys($r))))));
+
+        $this->actingAsClubAdmin($this->club);
+        $this->get(route('admin.clubs.dashboard', $this->club))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('categories', fn ($c) => collect($c)->pluck('kind')->sort()->values()->all() === ['charges', 'expense', 'welfare']));
     }
 
     public function test_dashboard_kpis_carry_their_window(): void

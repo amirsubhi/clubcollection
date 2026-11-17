@@ -35,6 +35,7 @@
             input:not([type=checkbox]) { min-height: 48px; padding: 8px 12px; margin: 6px 0 16px; border: 1px solid #8A87A6; border-radius: 12px; font: inherit; }
             .auth-btn { min-height: 48px; border: 0; border-radius: 999px; background: #5B4FCF; color: #fff; font: inherit; font-weight: 700; }
             .auth-link { color: #5B4FCF; background: none; border: 0; font: inherit; }
+            summary.auth-link { display: list-item; }
             .auth-alert { padding: 12px; border-radius: 12px; margin-bottom: 16px; background: #FDE4E8; color: #99243B; }
             .auth-alert svg { display: none; }
             [hidden] { display: none !important; }
@@ -83,7 +84,27 @@
         </main>
 
         <footer class="pb-6 text-center text-sm leading-relaxed text-muted-foreground" data-testid="auth-footer">
-            {{ __('For club members only') }} · {{ __('Need help? Contact your club administrator') }}
+            <p>{{ __('For club members only') }}</p>
+            {{-- Help without JS (CSP-safe): the link opens the section below. A guest's club is unknown, so a contact
+                 is shown only when exactly one active club exists (AppServiceProvider: authHelpClub). --}}
+            <details id="auth-help" class="auth-help" data-testid="auth-help">
+                <summary class="auth-link cursor-pointer justify-center underline">{{ __('Need help? Contact your club administrator') }}</summary>
+                <div class="mt-2 rounded-2xl border bg-card px-4 py-3 text-left text-base text-card-foreground">
+                    <p>{{ __('Your club treasurer can help: send them a WhatsApp message or an email.') }}</p>
+                    @if (Route::has('password.request') && ! request()->routeIs('password.request'))
+                        <p class="mt-1"><a href="{{ route('password.request') }}" class="auth-link" data-testid="auth-help-reset">{{ __('Forgot password? Reset it yourself') }}</a></p>
+                    @endif
+                    @if ($authHelpClub ?? null)
+                        <p class="mt-1">
+                            @if ($authHelpClub['whatsapp'])
+                                <a href="https://wa.me/{{ $authHelpClub['whatsapp'] }}" target="_blank" rel="noopener noreferrer" class="auth-link" data-testid="auth-help-whatsapp">{{ __('WhatsApp :club', ['club' => $authHelpClub['name']]) }}</a>
+                            @else
+                                <a href="mailto:{{ $authHelpClub['email'] }}" class="auth-link" data-testid="auth-help-email">{{ __('Email :club', ['club' => $authHelpClub['name']]) }}</a>
+                            @endif
+                        </p>
+                    @endif
+                </div>
+            </details>
         </footer>
     </div>
 </body>

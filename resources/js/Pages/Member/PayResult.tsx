@@ -211,13 +211,10 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
     const lines = "lines" in receipt ? receipt.lines : null;
     const viaTransfer = receipt.method === "transfer";
     return (
-      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("successChip")}>
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("paymentStatus")}>
         <Head title={t("successTitle")} />
         <div className="flex flex-col items-center gap-3 pt-2 text-center" aria-live="polite">
           <AnimatedTick />
-          <StatusChip Icon={ShieldCheck} tone="success" size="md">
-            {t("successChip")}
-          </StatusChip>
           <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("receiptEmailed")}</p>
         </div>

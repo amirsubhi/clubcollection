@@ -57,6 +57,9 @@ final class MemberPaymentPresenter
     public static function summary(Payment $payment): array
     {
         $status = self::displayStatus($payment);
+        // Still to pay and its due date has passed: the member sees it under "Perlu dibayar".
+        // During the club's grace period (still "due") the row says when it turns "Lewat".
+        $pastDue = in_array($status, [DisplayStatus::DUE, DisplayStatus::OVERDUE], true) && $payment->due_date->lt(today());
 
         return [
             'id' => $payment->id,
@@ -67,6 +70,11 @@ final class MemberPaymentPresenter
             'amount' => self::sen($payment->amount),
             'dueDate' => $payment->due_date->toDateString(),
             'status' => $status,
+            'pastDue' => $pastDue,
+            // The last day of the grace period (shown as "Lewat selepas <date>"); null unless due and past its due date.
+            'lateAfter' => $pastDue && $status === DisplayStatus::DUE
+                ? $payment->due_date->copy()->addDays(DisplayStatus::graceDays($payment->club))->toDateString()
+                : null,
             'paidDate' => $payment->paid_date?->toDateString(),
             'clubId' => $payment->club_id,
             'urls' => [

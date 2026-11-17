@@ -240,9 +240,9 @@ try {
     if (res.status() !== 200 || body.trim() !== "ok") throw new Error(`webhook returned ${res.status()} ${body.slice(0, 80)}`);
     await api.dispose();
   });
-  await step("PayResult shows Berjaya", async () => {
+  await step("PayResult shows Bayaran berjaya", async () => {
     await m.page.goto(`${BASE}/my/payments/${paymentId}/thankyou?status_id=1&billcode=${encodeURIComponent(billCode)}`);
-    await m.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await m.page.getByText("Bayaran berjaya", { exact: true }).first().waitFor();
     await shot(m.page, "a4-pay-result");
     await m.page.goto(`${BASE}/my/dashboard`);
     await m.page.getByText("Semua yuran telah dibayar").first().waitFor();
@@ -446,7 +446,7 @@ try {
     if (res.status() !== 200 || (await res.text()).trim() !== "ok") throw new Error(`group webhook returned ${res.status()}`);
     await api.dispose();
     await f.page.goto(`${groupResultUrl}?status_id=1&billcode=${encodeURIComponent(groupBillCode)}`);
-    await f.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await f.page.getByText("Bayaran berjaya", { exact: true }).first().waitFor();
     await f.page.getByText("3 yuran dibayar sekali gus").first().waitFor();
     const lines = await f.page.locator('article[aria-label="Resit rasmi"] tbody tr').count();
     if (lines !== 4) throw new Error(`receipt has ${lines - 1} fee lines, expected 3`);
@@ -491,7 +491,7 @@ try {
   await h.ctx.close();
   await step("the group result page is now the receipt", async () => {
     await g.page.reload();
-    await g.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await g.page.getByText("Bayaran berjaya", { exact: true }).first().waitFor();
     await g.page.getByText("Pindahan bank / DuitNow").first().waitFor();
     await shot(g.page, "g3-pay-all-transfer-receipt");
   });

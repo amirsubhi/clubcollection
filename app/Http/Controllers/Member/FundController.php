@@ -10,8 +10,8 @@ use Inertia\Response;
 
 /**
  * "Ke mana wang anda pergi" (where your money goes): one club's fund for this year so far, for its members.
- * Club-wide aggregates from FundFigures (the same figures the club's admins see): totals per club and per
- * expense category only. No descriptions, payees, receipts or other members' names leave the database.
+ * Club-wide aggregates from FundFigures (the same figures the club's admins see): totals per club, per
+ * expense category, one welfare total (never a case count) and bank charges only. No descriptions, payees, receipts or other members' names leave the database.
  */
 class FundController extends Controller
 {
@@ -38,8 +38,10 @@ class FundController extends Controller
                 'expenses' => $w['expenses'],
                 'welfare' => $w['welfare'],
                 'charges' => $w['charges'],
-                // Spending above what came in this year was paid from earlier savings.
+                // Spending above what came in this year was paid from the fund balance.
                 'fromReserves' => max(0, $w['spent'] - $w['collected']),
+                // Fund balance (baki dana) at the end of today: the window ends today.
+                'balance' => $figures->balanceAt($ytd['to']),
                 'categories' => $figures->byCategoryBetween($ytd['from'], $ytd['to']),
             ],
             'dashboardUrl' => route('member.dashboard'),

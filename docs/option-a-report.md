@@ -417,3 +417,14 @@ Remaining items (content and product choices rather than polish):
 - Sign-in/reset footer "Hubungi pentadbir kelab" should be a link (club WhatsApp or email, or a short "Lupa e-mel?" note).
 - Smaller: lazy-load the chart on the admin Dashboard/Ledger; branded 405 page; "You recorded this" link styled as a link; record-payment radio alignment; subset Bootstrap Icons; success page says the receipt "akan" and "telah" been sent; slip-check could flag date/reference mismatches.
 
+
+### R5a follow-ups (non-blocking)
+- Go-live: set `APP_TIMEZONE=Asia/Kuala_Lumpur` in `.env`; with the UTC fallback a fee moves to "Perlu dibayar" up to 8 hours late.
+- A club expense category literally named "Welfare"/"Kebajikan" would show two legend lines with that name (sums stay correct).
+- Under "Akan datang", a not-yet-due fee's chip can still read "Perlu dibayar", the same words as the new group heading; consider "Belum bayar" for the chip.
+- Home "Akan datang" still mixes processing/verifying rows from the `take(5)` list (pre-existing).
+- Payments "Bayar semua" shows when the selected year has open fees, while its total covers all open fees in the club.
+- The sign-in help `<summary>` has no chevron; only the underline signals it opens.
+- The help block also shows on the 2FA, confirm-password and error pages (shared `layouts.auth`); its view composer runs one small query per render.
+- "Lain-lain" can hold a single category when exactly five expense categories exist.
+- Stale comment on `fromReserves` in `resources/js/types/member.ts`.

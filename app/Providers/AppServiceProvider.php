@@ -2,13 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\Club;
 use App\Services\PaymentGateways\PaymentGatewayManager;
+use App\Support\Contact\WhatsAppNumber;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -41,6 +44,18 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('two-factor-setup', fn (Request $request) => Limit::perMinute(5)->by('2fa-setup|'.($request->user()?->id ?? $request->ip())));
 
         self::configureTrustedProxies();
+
+        // Sign-in pages: the "Need help?" section names a club contact only when exactly one active club exists
+        // (a guest's club is unknown, and listing several clubs' contacts would hand them to anyone).
+        View::composer('layouts.auth', function ($view) {
+            // Error pages use this layout too, and must render without a database: no contact then.
+            $clubs = rescue(fn () => Club::query()->where('is_active', true)->limit(2)->get(['id', 'name', 'email', 'whatsapp_number']), collect(), false);
+            $club = $clubs->count() === 1 ? $clubs->first() : null;
+            $wa = $club ? WhatsAppNumber::waDigits($club->whatsapp_number) : null;
+            $view->with('authHelpClub', $club && ($wa || $club->email)
+                ? ['name' => $club->name, 'whatsapp' => $wa, 'email' => $wa ? null : $club->email]
+                : null);
+        });
 
         // A fresh install still says APP_NAME=Laravel: members should see the product name instead.
         if (in_array(config('app.name'), [null, '', 'Laravel'], true)) {

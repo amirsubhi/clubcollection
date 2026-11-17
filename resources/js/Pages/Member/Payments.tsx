@@ -180,12 +180,16 @@ export default function Payments({ club, selectedYear, years, summary, payments,
   const t = useT();
   // Fees still owed, oldest first (the order to pay them in); history stays newest first.
   const open = payments.filter((p) => p.status === "due" || p.status === "overdue").sort(oldestFirst);
+  // Past its due date: "Perlu dibayar"; not yet due: "Akan datang".
+  const late = open.filter((p) => p.pastDue);
+  const notYet = open.filter((p) => !p.pastDue);
   const processing = payments.filter((p) => p.status === "processing").sort(oldestFirst);
   const verifying = payments.filter((p) => p.status === "verifying");
   const paid = payments.filter((p) => p.status === "paid");
   const groups = [
     { key: "processing", title: t("processingGroup"), items: processing },
-    { key: "open", title: t("stillToPay"), items: open },
+    { key: "late", title: t("needToPay"), items: late },
+    { key: "open", title: t("upcoming"), items: notYet },
     { key: "verifying", title: t("verifying"), items: verifying },
     { key: "paid", title: t("paidGroup"), items: paid },
   ].filter((g) => g.items.length > 0);
@@ -229,6 +233,14 @@ export default function Payments({ club, selectedYear, years, summary, payments,
       {groups.length === 0 && (
         <p className="rounded-[20px] border bg-card p-5 text-center text-base text-muted-foreground">{fill(t("noPaymentsYear"), { y: selectedYear })}</p>
       )}
+      {payAll && open.length > 0 && (
+        <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
+          <Link href={payAll.url} data-testid="payments-pay-all">
+            {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
+            <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
+          </Link>
+        </Button>
+      )}
       {groups.map((g) => (
         <section key={g.key} aria-labelledby={`h-${g.key}`} className="flex flex-col gap-2">
           <h2 id={`h-${g.key}`} className="px-1 font-display text-xl font-bold tracking-tight">
@@ -239,14 +251,6 @@ export default function Payments({ club, selectedYear, years, summary, payments,
               <RefreshCw className="mt-1 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
               <span>{t("processingGroupNote")}</span>
             </p>
-          )}
-          {g.key === "open" && payAll && (
-            <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
-              <Link href={payAll.url} data-testid="payments-pay-all">
-                {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
-                <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
-              </Link>
-            </Button>
           )}
           <ul className="divide-y rounded-[20px] border bg-card">
             {g.items.map((p) => (

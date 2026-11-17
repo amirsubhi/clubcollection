@@ -57,6 +57,10 @@
   --on-chart-2: 30 27 58; /* #1E1B3A */
   --on-chart-3: 30 27 58; /* #1E1B3A */
   --on-chart-4: 30 27 58; /* #1E1B3A */
+  /* "Others" in a category bar: a neutral fifth slice, so it never takes a category colour. */
+  --chart-other: 227 225 238; /* #E3E1EE */
+  --chart-other-stroke: 111 108 138; /* #6F6C8A */
+  --on-chart-other: 30 27 58; /* #1E1B3A */
   --chart-grid: 232 230 243; /* #E8E6F3 */
   --chart-axis: 95 92 122; /* #5F5C7A */
   --overlay: 18 17 28; /* #12111C */
@@ -115,6 +119,9 @@
     --on-chart-2: 30 31 35; /* #1E1F23 */
     --on-chart-3: 30 31 35; /* #1E1F23 */
     --on-chart-4: 30 31 35; /* #1E1F23 */
+    --chart-other: 140 141 150; /* #8C8D96 */
+    --chart-other-stroke: 140 141 150; /* #8C8D96 */
+    --on-chart-other: 30 31 35; /* #1E1F23 */
     --chart-grid: 52 53 59; /* #34353B */
     --chart-axis: 179 180 190; /* #B3B4BE */
     --overlay: 11 11 13; /* #0B0B0D */
@@ -172,6 +179,9 @@
   --on-chart-2: 30 31 35; /* #1E1F23 */
   --on-chart-3: 30 31 35; /* #1E1F23 */
   --on-chart-4: 30 31 35; /* #1E1F23 */
+  --chart-other: 140 141 150; /* #8C8D96 */
+  --chart-other-stroke: 140 141 150; /* #8C8D96 */
+  --on-chart-other: 30 31 35; /* #1E1F23 */
   --chart-grid: 52 53 59; /* #34353B */
   --chart-axis: 179 180 190; /* #B3B4BE */
   --overlay: 11 11 13; /* #0B0B0D */

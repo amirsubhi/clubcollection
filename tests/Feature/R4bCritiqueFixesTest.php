@@ -234,7 +234,7 @@ class R4bCritiqueFixesTest extends TestCase
                 ->where('fund.spent', 30000)
                 ->where('fund.expenses', 30000)
                 ->where('fund.fromReserves', 20000)
-                ->where('fund.categories', [['name' => 'Events', 'nameMs' => 'Majlis', 'amount' => 30000]])
+                ->where('fund.categories', [['name' => 'Events', 'nameMs' => 'Majlis', 'kind' => 'expense', 'amount' => 30000]])
                 ->where('dashboardUrl', route('member.dashboard'))
                 ->missing('fund.items'));
         $this->assertNotNull($member);

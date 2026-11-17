@@ -99,7 +99,9 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
                 ? t("slipBeingChecked")
                 : p.status === "processing"
                   ? t("processingRow")
-                  : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
+                  : p.lateAfter
+                    ? fill(t("lateAfter"), { d: fmtDate(p.lateAfter, lang) })
+                    : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
             {showClub && p.clubName ? ` · ${p.clubName}` : ""}
           </div>
         </div>
@@ -115,14 +117,22 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
 
 const sliceTokens = ["--chart-1", "--chart-2", "--chart-3", "--chart-4"];
 
-/** Expense categories to at most four bar slices (the chart palette has four validated colours). */
+/**
+ * Spending lines to bar slices: at most four coloured slices (the chart palette has four validated colours) plus a
+ * neutral "Others". Welfare and bank / gateway charges always keep their own slice; expense categories share the
+ * colours left, the smallest folded into "Others" when they don't fit.
+ */
 export function toSlices(categories: FundCategory[], othersLabel: { bm: string; en: string }): CategorySlice[] {
-  const sorted = [...categories].sort((a, b) => b.amount - a.amount);
-  const top = sorted.length > 4 ? sorted.slice(0, 3) : sorted;
-  const rest = sorted.length > 4 ? sorted.slice(3).reduce((s, c) => s + c.amount, 0) : 0;
-  const slices = top.map((c, i) => ({ key: `c${i}`, bm: c.nameMs ?? c.name, en: c.name, amount: c.amount }));
-  if (rest > 0) slices.push({ key: "others", ...othersLabel, amount: rest });
-  return slices.map((s, i) => ({ ...s, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
+  const isFixed = (c: FundCategory) => c.kind === "welfare" || c.kind === "charges";
+  const fixed = categories.filter(isFixed);
+  const expenses = categories.filter((c) => !isFixed(c)).sort((a, b) => b.amount - a.amount);
+  const room = sliceTokens.length - fixed.length;
+  const shown = [...expenses.slice(0, room), ...fixed]
+    .sort((a, b) => b.amount - a.amount)
+    .map((c, i) => ({ key: c.kind === "welfare" || c.kind === "charges" ? c.kind : `c${i}`, bm: c.nameMs ?? c.name, en: c.name, amount: c.amount, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
+  const rest = expenses.slice(room).reduce((s, c) => s + c.amount, 0);
+  if (rest > 0) shown.push({ key: "others", ...othersLabel, amount: rest, colorVar: "--chart-other", onVar: "--on-chart-other" });
+  return shown;
 }
 
 /** Where "Perlu bantuan?" goes: the club's WhatsApp (with the reference typed in) when set, else its email. */

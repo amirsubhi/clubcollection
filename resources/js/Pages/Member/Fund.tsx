@@ -35,12 +35,19 @@ export default function Fund({ club, fund, dashboardUrl }: Props) {
             <div className="text-sm text-muted-foreground">{t("spent")}</div>
             <Money sen={fund.spent} className="font-display text-lg font-bold" />
           </div>
+          <div className="col-span-full flex flex-wrap items-center justify-between gap-x-3 rounded-2xl border px-3 py-2.5" data-testid="fund-balance">
+            <div>
+              <div className="text-sm text-muted-foreground">{t("fundBalance")}</div>
+              <div className="text-xs text-muted-foreground">{fill(t("fundBalanceAsOf"), { d: fmtDate(fund.window.to, lang) })}</div>
+            </div>
+            <Money sen={fund.balance} className="font-display text-lg font-bold" />
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">{fill(t("spentSplit"), { a: rm(fund.expenses), b: rm(fund.welfare), c: rm(fund.charges) })}</p>
         {fund.fromReserves > 0 && (
           <p className="flex items-start gap-2 rounded-2xl bg-info-soft px-3 py-2.5 text-sm text-info-foreground" data-testid="from-reserves">
             <PiggyBank className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>{fill(t("fromReserves"), { x: rm(fund.fromReserves) })}</span>
+            <span>{fill(t("fromReserves"), { x: rm(fund.fromReserves), b: rm(fund.balance) })}</span>
           </p>
         )}
         {slices.length > 0 ? (
