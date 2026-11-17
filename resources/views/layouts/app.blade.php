@@ -26,6 +26,7 @@
                 if (pref === 'light' || pref === 'dark') d.setAttribute('data-theme', pref); else d.removeAttribute('data-theme');
                 d.setAttribute('data-bs-theme', d.getAttribute('data-theme') || (mq && mq.matches ? 'dark' : 'light'));
                 d.setAttribute('data-theme-pref', pref === 'light' || pref === 'dark' ? pref : 'system');
+                if (window.cpThemeColor) window.cpThemeColor();
             }
             apply(t);
             if (mq && mq.addEventListener) mq.addEventListener('change', function () { apply(d.getAttribute('data-theme')); });

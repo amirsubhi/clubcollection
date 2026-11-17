@@ -29,6 +29,7 @@
   --border: 222 220 236; /* #DEDCEC */
   --input: 138 135 166; /* #8A87A6 */
   --ring: 91 79 207; /* #5B4FCF */
+  --shadow-color: 30 27 58; /* ink; used as rgb(var(--shadow-color)/a) */
   --success: 31 122 85; /* #1F7A55 */
   --success-soft: 221 244 233; /* #DDF4E9 */
   --success-foreground: 20 96 63; /* #14603F */
@@ -86,6 +87,7 @@
     --border: 58 59 66; /* #3A3B42 */
     --input: 111 112 122; /* #6F707A */
     --ring: 155 140 250; /* #9B8CFA */
+    --shadow-color: 0 0 0;
     --success: 116 211 169; /* #74D3A9 */
     --success-soft: 30 50 41; /* #1E3229 */
     --success-foreground: 147 226 191; /* #93E2BF */
@@ -142,6 +144,7 @@
   --border: 58 59 66; /* #3A3B42 */
   --input: 111 112 122; /* #6F707A */
   --ring: 155 140 250; /* #9B8CFA */
+  --shadow-color: 0 0 0;
   --success: 116 211 169; /* #74D3A9 */
   --success-soft: 30 50 41; /* #1E3229 */
   --success-foreground: 147 226 191; /* #93E2BF */

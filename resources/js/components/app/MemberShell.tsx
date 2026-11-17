@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, Home, Landmark, PieChart, UserRound } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import { useLang, useT, type DictKey } from "@/lib/i18n";
+import { SegmentedRadio } from "@/components/ui/segmented-radio";
 import { cn } from "@/lib/utils";
 import { useStickyFit } from "@/lib/useStickyFit";
 
@@ -17,23 +18,16 @@ const tabs: { id: MemberTab; label: DictKey; Icon: typeof Home }[] = [
 export function LangToggle() {
   const { lang, setLang } = useLang();
   return (
-    <div role="radiogroup" aria-label="Language / Bahasa" className="inline-flex rounded-full border bg-card p-0.5 text-sm font-bold">
-      {(["bm", "en"] as const).map((l) => (
-        <button
-          key={l}
-          type="button"
-          role="radio"
-          aria-checked={lang === l}
-          onClick={() => setLang(l)}
-          className={cn(
-            "inline-flex h-11 min-w-[44px] items-center justify-center rounded-full px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {l.toUpperCase()}
-        </button>
-      ))}
-    </div>
+    <SegmentedRadio
+      ariaLabel="Language / Bahasa"
+      value={lang}
+      onChange={setLang}
+      className="inline-flex rounded-full border bg-card p-0.5 text-sm font-bold"
+      options={(["bm", "en"] as const).map((l) => ({ value: l, label: l.toUpperCase() }))}
+      itemClassName={(on) =>
+        cn("inline-flex h-11 min-w-[44px] items-center justify-center rounded-full px-2", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
+      }
+    />
   );
 }
 

@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock,
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { KpiTile, SpentSplit } from "@/components/app/Charts";
+import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { FundStatusBadge } from "@/components/app/FundStatusBadge";
 import { FundTypeBadge, StatusChip } from "@/components/app/StatusBadges";
 import { Avatar } from "@/components/app/Visuals";

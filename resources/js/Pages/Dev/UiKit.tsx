@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CategoryBar, CollectedSpentChart } from "@/components/app/Charts";
+import { CollectedSpentChart } from "@/components/app/Charts";
+import { CategoryBar } from "@/components/app/CategoryBar";
 import { LangToggle } from "@/components/app/MemberShell";
 import { Money } from "@/components/app/Money";
 import { FundStatusBadge } from "@/components/app/FundStatusBadge";

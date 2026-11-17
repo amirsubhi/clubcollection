@@ -103,7 +103,7 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
             {showClub && p.clubName ? ` · ${p.clubName}` : ""}
           </div>
         </div>
-        <div className="flex min-w-0 max-w-full flex-col items-end gap-1">
+        <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-1 text-right">
           <Money sen={p.amount} className="text-base font-bold" />
           <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" className="h-auto min-h-6 max-w-full whitespace-normal py-0.5" />
         </div>

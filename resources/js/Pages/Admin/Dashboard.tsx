@@ -4,7 +4,8 @@ import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart,
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { CollectedSpentChart, KpiTile, SpentSplit } from "@/components/app/Charts";
+import { CollectedSpentChart } from "@/components/app/Charts";
+import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { CategoryBar } from "@/components/app/CategoryBar";
 import { toSlices } from "@/components/app/MemberParts";
 import { FundStatusBadge } from "@/components/app/FundStatusBadge";

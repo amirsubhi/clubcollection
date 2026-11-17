@@ -197,12 +197,12 @@ export default function Payments({ club, selectedYear, years, summary, payments,
       <Head title={t("history")} />
       <FlashBanner />
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <Label htmlFor="year" className="text-base font-semibold">
           {t("year")}
         </Label>
         <Select value={String(selectedYear)} onValueChange={changeYear}>
-          <SelectTrigger id="year" className="h-12 w-32 text-base">
+          <SelectTrigger id="year" className="h-12 w-max min-w-32 max-w-full text-base">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

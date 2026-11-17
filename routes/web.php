@@ -133,7 +133,7 @@ Route::middleware('check_installed')->group(function () {
         // ── Super Admin ──────────────────────────────────────────────
         Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
             Route::resource('clubs', ClubController::class);
-            Route::resource('admins', AdminUserController::class);
+            Route::resource('admins', AdminUserController::class)->except('show');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         });
@@ -145,8 +145,8 @@ Route::middleware('check_installed')->group(function () {
             Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->middleware('throttle:5,1')->name('members.import.process');
             Route::get('clubs/{club}/members/template', [MemberController::class, 'downloadTemplate'])->name('members.template');
 
-            Route::resource('clubs.members', MemberController::class)->shallow();
-            Route::resource('clubs.fee-rates', FeeRateController::class)->shallow();
+            Route::resource('clubs.members', MemberController::class)->shallow()->except('show');
+            Route::resource('clubs.fee-rates', FeeRateController::class)->shallow()->only(['index', 'create', 'store', 'destroy']);
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
 
@@ -194,8 +194,8 @@ Route::middleware('check_installed')->group(function () {
             Route::get('clubs/{club}/expenses/create', [ExpenseController::class, 'create'])->name('clubs.expenses.create');
             Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
             Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
-            Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow();
-            Route::resource('clubs.discounts', DiscountController::class)->shallow();
+            Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow()->only(['index', 'store', 'update', 'destroy']);
+            Route::resource('clubs.discounts', DiscountController::class)->shallow()->except('show');
             Route::get('clubs/{club}/audit-logs', [AuditLogController::class, 'clubLogs'])->name('clubs.audit-logs');
 
             Route::get('clubs/{club}/ledger',            [LedgerController::class, 'index'])->name('clubs.ledger');

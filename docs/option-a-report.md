@@ -394,3 +394,8 @@ Follow-ups (non-blocking):
 - lodash-es, axios and qs remain (pulled in by `@inertiajs/core` and `laravel-precognition`); the i18n dictionary is still in the entry chunk.
 - R3d follow-ups: the service worker's static cache grows with each hashed build until `CACHE_VERSION` is bumped; the `$bsTheme` manifest check in `layouts/app.blade.php` could move into `FrontendAssets`; the legacy `bootstrap-icons.woff` ships unused.
 
+### R4a follow-ups (non-blocking)
+- composer.json now requires PHP ^8.4: confirm the production host runs 8.4 before deploying (8.3 needs --ignore-platform-req=php).
+- On an 8.4 host, check one 405 page renders (tests assert it as an exception because 8.3's var-dumper crashes on render).
+- Browser-bar colours live in both lib/theme.tsx and partials/pwa-head.blade.php; make one source later.
+

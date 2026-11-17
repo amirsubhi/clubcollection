@@ -146,8 +146,9 @@ function SlipPreview({ slips, member }: { slips: FundAttachment[]; member: strin
           ref={box}
           {...(zoom ? { tabIndex: 0, role: "region", "aria-label": "Zoomed slip, use arrow keys to scroll" } : {})}
           className={cn(
-            "relative overflow-auto rounded-md border bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring [touch-action:pan-x_pan-y_pinch-zoom]",
-            zoom ? "h-[70vh] max-h-[640px] cursor-zoom-out" : "flex max-h-[70vh] items-center justify-center lg:max-h-[600px]",
+            "relative rounded-md border bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring [touch-action:pan-x_pan-y_pinch-zoom]",
+            // Unzoomed the image fits inside (its max-height leaves room for the 1px border), and the box never scrolls.
+            zoom ? "h-[70vh] max-h-[640px] cursor-zoom-out overflow-auto" : "flex max-h-[70vh] items-center justify-center overflow-hidden lg:max-h-[600px]",
           )}
         >
           <img
@@ -155,7 +156,7 @@ function SlipPreview({ slips, member }: { slips: FundAttachment[]; member: strin
             alt={`Transfer slip from ${member}`}
             loading="lazy"
             onClick={() => setZoom((z) => !z)}
-            className={zoom ? "max-w-none origin-top-left" : "max-h-[70vh] w-auto max-w-full cursor-zoom-in object-contain lg:max-h-[600px]"}
+            className={zoom ? "max-w-none origin-top-left" : "max-h-[calc(70vh-2px)] w-auto max-w-full cursor-zoom-in object-contain lg:max-h-[598px]"}
             style={zoom ? { width: "200%" } : undefined}
           />
         </div>
