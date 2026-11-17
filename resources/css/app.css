@@ -85,7 +85,7 @@
   }
   .auth-page [hidden] { display: none !important; }
   .auth-card {
-    @apply rounded-[20px] border bg-card p-6 text-card-foreground shadow-[0_18px_40px_-28px_rgb(var(--primary)/0.45)] min-[400px]:p-7;
+    @apply rounded-[20px] border bg-card p-6 text-card-foreground shadow-[0_18px_40px_-28px_rgb(var(--primary)/0.45)] min-[25em]:p-7;
   }
   .auth-label { @apply mb-1.5 block text-base font-semibold; }
   .auth-input {

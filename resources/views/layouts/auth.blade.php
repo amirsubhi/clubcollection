@@ -90,7 +90,16 @@
             <details id="auth-help" class="auth-help" data-testid="auth-help">
                 <summary class="auth-link cursor-pointer justify-center underline">{{ __('Need help? Contact your club administrator') }}</summary>
                 <div class="mt-2 rounded-2xl border bg-card px-4 py-3 text-left text-base text-card-foreground">
-                    <p>{{ __('Your club treasurer can help: send them a WhatsApp message or an email.') }}</p>
+                    {{-- Honest copy: only promise a channel that is actually linked below. --}}
+                    <p data-testid="auth-help-copy">
+                        @if (($authHelpClub ?? null) && $authHelpClub['whatsapp'])
+                            {{ __('Your club treasurer can help: send them a WhatsApp message.') }}
+                        @elseif ($authHelpClub ?? null)
+                            {{ __('Your club treasurer can help: send them an email.') }}
+                        @else
+                            {{ __('Ask your club treasurer directly.') }}
+                        @endif
+                    </p>
                     @if (Route::has('password.request') && ! request()->routeIs('password.request'))
                         <p class="mt-1"><a href="{{ route('password.request') }}" class="auth-link" data-testid="auth-help-reset">{{ __('Forgot password? Reset it yourself') }}</a></p>
                     @endif

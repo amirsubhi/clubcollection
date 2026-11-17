@@ -288,7 +288,7 @@ const SlipCard = forwardRef<HTMLLIElement, CardProps>(function SlipCard({ s, tod
             <h2 id={headingId} className="truncate font-display text-lg font-bold tracking-tight">
               {s.member.name}
             </h2>
-            <Money sen={amount} className="font-display text-2xl font-bold" />
+            <Money sen={amount} className="!whitespace-normal font-display text-2xl font-bold" />
           </div>
           <div className="text-sm text-muted-foreground">
             {g ? (
@@ -375,11 +375,13 @@ const SlipCard = forwardRef<HTMLLIElement, CardProps>(function SlipCard({ s, tod
         {g && g.paidOnlineSen > 0 && (
           <Alert variant="warning" data-testid="slip-group-paid-online">
             <AlertTriangle aria-hidden />
-            <AlertTitle>Part of this set was paid online while the slip was being checked</AlertTitle>
-            <AlertDescription>
-              Approving marks the remaining fees paid (<Money sen={g.approveSen} />). If the transfer of <Money sen={g.totalSen} /> arrived, refund{" "}
-              <Money sen={g.paidOnlineSen} /> to the member: it is flagged in the audit log.
-            </AlertDescription>
+            <div className="min-w-0">
+              <AlertTitle>Part of this set was paid online while the slip was being checked</AlertTitle>
+              <AlertDescription>
+                Approving marks the remaining fees paid (<Money sen={g.approveSen} />). If the transfer of <Money sen={g.totalSen} /> arrived, refund{" "}
+                <Money sen={g.paidOnlineSen} /> to the member: it is flagged in the audit log.
+              </AlertDescription>
+            </div>
           </Alert>
         )}
 
@@ -844,11 +846,11 @@ export default function VerificationsIndex({ nav, club, tab: initialTab, pending
 
       {/* Two equal halves on a phone; the icons step aside there so "Recently handled" stays on one line at 360px+. */}
       <FilterGroup aria-label="Show slips" className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:w-auto">
-        <FilterButton active={tab === "pending"} onClick={() => setTab("pending")} className="min-h-10 px-2 sm:px-3">
+        <FilterButton active={tab === "pending"} onClick={() => setTab("pending")} className="h-auto min-h-10 whitespace-normal px-2 sm:px-3">
           <Clock className="hidden h-4 w-4 sm:inline" aria-hidden /> Waiting
           <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{pending.length}</span>
         </FilterButton>
-        <FilterButton active={tab === "handled"} onClick={() => setTab("handled")} className="min-h-10 px-2 sm:px-3">
+        <FilterButton active={tab === "handled"} onClick={() => setTab("handled")} className="h-auto min-h-10 whitespace-normal px-2 sm:px-3">
           <BadgeCheck className="hidden h-4 w-4 sm:inline" aria-hidden /> Recently handled
           <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{handled.length}</span>
         </FilterButton>

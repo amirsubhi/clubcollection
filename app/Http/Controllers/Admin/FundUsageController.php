@@ -132,6 +132,7 @@ class FundUsageController extends Controller
                 'index' => route('admin.clubs.fund-usage.index', $club),
                 'createExpense' => route('admin.clubs.fund-usage.create', $club),
                 'createWelfare' => route('admin.clubs.fund-usage.create', [$club, 'type' => 'welfare']),
+                'ledger' => route('admin.clubs.ledger', $club),
             ],
         ]);
     }

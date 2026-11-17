@@ -235,7 +235,7 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
             tooLarge: (names, mb) => fill(t("fileTooLarge"), { f: names, mb }),
           }}
         />
-        <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 min-[26.25em]:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-1.5">
             <Label htmlFor="transfer_date" className="text-base">
               {t("transferDateLbl")}

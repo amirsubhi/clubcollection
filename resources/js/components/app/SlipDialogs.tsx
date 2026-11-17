@@ -42,7 +42,7 @@ export function ApproveSlipDialog({ slip, today, triggerProps, after, onConfirm 
   return (
     <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger asChild>
-        <Button variant="default" data-slip-action="approve" {...triggerProps}>
+        <Button variant="default" data-slip-action="approve" className="h-auto min-h-10 whitespace-normal py-2 text-left" {...triggerProps}>
           <Check aria-hidden /> <span>Approve <Money sen={slip.amount} /></span>
         </Button>
       </DialogTrigger>
@@ -102,6 +102,7 @@ export function ApproveSlipDialog({ slip, today, triggerProps, after, onConfirm 
           </Button>
           <Button
             disabled={!valid}
+            className="h-auto min-h-10 whitespace-normal py-2"
             onClick={() => {
               setOpen(false);
               onConfirm(paidDate, reference.trim());

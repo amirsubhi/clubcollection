@@ -75,7 +75,8 @@ const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "mint" | 
  * One fee as a tappable row: open fees go to Review & pay, paid ones to the receipt,
  * and a fee with an FPX payment in progress to that payment's status (paying again is on Review & pay).
  */
-export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showClub?: boolean }) {
+/** hideDueChip: the row already sits under a "Perlu dibayar" heading, so a "Perlu dibayar" chip would only repeat it. */
+export function PaymentRow({ p, showClub = false, hideDueChip = false }: { p: MemberPaymentRow; showClub?: boolean; hideDueChip?: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -107,7 +108,9 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
         </div>
         <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-1 text-right">
           <Money sen={p.amount} className="text-base font-bold" />
-          <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" className="h-auto min-h-6 max-w-full whitespace-normal py-0.5" />
+          {!(hideDueChip && p.status === "due") && (
+            <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" className="h-auto min-h-6 max-w-full whitespace-normal py-0.5" />
+          )}
         </div>
       </div>
       <ChevronRight className="h-[20px] w-[20px] shrink-0 text-muted-foreground" aria-hidden />

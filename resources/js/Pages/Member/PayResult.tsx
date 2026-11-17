@@ -264,15 +264,10 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <Button asChild variant="outline" size="xl" className="w-full rounded-full">
             <Link href={dashboardUrl}>{t("backHome")}</Link>
           </Button>
-          {payment ? (
-            <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
-              <Link href={payment.urls.invoice}>{t("viewReceipt")}</Link>
-            </Button>
-          ) : (
-            <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
-              <Link href={paymentsUrl}>{t("viewPayments")}</Link>
-            </Button>
-          )}
+          {/* The receipt is already on screen, so no "Lihat resit" here: just the full payment list. */}
+          <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
+            <Link href={paymentsUrl}>{t("viewPayments")}</Link>
+          </Button>
         </div>
         <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>

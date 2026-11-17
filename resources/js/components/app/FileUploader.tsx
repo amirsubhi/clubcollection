@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState } from "react";
 import { Camera, FileText, ImageIcon, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -112,11 +112,20 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
         type="file"
         multiple
         accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-        // Comfortable mode: the drop zone (desktop) or the buttons (touch) are the tab stops, not this hidden input.
-        tabIndex={comfortable ? -1 : undefined}
-        className={cn("peer sr-only", comfortable && "touch:hidden")}
+        // The buttons (browse, camera) are the tab stops, not this hidden input.
+        tabIndex={-1}
+        className="sr-only"
+        aria-label={tx.chooseFile}
         aria-invalid={shownError ? true : undefined}
         aria-describedby={describedBy}
+        // A form that focuses the first invalid field lands here; pass focus to the first visible
+        // button (browse, or the camera on touch) so keyboard users see where they are.
+        onFocus={(e) => {
+          const btn = Array.from(e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button") ?? []).find(
+            (b) => b.offsetParent !== null && !b.disabled,
+          );
+          btn?.focus();
+        }}
         onChange={(e) => {
           onAdd(toItems(e.target.files));
           e.target.value = "";
@@ -134,22 +143,13 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
           <span className="text-center text-sm text-muted-foreground">{tx.limits}</span>
         </div>
       )}
-      <label
-        htmlFor={inputId}
-        {...(comfortable
-          ? {
-              tabIndex: 0,
-              role: "button",
-              "aria-describedby": describedBy,
-              "aria-invalid": shownError ? true : undefined,
-              onKeyDown: (e: KeyboardEvent) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  fileRef.current?.click();
-                }
-              },
-            }
-          : {})}
+      {/* Drop target only (no role): a real button inside opens the picker, so keyboards and screen readers get a plain button. */}
+      <div
+        data-testid="uploader-dropzone"
+        onClick={(e) => {
+          // Mouse convenience: a click anywhere on the zone opens the picker too.
+          if (!(e.target as HTMLElement).closest("button")) fileRef.current?.click();
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
@@ -161,7 +161,7 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
           onAdd(toItems(e.dataTransfer.files));
         }}
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/50 px-4 py-7 text-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed bg-muted/50 px-4 py-7 text-center transition-colors",
           over ? "border-primary bg-accent" : "border-input hover:bg-muted",
           shownError && "border-danger bg-danger-soft/50",
           comfortable && "touch:hidden",
@@ -170,15 +170,21 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
         <UploadCloud className="h-8 w-8 text-muted-foreground" aria-hidden />
         <span className={comfortable ? "text-base font-medium" : "text-sm font-medium"}>
           {/* Touch screens cannot drag files in: no "drag here" there, just the picker. */}
-          <span className="touch:hidden">
-            {tx.dropPrefix} <span className="text-primary underline">{tx.browse}</span>
-          </span>
-          <span className="hidden text-primary underline touch:inline">{tx.chooseFile}</span>
+          <span className="touch:hidden">{tx.dropPrefix} </span>
+          <button
+            type="button"
+            className="rounded-sm font-semibold text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-describedby={describedBy}
+            onClick={() => fileRef.current?.click()}
+          >
+            <span className="touch:hidden">{tx.browse}</span>
+            <span className="hidden touch:inline">{tx.chooseFile}</span>
+          </button>
         </span>
         <span id={hintId} className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>
           {tx.limits}
         </span>
-      </label>
+      </div>
       <div className={cn("flex flex-wrap items-center gap-2", comfortable && "touch:hidden")}>
         <Button type="button" variant="outline" size={comfortable ? "lg" : "sm"} className={comfortable ? "h-auto min-h-11 whitespace-normal rounded-full py-2" : undefined} onClick={() => camRef.current?.click()}>
           <Camera aria-hidden /> {tx.takePhoto}

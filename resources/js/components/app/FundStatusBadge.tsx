@@ -20,7 +20,7 @@ export function FundStatusBadge({ status, returned = false }: { status: FundStat
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span tabIndex={0} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span tabIndex={0} className="inline-flex max-w-full rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <StatusChip Icon={Icon} tone={tone}>
             {label}
           </StatusChip>

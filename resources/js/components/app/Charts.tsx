@@ -122,7 +122,10 @@ export function CollectedSpentChart({
       </ChartContainer>
       <figcaption className="text-sm text-muted-foreground">{summary}</figcaption>
       {showTable && (
-        <TableView label={lang === "bm" ? "Lihat sebagai jadual" : "Show as table"}>
+        <TableView
+          label={lang === "bm" ? "Lihat sebagai jadual" : "Show as table"}
+          regionLabel={lang === "bm" ? `Jadual ${config.collected.label} dan ${config.spent.label} mengikut bulan` : `${config.collected.label} and ${config.spent.label} by month, table`}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">

@@ -454,3 +454,11 @@ Audit:
 - [P2] At 200% text, Dashboard (table under chart not in a scroller), Ledger (status pill), Billing (save bar) and Verifications ("Approve RM" button) scroll sideways.
 - [P2] FileUploader drop zone is a `<label role="button">` (axe `aria-allowed-role`); use a real button.
 - [P3] No skip link on member pages; member h1 smaller than section h2; 20 px admin quick links; overshooting tick easing.
+
+### R6 follow-ups (non-blocking)
+- Tailwind breakpoints are now in em (same as px at 16 px), so layouts step down when the browser text size is raised.
+- FileUploader browse button's accessible name on desktop is just "browse"; consider "Browse files" in visible text (label-in-name).
+- `BalanceHint` is duplicated in `Dashboard.tsx` and `FundUsage/Index.tsx`; move it to `Kpi.tsx`.
+- No test covers the rendered "—" + "Invoice {date}" for approved records without a paid date.
+- Fund Usage table scrolls inside its box at 768/1024 px (page itself doesn't); `PageHeader` forces `min-h-10` on action children.
+- Sign-in help shows a club's email only when it has no WhatsApp number (product choice).

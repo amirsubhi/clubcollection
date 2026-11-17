@@ -40,7 +40,7 @@ export function ApprovalRail({ item, preparedAt, approvedAt }: { item: FundItem;
           </span>
         )}
         <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Approved · Checker</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{approved ? "Approved · Checker" : submitted ? "Waiting · Checker" : "Checker"}</div>
           <div className="truncate text-sm font-semibold">{approved ? item.approvedBy : submitted ? "Waiting for a second admin" : "—"}</div>
           <div className="text-xs text-muted-foreground">{approved ? `Approved ${approvedAt ?? ""}` : "Must not be the maker or beneficiary"}</div>
         </div>

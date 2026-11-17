@@ -132,6 +132,18 @@ function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
   );
 }
 
+/* Matches FundFigures::balanceAt: every paid fee since records start, minus approved spending and bank charges. */
+function BalanceHint({ ledger }: { ledger: string }) {
+  return (
+    <>
+      All money in, minus everything spent, since the club&apos;s records start ·{" "}
+      <Link href={ledger} className="font-medium text-primary hover:underline">
+        See Ledger
+      </Link>
+    </>
+  );
+}
+
 export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
   const slices = toSlices(categories, { bm: "Lain-lain", en: "Others" });
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
@@ -160,7 +172,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint="All fees collected minus everything spent" Icon={Landmark} />
+        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint={<BalanceHint ledger={urls.ledger} />} Icon={Landmark} />
         <KpiTile
           label="Collected"
           window={kpis.window.range}
@@ -214,7 +226,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                     <div className="flex items-start gap-3">
                       <Avatar name={i.recordedBy} />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                           <span className="font-mono text-xs text-muted-foreground">{i.ref}</span>
                           <Money sen={i.amount} className="text-sm font-bold" />
                         </div>
@@ -224,22 +236,22 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2 pl-12">
+                    <div className="flex flex-wrap items-center gap-2 pl-12">
                       <FundStatusBadge status={i.status} />
                       {i.canApprove ? (
-                        <Button asChild size="sm" className="h-8">
+                        <Button asChild size="sm" className="ml-auto h-auto min-h-8 whitespace-normal">
                           <Link href={i.url}>Review</Link>
                         </Button>
                       ) : (
-                        // Not theirs to approve: a clear "View" button, with the reason beside it.
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{i.recordedByMe ? "You recorded this" : "You can't approve this"}</span>
-                          <Button asChild size="sm" variant="outline" className="h-8">
+                        // Not theirs to approve: a clear "View" button, with the reason on its own line so the row wraps at 320 px.
+                        <>
+                          <Button asChild size="sm" variant="outline" className="ml-auto h-auto min-h-8 whitespace-normal">
                             <Link href={i.url}>
                               View<span className="sr-only"> {i.ref}</span>
                             </Link>
                           </Button>
-                        </div>
+                          <span className="basis-full text-xs text-muted-foreground">{i.recordedByMe ? "You recorded this" : "You can't approve this"}</span>
+                        </>
                       )}
                     </div>
                   </li>
@@ -321,7 +333,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                         {a.who} · {fmtDateTime(a.at)}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
+                    <div className="ml-auto flex flex-col items-end">
                       <span className="money text-sm font-bold">
                         {a.direction === "in" ? "+" : "−"}
                         {rm(a.amount)}
@@ -330,7 +342,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                     </div>
                   </>
                 );
-                const cls = "-mx-2 flex min-h-12 items-center gap-3 rounded-md px-2 py-2";
+                const cls = "-mx-2 flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2 py-2";
                 return (
                   <li key={a.id}>
                     {a.url ? (

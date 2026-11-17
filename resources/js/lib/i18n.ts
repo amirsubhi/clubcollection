@@ -34,7 +34,7 @@ const dict = {
   paidOn: { bm: "Dibayar pada", en: "Paid on" },
   bank: { bm: "Bank", en: "Bank" },
   reference: { bm: "Rujukan", en: "Reference" },
-  viewReceipt: { bm: "Lihat resit", en: "View receipt" },
+  skipToContent: { bm: "Langkau ke kandungan", en: "Skip to content" },
   backHome: { bm: "Kembali ke Utama", en: "Back to Home" },
   pendingTitle: { bm: "Kami sedang mengesahkan bayaran anda…", en: "We're confirming your payment…" },
   pendingBody: {

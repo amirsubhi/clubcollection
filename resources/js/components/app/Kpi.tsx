@@ -28,7 +28,7 @@ export function KpiTile({
   delta?: string;
   /** Whether the change is good news (colours the delta; the arrow carries direction). */
   deltaGood?: boolean;
-  hint?: string;
+  hint?: React.ReactNode;
   Icon?: LucideIcon;
   tone?: Tone;
   className?: string;
@@ -43,7 +43,7 @@ export function KpiTile({
         </div>
         {Icon && <IconBubble Icon={Icon} tone={tone} />}
       </div>
-      <div className="figure font-display text-[1.75rem] font-bold leading-none tracking-tight lg:text-[1.875rem]">{value}</div>
+      <div className="figure font-display text-[1.75rem] font-bold leading-none tracking-tight max-sm:!whitespace-normal lg:text-[1.875rem]">{value}</div>
       {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         {delta && (
@@ -61,8 +61,8 @@ export function KpiTile({
 /** "Expenses RM a + Welfare RM b + Bank charges RM c": the parts of spent (FundFigures). */
 export function SpentSplit({ expenses, welfare, charges }: { expenses: number; welfare: number; charges: number }) {
   const part = (label: string, sen: number) => (
-    <span className="whitespace-nowrap">
-      {label} <span className="money font-semibold text-foreground">{rm(sen)}</span>
+    <span>
+      {label} <span className="money whitespace-nowrap font-semibold text-foreground">{rm(sen)}</span>
     </span>
   );
   return (
@@ -72,13 +72,17 @@ export function SpentSplit({ expenses, welfare, charges }: { expenses: number; w
   );
 }
 
-export function TableView({ label, children }: { label: string; children: React.ReactNode }) {
+/** label: the disclosure text ("Show as table"); regionLabel: what the table holds, for the scrollable region's name. */
+export function TableView({ label, regionLabel, children }: { label: string; regionLabel: string; children: React.ReactNode }) {
   return (
     <details className="group rounded-md border bg-card text-sm">
       <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 py-2 font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
         <Table2 className="h-4 w-4" aria-hidden /> {label}
       </summary>
-      <div className="border-t px-3 py-2">{children}</div>
+      {/* Scrolls on its own (keyboard-focusable) at large text sizes instead of widening the page. */}
+      <div className="overflow-x-auto border-t px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" tabIndex={0} role="region" aria-label={regionLabel}>
+        {children}
+      </div>
     </details>
   );
 }

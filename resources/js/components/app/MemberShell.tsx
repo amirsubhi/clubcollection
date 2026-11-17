@@ -82,6 +82,12 @@ export function MemberShell({
   const visibleTabs = tabs.filter((x) => navHrefs[x.id]);
   return (
     <div className="member-scope flex min-h-full flex-col text-base">
+      <a
+        href="#main"
+        className="sr-only z-[60] rounded-full bg-primary px-5 py-3 text-base font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:px-5 focus:py-3 focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        {t("skipToContent")}
+      </a>
       <header
         ref={headerRef}
         className={cn("bleed-x relative z-20 border-b bg-background/90 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80", headerPinned && "sticky top-0")}
@@ -111,7 +117,7 @@ export function MemberShell({
           <LangToggle />
         </div>
       </header>
-      <main className={cn("flex-1", !bare && "py-5", !hideNav && "pb-32")}>
+      <main id="main" tabIndex={-1} className={cn("flex-1 focus:outline-none", !bare && "py-5", !hideNav && "pb-32")}>
         <div className="mx-auto flex max-w-md flex-col gap-5">{children}</div>
       </main>
       {!hideNav && (

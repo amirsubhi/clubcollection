@@ -296,7 +296,7 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
               <ul className="divide-y pb-1" data-testid="home-need-to-pay">
                 {needToPay.map((p) => (
                   <li key={p.id}>
-                    <PaymentRow p={p} showClub={multi} />
+                    <PaymentRow p={p} showClub={multi} hideDueChip />
                   </li>
                 ))}
               </ul>
@@ -307,7 +307,8 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
             id="up-h"
             title={t("upcoming")}
             action={
-              !multi && clubs[0] ? (
+              // Nothing coming up: no "Lihat semua" pointing at an empty list.
+              !multi && clubs[0] && comingUp.length > 0 ? (
                 <Link href={clubs[0].paymentsUrl} className="inline-flex min-h-11 items-center gap-0.5 text-base font-semibold text-primary hover:underline">
                   {t("viewAll")} <ChevronRight className="h-5 w-5" aria-hidden />
                 </Link>

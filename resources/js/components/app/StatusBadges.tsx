@@ -17,8 +17,9 @@ export function StatusChip({ Icon, tone, children, size = "sm", className }: { I
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border font-semibold",
-        size === "sm" ? "h-6 px-2 text-xs [&_svg]:h-3.5 [&_svg]:w-3.5" : "h-7 px-2.5 text-sm [&_svg]:h-4 [&_svg]:w-4",
+        // Same size as before at normal text; on phones with large text the label wraps instead of widening the page.
+        "inline-flex max-w-full items-center gap-1 whitespace-normal rounded-full border py-0.5 font-semibold sm:whitespace-nowrap [&_svg]:shrink-0",
+        size === "sm" ? "min-h-6 px-2 text-xs [&_svg]:h-3.5 [&_svg]:w-3.5" : "min-h-7 px-2.5 text-sm [&_svg]:h-4 [&_svg]:w-4",
         chipTone[tone],
         className,
       )}

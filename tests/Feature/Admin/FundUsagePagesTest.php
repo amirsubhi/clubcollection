@@ -67,6 +67,23 @@ class FundUsagePagesTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('rows', 1)->where('rows.0.status', 'approved'));
     }
 
+    public function test_index_rows_keep_date_paid_null_until_paid_and_link_the_ledger(): void
+    {
+        $cat = ExpenseCategory::factory()->for($this->club)->create();
+        Expense::factory()->submitted()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id, 'expense_date' => '2026-03-02', 'paid_date' => null, 'payee' => 'Unpaid Vendor']);
+        Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id, 'expense_date' => '2026-03-01', 'paid_date' => '2026-03-05', 'payee' => 'Paid Vendor']);
+
+        // "Date paid" shows "—" for an unpaid record: the row must not fall back to the invoice date.
+        $this->get(route('admin.clubs.fund-usage.index', [$this->club, 'q' => 'Unpaid']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('rows.0.paidDate', null)
+                ->where('rows.0.invoiceDate', '2026-03-02')
+                ->where('urls.ledger', route('admin.clubs.ledger', $this->club))
+            );
+        $this->get(route('admin.clubs.fund-usage.index', [$this->club, 'q' => 'Paid Vendor']))
+            ->assertInertia(fn (Assert $page) => $page->where('rows.0.paidDate', '2026-03-05'));
+    }
+
     public function test_create_renders_for_expense_and_welfare(): void
     {
         ExpenseCategory::factory()->for($this->club)->create();

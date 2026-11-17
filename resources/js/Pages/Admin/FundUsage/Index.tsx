@@ -56,7 +56,7 @@ interface Props {
   rows: FundRow[];
   /** totalAmount: every matching record, any status. countedAmount: the approved ones, as "Spent" counts them. */
   pagination: { page: number; pages: number; total: number; totalAmount: number; countedAmount: number; prev: string | null; next: string | null };
-  urls: { index: string; createExpense: string; createWelfare: string };
+  urls: { index: string; createExpense: string; createWelfare: string; ledger: string };
 }
 
 const tabDefs: { id: TabId; label: string }[] = [
@@ -188,6 +188,18 @@ function Docs({ r, compact = false }: { r: FundRow; compact?: boolean }) {
   );
 }
 
+/* Matches FundFigures::balanceAt: every paid fee since records start, minus approved spending and bank charges. */
+function BalanceHint({ ledger }: { ledger: string }) {
+  return (
+    <>
+      All money in, minus everything spent, since the club&apos;s records start ·{" "}
+      <Link href={ledger} className="font-medium text-primary hover:underline">
+        See Ledger
+      </Link>
+    </>
+  );
+}
+
 export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categories, rows, pagination, urls }: Props) {
   const [q, setQ] = useState(filters.q);
   const first = useRef(true);
@@ -261,7 +273,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
           hint={`Approved records + bank charges · ${kpis.welfareCountYtd} welfare case${kpis.welfareCountYtd === 1 ? "" : "s"}`}
           Icon={TrendingDown}
         />
-        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint="All fees collected minus everything spent" Icon={Landmark} />
+        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint={<BalanceHint ledger={urls.ledger} />} Icon={Landmark} />
         <KpiTile
           label="Awaiting approval"
           window="Waiting now"
@@ -326,26 +338,34 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                       <TableHead>Paid to</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-center">
-                        <Paperclip className="mx-auto h-4 w-4" aria-label="Attachments" />
-                      </TableHead>
-                      <TableHead className="whitespace-nowrap">Maker / checker</TableHead>
+                      <TableHead>Maker / checker</TableHead>
                       <SortHead label="Amount" k="amount" filters={filters} onSort={(sort, dir) => visit({ sort, dir })} className="text-right" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rows.map((r) => (
                       <TableRow key={r.id} className="cursor-pointer" onClick={() => router.visit(r.url)}>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(r.paidDate ?? r.invoiceDate)}</TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                          {r.paidDate ? (
+                            fmtDate(r.paidDate)
+                          ) : (
+                            // No paid date recorded (nullable): "—", with the invoice date it is counted and sorted under.
+                            <div className="flex flex-col">
+                              <span aria-hidden>—</span>
+                              <span className="sr-only">No paid date recorded.</span>
+                              <span className="text-xs">Invoice {fmtDate(r.invoiceDate)}</span>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <Link href={r.url} className="font-mono text-[0.8125rem] font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
                             {r.ref}
                           </Link>
                         </TableCell>
-                        <TableCell className="max-w-[260px]">
+                        <TableCell className="min-w-[10rem]">
                           <div className="flex min-w-0 flex-col">
                             <PaidTo r={r} />
-                            <span className="truncate text-xs text-muted-foreground">{r.description}</span>
+                            <span className="line-clamp-2 break-words text-xs text-muted-foreground">{r.description}</span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -359,12 +379,13 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                                 Void requested
                               </StatusChip>
                             )}
+                            {/* Documents count folded in here so Amount always fits. */}
+                            <span className="text-xs text-muted-foreground">
+                              <Docs r={r} compact />
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                          <Docs r={r} />
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        <TableCell>
                           {/* Side by side (no overlap), so neither face is cut off. */}
                           <div className="flex w-max items-center gap-1 p-0.5">
                             <span title={`Recorded by ${r.recordedBy}`}>
@@ -381,7 +402,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="whitespace-nowrap text-right">
                           <span className={cn("money font-semibold", r.status === "void" && "text-muted-foreground line-through")}>−{rm(r.amount)}</span>
                         </TableCell>
                       </TableRow>
@@ -412,7 +433,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                       {r.description && <div className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{r.description}</div>}
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span className="font-mono">{r.ref}</span>
-                        <span>{fmtDate(r.paidDate ?? r.invoiceDate)}</span>
+                        <span>{r.paidDate ? `Paid ${fmtDate(r.paidDate)}` : `Invoice ${fmtDate(r.invoiceDate)}`}</span>
                         <Docs r={r} compact />
                         <span>by {r.recordedBy.split(" ")[0]}</span>
                       </div>
