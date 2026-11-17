@@ -436,3 +436,21 @@ Remaining items (content and product choices rather than polish):
 - Audit lookup hardening: add the page's club ids to the `forPage` `whereIn` queries (safe today via the per-row club check).
 - ISO dates in typed text outside quotes are reformatted on display (harmless).
 - Audit log stacks below 1200 px (existing `.table-stack` breakpoint) and adds a fourth "warning" chip group; the admin 405 variant only shows for an explicit `abort(405)`.
+
+## After R5: Impeccable scores and what is left
+Scores: critique 31/40 (target 32), audit 18/20 (target met). History: critique 25 → 27 → 29 → 30 → 30 → 31; audit 11 → 15 → 15 → 16 → 18 → 18.
+
+Critique (P1 first):
+- [P1] Fund Usage desktop table at 1366 px cuts off the Amount column (1126 px table in a 1076 px scroller).
+- [P1] Dashboard / Fund Usage "Fund balance" hint says "collected minus spent" but the figure includes the opening balance; say "Opening balance + collected − spent" or link to the Ledger.
+- [P2] Fund Usage list "Date paid" falls back to the invoice date for unpaid records; detail rail labels the waiting checker step "APPROVED · CHECKER".
+- [P2] Blade admin pages (Payments, Members, Audit log) still differ from React: headers, no sidebar toggle, 24-hour times, mm/dd/yyyy date pickers.
+- [P2] Sign-in help gives no contact when the club has no WhatsApp number; fall back to email or reword.
+- [P2] Admin phone Dashboard: put work queues above the four figure cards.
+- [P3] "Perlu dibayar" chip under the "Perlu dibayar" heading; empty "Akan datang" still shows "Lihat semua"; four actions on the paid result page; "14 member(s)"; monospace "No documents" chip; Members has no search; audit chips read like code names; 405 page in BM for English admins.
+
+Audit:
+- [P1] Admin Dashboard scrolls sideways at 320 px: the approvals row for an item you can't approve (badge, reason, View) doesn't wrap (`Dashboard.tsx` ~233–240).
+- [P2] At 200% text, Dashboard (table under chart not in a scroller), Ledger (status pill), Billing (save bar) and Verifications ("Approve RM" button) scroll sideways.
+- [P2] FileUploader drop zone is a `<label role="button">` (axe `aria-allowed-role`); use a real button.
+- [P3] No skip link on member pages; member h1 smaller than section h2; 20 px admin quick links; overshooting tick easing.
