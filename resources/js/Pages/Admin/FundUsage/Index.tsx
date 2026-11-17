@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, router } from "@inertiajs/react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, FilePlus2, HandHeart, Landmark, Paperclip, PlusCircle, Search, TrendingDown, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, FilePlus2, HandHeart, Landmark, Paperclip, PlusCircle, Search, TrendingDown, Wallet, X } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
@@ -54,7 +54,8 @@ interface Props {
   filters: Filters;
   categories: Option[];
   rows: FundRow[];
-  pagination: { page: number; pages: number; total: number; totalAmount: number; prev: string | null; next: string | null };
+  /** totalAmount: every matching record, any status. countedAmount: the approved ones, as "Spent" counts them. */
+  pagination: { page: number; pages: number; total: number; totalAmount: number; countedAmount: number; prev: string | null; next: string | null };
   urls: { index: string; createExpense: string; createWelfare: string };
 }
 
@@ -158,6 +159,35 @@ function PaidTo({ r }: { r: FundRow }) {
   );
 }
 
+/** Document count: "—" for none; a warning only where it matters (an approved record with no documents). */
+function Docs({ r, compact = false }: { r: FundRow; compact?: boolean }) {
+  if (r.attachmentCount > 0) {
+    const words = `${r.attachmentCount} document${r.attachmentCount === 1 ? "" : "s"}`;
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        {compact && <Paperclip className="h-3 w-3" aria-hidden />}
+        <span aria-hidden>{r.attachmentCount}</span>
+        <span className="sr-only">{words}</span>
+      </span>
+    );
+  }
+  if (r.status === "approved") {
+    return (
+      <StatusChip Icon={AlertTriangle} tone="warning">
+        No documents
+      </StatusChip>
+    );
+  }
+  return compact ? (
+    <span className="sr-only">No documents</span>
+  ) : (
+    <>
+      <span aria-hidden>—</span>
+      <span className="sr-only">No documents</span>
+    </>
+  );
+}
+
 export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categories, rows, pagination, urls }: Props) {
   const [q, setQ] = useState(filters.q);
   const first = useRef(true);
@@ -210,7 +240,18 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Phones: the four tiles fold into one summary line. */}
+      <p className="rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground md:hidden" data-testid="fund-kpi-summary">
+        <span className="font-medium text-foreground">{kpis.window.label}:</span> collected <Money sen={kpis.collectedYtd} className="font-semibold text-foreground" /> · spent{" "}
+        <Money sen={kpis.spentYtd} className="font-semibold text-foreground" /> · balance <Money sen={kpis.balance} className="font-semibold text-foreground" />
+        {kpis.awaiting > 0 && (
+          <>
+            {" "}
+            · <span className="font-semibold text-foreground">{kpis.awaiting}</span> awaiting approval
+          </>
+        )}
+      </p>
+      <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-4">
         <KpiTile label="Collected" window={kpis.window.range} value={rm(kpis.collectedYtd)} hint="Paid fees" Icon={Wallet} />
         <KpiTile
           label="Spent"
@@ -320,7 +361,9 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className={cn("text-center font-mono text-xs", r.attachmentCount === 0 && "font-bold text-danger-foreground")}>{r.attachmentCount}</TableCell>
+                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                          <Docs r={r} />
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {/* Side by side (no overlap), so neither face is cut off. */}
                           <div className="flex w-max items-center gap-1 p-0.5">
@@ -349,33 +392,44 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
               <ul className="divide-y md:hidden">
                 {rows.map((r) => (
                   <li key={r.id}>
-                    <Link href={r.url} className="flex items-start gap-3 px-3 py-3 hover:bg-muted/50">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-mono text-[0.8125rem] font-medium">{r.ref}</span>
-                          <FundTypeBadge type={r.type} />
+                    {/* Payee, amount and status first; the reference, date and documents underneath. */}
+                    <Link href={r.url} className="block px-3 py-3 hover:bg-muted/50">
+                      <div className="flex items-baseline gap-3">
+                        <div className="flex min-w-0 flex-1 flex-col font-semibold">
+                          <PaidTo r={r} />
                         </div>
-                        <div className="mt-1 line-clamp-2 text-sm">{r.description}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                          <span>{fmtDate(r.paidDate ?? r.invoiceDate)}</span>
-                          <span className="inline-flex items-center gap-0.5">
-                            <Paperclip className="h-3 w-3" aria-hidden />
-                            {r.attachmentCount}
-                          </span>
-                          <span>by {r.recordedBy.split(" ")[0]}</span>
-                        </div>
+                        <span className={cn("money shrink-0 text-sm font-bold", r.status === "void" && "text-muted-foreground line-through")}>−{rm(r.amount)}</span>
                       </div>
-                      <div className="flex flex-col items-end gap-1.5">
-                        <span className="money text-sm font-bold">−{rm(r.amount)}</span>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <FundStatusBadge status={r.status} returned={r.returned} />
+                        {r.voidPending && (
+                          <StatusChip Icon={Ban} tone="danger">
+                            Void requested
+                          </StatusChip>
+                        )}
+                        <FundTypeBadge type={r.type} />
+                      </div>
+                      {r.description && <div className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{r.description}</div>}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span className="font-mono">{r.ref}</span>
+                        <span>{fmtDate(r.paidDate ?? r.invoiceDate)}</span>
+                        <Docs r={r} compact />
+                        <span>by {r.recordedBy.split(" ")[0]}</span>
                       </div>
                     </Link>
                   </li>
                 ))}
               </ul>
               <div className="flex flex-col gap-2 border-t px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-muted-foreground">
-                  {pagination.total} record{pagination.total === 1 ? "" : "s"} · <Money sen={pagination.totalAmount} className="font-semibold text-foreground" />
+                {/* Says which records the money covers: approved ones are what "Spent" counts. */}
+                <span className="text-muted-foreground" data-testid="fund-footer-total">
+                  {pagination.total} record{pagination.total === 1 ? "" : "s"} · <Money sen={pagination.countedAmount} className="font-semibold text-foreground" /> approved (counted in Spent)
+                  {pagination.totalAmount !== pagination.countedAmount && (
+                    <>
+                      {" "}
+                      · <Money sen={pagination.totalAmount} className="font-medium text-foreground" /> across all statuses shown
+                    </>
+                  )}
                 </span>
                 <div className="flex items-center gap-3">
                   <div className="hidden items-center gap-2 sm:flex">

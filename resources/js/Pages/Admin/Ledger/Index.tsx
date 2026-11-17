@@ -3,7 +3,7 @@ import { router } from "@inertiajs/react";
 import { ArrowDownLeft, ArrowUpRight, BarChart3, CalendarRange, CheckCircle2, FileDown, FileSpreadsheet, Landmark, PencilLine, Table2, Undo2 } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
-import { CollectedSpentChart } from "@/components/app/Charts";
+import { LazyCollectedSpentChart } from "@/components/app/LazyCollectedSpentChart";
 import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { adminPayLabel, payMeta, StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
@@ -200,15 +200,21 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
       )}
 
       <div className="flex flex-col gap-2 border-t pt-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        {/* The amount itself is the first tile below (and the ledger's first line); here only where it comes from and how to change it. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           <span className="font-medium">Opening balance</span>
-          <span className="money font-semibold">{rm(opening.amount)}</span>
-          {opening.source === "manual" ? (
-            <span className="text-muted-foreground">
-              Set by hand; the records say {rm(opening.computed)}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">Fund balance at the end of {fmtDate(opening.asOf)}, from the records</span>
+          <span className="text-muted-foreground">{opening.source === "manual" ? "Set by hand" : "From the records"}</span>
+          {!editOpening && (
+            <>
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditOpening(true)}>
+                <PencilLine aria-hidden /> Set manually
+              </Button>
+              {opening.source === "manual" && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => go({ from: filters.from, to: filters.to })}>
+                  <Undo2 aria-hidden /> Use the records again
+                </Button>
+              )}
+            </>
           )}
         </div>
         {editOpening ? (
@@ -246,18 +252,7 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
               {openingError ?? "Only for money the club held before it used this system. The page and exports will mark it as set manually."}
             </p>
           </form>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditOpening(true)}>
-              <PencilLine aria-hidden /> Set manually
-            </Button>
-            {opening.source === "manual" && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => go({ from: filters.from, to: filters.to })}>
-                <Undo2 aria-hidden /> Use the records again
-              </Button>
-            )}
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -282,7 +277,7 @@ function MonthlySection({ monthly, range, className }: { monthly: MonthRow[]; ra
       }
     >
       {chart ? (
-        <CollectedSpentChart data={points} labels={{ collected: "Money in", spent: "Money out" }} windowLabel={range} showTable={false} height={260} />
+        <LazyCollectedSpentChart data={points} labels={{ collected: "Money in", spent: "Money out" }} windowLabel={range} showTable={false} height={260} />
       ) : (
         <div className="-mx-4 overflow-x-auto sm:mx-0">
           <table className="w-full text-[0.8125rem] sm:min-w-[34rem] sm:text-sm">

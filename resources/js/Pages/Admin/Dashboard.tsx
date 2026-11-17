@@ -5,7 +5,7 @@ import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart,
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { CollectedSpentChart } from "@/components/app/Charts";
+import { LazyCollectedSpentChart } from "@/components/app/LazyCollectedSpentChart";
 import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { CategoryBar } from "@/components/app/CategoryBar";
 import { toSlices } from "@/components/app/MemberParts";
@@ -191,7 +191,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <Panel title="Collected vs spent" sub={`${monthlyWindow.label} · RM per month · spent is approved expenses, welfare and bank charges`} className="lg:col-span-2">
-          <CollectedSpentChart data={monthly} lang="en" height={280} windowLabel={`${monthlyWindow.label} (${monthlyWindow.range})`} />
+          <LazyCollectedSpentChart data={monthly} lang="en" height={280} windowLabel={`${monthlyWindow.label} (${monthlyWindow.range})`} />
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-4">
@@ -231,9 +231,15 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                           <Link href={i.url}>Review</Link>
                         </Button>
                       ) : (
-                        <Link href={i.url} className="text-xs text-muted-foreground hover:underline">
-                          {i.recordedByMe ? "You recorded this" : "You can't approve this"}
-                        </Link>
+                        // Not theirs to approve: a clear "View" button, with the reason beside it.
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">{i.recordedByMe ? "You recorded this" : "You can't approve this"}</span>
+                          <Button asChild size="sm" variant="outline" className="h-8">
+                            <Link href={i.url}>
+                              View<span className="sr-only"> {i.ref}</span>
+                            </Link>
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </li>

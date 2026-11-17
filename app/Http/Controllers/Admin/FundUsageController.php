@@ -80,6 +80,8 @@ class FundUsageController extends Controller
         $query->orderBy('id', $dir);
 
         $totalSen = P::sen((clone $query)->reorder()->sum('amount'));
+        // The part of that total the dashboard's "Spent" counts: approved records only (FundFigures).
+        $countedSen = P::sen((clone $query)->reorder()->counted()->sum('amount'));
         $page = $query->paginate($filters['per'] ?? 10)->withQueryString();
 
         $stats = new FundFigures($club);
@@ -122,6 +124,7 @@ class FundUsageController extends Controller
                 'pages' => $page->lastPage(),
                 'total' => $page->total(),
                 'totalAmount' => $totalSen,
+                'countedAmount' => $countedSen,
                 'prev' => $page->previousPageUrl(),
                 'next' => $page->nextPageUrl(),
             ],

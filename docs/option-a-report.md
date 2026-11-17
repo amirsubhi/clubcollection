@@ -428,3 +428,11 @@ Remaining items (content and product choices rather than polish):
 - The help block also shows on the 2FA, confirm-password and error pages (shared `layouts.auth`); its view composer runs one small query per render.
 - "Lain-lain" can hold a single category when exactly five expense categories exist.
 - Stale comment on `fromReserves` in `resources/js/types/member.ts`.
+
+### R5b follow-ups (non-blocking)
+- Fund Usage footer "approved (counted in Spent)" can differ from the Spent tile (cash-date window, bank charges); consider "approved" plus a tooltip.
+- Ledger with a manual opening balance no longer shows the computed "records say RM X" hint; consider restoring it.
+- Audit log: old attachment rows whose file name holds `"` or a newline keep the raw kind; search by FU number misses old rows that store "Expense #N".
+- Audit lookup hardening: add the page's club ids to the `forPage` `whereIn` queries (safe today via the per-row club check).
+- ISO dates in typed text outside quotes are reformatted on display (harmless).
+- Audit log stacks below 1200 px (existing `.table-stack` breakpoint) and adds a fourth "warning" chip group; the admin 405 variant only shows for an explicit `abort(405)`.

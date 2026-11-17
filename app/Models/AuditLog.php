@@ -83,21 +83,26 @@ class AuditLog extends Model
         };
     }
 
+    /**
+     * Chip colour by meaning: danger for removals, voids and rejections; success for approvals and money received;
+     * warning for things someone should look at (a returned record, a webhook that did not line up); neutral
+     * (secondary) for routine activity such as creating, editing, signing in or viewing a document.
+     */
     public function getActionBadgeClassAttribute(): string
     {
+        $a = (string) $this->action;
+        $verb = str_contains($a, '.') ? substr($a, strpos($a, '.') + 1) : $a;
+
         return match (true) {
-            str_ends_with($this->action, '.deleted') || str_ends_with($this->action, '.removed')
+            in_array($verb, ['deleted', 'removed', 'voided', 'void_requested', 'transfer_rejected', 'rejected'], true)
                 => 'danger',
-            str_ends_with($this->action, '.created') || str_ends_with($this->action, '.added') || str_ends_with($this->action, '.imported')
+            in_array($verb, ['approved', 'marked_paid', 'paid_via_webhook', 'transfer_approved', 'bank_change_approved'], true)
                 => 'success',
-            str_starts_with($this->action, 'auth.')
-                => 'secondary',
-            str_ends_with($this->action, '.voided') || str_ends_with($this->action, '.void_requested')
-                => 'danger',
-            str_ends_with($this->action, '.marked_paid') || str_ends_with($this->action, '.approved')
-                => 'primary',
-            default
+            in_array($verb, ['returned', 'underpaid_webhook', 'unmatched_webhook', 'webhook_unconfirmed', 'gateway_paid_twice',
+                'gateway_paid_after_manual', 'gateway_paid_during_verification', 'marked_overdue'], true)
                 => 'warning',
+            default
+                => 'secondary',
         };
     }
 }
