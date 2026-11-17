@@ -462,3 +462,18 @@ Audit:
 - No test covers the rendered "—" + "Invoice {date}" for approved records without a paid date.
 - Fund Usage table scrolls inside its box at 768/1024 px (page itself doesn't); `PageHeader` forces `min-h-10` on action children.
 - Sign-in help shows a club's email only when it has no WhatsApp number (product choice).
+
+## After R6: Impeccable scores and what is left
+Scores: critique **32/40** (target met), audit **19/20** (target met). No P0 or P1 in either. History: critique 25 → 27 → 29 → 30 → 30 → 31 → 32; audit 11 → 15 → 15 → 16 → 18 → 18 → 19.
+
+Critique (P2):
+- One fee, two dates: Invoice and Semak show "Tarikh akhir 15 Nov" (passed) while Home says "Lewat selepas 22 Nov"; show the grace date there too.
+- "No documents" warning on 9 of 10 Fund Usage rows; use one banner plus a filter, or a small icon.
+- Classic Payments, Members and Audit log still differ from React: no sidebar toggle or subtitle, "Record payment…" label cut off, 14 red "Remove" buttons, misaligned filter labels.
+- Billing gateway-fee card uses developer wording about the sandbox.
+- Verifications slip cards are about 680 px tall with an empty right column.
+Critique (P3): PayResult still has four actions; member bottom bar spans the full width at 1366; Dashboard cards (year to date) vs chart (last 12 months); "Monthly report (classic)" label; unlabelled welfare/bank slivers; px KPI icons; Fund Usage tab strip has no scroll cue; "Club Portal" brand in English on BM pages; admin 405 uses the member guest card; no-channel sign-in help gives no contact.
+
+Audit:
+- [P2] Member h1 (18 px) smaller than section h2 (20 px); flat scale on ReviewPay.
+- [P3] Overshooting pop-in/stamp easing; 20 px Dashboard quick links; React admin skip link 20 px tall; names truncated with "…" at 200% text on Verifications, Dashboard, Ledger and Fund Usage.
