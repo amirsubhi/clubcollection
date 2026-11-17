@@ -406,3 +406,14 @@ Follow-ups (non-blocking):
 - AdminErrorPage relies on the framework's password_hash_<guard> session key; keep the test that renders the admin variant when upgrading Laravel.
 - route:cache works again (duplicate 'login' route name removed); RouteCacheTest guards against duplicate names.
 
+### After R4: final Impeccable scores and what is left
+Scores: design critique 30/40 (Good), technical audit 18/20 (Excellent); axe found no WCAG A/AA violations across 198 sweeps.
+
+Remaining items (content and product choices rather than polish):
+- Member Fund page: show welfare (kebajikan / khairat) and bank charges as their own rows instead of inside "Lain-lain", and show the fund balance ("Baki dana") next to the overspend note.
+- Audit log: stack as cards under 768 px (it scrolls sideways at 390 because of a hidden label inside the scroller); give action chips meaningful colours; use friendly kinds and FU-numbers instead of "(proof_of_payment)" and "Expense #12".
+- Fund Usage list: on phones lead each card with payee + amount + status; fold the KPI tiles on small screens; show a neutral "—" for no documents and warn only for approved records without any; footer total should say it covers all statuses.
+- Members: a fee past its due date should leave "Akan datang" and say "Lewat selepas <date>"; use one BM word for overdue ("Lewat", drop "Tertunggak").
+- Sign-in/reset footer "Hubungi pentadbir kelab" should be a link (club WhatsApp or email, or a short "Lupa e-mel?" note).
+- Smaller: lazy-load the chart on the admin Dashboard/Ledger; branded 405 page; "You recorded this" link styled as a link; record-payment radio alignment; subset Bootstrap Icons; success page says the receipt "akan" and "telah" been sent; slip-check could flag date/reference mismatches.
+
