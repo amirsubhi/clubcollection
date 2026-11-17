@@ -288,7 +288,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                       <TableHead className="text-center">
                         <Paperclip className="mx-auto h-4 w-4" aria-label="Attachments" />
                       </TableHead>
-                      <TableHead>Maker / checker</TableHead>
+                      <TableHead className="whitespace-nowrap">Maker / checker</TableHead>
                       <SortHead label="Amount" k="amount" filters={filters} onSort={(sort, dir) => visit({ sort, dir })} className="text-right" />
                     </TableRow>
                   </TableHeader>
@@ -321,8 +321,9 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                           </div>
                         </TableCell>
                         <TableCell className={cn("text-center font-mono text-xs", r.attachmentCount === 0 && "font-bold text-danger-foreground")}>{r.attachmentCount}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center -space-x-1.5">
+                        <TableCell className="whitespace-nowrap">
+                          {/* Side by side (no overlap), so neither face is cut off. */}
+                          <div className="flex w-max items-center gap-1 p-0.5">
                             <span title={`Recorded by ${r.recordedBy}`}>
                               <Avatar name={r.recordedBy} size={28} ring />
                             </span>

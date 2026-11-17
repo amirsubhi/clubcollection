@@ -26,7 +26,7 @@ export function FundStatusBadge({ status, returned = false }: { status: FundStat
           </StatusChip>
         </span>
       </TooltipTrigger>
-      <TooltipContent>BM: {bm}</TooltipContent>
+      <TooltipContent>Members see: <span lang="ms">{bm}</span></TooltipContent>
     </Tooltip>
   );
 }

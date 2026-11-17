@@ -269,8 +269,8 @@ class R1dFollowUpsTest extends TestCase
         $this->paidOnline($this->club, 50.00, '2026-03-10', 150);
         $this->actingAsMember($this->club);
 
-        $this->get(route('member.dashboard'))->assertInertia(fn (Assert $page) => $page
-            ->where('clubs.0.fund.categories', fn ($c) => collect($c)->contains(fn ($r) => $r['name'] === FundFigures::CHARGES_LABEL && $r['nameMs'] === 'Caj bank / gateway')));
+        $this->get(route('member.clubs.fund', $this->club))->assertInertia(fn (Assert $page) => $page
+            ->where('fund.categories', fn ($c) => collect($c)->contains(fn ($r) => $r['name'] === FundFigures::CHARGES_LABEL && $r['nameMs'] === 'Caj bank / gateway')));
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────

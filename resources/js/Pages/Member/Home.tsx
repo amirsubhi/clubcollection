@@ -1,14 +1,12 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PiggyBank, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PieChart, RefreshCw, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
 import { InstallPrompt } from "@/components/app/InstallPrompt";
-import { FlashBanner, PaymentRow, SectionCard, toSlices } from "@/components/app/MemberParts";
-import { Money } from "@/components/app/Money";
-import { CategoryBar } from "@/components/app/CategoryBar";
+import { FlashBanner, PaymentRow, SectionCard } from "@/components/app/MemberParts";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { fmtDate, rm } from "@/lib/format";
+import { rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { HomeClub, MemberPaymentRow, PayAllOffer } from "@/types/member";
@@ -219,82 +217,43 @@ function Hero({
   );
 }
 
+/** One club: its payments, and a card link to "Ke mana wang anda pergi" (Member/Fund). */
 function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
   const t = useT();
-  const { lang } = useLang();
-  const slices = toSlices(club.fund.categories, { bm: "Lain-lain", en: "Others" });
-  const open = club.summary.due + club.summary.overdue + club.summary.processing;
   const hid = `club-${club.id}`;
   return (
     <section aria-labelledby={hid} className="flex flex-col gap-3">
-      {multi && (
-        <div className="flex items-end justify-between gap-2 px-1">
-          <div className="min-w-0">
-            <h2 id={hid} className="break-words font-display text-xl font-bold tracking-tight">
-              {club.name}
-            </h2>
-            <p className="text-sm text-muted-foreground">{club.jobLevel}</p>
-          </div>
-        </div>
-      )}
-      <div className="rounded-[20px] border bg-card p-4">
-        {!multi && (
-          <h2 id={hid} className="sr-only">
+      {multi ? (
+        <div className="px-1">
+          <h2 id={hid} className="break-words font-display text-xl font-bold tracking-tight">
             {club.name}
           </h2>
-        )}
-        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-2 text-center">
-          <div className="rounded-2xl bg-mint px-2 py-2.5 text-mint-foreground">
-            <dt className="text-sm">{t("paid")}</dt>
-            <dd className="font-display text-xl font-bold">{club.summary.paid}</dd>
-          </div>
-          <div className={open > 0 ? "rounded-2xl bg-warning-soft px-2 py-2.5 text-warning-foreground" : "rounded-2xl bg-muted px-2 py-2.5"}>
-            <dt className="text-sm">{t("stillToPay")}</dt>
-            <dd className="font-display text-xl font-bold">{open}</dd>
-          </div>
-          <div className="rounded-2xl bg-accent px-2 py-2.5 text-accent-foreground">
-            <dt className="text-sm">{t("total")}</dt>
-            <dd className="money text-base font-bold leading-7">{rm(club.summary.totalPaid)}</dd>
-          </div>
-        </dl>
-        <Link href={club.paymentsUrl} className="mt-2 inline-flex min-h-11 items-center gap-0.5 text-base font-semibold text-primary hover:underline">
+          <p className="text-sm text-muted-foreground">{club.jobLevel}</p>
+        </div>
+      ) : (
+        <h2 id={hid} className="sr-only">
+          {club.name}
+        </h2>
+      )}
+      <Link
+        href={club.fundUrl}
+        className="flex min-h-16 items-center gap-3 rounded-[20px] border bg-card p-4 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="fund-link"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+          <PieChart className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-lg font-bold leading-snug tracking-tight">{t("moneyGoes")}</span>
+          <span className="block text-sm text-muted-foreground">{t("moneyGoesLink")}</span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
+      {multi && (
+        <Link href={club.paymentsUrl} className="inline-flex min-h-11 items-center gap-0.5 self-start px-1 text-base font-semibold text-primary hover:underline">
           {t("viewPayments")} <ChevronRight className="h-5 w-5" aria-hidden />
         </Link>
-      </div>
-
-      <section aria-labelledby={`${hid}-fund`} className="flex flex-col gap-3 rounded-[20px] border bg-card p-4">
-        <div>
-          <h3 id={`${hid}-fund`} className="font-display text-xl font-bold tracking-tight">
-            {t("moneyGoes")}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {fill(t("moneyGoesWindow"), { from: fmtDate(club.fund.window.from, lang), to: fmtDate(club.fund.window.to, lang) })}
-          </p>
-        </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-2">
-          <div className="rounded-2xl bg-accent px-3 py-2.5">
-            <div className="text-sm text-accent-foreground">{t("collected")}</div>
-            <Money sen={club.fund.collected} className="font-display text-lg font-bold" />
-          </div>
-          <div className="rounded-2xl bg-muted px-3 py-2.5">
-            <div className="text-sm text-muted-foreground">{t("spent")}</div>
-            <Money sen={club.fund.spent} className="font-display text-lg font-bold" />
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground">{fill(t("spentSplit"), { a: rm(club.fund.expenses), b: rm(club.fund.welfare), c: rm(club.fund.charges) })}</p>
-        {club.fund.fromReserves > 0 && (
-          <p className="flex items-start gap-2 rounded-2xl bg-info-soft px-3 py-2.5 text-sm text-info-foreground">
-            <PiggyBank className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>{fill(t("fromReserves"), { x: rm(club.fund.fromReserves) })}</span>
-          </p>
-        )}
-        {slices.length > 0 ? (
-          <CategoryBar slices={slices} lang={lang} interactive={false} />
-        ) : (
-          <p className="text-base text-muted-foreground">{t("noSpending")}</p>
-        )}
-        <p className="text-sm text-muted-foreground">{t("aggregatesOnly")}</p>
-      </section>
+      )}
     </section>
   );
 }

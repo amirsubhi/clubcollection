@@ -54,19 +54,22 @@ export interface HomeClub {
   role: string;
   paymentsUrl: string;
   summary: { paid: number; due: number; overdue: number; processing: number; verifying: number; totalPaid: Sen };
-  /** FundFigures for this year so far: the same figures the club's admins see. spent = expenses + welfare + charges. */
-  fund: {
-    window: { from: string; to: string; range: string };
-    collected: Sen;
-    spent: Sen;
-    expenses: Sen;
-    welfare: Sen;
-    /** Bank / gateway charges the club absorbed. */
-    charges: Sen;
-    /** Spending above what came in this year (paid from earlier savings); 0 when none. */
-    fromReserves: Sen;
-    categories: FundCategory[];
-  };
+  /** "Ke mana wang anda pergi": the club's fund page (Member/Fund). */
+  fundUrl: string;
+}
+
+/** Member/Fund: FundFigures for this year so far, the same figures the club's admins see. spent = expenses + welfare + charges. */
+export interface MemberFund {
+  window: { from: string; to: string; range: string };
+  collected: Sen;
+  spent: Sen;
+  expenses: Sen;
+  welfare: Sen;
+  /** Bank / gateway charges the club absorbed. */
+  charges: Sen;
+  /** Spending above what came in this year (paid from earlier savings); 0 when none. */
+  fromReserves: Sen;
+  categories: FundCategory[];
 }
 
 /** PaymentController::transferProps(): the club's bank details for a manual transfer. */

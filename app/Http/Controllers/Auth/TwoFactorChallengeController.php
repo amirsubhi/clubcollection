@@ -63,7 +63,16 @@ class TwoFactorChallengeController extends Controller
             }
         } elseif ($request->filled('recovery_code')) {
             $codes = $user->getTwoFactorRecoveryCodes();
-            $index = array_search($request->recovery_code, $codes, true);
+            // Compare without case, spaces or dashes ("abcd efgh" matches "ABCD-EFGH"); the stored code is removed below.
+            $norm = fn ($c) => strtoupper(preg_replace('/[\s-]+/', '', (string) $c));
+            $typed = $norm($request->recovery_code);
+            $index = false;
+            foreach ($codes as $i => $code) {
+                if ($typed !== '' && hash_equals($norm($code), $typed)) {
+                    $index = $i;
+                    break;
+                }
+            }
 
             if ($index === false) {
                 $this->fail($request, $user, "Invalid recovery code for '{$user->name}'.");

@@ -62,7 +62,7 @@
                         <th scope="col" style="width:120px">Club</th>
                         <th scope="col" style="width:160px">Action</th>
                         <th scope="col">Description</th>
-                        <th scope="col" style="width:90px" class="text-center">Changes</th>
+                        <th scope="col" style="width:140px" class="text-center">Changes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,20 +82,16 @@
                             {{ $log->action_label }}
                         </span>
                     </td>
-                    <td style="max-width:300px">
-                        <span class="text-truncate d-inline-block" style="max-width:295px" title="{{ $log->description }}">
-                            {{ $log->description }}
-                        </span>
-                    </td>
+                    {{-- Full text, wrapped; friendly references and dates (FriendlyDescription, display only). --}}
+                    <td class="audit-desc" data-testid="audit-desc">{{ $friendly->html($log->description) }}</td>
                     <td class="text-center">
                         @if($log->old_values || $log->new_values)
-                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                                aria-label="View changes ({{ $log->action_label }}, {{ $log->created_at->format('d M Y H:i') }})"
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap"
                                 data-bs-toggle="modal" data-bs-target="#diffModal"
                                 data-old="{{ json_encode($log->old_values, JSON_PRETTY_PRINT) }}"
                                 data-new="{{ json_encode($log->new_values, JSON_PRETTY_PRINT) }}"
-                                data-desc="{{ $log->description }}">
-                            <i class="bi bi-code-square" aria-hidden="true"></i>
+                                data-desc="{{ $friendly->format($log->description) }}">
+                            <i class="bi bi-code-square me-1" aria-hidden="true"></i>View changes<span class="visually-hidden"> ({{ $log->action_label }}, {{ $log->created_at->format('d M Y H:i') }})</span>
                         </button>
                         @else
                         <span class="text-muted" aria-label="No changes recorded">—</span>

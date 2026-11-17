@@ -13,6 +13,7 @@ const dict = {
   due: { bm: "Tarikh akhir", en: "Due" },
   viewAll: { bm: "Lihat semua", en: "View all" },
   moneyGoes: { bm: "Ke mana wang anda pergi", en: "Where your money goes" },
+  moneyGoesLink: { bm: "Kutipan dan perbelanjaan kelab tahun ini", en: "What the club collected and spent this year" },
   collected: { bm: "Dikutip", en: "Collected" },
   spent: { bm: "Dibelanjakan", en: "Spent" },
   balance: { bm: "Baki", en: "Balance" },

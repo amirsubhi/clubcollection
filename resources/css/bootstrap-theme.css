@@ -416,11 +416,12 @@ hr { color: rgb(var(--border)); opacity: 1; }
 .stat-strip { display: flex; flex-wrap: wrap; gap: 1px; background: rgb(var(--border)); }
 .stat-strip > * { flex: 1 1 10.5rem; padding: 1rem 1.25rem; background: rgb(var(--card)); }
 .stat-strip .stat-label { display: block; font-size: 0.8125rem; font-weight: 600; color: rgb(var(--muted-foreground)); }
-.stat-strip .stat-value { display: block; margin-top: 0.25rem; font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat-strip .stat-value { display: block; margin-top: 0.25rem; font-family: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; font-size: 1.5rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
 .stat-strip .stat-note { display: block; margin-top: 0.25rem; font-size: 0.8125rem; color: rgb(var(--muted-foreground)); }
 a.stat-link { color: inherit; text-decoration: none; }
 a.stat-link:hover { background: rgb(var(--muted)); }
 a.stat-link .stat-label { color: rgb(var(--primary)); }
+.stat-strip > .stat-active { box-shadow: inset 0 -3px 0 rgb(var(--primary)); }
 
 /* "Record payment…" dialog (R2a): the three ways to pay as 44px+ tiles that wrap with large text. */
 .record-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: 0.5rem; }
@@ -433,8 +434,10 @@ a.stat-link .stat-label { color: rgb(var(--primary)); }
 /* Labelled horizontal bars (admin/partials/bar-list.blade.php): Statistics and the classic dashboard. */
 .bar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
 .bar-list > li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.125rem 0.75rem; }
-.bar-list .bar-label { min-width: 0; flex: 1 1 8rem; overflow-wrap: anywhere; }
+.bar-list .bar-label { min-width: 0; flex: 1 1 8rem; overflow-wrap: break-word; }
 .bar-list .bar-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 .bar-list .bar-track { flex: 1 0 100%; height: 0.625rem; border-radius: 999px; background: rgb(var(--muted)); overflow: hidden; }
 .bar-list .bar-fill { display: block; height: 100%; border-radius: 999px; background: rgb(var(--chart-1)); box-shadow: inset 0 0 0 1.5px rgb(var(--chart-1-stroke)); }
 .bar-list-spent .bar-fill { background: rgb(var(--chart-4)); box-shadow: inset 0 0 0 1.5px rgb(var(--chart-4-stroke)); }
+/* Audit log: the full description, wrapped (never cut off). */
+.audit-desc { min-width: 16rem; white-space: normal; overflow-wrap: break-word; }

@@ -347,7 +347,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
               <Field id="paidDate" dateValue={d.paid_date} label="Date paid" hint="When the money actually left the account" error={err.paid_date}>
                 <Input id="paidDate" type="date" value={d.paid_date} onChange={(e) => form.setData("paid_date", e.target.value)} />
               </Field>
-              <Field id="minute" label="Meeting minute ref." hint="Rujukan minit mesyuarat, e.g. MJK 10/2026 item 3.1" error={err.minute_ref} className="sm:col-span-2">
+              <Field id="minute" label="Meeting minute ref." hint="e.g. MJK 10/2026 item 3.1" error={err.minute_ref} className="sm:col-span-2">
                 <Input id="minute" value={d.minute_ref} onChange={(e) => form.setData("minute_ref", e.target.value)} maxLength={255} />
               </Field>
             </div>

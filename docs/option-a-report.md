@@ -399,3 +399,10 @@ Follow-ups (non-blocking):
 - On an 8.4 host, check one 405 page renders (tests assert it as an exception because 8.3's var-dumper crashes on render).
 - Browser-bar colours live in both lib/theme.tsx and partials/pwa-head.blade.php; make one source later.
 
+### R4b follow-ups (non-blocking)
+- Catch-all routes use Route::any, so OPTIONS on a known path returns 405 instead of Laravel's automatic 200; restrict to GET/POST/PUT/PATCH/DELETE if CORS is ever needed.
+- A guest on an unknown /admin/* URL starts a session row; add a throttle on fallback.admin if session-table spam matters.
+- Old-format recovery codes (with 0/O/1/I/L) still verify; mention in release notes.
+- AdminErrorPage relies on the framework's password_hash_<guard> session key; keep the test that renders the admin variant when upgrading Laravel.
+- route:cache works again (duplicate 'login' route name removed); RouteCacheTest guards against duplicate names.
+

@@ -655,7 +655,8 @@ function WaitingQueue({ pending, today }: { pending: PendingSlip[]; today: strin
             <Keyboard className="h-4 w-4" aria-hidden />
             <span className="font-semibold">On a slip:</span> <Kbd>J</Kbd>/<Kbd>K</Kbd> next/previous · <Kbd>A</Kbd> approve · <Kbd>R</Kbd> reject
           </span>
-          <Button type="button" size="sm" variant="ghost" role="switch" aria-checked={shortcuts} aria-describedby="slip-shortcuts-hint" onClick={toggleShortcuts}>
+          {/* Phones have no keyboard: no switch and no J/K hint there. */}
+          <Button type="button" size="sm" variant="ghost" role="switch" aria-checked={shortcuts} aria-describedby="slip-shortcuts-hint" onClick={toggleShortcuts} className="hidden md:inline-flex">
             Keyboard shortcuts {shortcuts ? "on" : "off"}
           </Button>
         </div>
@@ -841,14 +842,14 @@ export default function VerificationsIndex({ nav, club, tab: initialTab, pending
         </Alert>
       )}
 
-      {/* Two equal halves that may wrap their label on a narrow phone, instead of clipping "Recently handled". */}
+      {/* Two equal halves on a phone; the icons step aside there so "Recently handled" stays on one line at 360px+. */}
       <FilterGroup aria-label="Show slips" className="grid h-auto w-full grid-cols-2 sm:inline-flex sm:w-auto">
-        <FilterButton active={tab === "pending"} onClick={() => setTab("pending")} className="min-h-10 flex-wrap whitespace-normal text-center">
-          <Clock className="h-4 w-4" aria-hidden /> Waiting
+        <FilterButton active={tab === "pending"} onClick={() => setTab("pending")} className="min-h-10 px-2 sm:px-3">
+          <Clock className="hidden h-4 w-4 sm:inline" aria-hidden /> Waiting
           <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{pending.length}</span>
         </FilterButton>
-        <FilterButton active={tab === "handled"} onClick={() => setTab("handled")} className="min-h-10 flex-wrap whitespace-normal text-center">
-          <BadgeCheck className="h-4 w-4" aria-hidden /> Recently handled
+        <FilterButton active={tab === "handled"} onClick={() => setTab("handled")} className="min-h-10 px-2 sm:px-3">
+          <BadgeCheck className="hidden h-4 w-4 sm:inline" aria-hidden /> Recently handled
           <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{handled.length}</span>
         </FilterButton>
       </FilterGroup>

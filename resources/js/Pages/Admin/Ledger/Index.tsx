@@ -205,7 +205,7 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
           <span className="money font-semibold">{rm(opening.amount)}</span>
           {opening.source === "manual" ? (
             <span className="text-muted-foreground">
-              Set by hand; the records say {rm(opening.computed)} · <span lang="ms">diubah secara manual</span>
+              Set by hand; the records say {rm(opening.computed)}
             </span>
           ) : (
             <span className="text-muted-foreground">Fund balance at the end of {fmtDate(opening.asOf)}, from the records</span>
@@ -412,7 +412,7 @@ function TransactionsSection({ transactions, summary, opening, from, to }: { tra
                   <td className="py-2 pr-2 text-muted-foreground">—</td>
                   <td className="whitespace-nowrap px-2 py-2 text-muted-foreground">{fmtDate(from)}</td>
                   <td className="px-2 py-2 italic text-muted-foreground" colSpan={4}>
-                    Opening balance brought forward{opening.source === "manual" ? " (diubah secara manual)" : ""}
+                    Opening balance brought forward{opening.source === "manual" ? " (set manually)" : ""}
                   </td>
                   <td className="py-2 pl-2 text-right font-semibold">
                     <Balance sen={opening.amount} />
@@ -461,7 +461,7 @@ function TransactionsSection({ transactions, summary, opening, from, to }: { tra
           <ol className="flex flex-col divide-y md:hidden">
             <li className="flex items-center justify-between gap-3 py-2 text-sm text-muted-foreground">
               <span>
-                Opening balance{opening.source === "manual" ? " (diubah secara manual)" : ""}
+                Opening balance{opening.source === "manual" ? " (set manually)" : ""}
               </span>
               <Balance sen={opening.amount} className="font-semibold text-foreground" />
             </li>
@@ -540,7 +540,7 @@ export default function LedgerIndex({ nav, clubName, filters, presets, maxMonths
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile
           label="Opening balance"
-          window={opening.source === "manual" ? "(diubah secara manual)" : `End of ${fmtDate(opening.asOf)}`}
+          window={opening.source === "manual" ? "(set manually)" : `End of ${fmtDate(opening.asOf)}`}
           value={rm(summary.opening)}
           hint={opening.source === "manual" ? `The records say ${rm(opening.computed)}` : "From the records"}
           Icon={Landmark}

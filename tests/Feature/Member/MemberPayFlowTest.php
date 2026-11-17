@@ -433,17 +433,16 @@ class MemberPayFlowTest extends TestCase
         Expense::factory()->approved()->create(['club_id' => $other->id, 'expense_category_id' => $otherCat->id, 'amount' => 5000.00, 'expense_date' => now()->toDateString()]);
         Payment::factory()->forClub($other)->create(['amount' => 777.00]);
 
-        $this->get(route('member.dashboard'))
+        $this->get(route('member.clubs.fund', $club))
             ->assertOk()
             ->assertDontSee('OTHER-CLUB-CATEGORY')
             ->assertDontSee('SECRET-DESCRIPTION')
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Member/Home')
-                ->has('clubs', 1)
-                ->where('clubs.0.id', $club->id)
-                ->where('clubs.0.fund.spent', 12550)
-                ->where('clubs.0.fund.collected', 4000)
-                ->where('clubs.0.fund.categories', [['name' => 'Events', 'amount' => 12550]])
+                ->component('Member/Fund')
+                ->where('club.id', $club->id)
+                ->where('fund.spent', 12550)
+                ->where('fund.collected', 4000)
+                ->where('fund.categories', [['name' => 'Events', 'amount' => 12550]])
             );
 
         $this->assertNotNull($member);
@@ -468,14 +467,16 @@ class MemberPayFlowTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('clubs', 2)
                 ->where('clubs.0.name', 'Alpha Club')
-                ->where('clubs.0.fund.spent', 0)
+                ->where('clubs.0.fundUrl', route('member.clubs.fund', $a))
                 ->where('clubs.1.name', 'Beta Club')
-                ->where('clubs.1.fund.spent', 1000)
+                ->where('clubs.1.fundUrl', route('member.clubs.fund', $b))
                 ->where('clubs.1.jobLevel', 'Manager')
                 ->where('outstanding.total', 5000)
                 ->where('outstanding.count', 2)
                 ->has('upcoming', 2)
             );
+        $this->get(route('member.clubs.fund', $a))->assertInertia(fn (Assert $page) => $page->where('fund.spent', 0));
+        $this->get(route('member.clubs.fund', $b))->assertInertia(fn (Assert $page) => $page->where('fund.spent', 1000));
     }
 
     // ── Generate future + emails ─────────────────────────────────────────

@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Http\Controllers\Member;
+
+use App\Http\Controllers\Controller;
+use App\Models\Club;
+use App\Support\Admin\FundFigures;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * "Ke mana wang anda pergi" (where your money goes): one club's fund for this year so far, for its members.
+ * Club-wide aggregates from FundFigures (the same figures the club's admins see): totals per club and per
+ * expense category only. No descriptions, payees, receipts or other members' names leave the database.
+ */
+class FundController extends Controller
+{
+    public function show(Club $club): Response
+    {
+        $user = auth()->user();
+        // Members of the club only, as the club's payments page.
+        abort_unless($club->members()->where('users.id', $user->id)->exists(), 403);
+
+        $ytd = FundFigures::yearToDate();
+        $figures = new FundFigures($club);
+        $w = $figures->forWindow($ytd);
+
+        return Inertia::render('Member/Fund', [
+            'club' => [
+                'id' => $club->id,
+                'name' => $club->name,
+                'paymentsUrl' => route('member.payments.index', $club),
+            ],
+            'fund' => [
+                'window' => $w['window'],
+                'collected' => $w['collected'],
+                'spent' => $w['spent'],
+                'expenses' => $w['expenses'],
+                'welfare' => $w['welfare'],
+                'charges' => $w['charges'],
+                // Spending above what came in this year was paid from earlier savings.
+                'fromReserves' => max(0, $w['spent'] - $w['collected']),
+                'categories' => $figures->byCategoryBetween($ytd['from'], $ytd['to']),
+            ],
+            'dashboardUrl' => route('member.dashboard'),
+        ]);
+    }
+}

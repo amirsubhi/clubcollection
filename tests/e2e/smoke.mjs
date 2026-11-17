@@ -302,7 +302,7 @@ try {
     await shot(b.page, "c2-approve-dialog");
     await dialog.getByRole("button", { name: /^Approve/ }).click();
     await dialog.waitFor({ state: "detached" });
-    await b.page.getByText(/^Approved /).first().waitFor();
+    await b.page.getByText(/^Approved \d/).first().waitFor();
     await shot(b.page, "c3-approved");
   });
   await step("dashboard spent increases by the expense amount", async () => {

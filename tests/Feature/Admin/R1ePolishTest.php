@@ -61,11 +61,11 @@ class R1ePolishTest extends TestCase
         Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $plain->id, 'amount' => 40, 'expense_date' => '2026-04-02']);
 
         $this->actingAsMember($this->club);
-        $this->get(route('member.dashboard'))->assertInertia(fn (Assert $page) => $page
-            ->where('clubs.0.fund.categories.0.name', 'Food & Beverage')
-            ->where('clubs.0.fund.categories.0.nameMs', 'Makanan & minuman')
-            ->where('clubs.0.fund.categories.1.name', 'Supplies')
-            ->missing('clubs.0.fund.categories.1.nameMs'));
+        $this->get(route('member.clubs.fund', $this->club))->assertInertia(fn (Assert $page) => $page
+            ->where('fund.categories.0.name', 'Food & Beverage')
+            ->where('fund.categories.0.nameMs', 'Makanan & minuman')
+            ->where('fund.categories.1.name', 'Supplies')
+            ->missing('fund.categories.1.nameMs'));
     }
 
     public function test_default_categories_all_have_bm_names(): void

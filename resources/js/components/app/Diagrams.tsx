@@ -134,8 +134,8 @@ export function ApprovalFlowDiagram({ current, className }: { current?: FlowStat
           <text x="166" y="104">return</text>
           <text x="166" y="118">+ reason</text>
           <text x="2" y="116">fix</text>
-          <text x="294" y="104">2 admins</text>
-          <text x="294" y="118">agree</text>
+          <text x="284" y="104" textAnchor="end">2 admins</text>
+          <text x="284" y="118" textAnchor="end">agree</text>
         </g>
         {nodes.map((n) => {
           const on = n.key === current;

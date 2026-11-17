@@ -3,7 +3,7 @@ import { Avatar } from "./Visuals";
 import type { FundItem } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
-/** "Disediakan → Diluluskan" rail: who prepared it, who approved it (maker ≠ checker). */
+/** "Prepared → Approved" rail: who prepared it, who approved it (maker ≠ checker). */
 export function ApprovalRail({ item, preparedAt, approvedAt }: { item: FundItem; preparedAt: string; approvedAt?: string }) {
   const approved = item.status === "approved" || item.status === "void";
   const submitted = item.status !== "draft";
@@ -17,7 +17,7 @@ export function ApprovalRail({ item, preparedAt, approvedAt }: { item: FundItem;
           </span>
         </span>
         <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Disediakan · Maker</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prepared · Maker</div>
           <div className="truncate text-sm font-semibold">{item.recordedBy}</div>
           <div className="text-xs text-muted-foreground">{submitted ? `Submitted ${preparedAt}` : "Draft, not submitted"}</div>
         </div>
@@ -40,7 +40,7 @@ export function ApprovalRail({ item, preparedAt, approvedAt }: { item: FundItem;
           </span>
         )}
         <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Diluluskan · Checker</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Approved · Checker</div>
           <div className="truncate text-sm font-semibold">{approved ? item.approvedBy : submitted ? "Waiting for a second admin" : "—"}</div>
           <div className="text-xs text-muted-foreground">{approved ? `Approved ${approvedAt ?? ""}` : "Must not be the maker or beneficiary"}</div>
         </div>

@@ -43,7 +43,7 @@ export function ApproveSlipDialog({ slip, today, triggerProps, after, onConfirm 
     <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger asChild>
         <Button variant="default" data-slip-action="approve" {...triggerProps}>
-          <Check aria-hidden /> Approve
+          <Check aria-hidden /> <span>Approve <Money sen={slip.amount} /></span>
         </Button>
       </DialogTrigger>
       <DialogContent>

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -208,12 +207,22 @@ class ProfileController extends Controller
             ->with('success', $this->flashText('2fa_disabled', '2FA has been disabled.'));
     }
 
+    /** Letters and digits that cannot be misread when copied by hand (no 0/O, 1/I/L). */
+    public const RECOVERY_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
     private function generateRecoveryCodes(): array
     {
-        return array_map(
-            fn () => strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4)),
-            range(1, 8)
-        );
+        $part = function (): string {
+            $max = strlen(self::RECOVERY_ALPHABET) - 1;
+            $s = '';
+            for ($i = 0; $i < 4; $i++) {
+                $s .= self::RECOVERY_ALPHABET[random_int(0, $max)];
+            }
+
+            return $s;
+        };
+
+        return array_map(fn () => $part().'-'.$part(), range(1, 8));
     }
 
     private function generateQrSvg(string $url): string

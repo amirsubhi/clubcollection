@@ -357,7 +357,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
         </Button>
         {poll.checkedAt && (
           <p className="text-center text-sm text-muted-foreground" aria-live="polite">
-            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}
+            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString(lang === "bm" ? "ms-MY" : "en-MY", { hour: "numeric", minute: "2-digit", second: "2-digit" })}
           </p>
         )}
         <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">

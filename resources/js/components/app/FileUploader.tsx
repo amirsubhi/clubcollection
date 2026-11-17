@@ -169,7 +169,11 @@ export function FileUploader({ files, onAdd: onAddAll, onRemove, onKindChange, e
       >
         <UploadCloud className="h-8 w-8 text-muted-foreground" aria-hidden />
         <span className={comfortable ? "text-base font-medium" : "text-sm font-medium"}>
-          {tx.dropPrefix} <span className="text-primary underline">{tx.browse}</span>
+          {/* Touch screens cannot drag files in: no "drag here" there, just the picker. */}
+          <span className="touch:hidden">
+            {tx.dropPrefix} <span className="text-primary underline">{tx.browse}</span>
+          </span>
+          <span className="hidden text-primary underline touch:inline">{tx.chooseFile}</span>
         </span>
         <span id={hintId} className={comfortable ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>
           {tx.limits}
