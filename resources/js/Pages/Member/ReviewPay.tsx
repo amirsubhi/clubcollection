@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { AlertTriangle, Check, Copy, FileText, Hourglass, ImageIcon, Landmark, Loader2, Lock, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
-import { FlashBanner, HelpLine, useFeeLabel, useServerText } from "@/components/app/MemberParts";
+import { DueNote, FlashBanner, HelpLine, useFeeLabel, useServerText } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { FileUploader, type UploadItem } from "@/components/app/FileUploader";
 import { FpxMark } from "@/components/app/Visuals";
@@ -430,7 +430,7 @@ function GroupLines({ group }: { group: PaymentGroup }) {
                 {feeLabel(f)}
                 <span className="block text-sm text-muted-foreground">
                   {f.invoiceNo} · {t("due")} {fmtDate(f.dueDate, lang)}
-                  {f.status === "overdue" && <span className="font-semibold text-warning-foreground"> · {t("overdueBadge")}</span>}
+                  <DueNote p={f} />
                 </span>
               </span>
               <Money sen={f.amount} className="font-semibold" />
@@ -495,6 +495,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                     {feeLabel(payment)}
                     <span className="block text-sm text-muted-foreground">
                       {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
+                      <DueNote p={payment} />
                     </span>
                   </span>
                   <Money sen={payment.amount} className="font-semibold" />

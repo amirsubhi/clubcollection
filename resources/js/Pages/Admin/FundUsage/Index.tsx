@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, router } from "@inertiajs/react";
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, FilePlus2, HandHeart, Landmark, Paperclip, PlusCircle, Search, TrendingDown, Wallet, X } from "lucide-react";
+import { ArrowDown, FileWarning, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, FilePlus2, HandHeart, Landmark, Paperclip, PlusCircle, Search, TrendingDown, Wallet, X } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
@@ -8,6 +8,7 @@ import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { FundStatusBadge } from "@/components/app/FundStatusBadge";
 import { FundTypeBadge, StatusChip } from "@/components/app/StatusBadges";
 import { Avatar } from "@/components/app/Visuals";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +31,8 @@ interface Filters {
   sort: "date" | "amount";
   dir: "asc" | "desc";
   per: number;
+  /** Only approved records with no documents. */
+  nodocs: boolean;
 }
 
 interface Props {
@@ -51,6 +54,8 @@ interface Props {
     year: number;
   };
   tabCounts: Record<TabId, number>;
+  /** Approved records in the whole club with no documents attached (ignores the filters). */
+  noDocsCount: number;
   filters: Filters;
   categories: Option[];
   rows: FundRow[];
@@ -159,7 +164,7 @@ function PaidTo({ r }: { r: FundRow }) {
   );
 }
 
-/** Document count: "—" for none; a warning only where it matters (an approved record with no documents). */
+/** Document count, or a muted "—" for none (approved records without documents are flagged once, above the table). */
 function Docs({ r, compact = false }: { r: FundRow; compact?: boolean }) {
   if (r.attachmentCount > 0) {
     const words = `${r.attachmentCount} document${r.attachmentCount === 1 ? "" : "s"}`;
@@ -171,18 +176,14 @@ function Docs({ r, compact = false }: { r: FundRow; compact?: boolean }) {
       </span>
     );
   }
-  if (r.status === "approved") {
-    return (
-      <StatusChip Icon={AlertTriangle} tone="warning">
-        No documents
-      </StatusChip>
-    );
-  }
-  return compact ? (
+  // Approved records without documents keep a muted "—" (counted once in the banner above the table).
+  return compact && r.status !== "approved" ? (
     <span className="sr-only">No documents</span>
   ) : (
     <>
-      <span aria-hidden>—</span>
+      <span aria-hidden className="text-muted-foreground">
+        —
+      </span>
       <span className="sr-only">No documents</span>
     </>
   );
@@ -200,11 +201,11 @@ function BalanceHint({ ledger }: { ledger: string }) {
   );
 }
 
-export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categories, rows, pagination, urls }: Props) {
+export default function FundUsageIndex({ nav, kpis, tabCounts, noDocsCount, filters, categories, rows, pagination, urls }: Props) {
   const [q, setQ] = useState(filters.q);
   const first = useRef(true);
 
-  const visit = (patch: Partial<Filters>) => {
+  const paramsFor = (patch: Partial<Filters>) => {
     const next = { ...filters, ...patch };
     const params: Record<string, unknown> = {};
     if (next.tab !== "all") params.tab = next.tab;
@@ -214,7 +215,11 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
     if (next.sort !== "date") params.sort = next.sort;
     if (next.dir !== "desc") params.dir = next.dir;
     if (next.per !== 10) params.per = next.per;
-    router.get(urls.index, params as never, { preserveState: true, preserveScroll: true, replace: true });
+    if (next.nodocs) params.nodocs = 1;
+    return params;
+  };
+  const visit = (patch: Partial<Filters>) => {
+    router.get(urls.index, paramsFor(patch) as never, { preserveState: true, preserveScroll: true, replace: true });
   };
 
   // Debounced search box.
@@ -228,7 +233,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const filtered = filters.status.length + filters.category.length > 0 || filters.q.length > 0;
+  const filtered = filters.status.length + filters.category.length > 0 || filters.q.length > 0 || filters.nodocs;
 
   return (
     <AdminLayout nav={nav} active="fund-usage" title="Fund Usage">
@@ -315,7 +320,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                 className="h-9"
                 onClick={() => {
                   setQ("");
-                  visit({ q: "", status: [], category: [] });
+                  visit({ q: "", status: [], category: [], nodocs: false });
                 }}
               >
                 Reset <X aria-hidden />
@@ -323,6 +328,32 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
             )}
           </div>
         </div>
+
+        {(noDocsCount > 0 || filters.nodocs) && (
+          <Alert variant="warning" role="status" className="flex-wrap items-center gap-x-3 gap-y-1" data-testid="fund-nodocs-banner">
+            <FileWarning aria-hidden />
+            <span className="min-w-0 flex-1">
+              {filters.nodocs ? (
+                <>
+                  Showing approved records without documents · <span className="font-semibold">{noDocsCount}</span> in this club
+                </>
+              ) : (
+                <>
+                  This club has <span className="font-semibold">{noDocsCount}</span> approved record{noDocsCount === 1 ? "" : "s"} without documents
+                </>
+              )}
+            </span>
+            <Link
+              href={urls.index}
+              data={paramsFor(filters.nodocs ? { nodocs: false } : { nodocs: true, tab: "all", status: [] }) as never}
+              preserveState
+              preserveScroll
+              className="font-medium text-primary hover:underline"
+            >
+              {filters.nodocs ? "Clear" : "Show them"}
+            </Link>
+          </Alert>
+        )}
 
         <div className="overflow-hidden rounded-lg border bg-card">
           {rows.length === 0 ? (

@@ -27,6 +27,23 @@ const statusKeys: Record<PaymentStatus, DictKey> = {
   verifying: "verifyingBadge",
 };
 
+/**
+ * What follows "Tarikh akhir <date>" for a fee whose due date has passed:
+ * " · Lewat selepas <grace end>" during the grace period, " · Lewat" after it.
+ * Nothing for fees not yet due or already paid / verifying / processing.
+ */
+export function DueNote({ p }: { p: Pick<MemberPaymentRow, "pastDue" | "lateAfter" | "status"> }) {
+  const t = useT();
+  const { lang } = useLang();
+  if (!p.pastDue || (p.status !== "due" && p.status !== "overdue")) return null;
+  return (
+    <span className="font-semibold text-warning-foreground" data-testid="due-note">
+      {" · "}
+      {p.lateAfter ? fill(t("lateAfter"), { d: fmtDate(p.lateAfter, lang) }) : t("overdueBadge")}
+    </span>
+  );
+}
+
 export function statusLabelKey(s: PaymentStatus): DictKey {
   return statusKeys[s];
 }

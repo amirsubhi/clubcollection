@@ -477,3 +477,11 @@ Critique (P3): PayResult still has four actions; member bottom bar spans the ful
 Audit:
 - [P2] Member h1 (18 px) smaller than section h2 (20 px); flat scale on ReviewPay.
 - [P3] Overshooting pop-in/stamp easing; 20 px Dashboard quick links; React admin skip link 20 px tall; names truncated with "…" at 200% text on Verifications, Dashboard, Ledger and Fund Usage.
+
+### R7 (last design round) follow-ups — after launch
+- Fund Usage: with the `nodocs` filter on, switching tabs keeps it (the void tab then shows an empty list under the banner); clear it on tab change.
+- The "no documents" count includes welfare approved on a sighted certificate with no attachment (same as the old chip); consider excluding those.
+- The printed invoice also shows "· Lewat" next to the due date; confirm that is wanted.
+- Tests: pagination keeping `nodocs`; `nodocs=1&tab=void` returns nothing; drafts excluded from the count.
+
+Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above waits for real feedback after go-live.

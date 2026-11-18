@@ -45,7 +45,10 @@ class FundUsageController extends Controller
             'sort' => ['nullable', Rule::in(['date', 'amount'])],
             'dir' => ['nullable', Rule::in(['asc', 'desc'])],
             'per' => ['nullable', 'integer', Rule::in([10, 20, 50])],
+            // Only approved records with no documents (the banner's "Show them").
+            'nodocs' => ['nullable', 'boolean'],
         ]);
+        $noDocs = (bool) ($filters['nodocs'] ?? false);
         $tab = $filters['tab'] ?? 'all';
         $me = (int) $request->user()->id;
 
@@ -69,6 +72,9 @@ class FundUsageController extends Controller
         }
         if (! empty($filters['category'])) {
             $query->whereIn('expense_category_id', $filters['category']);
+        }
+        if ($noDocs) {
+            $this->withoutDocuments($query);
         }
 
         $dir = $filters['dir'] ?? 'desc';
@@ -107,6 +113,8 @@ class FundUsageController extends Controller
                 'awaitingMine' => $awaiting['mine'],
                 'year' => now()->year,
             ],
+            // The whole club, whatever the filters: approved records with no documents attached.
+            'noDocsCount' => $this->withoutDocuments(Expense::query()->where('expenses.club_id', $club->id))->count(),
             'tabCounts' => collect(self::TABS)->mapWithKeys(fn ($t) => [$t => $this->tabQuery($club, $t, $me)->count()]),
             'filters' => [
                 'tab' => $tab,
@@ -116,6 +124,7 @@ class FundUsageController extends Controller
                 'sort' => $filters['sort'] ?? 'date',
                 'dir' => $dir,
                 'per' => (int) ($filters['per'] ?? 10),
+                'nodocs' => $noDocs,
             ],
             'categories' => $club->expenseCategories()->orderBy('name')->get(['id', 'name']),
             'rows' => collect($page->items())->map(fn (Expense $e) => P::row($e, $me))->values(),
@@ -312,6 +321,12 @@ class FundUsageController extends Controller
         }
 
         return redirect()->route('admin.fund-usage.show', $expense)->with('success', $success);
+    }
+
+    /** Approved records with no documents attached. */
+    private function withoutDocuments(Builder $query): Builder
+    {
+        return $query->where('status', 'approved')->whereDoesntHave('attachments');
     }
 
     private function tabQuery(Club $club, string $tab, int $me): Builder
