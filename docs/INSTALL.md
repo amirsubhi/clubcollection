@@ -217,6 +217,10 @@ Emails are sent during the request, so no queue worker is needed.
 - **Billplz:** set `BILLPLZ_X_SIGNATURE_KEY` (from Billplz) in `.env` or per club, and `BILLPLZ_SANDBOX=false`.
 - Keep `TOYYIBPAY_VERIFY_CALLBACK=true` and `TOYYIBPAY_CHARGE_VERIFIED=false` until a ToyyibPay sandbox run has been
   done (see [payment-options.md](payment-options.md#nota-teknikal--technical-note)).
+- **Before real payments:** keep `TOYYIBPAY_SANDBOX=true` until the ToyyibPay sandbox test in
+  [SANDBOX-TEST.md](SANDBOX-TEST.md) has been run on a staging copy and every item has passed.
+  Until then, don't choose ToyyibPay as any live club's payment method: in sandbox mode a simulated payment would
+  mark a fee paid with no real money taken. Use bank transfer (slip upload) meanwhile.
 - If your host puts a proxy or load balancer in front of PHP, set `TRUSTED_PROXIES` to its IP addresses (comma
   separated), so rate limits and the audit log see the real visitor's IP.
 
@@ -296,7 +300,8 @@ Log in as the super admin, then:
 7. **Add members** one by one or by CSV import. Each gets a welcome email with a temporary password.
 8. **Send a test email:** log out and use **Forgot password?** on the login page with your own email. If it doesn't
    arrive, see [emails not sent](#emails-are-not-sent).
-9. **Try a payment** with the gateway's sandbox before going live, and check the pre-launch list in
+9. **Try a payment** with the gateway's sandbox before going live (for ToyyibPay follow
+   [SANDBOX-TEST.md](SANDBOX-TEST.md) on a staging copy), and check the pre-launch list in
    [option-a-report.md](option-a-report.md#before-go-live-checklist).
 
 The [user guide](USER-GUIDE.md) covers each of these screens in detail.

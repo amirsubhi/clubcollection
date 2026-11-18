@@ -227,7 +227,7 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 All ★ and go-live items from A1–A4 plus what A5 and the final review found. **Must-do before go-live** items are marked 🔴; the rest can follow soon after launch or are optional.
 
 **🔴 Must-do before go-live**
-- [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix.
+- [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix. ToyyibPay: follow [SANDBOX-TEST.md](SANDBOX-TEST.md) (`php artisan toyyibpay:sandbox-check`, callback field names in the Audit Log); real FPX stays off (`TOYYIBPAY_SANDBOX=true`) until every item passes.
 - [ ] Gateway secrets set on the host: `TOYYIBPAY_WEBHOOK_SECRET` and `BILLPLZ_X_SIGNATURE_KEY` (placeholders are refused).
 - [ ] Host WAF/ModSecurity and HTTPS/www redirects don't block or 301 the gateways' server-to-server POSTs.
 - [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database.
@@ -239,7 +239,7 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
 Full list by area:
 
 **Payments**
-- [ ] ToyyibPay **sandbox** run end to end: confirm the callback `amount` unit (ringgit vs sen), whether customer-borne charges are included, and `status` vs `status_id`.
+- [ ] ToyyibPay **sandbox** run end to end: confirm the callback `amount` unit (ringgit vs sen), whether customer-borne charges are included, and `status` vs `status_id`. Script: [SANDBOX-TEST.md](SANDBOX-TEST.md).
 - [ ] In the same sandbox run (S1): confirm that ToyyibPay **retries a callback answered with a non-200** (the confirm step answers 503/409 and relies on it), how soon after payment `getBillTransactions` lists the transaction (a lag means 409s), and what its `billpaymentAmount` holds when the customer bears the charge.
 - [ ] Re-test a real sandbox callback on the host after the A5 **webhook CSRF fix** (it previously got 419).
 - [ ] `TOYYIBPAY_WEBHOOK_SECRET` set on the host to a random value (placeholders are refused).
@@ -485,3 +485,9 @@ Audit:
 - Tests: pagination keeping `nodocs`; `nodocs=1&tab=void` returns nothing; drafts excluded from the count.
 
 Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above waits for real feedback after go-live.
+
+### P3a (sandbox prep) follow-ups
+- Warn at boot or in `sandbox-check` when `APP_ENV=production` and a club has ToyyibPay active while `TOYYIBPAY_SANDBOX=true`.
+- `sandbox-check --payment` on a fee whose member was deleted throws instead of refusing.
+- Bill names are cut at 30 characters after "Club Fee "; long club names lose their end (cosmetic).
+- Dedupe and "paid twice" flags now key on the callback `refno`; the sandbox run must confirm it is unique per payment.

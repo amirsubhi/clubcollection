@@ -50,6 +50,12 @@ class WebhookController extends Controller
         // Allow-listed fields only: the payload can carry payer details.
         Log::info("{$gateway->name()} callback received", $result?->logContext() ?? []);
 
+        // Sandbox test only (docs/SANDBOX-TEST.md): show the tester, in the
+        // audit log, which fields ToyyibPay really sent. Never in live mode.
+        if ($gateway->name() === 'toyyibpay' && config('toyyibpay.sandbox') && config('toyyibpay.log_callbacks')) {
+            $this->auditSandboxCallback($request, $result, $payment);
+        }
+
         if (! $result || ! $result->paid) {
             return response('ok', 200);
         }
@@ -589,6 +595,72 @@ class WebhookController extends Controller
             $payment->club_id,
             ['status' => $payment->status],
             ['bill_code' => $billCode, 'transaction_id' => $result->transactionId]
+        );
+    }
+
+    /**
+     * Callback fields whose values the sandbox audit entry may keep: status,
+     * ids and amounts only. Every other field is recorded by name alone, so
+     * payer names, emails and phones never reach the audit log.
+     */
+    public const SANDBOX_CALLBACK_FIELDS = [
+        'status', 'status_id', 'reason', 'msg', 'billcode', 'order_id', 'refno',
+        'transaction_id', 'amount', 'transaction_time', 'billpaymentStatus', 'billpaymentAmount',
+    ];
+
+    /** At most this many sandbox entries per bill, and per day overall. */
+    private const SANDBOX_CALLBACKS_PER_BILL = 20;
+
+    private const SANDBOX_CALLBACKS_PER_DAY = 200;
+
+    /**
+     * A verified ToyyibPay sandbox callback as received (field names, the
+     * allow-listed values, content type) next to how parseWebhook() read it,
+     * so a field-name or amount-unit mismatch is visible in the audit log.
+     */
+    private function auditSandboxCallback(Request $request, ?WebhookResult $result, ?Payment $payment): void
+    {
+        $billCode = $result?->billCode;
+        $recent = AuditLog::where('action', 'payment.sandbox_callback')->where('created_at', '>=', now()->subDay())->latest('id')->limit(self::SANDBOX_CALLBACKS_PER_DAY)->get();
+        if ($recent->count() >= self::SANDBOX_CALLBACKS_PER_DAY
+            || $recent->filter(fn (AuditLog $log) => ($log->new_values['bill_code'] ?? null) === $billCode)->count() >= self::SANDBOX_CALLBACKS_PER_BILL) {
+            return;
+        }
+
+        $fields = $request->except(['webhook_token']);
+        $names = array_slice(array_map(fn ($k) => mb_substr((string) $k, 0, 64), array_keys($fields)), 0, 40);
+        $values = [];
+        foreach (self::SANDBOX_CALLBACK_FIELDS as $key) {
+            if (array_key_exists($key, $fields)) {
+                $v = $fields[$key];
+                $values[$key] = is_scalar($v) || $v === null ? mb_substr((string) $v, 0, 64) : '['.gettype($v).']';
+            }
+        }
+        $readAs = [
+            'paid' => (bool) $result?->paid,
+            'amount_sen' => $result?->paidAmountSen,
+            'transaction_id' => $result?->transactionId,
+            'bill_code' => $billCode,
+            'reference' => $result?->reference,
+        ];
+
+        $amount = $readAs['amount_sen'] === null ? 'none' : 'RM '.number_format($readAs['amount_sen'] / 100, 2);
+        AuditService::log(
+            'payment.sandbox_callback',
+            'ToyyibPay sandbox callback for bill '.($billCode ?? 'n/a').($payment ? " (Payment #{$payment->id})" : ' (matches no payment)').
+                '. Fields received: '.($names ? implode(', ', $names) : 'none').
+                '. Read by the app as: '.($readAs['paid'] ? 'PAID' : 'NOT PAID').", amount {$amount}, transaction id ".($readAs['transaction_id'] ?? 'none').'.',
+            $payment,
+            $payment?->club_id,
+            [],
+            [
+                'bill_code' => $billCode,
+                'fields_received' => $names,
+                'values' => $values,
+                'content_type' => mb_substr((string) $request->header('Content-Type', ''), 0, 100),
+                'read_as' => $readAs,
+                'matched_payment_id' => $payment?->id,
+            ]
         );
     }
 
