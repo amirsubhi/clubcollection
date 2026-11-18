@@ -162,7 +162,7 @@
                 <span class="fw-semibold">Paid This Month</span>
                 <span class="badge bg-success">{{ $paidMembers->count() }} / {{ $paidMembers->count() + $unpaidMembers->count() }}</span>
             </div>
-            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto">
+            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto" tabindex="0" role="region" aria-label="Members who paid this month">
                 @forelse($paidMembers as $m)
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
                     <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
@@ -182,7 +182,7 @@
                 <span class="fw-semibold">Not Yet Paid</span>
                 <span class="badge bg-warning text-dark">{{ $unpaidMembers->count() }}</span>
             </div>
-            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto">
+            <div class="list-group list-group-flush" style="max-height:220px;overflow-y:auto" tabindex="0" role="region" aria-label="Members not yet paid this month">
                 @forelse($unpaidMembers as $m)
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
                     <i class="bi bi-circle text-muted" aria-hidden="true"></i>
@@ -246,10 +246,9 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" integrity="sha384-G436+Z2nlA8+PNoeRvWdxKbvOf8E/y+lYxqht2iBwNHTQDV5CJr3+AGVj8fGZi5t" crossorigin="anonymous"></script>
+@include('partials.chart-js')
 <script nonce="{{ $cspNonce }}">
-(function () {
-    if (!window.Chart) return;
+window.cpWhenReady('chart', function () {
     // Theme tokens (tokens.css), like Statistics and the React dashboard: income solid lavender, expenses pale rose.
     const fallback = { '--chart-1-stroke': '91 79 207', '--chart-4': '249 203 211', '--chart-4-stroke': '184 64 90', '--chart-grid': '232 230 243', '--chart-axis': '95 92 122' };
     function tok(name, alpha) {
@@ -282,6 +281,6 @@
     }
     paint();
     new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
-})();
+});
 </script>
 @endpush

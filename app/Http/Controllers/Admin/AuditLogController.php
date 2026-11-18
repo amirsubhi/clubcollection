@@ -39,7 +39,9 @@ class AuditLogController extends Controller
         $logs    = $query->paginate(50)->withQueryString();
         $actions = AuditLog::distinct()->pluck('action')->sort()->values();
 
-        return view('admin.audit-logs.index', compact('logs', 'clubs', 'actions'));
+        $friendly = \App\Support\Audit\FriendlyDescription::forPage($logs->items());
+
+        return view('admin.audit-logs.index', compact('logs', 'clubs', 'actions', 'friendly'));
     }
 
     /**
@@ -80,6 +82,8 @@ class AuditLogController extends Controller
         $logs    = $query->paginate(50)->withQueryString();
         $actions = AuditLog::where('club_id', $club->id)->distinct()->pluck('action')->sort()->values();
 
-        return view('admin.audit-logs.club', compact('logs', 'club', 'actions'));
+        $friendly = \App\Support\Audit\FriendlyDescription::forPage($logs->items());
+
+        return view('admin.audit-logs.club', compact('logs', 'club', 'actions', 'friendly'));
     }
 }

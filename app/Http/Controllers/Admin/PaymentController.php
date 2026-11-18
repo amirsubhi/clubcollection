@@ -38,35 +38,39 @@ class PaymentController extends Controller
             DisplayStatus::scope($query, $status, $club);
         }
 
-        if ($month) {
-            // Portable across SQLite/MySQL/Postgres: build the calendar-month
-            // range up front and let Eloquent emit a BETWEEN clause. The
-            // previous strftime() call only worked on SQLite.
-            try {
-                $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-                $end   = $start->copy()->endOfMonth();
-                $query->whereBetween('period_start', [$start->toDateString(), $end->toDateString()]);
-            } catch (\Throwable $e) {
-                // Ignore malformed user-supplied filter rather than 500ing.
+        // Month and job level narrow both the table and the summary strip above it (so the numbers
+        // describe what the filter shows); the status filter narrows the table only and highlights its tile.
+        $monthLabel = null;
+        $scope = function ($q) use ($month, $jobLevel, $club, &$monthLabel) {
+            if ($month) {
+                // Portable across SQLite/MySQL/Postgres: build the calendar-month
+                // range up front and let Eloquent emit a BETWEEN clause.
+                try {
+                    $start = Carbon::createFromFormat('!Y-m', $month)->startOfMonth();
+                    $end   = $start->copy()->endOfMonth();
+                    $q->whereBetween('payments.period_start', [$start->toDateString(), $end->toDateString()]);
+                    $monthLabel = $start->format('M Y');
+                } catch (\Throwable $e) {
+                    // Ignore malformed user-supplied filter rather than 500ing.
+                }
             }
-        }
+            if ($jobLevel) {
+                $q->whereIn('payments.user_id', fn ($s) => $s->select('user_id')->from('club_user')
+                    ->where('club_id', $club->id)->where('job_level', $jobLevel));
+            }
 
-        if ($jobLevel) {
-            // JOIN is more efficient than nested whereHas for filtering on a pivot column
-            $query->select('payments.*')
-                  ->join('club_user', function ($join) use ($club, $jobLevel) {
-                      $join->on('payments.user_id', '=', 'club_user.user_id')
-                           ->where('club_user.club_id', $club->id)
-                           ->where('club_user.job_level', $jobLevel);
-                  });
-        }
+            return $q;
+        };
+        $scope($query);
 
         $payments = $query->paginate(20)->withQueryString();
 
         DisplayStatus::prime($payments->getCollection());
-        $counts = DisplayStatus::counts($club->payments()->getQuery());
+        $counts = DisplayStatus::counts($scope($club->payments()->getQuery()));
         $summary = [
-            'total_paid'    => (float) $club->payments()->where('status', 'paid')->sum('amount'),
+            'total_paid'    => (float) $scope($club->payments()->getQuery())->where('payments.status', 'paid')->sum('payments.amount'),
+            // "Nov 2026", or null for every month (the strip then says "All months").
+            'month_label'   => $monthLabel,
             'counts'        => $counts,
             'grace_days'    => $club->overdueGraceDays(),
         ];

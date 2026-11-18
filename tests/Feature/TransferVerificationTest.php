@@ -145,7 +145,9 @@ class TransferVerificationTest extends TestCase
         $this->submit(['files' => [UploadedFile::fake()->create('big.pdf', 11 * 1024, 'application/pdf')]])->assertSessionHasErrors('files.0');
         $this->submit(['files' => []])->assertSessionHasErrors('files');
         $this->submit(['files' => [$this->slip('a.png'), $this->slip('b.png'), $this->slip('c.png'), $this->slip('d.png')]])->assertSessionHasErrors('files');
-        $this->submit(['transfer_date' => now()->addDay()->toDateString()])->assertSessionHasErrors('transfer_date');
+        $this->submit(['transfer_date' => now()->addDay()->toDateString()])->assertSessionHasErrors(['transfer_date' => 'member.transfer_date_invalid']);
+        // An empty date gets its own message ("Masukkan tarikh pindahan").
+        $this->submit(['transfer_date' => ''])->assertSessionHasErrors(['transfer_date' => 'member.transfer_date_required']);
         $this->submit(['transfer_date' => now()->subYear()->subDays(2)->toDateString()])->assertSessionHasErrors('transfer_date');
         $this->submit(['transfer_ref' => str_repeat('x', 61)])->assertSessionHasErrors('transfer_ref');
 
@@ -222,6 +224,10 @@ class TransferVerificationTest extends TestCase
         $this->assertTrue($fee->attachmentsLocked());
         Mail::assertSent(PaymentConfirmation::class, fn ($m) => $m->payment->id === $fee->id && $m->hasTo($this->member->email));
         $this->assertDatabaseHas('audit_logs', ['action' => 'payment.transfer_approved', 'auditable_id' => $fee->id, 'user_id' => $this->adminB->id]);
+        // The approval names the slip files it was based on (the queue previews them unaudited).
+        $slips = AuditLog::where('action', 'payment.transfer_approved')->where('auditable_id', $fee->id)->first()->new_values['slips'];
+        $this->assertSame($fee->currentSlips()->pluck('id')->map(fn ($id) => (int) $id)->all(), array_column($slips, 'id'));
+        $this->assertNotEmpty($slips[0]['sha256']);
 
         // Slips can no longer be added.
         $this->expectException(ValidationException::class);
@@ -382,6 +388,9 @@ class TransferVerificationTest extends TestCase
         $this->assertTrue($fee->attachments()->first()->isFrozen(), 'the rejected slip stays as history');
         Mail::assertSent(TransferRejected::class, fn ($m) => $m->payment->id === $fee->id && $m->hasTo($this->member->email));
         $this->assertDatabaseHas('audit_logs', ['action' => 'payment.transfer_rejected', 'auditable_id' => $fee->id]);
+        $slips = AuditLog::where('action', 'payment.transfer_rejected')->where('auditable_id', $fee->id)->first()->new_values['slips'];
+        $this->assertNotEmpty($slips);
+        $this->assertSame($fee->attachments()->where('kind', 'proof_of_payment')->pluck('id')->map(fn ($id) => (int) $id)->all(), array_column($slips, 'id'));
 
         // The member sees the reason, then sends a new slip.
         $this->actingAs($this->member);
@@ -480,9 +489,17 @@ class TransferVerificationTest extends TestCase
             ->where('pending.0.blocker', null)
             ->has('pending.0.slips', 1)
             ->where('pending.0.slips.0.kind', 'proof_of_payment')
+            // The large inline preview and the approve dialog's default date.
+            ->where('pending.0.transferDate', $fee->fresh()->transfer_date->toDateString())
+            ->where('pending.0.slips.0.mime', fn ($m) => str_starts_with((string) $m, 'image/') || $m === 'application/pdf')
+            ->has('pending.0.slips.0.url')
+            ->has('pending.0.slips.0.thumbUrl')
             ->has('handled', 0)
             ->where('nav.groups.0.items.2.key', 'verifications')
             ->where('nav.groups.0.items.2.badge', 1));
+
+        // Listing the queue (inline previews use the thumbnail route) writes no "viewed" audit rows.
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'attachment.viewed', 'user_id' => $this->adminA->id]);
 
         $this->get(route('admin.clubs.dashboard', $this->club))->assertInertia(fn (Assert $p) => $p
             ->component('Admin/Dashboard')

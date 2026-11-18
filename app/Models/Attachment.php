@@ -20,6 +20,21 @@ class Attachment extends Model
     /** Kinds an admin may pick for Fund Usage documents (proof_of_payment is a member's transfer slip). */
     public const FUND_KINDS = ['invoice', 'receipt', 'bank_slip', 'acknowledgement', 'other'];
 
+    /** How people read each kind (admin UI is English). */
+    public const KIND_LABELS = [
+        'invoice' => 'Invoice',
+        'receipt' => 'Receipt',
+        'bank_slip' => 'Bank slip',
+        'acknowledgement' => 'Acknowledgement',
+        'other' => 'Other',
+        'proof_of_payment' => 'Proof of payment',
+    ];
+
+    public static function kindLabel(string $kind): string
+    {
+        return self::KIND_LABELS[$kind] ?? ucfirst(str_replace('_', ' ', $kind));
+    }
+
     public const MIMES = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
 
     public const MAX_KB = 10240;

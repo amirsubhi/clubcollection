@@ -27,7 +27,8 @@ class AuthPagesTest extends TestCase
             ->assertSee('<title>Log masuk · Club Portal</title>', false)
             ->assertSee('Club Portal')
             ->assertDontSee('Laravel')
-            ->assertSee('Untuk ahli kelab sahaja · Perlukan bantuan? Hubungi pentadbir kelab')
+            ->assertSee('Untuk ahli kelab sahaja')
+            ->assertSee('Perlukan bantuan? Hubungi pentadbir kelab')
             ->assertSee('Kata laluan')
             ->assertDontSee('Authorized Users Only')
             ->assertDontSee('legal action')
@@ -40,7 +41,8 @@ class AuthPagesTest extends TestCase
             ->assertOk()
             ->assertSee('<html lang="en">', false)
             ->assertSee('<title>Sign in · ', false)
-            ->assertSee('For club members only · Need help? Contact your club administrator')
+            ->assertSee('For club members only')
+            ->assertSee('Need help? Contact your club administrator')
             ->assertCookie(AuthPageLocale::COOKIE, 'en', false);
 
         // The cookie (also written by the member app's BM/EN toggle) keeps the next page in English.

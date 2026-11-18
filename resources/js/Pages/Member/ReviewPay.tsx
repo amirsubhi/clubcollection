@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { AlertTriangle, Check, Copy, FileText, Hourglass, ImageIcon, Landmark, Loader2, Lock, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
-import { FlashBanner, HelpLine, useFeeLabel, useServerText } from "@/components/app/MemberParts";
+import { DueNote, FlashBanner, HelpLine, useFeeLabel, useServerText } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { FileUploader, type UploadItem } from "@/components/app/FileUploader";
 import { FpxMark } from "@/components/app/Visuals";
@@ -64,13 +64,14 @@ function CopyButton({ value, what }: { value: string; what: string }) {
 
 /** copyValue: what goes to the clipboard when it differs from what is shown (e.g. digits only). */
 function DetailRow({ label, value, copy, copyValue, mono = false }: { label: string; value: string; copy?: boolean; copyValue?: string; mono?: boolean }) {
+  // One div per dt/dd pair, straight under the <dl>; the copy button sits inside the dd it copies.
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
-      <div className="min-w-0 flex-[1_1_8rem]">
-        <dt className="text-sm text-muted-foreground">{label}</dt>
-        <dd className={cn("break-words text-base font-semibold", mono && "font-mono tracking-wide")}>{value}</dd>
-      </div>
-      {copy && <CopyButton value={copyValue ?? value} what={label} />}
+    <div className="flex flex-col gap-0.5 px-4 py-3">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <span className={cn("min-w-0 flex-[1_1_8rem] break-words text-base font-semibold", mono && "font-mono tracking-wide")}>{value}</span>
+        {copy && <CopyButton value={copyValue ?? value} what={label} />}
+      </dd>
     </div>
   );
 }
@@ -159,6 +160,14 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
     form.post(transfer.submitUrl, {
       forceFormData: true,
       preserveScroll: true,
+      // Take the member to the first field that needs fixing (after React has marked it aria-invalid),
+      // or to the error box when the problem belongs to no field.
+      onError: () =>
+        window.requestAnimationFrame(() => {
+          const target =
+            document.querySelector<HTMLElement>('#transfer-form [aria-invalid="true"]') ?? document.querySelector<HTMLElement>('[data-testid="transfer-error"]');
+          target?.focus();
+        }),
     });
   };
 
@@ -226,7 +235,7 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
             tooLarge: (names, mb) => fill(t("fileTooLarge"), { f: names, mb }),
           }}
         />
-        <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 min-[26.25em]:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-1.5">
             <Label htmlFor="transfer_date" className="text-base">
               {t("transferDateLbl")}
@@ -277,7 +286,7 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
 
       {/* Errors that belong to no field: transfers switched off, or the fee changed meanwhile. */}
       {(err("method") || err("status")) && (
-        <Alert variant="danger" className="text-base" data-testid="transfer-error">
+        <Alert variant="danger" className="text-base" data-testid="transfer-error" tabIndex={-1}>
           <AlertTriangle aria-hidden />
           <p>{text((err("method") ?? err("status"))!)}</p>
         </Alert>
@@ -285,14 +294,14 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
 
       <p className="px-1 text-sm text-muted-foreground">{t("slipNote")}</p>
 
-      {/* Why the send button is off: in the page flow, so the sticky bar holds only the button. */}
-      {items.length === 0 && (
-        <p id="slip-needed" className="-mb-3 px-1 text-sm font-medium text-foreground" data-testid="slip-needed">
-          {t("slipNeeded")}
-        </p>
-      )}
       {/* The send button sits in the sticky bar at the bottom; it submits this form by id. */}
       <StickyBar>
+        {/* Why the send button is off, right above it inside the bar, so it is seen wherever the bar is. */}
+        {items.length === 0 && (
+          <p id="slip-needed" className="px-1 text-center text-sm font-medium text-foreground" data-testid="slip-needed">
+            {t("slipNeeded")}
+          </p>
+        )}
         <Button
           type="submit"
           form="transfer-form"
@@ -421,7 +430,7 @@ function GroupLines({ group }: { group: PaymentGroup }) {
                 {feeLabel(f)}
                 <span className="block text-sm text-muted-foreground">
                   {f.invoiceNo} · {t("due")} {fmtDate(f.dueDate, lang)}
-                  {f.status === "overdue" && <span className="font-semibold text-warning-foreground"> · {t("overdueBadge")}</span>}
+                  <DueNote p={f} />
                 </span>
               </span>
               <Money sen={f.amount} className="font-semibold" />
@@ -486,6 +495,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                     {feeLabel(payment)}
                     <span className="block text-sm text-muted-foreground">
                       {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
+                      <DueNote p={payment} />
                     </span>
                   </span>
                   <Money sen={payment.amount} className="font-semibold" />

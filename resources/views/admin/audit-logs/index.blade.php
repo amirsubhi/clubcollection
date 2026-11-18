@@ -53,59 +53,26 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 small">
-                <thead class="table-light">
-                    <tr>
-                        <th scope="col" class="ps-3" style="width:155px">Date / Time</th>
-                        <th scope="col" style="width:130px">User</th>
-                        <th scope="col" style="width:120px">Club</th>
-                        <th scope="col" style="width:160px">Action</th>
-                        <th scope="col">Description</th>
-                        <th scope="col" style="width:90px" class="text-center">Changes</th>
+        {{-- Phones and tablets: each entry is a card (table-stack). --}}
+        <div class="table-responsive position-relative" tabindex="0" role="region" aria-label="Audit log entries">
+            <table class="table table-hover mb-0 small table-stack" role="table">
+                <thead class="table-light" role="rowgroup">
+                    <tr role="row">
+                        <th role="columnheader" scope="col" class="ps-3" style="width:155px">Date / Time</th>
+                        <th role="columnheader" scope="col" style="width:140px">User</th>
+                        <th role="columnheader" scope="col" style="width:120px">Club</th>
+                        <th role="columnheader" scope="col" style="width:160px">Action</th>
+                        <th role="columnheader" scope="col">Description</th>
+                        <th role="columnheader" scope="col" style="width:140px" class="text-center">Changes</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody role="rowgroup">
                 @forelse($logs as $log)
-                <tr>
-                    <td class="ps-3 text-muted" style="white-space:nowrap">
-                        {{ $log->created_at->format('d M Y') }}<br>
-                        <span class="small">{{ $log->created_at->format('H:i:s') }}</span>
-                    </td>
-                    <td>
-                        <div class="fw-semibold">{{ $log->user_name }}</div>
-                        <span class="badge bg-light text-secondary border">{{ str_replace('_',' ', $log->user_role) }}</span>
-                    </td>
-                    <td class="text-muted">{{ $log->club?->name ?? '—' }}</td>
-                    <td>
-                        <span class="badge bg-{{ $log->action_badge_class }}-subtle text-{{ $log->action_badge_class }} border border-{{ $log->action_badge_class }}-subtle">
-                            {{ $log->action_label }}
-                        </span>
-                    </td>
-                    <td style="max-width:300px">
-                        <span class="text-truncate d-inline-block" style="max-width:295px" title="{{ $log->description }}">
-                            {{ $log->description }}
-                        </span>
-                    </td>
-                    <td class="text-center">
-                        @if($log->old_values || $log->new_values)
-                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                                aria-label="View changes ({{ $log->action_label }}, {{ $log->created_at->format('d M Y H:i') }})"
-                                data-bs-toggle="modal" data-bs-target="#diffModal"
-                                data-old="{{ json_encode($log->old_values, JSON_PRETTY_PRINT) }}"
-                                data-new="{{ json_encode($log->new_values, JSON_PRETTY_PRINT) }}"
-                                data-desc="{{ $log->description }}">
-                            <i class="bi bi-code-square" aria-hidden="true"></i>
-                        </button>
-                        @else
-                        <span class="text-muted" aria-label="No changes recorded">—</span>
-                        @endif
-                    </td>
-                </tr>
+                @include('admin.audit-logs._row', ['showClub' => true])
                 @empty
-                <tr>
-                    <td colspan="6" class="text-center text-muted py-5">
-                        <i class="bi bi-journal-text fs-2 d-block mb-2 opacity-25"></i>
+                <tr role="row">
+                    <td role="cell" colspan="6" class="text-center text-muted py-5 stack-empty">
+                        <i class="bi bi-journal-text fs-2 d-block mb-2 opacity-25" aria-hidden="true"></i>
                         No audit log entries found.
                     </td>
                 </tr>

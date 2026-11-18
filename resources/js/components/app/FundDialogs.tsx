@@ -46,7 +46,7 @@ export function ApproveDialog({ item, onConfirm, triggerProps }: BaseProps) {
           <Checkbox id="coi" checked={declared} onCheckedChange={(c) => setDeclared(c === true)} />
           <Label htmlFor="coi" className="font-normal leading-snug">
             I declare that I have <strong>no conflict of interest</strong>: I am not the payee, the beneficiary or a relative of either, and I have checked the documents.
-            <span className="mt-1 block text-xs text-muted-foreground">Saya mengisytiharkan tiada konflik kepentingan. This declaration is logged.</span>
+            <span className="mt-1 block text-xs text-muted-foreground">This declaration is logged.</span>
           </Label>
         </div>
         <DialogFooter className="sm:justify-between">

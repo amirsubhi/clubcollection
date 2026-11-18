@@ -147,4 +147,23 @@ class MemberControllerTest extends TestCase
         // User record still exists
         $this->assertDatabaseHas('users', ['id' => $member->id]);
     }
+
+    // ── Routes without a controller method ─────────────────────────────────
+
+    public function test_typed_show_urls_without_a_page_return_404(): void
+    {
+        $club = Club::factory()->create();
+        $this->actingAsSuperAdmin();
+        $member = User::factory()->create();
+        $club->members()->attach($member, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => '2025-01-01', 'is_active' => true]);
+
+        $this->get('/admin/members/'.$member->id)->assertNotFound();
+        $this->get('/admin/admins/'.$member->id)->assertNotFound();
+        $this->call('HEAD', '/admin/members/'.$member->id)->assertNotFound();
+        // Non-GET methods on a URL that exists only for other methods still get 405
+        // (checked as the exception: rendering the 405 page needs PHP 8.4's var-dumper).
+        $this->withoutExceptionHandling();
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException::class);
+        $this->call('PATCH', route('admin.clubs.members.index', $club));
+    }
 }

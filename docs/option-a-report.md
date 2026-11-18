@@ -20,8 +20,8 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 **Final review verdict:** GO.
 
 **Follow-ups (non-blocking):**
-- Stop sending `cdn.jsdelivr.net` in the CSP for Inertia responses; remove it entirely once Blade pages are migrated.
-- Self-host the fonts (removes Google hosts from the CSP; helps the A4 PWA).
+- ✅ Done in R3d: `cdn.jsdelivr.net` is only allowed when the jsDelivr fallback is in use (no `public/build`).
+- ✅ Done in R3d: fonts are self-hosted; Google hosts removed from the CSP.
 - Align `<html lang>` with the shared `locale` (members get `ms`).
 - Add a CI workflow: `npm ci && npm run typecheck && npm run build` plus `php artisan test`.
 - Add a production-environment test that `/dev/ui-kit` returns 404.
@@ -49,7 +49,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ToyyibPay sandbox: confirm the callback `amount` unit and whether customer-borne charges are included (alongside the `status` vs `status_id` check).
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
-- `bill_amount` was added to the existing migration because there is no live data; from v1.0 use additive migrations only.
+- `bill_amount` was added to the existing migration because there is no live data; from the first real install (next release tag) use additive migrations only.
 
 ## A3 — Fund Usage backend + Inertia pages (in review)
 
@@ -354,7 +354,7 @@ Follow-ups (non-blocking):
 - Welfare form reuses the expense description example.
 - Check audit-log filter alignment with the date echo at 768 px.
 - Move `slipSets`/`waitingSlipCount` from the controller into a Support class.
-- 🔴 Before go-live: open one Blade admin page against the real jsDelivr with devtools to confirm no SRI errors.
+- Only if deploying without `public/build` (jsDelivr fallback): open one Blade admin page with devtools and confirm no SRI errors. Normal deploys bundle Bootstrap and Chart.js.
 
 ### R2a follow-ups (non-blocking)
 - 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
@@ -368,3 +368,120 @@ Follow-ups (non-blocking):
 - Billing WhatsApp field: hint that landlines need WhatsApp Business; help copy: a shared receipt link needs the member's own login.
 - Statistics "Collected vs spent" trend is still a Chart.js bar chart (token colours); convert if wanted.
 
+### R3a follow-ups (non-blocking)
+- A 429 on the member security forms shows Inertia's error modal with the English page; map it to a BM `member.too_many_tries` flash.
+- Tie `two_factor_verified` to the user id and regenerate the session after confirm.
+- Expire `two_factor_setup_pending` after ~10 minutes.
+- Consider requiring a code (or recovery code) to turn 2FA off.
+- Add a "simpan di tempat selamat" hint next to the recovery-codes download.
+- Encrypted history needs HTTPS in production (Inertia stores plain history over http).
+
+### R3b follow-ups (non-blocking)
+- The thumb route serves full-size originals (no-store); add real resized thumbnails later.
+- Add a 300% zoom step for dense bank slips.
+- "Start reviewing" and the shortcut hint show from md up only.
+
+### R3c follow-ups (non-blocking)
+- Payments wrapper is a tab stop with nothing to scroll below 1200px; drop the tabindex there.
+- Make the Name/Member cell a row header (`th scope="row"`) so each card is announced by name; add a caption to Payments.
+- Two-column card grid from md to xl to halve scrolling on tablets/small laptops.
+- Installer still uses px font sizes; `fund-meta.ts` `bm` fields may be dead (check in R3d).
+
+### R3d (performance)
+- Member pages no longer load the tooltip library; the entry chunk fell from 158.8 to 130.1 kB gzipped and member Home's total JS from 175 to 156 kB gzipped.
+- Fonts (Plus Jakarta Sans, Bricolage Grotesque, JetBrains Mono) are self-hosted from Fontsource (OFL-1.1) with the body font preloaded; Google Fonts removed.
+- Bootstrap 5.3.8, Bootstrap Icons 1.13.2 and Chart.js 4.6.1 are bundled by Vite for the classic pages; jsDelivr (pinned, with SRI) is only a fallback when `public/build` lacks the classic entries. Zero third-party requests in the normal path.
+- lodash-es, axios and qs remain (pulled in by `@inertiajs/core` and `laravel-precognition`); the i18n dictionary is still in the entry chunk.
+- R3d follow-ups: the service worker's static cache grows with each hashed build until `CACHE_VERSION` is bumped; the `$bsTheme` manifest check in `layouts/app.blade.php` could move into `FrontendAssets`; the legacy `bootstrap-icons.woff` ships unused.
+
+### R4a follow-ups (non-blocking)
+- composer.json now requires PHP ^8.4: confirm the production host runs 8.4 before deploying (8.3 needs --ignore-platform-req=php).
+- On an 8.4 host, check one 405 page renders (tests assert it as an exception because 8.3's var-dumper crashes on render).
+- Browser-bar colours live in both lib/theme.tsx and partials/pwa-head.blade.php; make one source later.
+
+### R4b follow-ups (non-blocking)
+- Catch-all routes use Route::any, so OPTIONS on a known path returns 405 instead of Laravel's automatic 200; restrict to GET/POST/PUT/PATCH/DELETE if CORS is ever needed.
+- A guest on an unknown /admin/* URL starts a session row; add a throttle on fallback.admin if session-table spam matters.
+- Old-format recovery codes (with 0/O/1/I/L) still verify; mention in release notes.
+- AdminErrorPage relies on the framework's password_hash_<guard> session key; keep the test that renders the admin variant when upgrading Laravel.
+- route:cache works again (duplicate 'login' route name removed); RouteCacheTest guards against duplicate names.
+
+### After R4: final Impeccable scores and what is left
+Scores: design critique 30/40 (Good), technical audit 18/20 (Excellent); axe found no WCAG A/AA violations across 198 sweeps.
+
+Remaining items (content and product choices rather than polish):
+- Member Fund page: show welfare (kebajikan / khairat) and bank charges as their own rows instead of inside "Lain-lain", and show the fund balance ("Baki dana") next to the overspend note.
+- Audit log: stack as cards under 768 px (it scrolls sideways at 390 because of a hidden label inside the scroller); give action chips meaningful colours; use friendly kinds and FU-numbers instead of "(proof_of_payment)" and "Expense #12".
+- Fund Usage list: on phones lead each card with payee + amount + status; fold the KPI tiles on small screens; show a neutral "—" for no documents and warn only for approved records without any; footer total should say it covers all statuses.
+- Members: a fee past its due date should leave "Akan datang" and say "Lewat selepas <date>"; use one BM word for overdue ("Lewat", drop "Tertunggak").
+- Sign-in/reset footer "Hubungi pentadbir kelab" should be a link (club WhatsApp or email, or a short "Lupa e-mel?" note).
+- Smaller: lazy-load the chart on the admin Dashboard/Ledger; branded 405 page; "You recorded this" link styled as a link; record-payment radio alignment; subset Bootstrap Icons; success page says the receipt "akan" and "telah" been sent; slip-check could flag date/reference mismatches.
+
+
+### R5a follow-ups (non-blocking)
+- Go-live: set `APP_TIMEZONE=Asia/Kuala_Lumpur` in `.env`; with the UTC fallback a fee moves to "Perlu dibayar" up to 8 hours late.
+- A club expense category literally named "Welfare"/"Kebajikan" would show two legend lines with that name (sums stay correct).
+- Under "Akan datang", a not-yet-due fee's chip can still read "Perlu dibayar", the same words as the new group heading; consider "Belum bayar" for the chip.
+- Home "Akan datang" still mixes processing/verifying rows from the `take(5)` list (pre-existing).
+- Payments "Bayar semua" shows when the selected year has open fees, while its total covers all open fees in the club.
+- The sign-in help `<summary>` has no chevron; only the underline signals it opens.
+- The help block also shows on the 2FA, confirm-password and error pages (shared `layouts.auth`); its view composer runs one small query per render.
+- "Lain-lain" can hold a single category when exactly five expense categories exist.
+- Stale comment on `fromReserves` in `resources/js/types/member.ts`.
+
+### R5b follow-ups (non-blocking)
+- Fund Usage footer "approved (counted in Spent)" can differ from the Spent tile (cash-date window, bank charges); consider "approved" plus a tooltip.
+- Ledger with a manual opening balance no longer shows the computed "records say RM X" hint; consider restoring it.
+- Audit log: old attachment rows whose file name holds `"` or a newline keep the raw kind; search by FU number misses old rows that store "Expense #N".
+- Audit lookup hardening: add the page's club ids to the `forPage` `whereIn` queries (safe today via the per-row club check).
+- ISO dates in typed text outside quotes are reformatted on display (harmless).
+- Audit log stacks below 1200 px (existing `.table-stack` breakpoint) and adds a fourth "warning" chip group; the admin 405 variant only shows for an explicit `abort(405)`.
+
+## After R5: Impeccable scores and what is left
+Scores: critique 31/40 (target 32), audit 18/20 (target met). History: critique 25 → 27 → 29 → 30 → 30 → 31; audit 11 → 15 → 15 → 16 → 18 → 18.
+
+Critique (P1 first):
+- [P1] Fund Usage desktop table at 1366 px cuts off the Amount column (1126 px table in a 1076 px scroller).
+- [P1] Dashboard / Fund Usage "Fund balance" hint says "collected minus spent" but the figure includes the opening balance; say "Opening balance + collected − spent" or link to the Ledger.
+- [P2] Fund Usage list "Date paid" falls back to the invoice date for unpaid records; detail rail labels the waiting checker step "APPROVED · CHECKER".
+- [P2] Blade admin pages (Payments, Members, Audit log) still differ from React: headers, no sidebar toggle, 24-hour times, mm/dd/yyyy date pickers.
+- [P2] Sign-in help gives no contact when the club has no WhatsApp number; fall back to email or reword.
+- [P2] Admin phone Dashboard: put work queues above the four figure cards.
+- [P3] "Perlu dibayar" chip under the "Perlu dibayar" heading; empty "Akan datang" still shows "Lihat semua"; four actions on the paid result page; "14 member(s)"; monospace "No documents" chip; Members has no search; audit chips read like code names; 405 page in BM for English admins.
+
+Audit:
+- [P1] Admin Dashboard scrolls sideways at 320 px: the approvals row for an item you can't approve (badge, reason, View) doesn't wrap (`Dashboard.tsx` ~233–240).
+- [P2] At 200% text, Dashboard (table under chart not in a scroller), Ledger (status pill), Billing (save bar) and Verifications ("Approve RM" button) scroll sideways.
+- [P2] FileUploader drop zone is a `<label role="button">` (axe `aria-allowed-role`); use a real button.
+- [P3] No skip link on member pages; member h1 smaller than section h2; 20 px admin quick links; overshooting tick easing.
+
+### R6 follow-ups (non-blocking)
+- Tailwind breakpoints are now in em (same as px at 16 px), so layouts step down when the browser text size is raised.
+- FileUploader browse button's accessible name on desktop is just "browse"; consider "Browse files" in visible text (label-in-name).
+- `BalanceHint` is duplicated in `Dashboard.tsx` and `FundUsage/Index.tsx`; move it to `Kpi.tsx`.
+- No test covers the rendered "—" + "Invoice {date}" for approved records without a paid date.
+- Fund Usage table scrolls inside its box at 768/1024 px (page itself doesn't); `PageHeader` forces `min-h-10` on action children.
+- Sign-in help shows a club's email only when it has no WhatsApp number (product choice).
+
+## After R6: Impeccable scores and what is left
+Scores: critique **32/40** (target met), audit **19/20** (target met). No P0 or P1 in either. History: critique 25 → 27 → 29 → 30 → 30 → 31 → 32; audit 11 → 15 → 15 → 16 → 18 → 18 → 19.
+
+Critique (P2):
+- One fee, two dates: Invoice and Semak show "Tarikh akhir 15 Nov" (passed) while Home says "Lewat selepas 22 Nov"; show the grace date there too.
+- "No documents" warning on 9 of 10 Fund Usage rows; use one banner plus a filter, or a small icon.
+- Classic Payments, Members and Audit log still differ from React: no sidebar toggle or subtitle, "Record payment…" label cut off, 14 red "Remove" buttons, misaligned filter labels.
+- Billing gateway-fee card uses developer wording about the sandbox.
+- Verifications slip cards are about 680 px tall with an empty right column.
+Critique (P3): PayResult still has four actions; member bottom bar spans the full width at 1366; Dashboard cards (year to date) vs chart (last 12 months); "Monthly report (classic)" label; unlabelled welfare/bank slivers; px KPI icons; Fund Usage tab strip has no scroll cue; "Club Portal" brand in English on BM pages; admin 405 uses the member guest card; no-channel sign-in help gives no contact.
+
+Audit:
+- [P2] Member h1 (18 px) smaller than section h2 (20 px); flat scale on ReviewPay.
+- [P3] Overshooting pop-in/stamp easing; 20 px Dashboard quick links; React admin skip link 20 px tall; names truncated with "…" at 200% text on Verifications, Dashboard, Ledger and Fund Usage.
+
+### R7 (last design round) follow-ups — after launch
+- Fund Usage: with the `nodocs` filter on, switching tabs keeps it (the void tab then shows an empty list under the banner); clear it on tab change.
+- The "no documents" count includes welfare approved on a sighted certificate with no attachment (same as the old chip); consider excluding those.
+- The printed invoice also shows "· Lewat" next to the due date; confirm that is wanted.
+- Tests: pagination keeping `nodocs`; `nodocs=1&tab=void` returns nothing; drafts excluded from the count.
+
+Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above waits for real feedback after go-live.

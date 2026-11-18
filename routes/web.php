@@ -67,8 +67,7 @@ Route::middleware('check_installed')->group(function () {
 
         // Override login POST with explicit rate limiting
         Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
-            ->middleware('throttle:5,1')
-            ->name('login');  // overrides the one from Auth::routes()
+            ->middleware('throttle:5,1');  // replaces Auth::routes()' POST /login; no name, so it doesn't clash with GET 'login' (route:cache)
 
         // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
         // on their own named limiter (AppServiceProvider).
@@ -100,15 +99,18 @@ Route::middleware('check_installed')->group(function () {
 
         // ── Profile / 2FA setup ──────────────────────────────────────────────
         Route::get('/profile/security', [ProfileController::class, 'security'])->name('profile.security');
-        Route::post('/profile/two-factor/enable', [ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
-        Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
-        Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
+        // Throttled like the challenge: both check the password, and confirm also checks a TOTP code.
+        Route::post('/profile/two-factor/enable', [ProfileController::class, 'enableTwoFactor'])->middleware('throttle:two-factor-setup')->name('profile.2fa.enable');
+        Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->middleware('throttle:two-factor-setup')->name('profile.2fa.confirm');
+        Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->middleware('throttle:two-factor-setup')->name('profile.2fa.disable');
 
         // ── Member Portal ────────────────────────────────────────────
         Route::middleware(['member'])->prefix('my')->name('member.')->group(function () {
             Route::get('dashboard', [MemberDashboard::class, 'index'])->name('dashboard');
 
             Route::get('clubs/{club}/payments', [MemberPayment::class, 'index'])->name('payments.index');
+            // "Ke mana wang anda pergi": the club's fund this year (aggregates only).
+            Route::get('clubs/{club}/fund', [\App\Http\Controllers\Member\FundController::class, 'show'])->name('clubs.fund');
             Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->middleware('throttle:10,1')->name('payments.generate-future');
             Route::get('payments/{payment}/invoice', [MemberPayment::class, 'invoice'])->name('payments.invoice');
             // Review is the GET page (email links point here); pay is POST-only so a
@@ -132,7 +134,7 @@ Route::middleware('check_installed')->group(function () {
         // ── Super Admin ──────────────────────────────────────────────
         Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
             Route::resource('clubs', ClubController::class);
-            Route::resource('admins', AdminUserController::class);
+            Route::resource('admins', AdminUserController::class)->except('show');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         });
@@ -144,8 +146,8 @@ Route::middleware('check_installed')->group(function () {
             Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->middleware('throttle:5,1')->name('members.import.process');
             Route::get('clubs/{club}/members/template', [MemberController::class, 'downloadTemplate'])->name('members.template');
 
-            Route::resource('clubs.members', MemberController::class)->shallow();
-            Route::resource('clubs.fee-rates', FeeRateController::class)->shallow();
+            Route::resource('clubs.members', MemberController::class)->shallow()->except('show');
+            Route::resource('clubs.fee-rates', FeeRateController::class)->shallow()->only(['index', 'create', 'store', 'destroy']);
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
 
@@ -193,8 +195,8 @@ Route::middleware('check_installed')->group(function () {
             Route::get('clubs/{club}/expenses/create', [ExpenseController::class, 'create'])->name('clubs.expenses.create');
             Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
             Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
-            Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow();
-            Route::resource('clubs.discounts', DiscountController::class)->shallow();
+            Route::resource('clubs.expense-categories', ExpenseCategoryController::class)->shallow()->only(['index', 'store', 'update', 'destroy']);
+            Route::resource('clubs.discounts', DiscountController::class)->shallow()->except('show');
             Route::get('clubs/{club}/audit-logs', [AuditLogController::class, 'clubLogs'])->name('clubs.audit-logs');
 
             Route::get('clubs/{club}/ledger',            [LedgerController::class, 'index'])->name('clubs.ledger');
@@ -204,3 +206,16 @@ Route::middleware('check_installed')->group(function () {
     });
 
 });
+
+// Unknown URLs (App\Http\Controllers\FallbackController): /admin* keeps the session (admin-styled 404 for
+// admins); every other unknown URL runs without it, so a guest's typo starts no session. Neither checks CSRF.
+Route::any('admin/{any?}', \App\Http\Controllers\FallbackController::class)->where('any', '.*')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class])
+    ->name('fallback.admin');
+Route::any('{any}', \App\Http\Controllers\FallbackController::class)->where('any', '.*')->fallback()->name('fallback')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        \App\Http\Middleware\HandleInertiaRequests::class,
+    ]);

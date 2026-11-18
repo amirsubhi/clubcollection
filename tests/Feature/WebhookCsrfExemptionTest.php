@@ -30,6 +30,18 @@ class WebhookCsrfExemptionTest extends TestCase
 
     private const EXEMPT = ['webhook.toyyibpay', 'webhook.billplz'];
 
+    /** Unknown-URL catch-alls: they change nothing (only ever 404/405), so they skip CSRF (FallbackController). */
+    private const NOT_FOUND = ['fallback.admin', 'fallback'];
+
+    public function test_the_unknown_url_catch_alls_only_reach_the_fallback_controller(): void
+    {
+        foreach (self::NOT_FOUND as $name) {
+            $route = Route::getRoutes()->getByName($name);
+            $this->assertNotNull($route, "Route {$name} missing");
+            $this->assertSame(\App\Http\Controllers\FallbackController::class, $route->getActionName());
+        }
+    }
+
     public function test_gateway_webhooks_are_exempt_from_csrf(): void
     {
         foreach (self::EXEMPT as $name) {
@@ -43,7 +55,7 @@ class WebhookCsrfExemptionTest extends TestCase
     {
         $checked = 0;
         foreach (Route::getRoutes() as $route) {
-            if (! array_intersect($route->methods(), ['POST', 'PUT', 'PATCH', 'DELETE']) || in_array($route->getName(), self::EXEMPT, true)) {
+            if (! array_intersect($route->methods(), ['POST', 'PUT', 'PATCH', 'DELETE']) || in_array($route->getName(), [...self::EXEMPT, ...self::NOT_FOUND], true)) {
                 continue;
             }
             $label = implode('|', $route->methods()).' '.$route->uri();

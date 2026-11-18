@@ -27,6 +27,23 @@ const statusKeys: Record<PaymentStatus, DictKey> = {
   verifying: "verifyingBadge",
 };
 
+/**
+ * What follows "Tarikh akhir <date>" for a fee whose due date has passed:
+ * " · Lewat selepas <grace end>" during the grace period, " · Lewat" after it.
+ * Nothing for fees not yet due or already paid / verifying / processing.
+ */
+export function DueNote({ p }: { p: Pick<MemberPaymentRow, "pastDue" | "lateAfter" | "status"> }) {
+  const t = useT();
+  const { lang } = useLang();
+  if (!p.pastDue || (p.status !== "due" && p.status !== "overdue")) return null;
+  return (
+    <span className="font-semibold text-warning-foreground" data-testid="due-note">
+      {" · "}
+      {p.lateAfter ? fill(t("lateAfter"), { d: fmtDate(p.lateAfter, lang) }) : t("overdueBadge")}
+    </span>
+  );
+}
+
 export function statusLabelKey(s: PaymentStatus): DictKey {
   return statusKeys[s];
 }
@@ -75,7 +92,8 @@ const bubble: Record<PaymentStatus, { Icon: typeof CheckCircle2; tone: "mint" | 
  * One fee as a tappable row: open fees go to Review & pay, paid ones to the receipt,
  * and a fee with an FPX payment in progress to that payment's status (paying again is on Review & pay).
  */
-export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showClub?: boolean }) {
+/** hideDueChip: the row already sits under a "Perlu dibayar" heading, so a "Perlu dibayar" chip would only repeat it. */
+export function PaymentRow({ p, showClub = false, hideDueChip = false }: { p: MemberPaymentRow; showClub?: boolean; hideDueChip?: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -99,13 +117,17 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
                 ? t("slipBeingChecked")
                 : p.status === "processing"
                   ? t("processingRow")
-                  : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
+                  : p.lateAfter
+                    ? fill(t("lateAfter"), { d: fmtDate(p.lateAfter, lang) })
+                    : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
             {showClub && p.clubName ? ` · ${p.clubName}` : ""}
           </div>
         </div>
-        <div className="flex min-w-0 max-w-full flex-col items-end gap-1">
+        <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-1 text-right">
           <Money sen={p.amount} className="text-base font-bold" />
-          <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" className="h-auto min-h-6 max-w-full whitespace-normal py-0.5" />
+          {!(hideDueChip && p.status === "due") && (
+            <PaymentStatusBadge status={p.status} label={t(statusLabelKey(p.status))} size="sm" className="h-auto min-h-6 max-w-full whitespace-normal py-0.5" />
+          )}
         </div>
       </div>
       <ChevronRight className="h-[20px] w-[20px] shrink-0 text-muted-foreground" aria-hidden />
@@ -115,14 +137,22 @@ export function PaymentRow({ p, showClub = false }: { p: MemberPaymentRow; showC
 
 const sliceTokens = ["--chart-1", "--chart-2", "--chart-3", "--chart-4"];
 
-/** Expense categories to at most four bar slices (the chart palette has four validated colours). */
+/**
+ * Spending lines to bar slices: at most four coloured slices (the chart palette has four validated colours) plus a
+ * neutral "Others". Welfare and bank / gateway charges always keep their own slice; expense categories share the
+ * colours left, the smallest folded into "Others" when they don't fit.
+ */
 export function toSlices(categories: FundCategory[], othersLabel: { bm: string; en: string }): CategorySlice[] {
-  const sorted = [...categories].sort((a, b) => b.amount - a.amount);
-  const top = sorted.length > 4 ? sorted.slice(0, 3) : sorted;
-  const rest = sorted.length > 4 ? sorted.slice(3).reduce((s, c) => s + c.amount, 0) : 0;
-  const slices = top.map((c, i) => ({ key: `c${i}`, bm: c.nameMs ?? c.name, en: c.name, amount: c.amount }));
-  if (rest > 0) slices.push({ key: "others", ...othersLabel, amount: rest });
-  return slices.map((s, i) => ({ ...s, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
+  const isFixed = (c: FundCategory) => c.kind === "welfare" || c.kind === "charges";
+  const fixed = categories.filter(isFixed);
+  const expenses = categories.filter((c) => !isFixed(c)).sort((a, b) => b.amount - a.amount);
+  const room = sliceTokens.length - fixed.length;
+  const shown = [...expenses.slice(0, room), ...fixed]
+    .sort((a, b) => b.amount - a.amount)
+    .map((c, i) => ({ key: c.kind === "welfare" || c.kind === "charges" ? c.kind : `c${i}`, bm: c.nameMs ?? c.name, en: c.name, amount: c.amount, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
+  const rest = expenses.slice(room).reduce((s, c) => s + c.amount, 0);
+  if (rest > 0) shown.push({ key: "others", ...othersLabel, amount: rest, colorVar: "--chart-other", onVar: "--on-chart-other" });
+  return shown;
 }
 
 /** Where "Perlu bantuan?" goes: the club's WhatsApp (with the reference typed in) when set, else its email. */

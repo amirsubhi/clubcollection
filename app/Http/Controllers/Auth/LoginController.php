@@ -69,6 +69,9 @@ class LoginController extends Controller
         $this->guard()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        // The next Inertia page tells the browser to drop its history key (encrypted 2FA pages); the
+        // member and admin logout buttons also clear it in the browser before posting.
+        Inertia::clearHistory();
 
         if ($user) {
             AuditLog::create([

@@ -3,7 +3,6 @@ import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { setNonce } from "get-nonce";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { LangContext, PageLangContext, type Lang } from "@/lib/i18n";
 import { captureInstallPrompt, registerServiceWorker } from "@/lib/pwa";
 import { readPref, writePref } from "@/lib/storage";
@@ -63,9 +62,7 @@ function Providers({ locale, component, children }: { locale: unknown; component
     <ThemeProvider>
       <LangContext.Provider value={{ lang, setLang }}>
         <PageLangContext.Provider value={pageLang}>
-          <TooltipProvider delayDuration={200}>
-            <div className="app-shell">{children}</div>
-          </TooltipProvider>
+          <div className="app-shell">{children}</div>
         </PageLangContext.Provider>
       </LangContext.Provider>
     </ThemeProvider>

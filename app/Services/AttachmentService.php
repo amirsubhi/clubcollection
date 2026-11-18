@@ -106,7 +106,7 @@ class AttachmentService
 
         AuditService::log(
             'attachment.added',
-            "Document \"{$attachment->original_name}\" ({$kind}) attached to ".class_basename($owner)." #{$owner->getKey()}.",
+            'Document "'.$attachment->original_name.'" ('.Attachment::kindLabel($kind).') attached to '.self::ownerLabel($owner).'.',
             $attachment,
             $clubId,
             [],
@@ -131,11 +131,25 @@ class AttachmentService
 
         AuditService::log(
             'attachment.removed',
-            "Document \"{$old['original_name']}\" removed.",
+            'Document "'.$old['original_name'].'" removed'.($owner ? ' from '.self::ownerLabel($owner) : '').'.',
             $owner,
             $attachment->club_id,
             $old,
         );
+    }
+
+    /**
+     * The record a document belongs to, as the audit log names it: the Fund Usage record number (FU-2026-0012),
+     * "Payment #42" for a fee (FriendlyDescription shows its transfer reference) or a group slip's reference.
+     */
+    private static function ownerLabel(Model $owner): string
+    {
+        return match (true) {
+            $owner instanceof \App\Models\Expense => $owner->reference(),
+            $owner instanceof \App\Models\Payment => 'Payment #'.$owner->getKey(),
+            $owner instanceof \App\Models\PaymentBill && $owner->reference => 'group transfer '.$owner->reference,
+            default => class_basename($owner).' #'.$owner->getKey(),
+        };
     }
 
     /** Decrypted file contents. */

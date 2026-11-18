@@ -36,7 +36,7 @@ export function ReceiptCard({
   const t = useT();
   const { lang } = useLang();
   return (
-    <article aria-label={t("receipt")} className={cn("paper perforated-b rounded-t-[20px] px-5 pb-8 pt-5 shadow-[0_10px_30px_-18px_rgba(30,27,58,0.5)]", className)}>
+    <article aria-label={t("receipt")} className={cn("paper perforated-b rounded-t-[20px] px-5 pb-8 pt-5 shadow-[0_10px_30px_-18px_rgb(var(--shadow-color)/0.5)]", className)}>
       <header className="flex flex-wrap items-center gap-3 border-b border-dashed pb-4">
         <ClubMark className="h-10 w-10" />
         <div className="min-w-0 flex-[1_1_8rem]">

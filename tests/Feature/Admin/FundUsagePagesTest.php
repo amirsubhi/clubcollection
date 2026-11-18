@@ -29,6 +29,43 @@ class FundUsagePagesTest extends TestCase
         $this->admin = $this->actingAsClubAdmin($this->club);
     }
 
+    public function test_no_documents_banner_count_and_filter(): void
+    {
+        $cat = ExpenseCategory::factory()->for($this->club)->create(['name' => 'Meetings']);
+        $other = ExpenseCategory::factory()->for($this->club)->create(['name' => 'Trophies']);
+        $bare = Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id, 'payee' => 'Bare One']);
+        $bareOther = Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $other->id, 'payee' => 'Bare Two']);
+        $withDoc = Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id]);
+        $withDoc->attachments()->create([
+            'club_id' => $this->club->id, 'kind' => 'invoice', 'original_name' => 'x.pdf', 'path' => 'clubs/x.bin',
+            'mime' => 'application/pdf', 'size' => 1, 'sha256' => str_repeat('0', 64), 'uploaded_by' => $this->admin->id,
+        ]);
+        Expense::factory()->submitted()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id]); // not approved
+        Expense::factory()->voided()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id]);   // not approved
+        Expense::factory()->approved()->create(['club_id' => Club::factory()->create()->id, 'payee' => 'OTHER-CLUB-PAYEE']);
+
+        $index = fn (array $q = []) => route('admin.clubs.fund-usage.index', [$this->club, ...$q]);
+
+        // The count is the whole club's, whatever filters are on.
+        $this->get($index(['category' => [$cat->id]]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('noDocsCount', 2)
+                ->where('filters.nodocs', false)
+                ->where('pagination.total', 3));
+
+        $this->get($index(['nodocs' => 1]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('noDocsCount', 2)
+                ->where('filters.nodocs', true)
+                ->where('rows', fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === collect([$bare->id, $bareOther->id])->sort()->values()->all()));
+
+        // Combined with the other filters.
+        $this->get($index(['nodocs' => 1, 'category' => [$other->id]]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('rows', 1)
+                ->where('rows.0.id', $bareOther->id));
+    }
+
     public function test_index_renders_kpis_tabs_and_rows(): void
     {
         $cat = ExpenseCategory::factory()->for($this->club)->create(['name' => 'Meetings']);
@@ -65,6 +102,23 @@ class FundUsagePagesTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('rows', 1)->where('rows.0.payee', 'Kedai Runcit'));
         $this->get(route('admin.clubs.fund-usage.index', [$this->club, 'status' => ['approved']]))
             ->assertInertia(fn (Assert $page) => $page->has('rows', 1)->where('rows.0.status', 'approved'));
+    }
+
+    public function test_index_rows_keep_date_paid_null_until_paid_and_link_the_ledger(): void
+    {
+        $cat = ExpenseCategory::factory()->for($this->club)->create();
+        Expense::factory()->submitted()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id, 'expense_date' => '2026-03-02', 'paid_date' => null, 'payee' => 'Unpaid Vendor']);
+        Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $cat->id, 'expense_date' => '2026-03-01', 'paid_date' => '2026-03-05', 'payee' => 'Paid Vendor']);
+
+        // "Date paid" shows "—" for an unpaid record: the row must not fall back to the invoice date.
+        $this->get(route('admin.clubs.fund-usage.index', [$this->club, 'q' => 'Unpaid']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('rows.0.paidDate', null)
+                ->where('rows.0.invoiceDate', '2026-03-02')
+                ->where('urls.ledger', route('admin.clubs.ledger', $this->club))
+            );
+        $this->get(route('admin.clubs.fund-usage.index', [$this->club, 'q' => 'Paid Vendor']))
+            ->assertInertia(fn (Assert $page) => $page->where('rows.0.paidDate', '2026-03-05'));
     }
 
     public function test_create_renders_for_expense_and_welfare(): void

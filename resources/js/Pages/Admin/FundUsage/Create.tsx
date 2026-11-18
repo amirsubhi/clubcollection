@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useForm } from "@inertiajs/react";
 import { AlertCircle, FileText, HandHeart, ImageIcon, Lock, Receipt, ShieldCheck, Trash2, Undo2 } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Label } from "@/components/ui/input";
+import { SegmentedRadio } from "@/components/ui/segmented-radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { attachmentKinds } from "@/lib/fund-meta";
@@ -56,44 +57,6 @@ interface FormData {
 const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const toAmount = (sen: number) => (sen / 100).toFixed(2);
-
-function Segmented<T extends string>({ value, onChange, options, labelledBy }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: ReactNode }[]; labelledBy: string }) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  // Radio-group keyboard pattern: one tab stop (the checked option), arrow keys move and select.
-  const onKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
-    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
-    if (!step) return;
-    e.preventDefault();
-    const next = (i + step + options.length) % options.length;
-    onChange(options[next].value);
-    refs.current[next]?.focus();
-  };
-  return (
-    <div role="radiogroup" aria-labelledby={labelledBy} className="inline-flex w-full rounded-md bg-secondary p-1 sm:w-auto">
-      {options.map((o, i) => (
-        <button
-          key={o.value}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          tabIndex={value === o.value ? 0 : -1}
-          onClick={() => onChange(o.value)}
-          onKeyDown={(e) => onKey(e, i)}
-          className={cn(
-            "inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none [&_svg]:size-4",
-            value === o.value ? "bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {o.icon}
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export default function FundUsageCreate({ nav, type: initialType, item, categories, members, admins, relationships, limits, urls }: Props) {
   const isEdit = item !== null;
@@ -189,7 +152,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
           </Link>
         }
         title={title}
-        description={isWelfare ? "Sumbangan kebajikan. A different admin must approve before it counts." : "Record spending with its documents. A different admin must approve before it counts."}
+        description={isWelfare ? "Welfare payout. A different admin must approve before it counts." : "Record spending with its documents. A different admin must approve before it counts."}
       />
 
       {item?.returned && item.returnReason && (
@@ -232,14 +195,21 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
         <Card>
           <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
             <Field id="type" label="Record type" group>
-              <Segmented<FundType>
+              <SegmentedRadio<FundType>
                 labelledBy="type-label"
                 value={d.type}
                 onChange={(v) => form.setData("type", v)}
+                className="inline-flex w-full rounded-md bg-secondary p-1 sm:w-auto"
                 options={[
-                  { value: "expense", label: "Expense", icon: <Receipt aria-hidden /> },
-                  { value: "welfare", label: "Welfare (kebajikan)", icon: <HandHeart aria-hidden /> },
+                  { value: "expense", label: <><Receipt aria-hidden />Expense</> },
+                  { value: "welfare", label: <><HandHeart aria-hidden />Welfare</> },
                 ]}
+                itemClassName={(on) =>
+                  cn(
+                    "inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-semibold sm:flex-none [&_svg]:size-4",
+                    on ? "bg-card text-foreground shadow-[0_1px_2px_rgb(var(--shadow-color)/0.1)]" : "text-muted-foreground hover:text-foreground",
+                  )
+                }
               />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -279,11 +249,11 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
           <Card>
             <CardHeader className="pb-2">
               <CardTitle>Welfare details</CardTitle>
-              <CardDescription>Butiran kebajikan. Stored encrypted; visible to admins only.</CardDescription>
+              <CardDescription>Welfare details. Stored encrypted; visible to admins only.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="beneficiary" label="Beneficiary member" required hint="Ahli yang menerima manfaat" error={err["welfare.beneficiary_user_id"]}>
+                <Field id="beneficiary" label="Beneficiary member" required hint="The member who receives the help" error={err["welfare.beneficiary_user_id"]}>
                   <Select value={d.welfare.beneficiary_user_id || undefined} onValueChange={(v) => setW("beneficiary_user_id", v)}>
                     <SelectTrigger id="beneficiary" invalid={!!err["welfare.beneficiary_user_id"]}>
                       <SelectValue placeholder="Choose member" />
@@ -377,7 +347,7 @@ export default function FundUsageCreate({ nav, type: initialType, item, categori
               <Field id="paidDate" dateValue={d.paid_date} label="Date paid" hint="When the money actually left the account" error={err.paid_date}>
                 <Input id="paidDate" type="date" value={d.paid_date} onChange={(e) => form.setData("paid_date", e.target.value)} />
               </Field>
-              <Field id="minute" label="Meeting minute ref." hint="Rujukan minit mesyuarat, e.g. MJK 10/2026 item 3.1" error={err.minute_ref} className="sm:col-span-2">
+              <Field id="minute" label="Meeting minute ref." hint="e.g. MJK 10/2026 item 3.1" error={err.minute_ref} className="sm:col-span-2">
                 <Input id="minute" value={d.minute_ref} onChange={(e) => form.setData("minute_ref", e.target.value)} maxLength={255} />
               </Field>
             </div>

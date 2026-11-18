@@ -40,6 +40,12 @@ final class FundFigures
     /** The same line in Bahasa Melayu (member pages). */
     public const CHARGES_LABEL_MS = 'Caj bank / gateway';
 
+    /** Name of the welfare spending line (a total only, never a case count). */
+    public const WELFARE_LABEL = 'Welfare';
+
+    /** The same line in Bahasa Melayu (member pages). */
+    public const WELFARE_LABEL_MS = 'Kebajikan';
+
     /** SQL expression for an expense's cash date: COALESCE(paid_date, expense_date). */
     public static function cashDate(string $table = 'expenses'): string
     {
@@ -360,27 +366,36 @@ final class FundFigures
     }
 
     /**
-     * Spending in the range by category (largest first): approved expenses and
-     * welfare by their category, plus one "Bank / gateway charges" line. Each
-     * line carries its BM name (nameMs) for member pages when there is one.
+     * Spending in the range by line (largest first): approved expenses by their
+     * category, then one "Welfare" line for all approved welfare (a total only:
+     * never a case count, which could identify a family in a small club) and one
+     * "Bank / gateway charges" line. Welfare and charges are always their own
+     * lines, never folded into an expense category or "Others". Each line carries
+     * its kind (expense, welfare or charges) and its BM name (nameMs) for member
+     * pages when there is one. The amounts add up to spentSplitBetween()['spent'].
      *
-     * @return array<int, array{name: string, nameMs?: string, amount: int}>
+     * @return array<int, array{name: string, nameMs?: string, kind: string, amount: int}>
      */
     public function byCategoryBetween(CarbonInterface $from, CarbonInterface $to): array
     {
-        return $this->club->expenses()->counted()
+        $lines = $this->club->expenses()->counted()
+            ->where('expenses.type', 'expense')
             ->join('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
             ->tap(fn ($q) => self::inRange($q, self::cashDate(), $from, $to))
             ->groupBy('expense_categories.name', 'expense_categories.name_ms')
             ->selectRaw('expense_categories.name as name, expense_categories.name_ms as name_ms, SUM(expenses.amount) as total')
-            ->orderByDesc('total')
             ->get()
             // nameMs: the category's BM name for member pages (they fall back to name when it is not set).
-            ->map(fn ($r) => array_filter(['name' => $r->name, 'nameMs' => $r->name_ms, 'amount' => FundUsagePresenter::sen($r->total)], fn ($v) => $v !== null))
-            // Absorbed gateway charges are spending too, so the shares add up to spent.
-            ->when($charges = $this->gatewayFeesAbsorbedBetween($from, $to), fn ($c) => $c->push(['name' => self::CHARGES_LABEL, 'nameMs' => self::CHARGES_LABEL_MS, 'amount' => $charges]))
-            ->sortByDesc('amount')
-            ->values()
-            ->all();
+            ->map(fn ($r) => array_filter(['name' => $r->name, 'nameMs' => $r->name_ms, 'kind' => 'expense', 'amount' => FundUsagePresenter::sen($r->total)], fn ($v) => $v !== null));
+
+        if ($welfare = $this->spentBetween($from, $to, 'welfare')) {
+            $lines->push(['name' => self::WELFARE_LABEL, 'nameMs' => self::WELFARE_LABEL_MS, 'kind' => 'welfare', 'amount' => $welfare]);
+        }
+        // Absorbed gateway charges are spending too, so the shares add up to spent.
+        if ($charges = $this->gatewayFeesAbsorbedBetween($from, $to)) {
+            $lines->push(['name' => self::CHARGES_LABEL, 'nameMs' => self::CHARGES_LABEL_MS, 'kind' => 'charges', 'amount' => $charges]);
+        }
+
+        return $lines->sortByDesc('amount')->values()->all();
     }
 }

@@ -10,6 +10,10 @@ export interface MemberPaymentRow {
   amount: Sen;
   dueDate: string;
   status: PaymentStatus;
+  /** Due or overdue and its due date has passed: listed under "Perlu dibayar", not "Akan datang". */
+  pastDue?: boolean;
+  /** Last day of the grace period ("Lewat selepas <date>"); set only while a past-due fee is still "due". */
+  lateAfter?: string | null;
   paidDate: string | null;
   clubId: number;
   /** Present on Home rows. */
@@ -44,6 +48,8 @@ export interface FundCategory {
   name: string;
   /** BM name when it differs (FundFigures::CHARGES_LABEL_MS for bank / gateway charges). */
   nameMs?: string;
+  /** expense (a category), welfare (one total, never a case count) or charges (bank / gateway). */
+  kind?: "expense" | "welfare" | "charges";
   amount: Sen;
 }
 
@@ -54,19 +60,24 @@ export interface HomeClub {
   role: string;
   paymentsUrl: string;
   summary: { paid: number; due: number; overdue: number; processing: number; verifying: number; totalPaid: Sen };
-  /** FundFigures for this year so far: the same figures the club's admins see. spent = expenses + welfare + charges. */
-  fund: {
-    window: { from: string; to: string; range: string };
-    collected: Sen;
-    spent: Sen;
-    expenses: Sen;
-    welfare: Sen;
-    /** Bank / gateway charges the club absorbed. */
-    charges: Sen;
-    /** Spending above what came in this year (paid from earlier savings); 0 when none. */
-    fromReserves: Sen;
-    categories: FundCategory[];
-  };
+  /** "Ke mana wang anda pergi": the club's fund page (Member/Fund). */
+  fundUrl: string;
+}
+
+/** Member/Fund: FundFigures for this year so far, the same figures the club's admins see. spent = expenses + welfare + charges. */
+export interface MemberFund {
+  window: { from: string; to: string; range: string };
+  collected: Sen;
+  spent: Sen;
+  expenses: Sen;
+  welfare: Sen;
+  /** Bank / gateway charges the club absorbed. */
+  charges: Sen;
+  /** Spending above what came in this year (paid from earlier savings); 0 when none. */
+  fromReserves: Sen;
+  /** Fund balance (baki dana) at the end of today. */
+  balance: Sen;
+  categories: FundCategory[];
 }
 
 /** PaymentController::transferProps(): the club's bank details for a manual transfer. */

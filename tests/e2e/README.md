@@ -6,7 +6,7 @@ running `php artisan serve`:
 1. **Member pays:** log in → Home shows the amount due → Review & pay → POST pay → redirect to the
    (faked) ToyyibPay bill page → the pending PayResult page gives the bill reference → a ToyyibPay callback with
    that bill's own token (HMAC of the reference) is POSTed to `/webhook/toyyibpay` (a wrong token and the raw secret
-   must both get 403) → PayResult shows **Berjaya** → Home shows "Semua yuran telah dibayar".
+   must both get 403) → PayResult shows **Bayaran berjaya** → Home shows "Semua yuran telah dibayar".
 2. **Admin A (maker):** dashboard → Fund Usage → new expense (RM 12.34) with a generated PNG and PDF →
    Submit for approval.
 3. **Admin B (checker):** opens the record → Approve with the conflict-of-interest declaration →
@@ -27,9 +27,9 @@ The run signs in more than five times, so it pauses about a minute once for the 
 
 Every step is screenshotted in light and dark (member 390×844, admin 1366×860). The run fails on any
 console error, uncaught page error, failed request, CSP violation or horizontal overflow, and exits
-non-zero. Ignored on purpose: Google Fonts and the Bootstrap CDN still used by the remaining legacy Blade
-pages (unreachable in some sandboxes), and the 409 Chrome logs for Inertia's external redirect to the
-gateway (that is how `Inertia::location` works).
+non-zero. It also fails on any request to Google Fonts or jsDelivr: fonts, Bootstrap and Chart.js come from
+`public/build`. Ignored on purpose: the 409 Chrome logs for Inertia's external redirect to the gateway (that is
+how `Inertia::location` works); `E2E_IGNORE_HOSTS` (comma-separated) ignores errors from extra hosts.
 
 ## Requirements
 
@@ -69,7 +69,7 @@ The member's fee is paid by the run, so **re-seed (the four database lines above
 | `E2E_WEBHOOK_SECRET` | script | `e2e-webhook-secret-local-only-0123456789` | The script sends `?webhook_token=` HMAC-SHA256(bill reference, this secret), exactly as `ToyyibPayGateway::verifyWebhookRequest` expects. |
 | `E2E_OUT_DIR` | script | `<os tmpdir>/clubportal-e2e-shots` | Screenshots and the generated PNG/PDF fixtures. |
 | `E2E_PASSWORD` | script | `E2eSeeder::PASSWORD` | Password of the four seeded users. |
-| `E2E_IGNORE_HOSTS` | script | Google Fonts + jsDelivr | Comma-separated hosts whose network errors are ignored. |
+| `E2E_IGNORE_HOSTS` | script | none | Comma-separated hosts whose network errors are ignored. |
 
 `--no-reload` makes `artisan serve` pass the variables above straight to the PHP server process.
 

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Member;
 use App\Http\Controllers\Controller;
 use App\Models\FeeRate;
 use App\Models\Payment;
-use App\Support\Admin\FundFigures;
 use App\Support\Member\MemberPaymentPresenter as P;
 use App\Support\Payments\DisplayStatus;
 use Inertia\Inertia;
@@ -44,31 +43,9 @@ class DashboardController extends Controller
         $openCounts = fn (int $clubId, string $status) => $open->where('club_id', $clubId)
             ->filter(fn (Payment $p) => $statuses[$p->id] === $status)->count();
 
-        // "Where your money goes": club-wide aggregates for this year so far,
-        // from FundFigures (the same figures the club's admins see). Totals per
-        // club and per expense category only; no descriptions, payees, receipts
-        // or other members' names leave the database.
-        $ytd = FundFigures::yearToDate();
-        $fundFor = function ($club) use ($ytd) {
-            $figures = new FundFigures($club);
-            $w = $figures->forWindow($ytd);
-
-            return [
-                'window' => $w['window'],
-                'collected' => $w['collected'],
-                'spent' => $w['spent'],
-                'expenses' => $w['expenses'],
-                'welfare' => $w['welfare'],
-                'charges' => $w['charges'],
-                // Spending above what came in this year was paid from earlier savings.
-                'fromReserves' => max(0, $w['spent'] - $w['collected']),
-                'categories' => $figures->byCategoryBetween($ytd['from'], $ytd['to']),
-            ];
-        };
-
         $jobLevels = FeeRate::jobLevelLabels();
 
-        $clubCards = $clubs->map(function ($club) use ($rawStats, $fundFor, $jobLevels, $openCounts) {
+        $clubCards = $clubs->map(function ($club) use ($rawStats, $jobLevels, $openCounts) {
             $s = $rawStats[$club->id] ?? null;
             return [
                 'id' => $club->id,
@@ -84,7 +61,8 @@ class DashboardController extends Controller
                     'verifying' => $openCounts($club->id, DisplayStatus::VERIFYING),
                     'totalPaid' => P::sen($s->total_paid ?? 0),
                 ],
-                'fund' => $fundFor($club),
+                // "Ke mana wang anda pergi" has its own page (Member\FundController).
+                'fundUrl' => route('member.clubs.fund', $club),
             ];
         })->values();
 

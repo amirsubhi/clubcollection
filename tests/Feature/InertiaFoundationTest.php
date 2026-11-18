@@ -84,8 +84,9 @@ class InertiaFoundationTest extends TestCase
         $this->assertStringNotContainsString("'unsafe-inline'", $directives['script-src']);
         $this->assertStringNotContainsString("'unsafe-inline'", $directives['style-src']);
         $this->assertSame("'unsafe-inline'", $directives['style-src-attr']);
-        $this->assertStringContainsString('https://fonts.googleapis.com', $directives['style-src']);
-        $this->assertStringContainsString('https://fonts.gstatic.com', $directives['font-src']);
+        // Fonts are self-hosted (resources/css/fonts.css): no Google Fonts hosts.
+        $this->assertStringNotContainsString('fonts.googleapis.com', $directives['style-src']);
+        $this->assertStringNotContainsString('fonts.gstatic.com', $directives['font-src']);
     }
 
     public function test_existing_blade_login_page_still_renders(): void

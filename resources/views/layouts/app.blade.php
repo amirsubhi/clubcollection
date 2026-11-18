@@ -6,7 +6,8 @@
 --}}
 @php
     $adminNav = \App\Support\Admin\AdminNav::forRequest(request());
-    $bsTheme = is_file(public_path('hot'))
+    $classicBundled = \App\Support\FrontendAssets::classicBundled();
+    $bsTheme = $classicBundled
         || (is_file($manifest = public_path('build/manifest.json'))
             && str_contains((string) file_get_contents($manifest), 'resources/css/bootstrap-theme.css'));
 @endphp
@@ -25,6 +26,7 @@
                 if (pref === 'light' || pref === 'dark') d.setAttribute('data-theme', pref); else d.removeAttribute('data-theme');
                 d.setAttribute('data-bs-theme', d.getAttribute('data-theme') || (mq && mq.matches ? 'dark' : 'light'));
                 d.setAttribute('data-theme-pref', pref === 'light' || pref === 'dark' ? pref : 'system');
+                if (window.cpThemeColor) window.cpThemeColor();
             }
             apply(t);
             if (mq && mq.addEventListener) mq.addEventListener('change', function () { apply(d.getAttribute('data-theme')); });
@@ -36,13 +38,24 @@
     </script>
     @include('partials.pwa-head')
     <title>@yield('title', 'Admin') · Club Portal</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Plus+Jakarta+Sans:wght@400..700&display=swap" rel="stylesheet">
-    @if ($bsTheme)
-        @vite(['resources/css/bootstrap-theme.css'])
+    {{-- Inline page scripts that need window.bootstrap or window.Chart start from here: the bundled copies are module scripts and run after them. --}}
+    <script nonce="{{ $cspNonce }}">
+        window.cpWhenReady = function (name, fn) {
+            if (name === 'chart' ? window.Chart : window.bootstrap) fn();
+            else document.addEventListener('cp:' + name + '-ready', fn, { once: true });
+        };
+    </script>
+    @if ($classicBundled)
+        {{-- Bootstrap, Bootstrap Icons and the self-hosted fonts, bundled by Vite (resources/css/classic.css, resources/js/classic.ts). --}}
+        @include('partials.font-preload')
+        @vite(['resources/css/classic.css', 'resources/css/bootstrap-theme.css', 'resources/js/classic.ts'])
+    @else
+        {{-- public/build is missing or predates the bundled Bootstrap: the pinned jsDelivr copies (the CSP allows jsDelivr only then). --}}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.min.css" integrity="sha384-nWN3KqaaVcbEsCjLSV+2jMjh62Iny/+mN3srM8TZeM8N6aj7eDl5wwYggjAJ4/sJ" crossorigin="anonymous">
+        @if ($bsTheme)
+            @vite(['resources/css/bootstrap-theme.css'])
+        @endif
     @endif
     {{-- Page structure only (Bootstrap variables), so the layout holds even when public/build is missing. --}}
     <style nonce="{{ $cspNonce }}">
@@ -81,6 +94,27 @@
             .admin-sidebar-col > .admin-sidebar { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
             .admin-sidebar .offcanvas-body { width: 100%; }
             .admin-content { padding-top: 2rem; }
+        }
+        /* .table-stack: below xl (the sidebar leaves too little room for all columns until then) each row becomes a card (label: value lines, actions underneath), so nothing scrolls sideways.
+           Trade-off: display:block drops table semantics in Safari, so the markup carries explicit table/rowgroup/row/cell
+           roles; the visible ::before labels get empty alt text ("/ ''") so screen readers hear the column header once, not twice.
+           At xl+ the actions cell may wrap instead of pushing buttons off to the right. */
+        @media (max-width: 1199.98px) {
+            .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+            .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+            .table-stack tr { padding: .875rem 1rem; border-bottom: 1px solid var(--bs-border-color); }
+            .table-stack tr:last-child { border-bottom: 0; }
+            .table-stack > :not(caption) > * > * { border-bottom-width: 0; padding: .25rem 0; }
+            .table-stack td { text-align: start !important; white-space: normal !important; min-width: 0 !important; overflow-wrap: anywhere; }
+            .table-stack td[data-label] { display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: baseline; }
+            .table-stack td[data-label]::before { content: attr(data-label); content: attr(data-label) / ""; flex: 0 0 6.5rem; font-weight: 600; font-size: .875rem; color: var(--bs-secondary-color); }
+            .table-stack td.stack-actions { padding-top: .625rem; }
+            .table-stack td.stack-actions > div { display: flex !important; flex-wrap: wrap; }
+            .table-stack td.stack-empty { text-align: center !important; }
+        }
+        @media (min-width: 1200px) {
+            .table-stack td.stack-actions { white-space: normal !important; min-width: 9.5rem; }
+            .table-stack td.stack-actions > div { flex-wrap: wrap; justify-content: flex-end; }
         }
     </style>
     @stack('styles')
@@ -227,7 +261,9 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+@unless ($classicBundled)
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+@endunless
 <script nonce="{{ $cspNonce }}">
 // Theme menu: same choices and storage as the React pages (cp-theme).
 (function () {

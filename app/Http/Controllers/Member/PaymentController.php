@@ -220,7 +220,7 @@ class PaymentController extends Controller
             'files.*.mimes' => 'member.slip_type',
             'files.*.max' => 'member.slip_size',
             'files.*.uploaded' => 'member.slip_size',
-            'transfer_date.required' => 'member.transfer_date_invalid',
+            'transfer_date.required' => 'member.transfer_date_required',
             'transfer_date.date_format' => 'member.transfer_date_invalid',
             'transfer_date.before_or_equal' => 'member.transfer_date_invalid',
             'transfer_date.after_or_equal' => 'member.transfer_date_invalid',

@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./fonts.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -84,7 +85,7 @@
   }
   .auth-page [hidden] { display: none !important; }
   .auth-card {
-    @apply rounded-[20px] border bg-card p-6 text-card-foreground shadow-[0_18px_40px_-28px_rgb(var(--primary)/0.45)] min-[400px]:p-7;
+    @apply rounded-[20px] border bg-card p-6 text-card-foreground shadow-[0_18px_40px_-28px_rgb(var(--primary)/0.45)] min-[25em]:p-7;
   }
   .auth-label { @apply mb-1.5 block text-base font-semibold; }
   .auth-input {
@@ -103,6 +104,8 @@
     @apply inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 text-muted-foreground hover:text-foreground;
   }
   .auth-lang.is-active { @apply bg-primary text-primary-foreground hover:text-primary-foreground; }
+  .auth-help > summary { list-style: none; }
+  .auth-help > summary::-webkit-details-marker { display: none; }
   .auth-alert { @apply flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-base ring-1; }
   .auth-alert-danger { @apply bg-danger-soft text-danger-foreground ring-danger/25; }
   .auth-alert-success { @apply bg-success-soft text-success-foreground ring-success/25; }

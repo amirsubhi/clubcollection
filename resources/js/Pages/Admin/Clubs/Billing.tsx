@@ -78,9 +78,9 @@ function Section({ id, title, sub, children }: { id: string; title: string; sub?
 /** A labelled choice row (radio or checkbox) with a hint line; 44px+ target. */
 function Choice({ id, title, hint, disabled, children }: { id: string; title: string; hint?: ReactNode; disabled?: boolean; children: ReactNode }) {
   return (
-    <div className={cn("flex items-start gap-3 rounded-md border p-3", disabled ? "bg-muted/50" : "bg-card has-[:checked]:border-primary has-[:checked]:bg-accent/40")}>
+    <div className={cn("flex min-w-0 items-start gap-3 rounded-md border p-3", disabled ? "bg-muted/50" : "bg-card has-[:checked]:border-primary has-[:checked]:bg-accent/40")}>
       {children}
-      <Label htmlFor={id} className={cn("flex min-w-0 flex-1 flex-col gap-0.5 leading-snug", disabled ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer")}>
+      <Label htmlFor={id} className={cn("flex min-w-0 flex-1 flex-col gap-0.5 leading-snug [overflow-wrap:anywhere]", disabled ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer")}>
         <span className="font-semibold">{title}</span>
         {hint && <span className="text-xs font-normal text-muted-foreground">{hint}</span>}
       </Label>
@@ -109,7 +109,7 @@ function ConfirmButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} disabled={processing}>
+        <Button variant={variant} disabled={processing} className="h-auto min-h-10 max-w-full whitespace-normal py-2">
           {trigger}
         </Button>
       </DialogTrigger>
@@ -169,11 +169,11 @@ function PendingBankPanel({ pending, urls }: { pending: PendingBank; urls: Props
           </p>
         </div>
         <StatusChip Icon={Hourglass} tone="warning" size="md">
-          Menunggu kelulusan
+          Awaiting approval
         </StatusChip>
       </div>
 
-      <div className="-mx-4 overflow-x-auto sm:mx-0">
+      <div className="-mx-4 overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0" tabIndex={0} role="region" aria-label="Current and new bank details (scrolls sideways)">
         <table className="w-full min-w-[30rem] text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-muted-foreground">
@@ -194,7 +194,7 @@ function PendingBankPanel({ pending, urls }: { pending: PendingBank; urls: Props
                 <td className="px-4 py-2 sm:pr-0">
                   <span className={cn(r.changed && "font-semibold")}>{show(r.requested)}</span>
                   {r.changed && (
-                    <span className="ml-2 inline-flex items-center rounded-full border border-warning/40 bg-warning-soft px-1.5 text-[11px] font-semibold text-warning-foreground">Changed</span>
+                    <span className="ml-2 inline-flex items-center rounded-full border border-warning/40 bg-warning-soft px-1.5 text-xs font-semibold text-warning-foreground">Changed</span>
                   )}
                 </td>
               </tr>
@@ -290,7 +290,7 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
   return (
     <AdminLayout nav={nav} active="billing" title="Billing settings" wide={false}>
       <PageHeader
-        eyebrow={`Tetapan bil · ${clubName}`}
+        eyebrow={`Billing settings · ${clubName}`}
         title="Billing settings"
         description="How members can pay: the plans they may choose, who pays the online gateway fee, and the club's bank details for transfers."
       />
@@ -299,9 +299,9 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
 
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <Section id="plans" title="Plans members can choose" sub="Members use these when paying ahead from their Payments page. Longer plans mean fewer bills, so fewer gateway fees.">
-          <fieldset className="flex flex-col gap-2">
+          <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-2 text-sm font-medium">Allowed plans</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-3">
               {plans.map((p) => (
                 <Choice key={p.key} id={`allow_${p.key}`} title={p.label} hint={`${p.months} month${p.months === 1 ? "" : "s"} per bill`}>
                   <Checkbox id={`allow_${p.key}`} checked={allowed[p.key]} onCheckedChange={(c) => setAllowed(p.key, c === true)} aria-invalid={!!errors.allow_monthly || undefined} />
@@ -311,9 +311,9 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
             {errors.allow_monthly && <p className="text-xs font-medium text-danger-foreground">{errors.allow_monthly}</p>}
           </fieldset>
 
-          <fieldset className="flex flex-col gap-2">
+          <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-2 text-sm font-medium">Default plan</legend>
-            <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-describedby="default-plan-hint">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-3" role="radiogroup" aria-describedby="default-plan-hint">
               {plans.map((p) => (
                 <Choice key={p.key} id={`default_${p.key}`} title={p.label} hint={!allowed[p.key] ? "Allow this plan first" : data.default_plan === p.key ? "Members see it marked “Disyorkan” (Recommended)" : undefined} disabled={!allowed[p.key]}>
                   <input
@@ -336,7 +336,7 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
         </Section>
 
         <Section id="gateway" title={`Gateway fee (${gatewayLabel})`} sub="The online gateway charges a fee for each bill (about RM 1.00 for FPX). Choose who pays it.">
-          <fieldset className="flex flex-col gap-2">
+          <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="sr-only">Who pays the gateway fee</legend>
             <Choice id="payer_club" title="The club absorbs it" hint="Members pay the fee amount only.">
               <input
@@ -476,11 +476,13 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
 
           <Alert variant="info">
             <ShieldCheck aria-hidden />
-            <AlertTitle>Changes to the bank details need a second admin</AlertTitle>
-            <AlertDescription>
-              A new bank name, holder, account number or DuitNow ID only reaches members after another admin of this club (or the super admin) approves it. All club admins are emailed.
-              Switching transfers off takes effect at once.
-            </AlertDescription>
+            <div className="min-w-0">
+              <AlertTitle>Changes to the bank details need a second admin</AlertTitle>
+              <AlertDescription>
+                A new bank name, holder, account number or DuitNow ID only reaches members after another admin of this club (or the super admin) approves it. All club admins are emailed.
+                Switching transfers off takes effect at once.
+              </AlertDescription>
+            </div>
           </Alert>
 
           <div>
@@ -537,16 +539,16 @@ export default function Billing({ nav, clubName, gatewayLabel, memberFeeAllowed,
           )}
         </Section>
 
-        <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:mx-0 sm:rounded-lg sm:border">
-          <Button type="submit" disabled={processing}>
+        <div className="bleed-x sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t bg-background/95 py-3 sm:px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:mx-0 sm:rounded-lg sm:border">
+          <Button type="submit" disabled={processing} className="h-auto min-h-10 whitespace-normal py-2">
             <Save aria-hidden /> {processing ? "Saving…" : "Save billing settings"}
           </Button>
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="h-auto min-h-10 whitespace-normal py-2">
             <Link href={urls.dashboard}>
               Back to dashboard <ArrowRight aria-hidden />
             </Link>
           </Button>
-          <span className="text-sm text-muted-foreground" aria-live="polite">
+          <span className="min-w-0 text-sm text-muted-foreground" aria-live="polite">
             {isDirty ? "You have unsaved changes." : ""}
           </span>
         </div>

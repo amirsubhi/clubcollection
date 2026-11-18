@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, router } from "@inertiajs/react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, FilePlus2, HandHeart, Landmark, Paperclip, PlusCircle, Search, TrendingDown, Wallet, X } from "lucide-react";
+import { ArrowDown, FileWarning, ArrowUp, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, FilePlus2, HandHeart, Landmark, Paperclip, PlusCircle, Search, TrendingDown, Wallet, X } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { KpiTile, SpentSplit } from "@/components/app/Charts";
-import { FundStatusBadge, FundTypeBadge, StatusChip } from "@/components/app/StatusBadges";
+import { KpiTile, SpentSplit } from "@/components/app/Kpi";
+import { FundStatusBadge } from "@/components/app/FundStatusBadge";
+import { FundTypeBadge, StatusChip } from "@/components/app/StatusBadges";
 import { Avatar } from "@/components/app/Visuals";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FilterButton, FilterGroup } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { statusMeta } from "@/lib/fund-meta";
 import { fmtDate, rm } from "@/lib/format";
@@ -29,6 +31,8 @@ interface Filters {
   sort: "date" | "amount";
   dir: "asc" | "desc";
   per: number;
+  /** Only approved records with no documents. */
+  nodocs: boolean;
 }
 
 interface Props {
@@ -50,11 +54,14 @@ interface Props {
     year: number;
   };
   tabCounts: Record<TabId, number>;
+  /** Approved records in the whole club with no documents attached (ignores the filters). */
+  noDocsCount: number;
   filters: Filters;
   categories: Option[];
   rows: FundRow[];
-  pagination: { page: number; pages: number; total: number; totalAmount: number; prev: string | null; next: string | null };
-  urls: { index: string; createExpense: string; createWelfare: string };
+  /** totalAmount: every matching record, any status. countedAmount: the approved ones, as "Spent" counts them. */
+  pagination: { page: number; pages: number; total: number; totalAmount: number; countedAmount: number; prev: string | null; next: string | null };
+  urls: { index: string; createExpense: string; createWelfare: string; ledger: string };
 }
 
 const tabDefs: { id: TabId; label: string }[] = [
@@ -157,11 +164,48 @@ function PaidTo({ r }: { r: FundRow }) {
   );
 }
 
-export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categories, rows, pagination, urls }: Props) {
+/** Document count, or a muted "—" for none (approved records without documents are flagged once, above the table). */
+function Docs({ r, compact = false }: { r: FundRow; compact?: boolean }) {
+  if (r.attachmentCount > 0) {
+    const words = `${r.attachmentCount} document${r.attachmentCount === 1 ? "" : "s"}`;
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        {compact && <Paperclip className="h-3 w-3" aria-hidden />}
+        <span aria-hidden>{r.attachmentCount}</span>
+        <span className="sr-only">{words}</span>
+      </span>
+    );
+  }
+  // Approved records without documents keep a muted "—" (counted once in the banner above the table).
+  return compact && r.status !== "approved" ? (
+    <span className="sr-only">No documents</span>
+  ) : (
+    <>
+      <span aria-hidden className="text-muted-foreground">
+        —
+      </span>
+      <span className="sr-only">No documents</span>
+    </>
+  );
+}
+
+/* Matches FundFigures::balanceAt: every paid fee since records start, minus approved spending and bank charges. */
+function BalanceHint({ ledger }: { ledger: string }) {
+  return (
+    <>
+      All money in, minus everything spent, since the club&apos;s records start ·{" "}
+      <Link href={ledger} className="font-medium text-primary hover:underline">
+        See Ledger
+      </Link>
+    </>
+  );
+}
+
+export default function FundUsageIndex({ nav, kpis, tabCounts, noDocsCount, filters, categories, rows, pagination, urls }: Props) {
   const [q, setQ] = useState(filters.q);
   const first = useRef(true);
 
-  const visit = (patch: Partial<Filters>) => {
+  const paramsFor = (patch: Partial<Filters>) => {
     const next = { ...filters, ...patch };
     const params: Record<string, unknown> = {};
     if (next.tab !== "all") params.tab = next.tab;
@@ -171,7 +215,11 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
     if (next.sort !== "date") params.sort = next.sort;
     if (next.dir !== "desc") params.dir = next.dir;
     if (next.per !== 10) params.per = next.per;
-    router.get(urls.index, params as never, { preserveState: true, preserveScroll: true, replace: true });
+    if (next.nodocs) params.nodocs = 1;
+    return params;
+  };
+  const visit = (patch: Partial<Filters>) => {
+    router.get(urls.index, paramsFor(patch) as never, { preserveState: true, preserveScroll: true, replace: true });
   };
 
   // Debounced search box.
@@ -185,13 +233,13 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const filtered = filters.status.length + filters.category.length > 0 || filters.q.length > 0;
+  const filtered = filters.status.length + filters.category.length > 0 || filters.q.length > 0 || filters.nodocs;
 
   return (
     <AdminLayout nav={nav} active="fund-usage" title="Fund Usage">
       <PageHeader
         title="Fund Usage"
-        eyebrow={`Penggunaan Dana · ${kpis.year}`}
+        eyebrow={`Year ${kpis.year}`}
         description="Every ringgit spent, with documents and a second-admin approval."
         actions={
           <>
@@ -209,7 +257,18 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Phones: the four tiles fold into one summary line. */}
+      <p className="rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground md:hidden" data-testid="fund-kpi-summary">
+        <span className="font-medium text-foreground">{kpis.window.label}:</span> collected <Money sen={kpis.collectedYtd} className="font-semibold text-foreground" /> · spent{" "}
+        <Money sen={kpis.spentYtd} className="font-semibold text-foreground" /> · balance <Money sen={kpis.balance} className="font-semibold text-foreground" />
+        {kpis.awaiting > 0 && (
+          <>
+            {" "}
+            · <span className="font-semibold text-foreground">{kpis.awaiting}</span> awaiting approval
+          </>
+        )}
+      </p>
+      <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-4">
         <KpiTile label="Collected" window={kpis.window.range} value={rm(kpis.collectedYtd)} hint="Paid fees" Icon={Wallet} />
         <KpiTile
           label="Spent"
@@ -219,7 +278,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
           hint={`Approved records + bank charges · ${kpis.welfareCountYtd} welfare case${kpis.welfareCountYtd === 1 ? "" : "s"}`}
           Icon={TrendingDown}
         />
-        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint="All fees collected minus everything spent" Icon={Landmark} />
+        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint={<BalanceHint ledger={urls.ledger} />} Icon={Landmark} />
         <KpiTile
           label="Awaiting approval"
           window="Waiting now"
@@ -230,18 +289,16 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
       </div>
 
       <section className="flex min-w-0 flex-col gap-3">
-        <Tabs value={filters.tab} onValueChange={(v) => visit({ tab: v as TabId })}>
-          <div className="scrollbar-none -mx-1 overflow-x-auto px-1 pb-1">
-            <TabsList>
-              {tabDefs.map((d) => (
-                <TabsTrigger key={d.id} value={d.id}>
-                  {d.label}
-                  <span className="rounded-full bg-background/70 px-1.5 font-mono text-[11px]">{tabCounts[d.id] ?? 0}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-        </Tabs>
+        <div className="scrollbar-none -mx-1 overflow-x-auto px-1 pb-1">
+          <FilterGroup aria-label="Show records">
+            {tabDefs.map((d) => (
+              <FilterButton key={d.id} active={filters.tab === d.id} onClick={() => visit({ tab: d.id })}>
+                {d.label}
+                <span className="rounded-full bg-background/70 px-1.5 font-mono text-xs">{tabCounts[d.id] ?? 0}</span>
+              </FilterButton>
+            ))}
+          </FilterGroup>
+        </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative w-full sm:w-64">
@@ -263,7 +320,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                 className="h-9"
                 onClick={() => {
                   setQ("");
-                  visit({ q: "", status: [], category: [] });
+                  visit({ q: "", status: [], category: [], nodocs: false });
                 }}
               >
                 Reset <X aria-hidden />
@@ -271,6 +328,32 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
             )}
           </div>
         </div>
+
+        {(noDocsCount > 0 || filters.nodocs) && (
+          <Alert variant="warning" role="status" className="flex-wrap items-center gap-x-3 gap-y-1" data-testid="fund-nodocs-banner">
+            <FileWarning aria-hidden />
+            <span className="min-w-0 flex-1">
+              {filters.nodocs ? (
+                <>
+                  Showing approved records without documents · <span className="font-semibold">{noDocsCount}</span> in this club
+                </>
+              ) : (
+                <>
+                  This club has <span className="font-semibold">{noDocsCount}</span> approved record{noDocsCount === 1 ? "" : "s"} without documents
+                </>
+              )}
+            </span>
+            <Link
+              href={urls.index}
+              data={paramsFor(filters.nodocs ? { nodocs: false } : { nodocs: true, tab: "all", status: [] }) as never}
+              preserveState
+              preserveScroll
+              className="font-medium text-primary hover:underline"
+            >
+              {filters.nodocs ? "Clear" : "Show them"}
+            </Link>
+          </Alert>
+        )}
 
         <div className="overflow-hidden rounded-lg border bg-card">
           {rows.length === 0 ? (
@@ -286,9 +369,6 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                       <TableHead>Paid to</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-center">
-                        <Paperclip className="mx-auto h-4 w-4" aria-label="Attachments" />
-                      </TableHead>
                       <TableHead>Maker / checker</TableHead>
                       <SortHead label="Amount" k="amount" filters={filters} onSort={(sort, dir) => visit({ sort, dir })} className="text-right" />
                     </TableRow>
@@ -296,16 +376,27 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                   <TableBody>
                     {rows.map((r) => (
                       <TableRow key={r.id} className="cursor-pointer" onClick={() => router.visit(r.url)}>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">{fmtDate(r.paidDate ?? r.invoiceDate)}</TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                          {r.paidDate ? (
+                            fmtDate(r.paidDate)
+                          ) : (
+                            // No paid date recorded (nullable): "—", with the invoice date it is counted and sorted under.
+                            <div className="flex flex-col">
+                              <span aria-hidden>—</span>
+                              <span className="sr-only">No paid date recorded.</span>
+                              <span className="text-xs">Invoice {fmtDate(r.invoiceDate)}</span>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Link href={r.url} className="font-mono text-[13px] font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
+                          <Link href={r.url} className="font-mono text-[0.8125rem] font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
                             {r.ref}
                           </Link>
                         </TableCell>
-                        <TableCell className="max-w-[260px]">
+                        <TableCell className="min-w-[10rem]">
                           <div className="flex min-w-0 flex-col">
                             <PaidTo r={r} />
-                            <span className="truncate text-xs text-muted-foreground">{r.description}</span>
+                            <span className="line-clamp-2 break-words text-xs text-muted-foreground">{r.description}</span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -319,11 +410,15 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                                 Void requested
                               </StatusChip>
                             )}
+                            {/* Documents count folded in here so Amount always fits. */}
+                            <span className="text-xs text-muted-foreground">
+                              <Docs r={r} compact />
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className={cn("text-center font-mono text-xs", r.attachmentCount === 0 && "font-bold text-danger-foreground")}>{r.attachmentCount}</TableCell>
                         <TableCell>
-                          <div className="flex items-center -space-x-1.5">
+                          {/* Side by side (no overlap), so neither face is cut off. */}
+                          <div className="flex w-max items-center gap-1 p-0.5">
                             <span title={`Recorded by ${r.recordedBy}`}>
                               <Avatar name={r.recordedBy} size={28} ring />
                             </span>
@@ -332,13 +427,13 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
                                 <Avatar name={r.approvedBy} size={28} ring />
                               </span>
                             ) : (
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-input bg-card text-[11px] text-muted-foreground ring-2 ring-card" title="Not approved yet">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-input bg-card text-xs text-muted-foreground ring-2 ring-card" title="Not approved yet">
                                 ?
                               </span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="whitespace-nowrap text-right">
                           <span className={cn("money font-semibold", r.status === "void" && "text-muted-foreground line-through")}>−{rm(r.amount)}</span>
                         </TableCell>
                       </TableRow>
@@ -349,33 +444,44 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, filters, categori
               <ul className="divide-y md:hidden">
                 {rows.map((r) => (
                   <li key={r.id}>
-                    <Link href={r.url} className="flex items-start gap-3 px-3 py-3 hover:bg-muted/50">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-mono text-[13px] font-medium">{r.ref}</span>
-                          <FundTypeBadge type={r.type} />
+                    {/* Payee, amount and status first; the reference, date and documents underneath. */}
+                    <Link href={r.url} className="block px-3 py-3 hover:bg-muted/50">
+                      <div className="flex items-baseline gap-3">
+                        <div className="flex min-w-0 flex-1 flex-col font-semibold">
+                          <PaidTo r={r} />
                         </div>
-                        <div className="mt-1 line-clamp-2 text-sm">{r.description}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                          <span>{fmtDate(r.paidDate ?? r.invoiceDate)}</span>
-                          <span className="inline-flex items-center gap-0.5">
-                            <Paperclip className="h-3 w-3" aria-hidden />
-                            {r.attachmentCount}
-                          </span>
-                          <span>by {r.recordedBy.split(" ")[0]}</span>
-                        </div>
+                        <span className={cn("money shrink-0 text-sm font-bold", r.status === "void" && "text-muted-foreground line-through")}>−{rm(r.amount)}</span>
                       </div>
-                      <div className="flex flex-col items-end gap-1.5">
-                        <span className="money text-sm font-bold">−{rm(r.amount)}</span>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         <FundStatusBadge status={r.status} returned={r.returned} />
+                        {r.voidPending && (
+                          <StatusChip Icon={Ban} tone="danger">
+                            Void requested
+                          </StatusChip>
+                        )}
+                        <FundTypeBadge type={r.type} />
+                      </div>
+                      {r.description && <div className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{r.description}</div>}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span className="font-mono">{r.ref}</span>
+                        <span>{r.paidDate ? `Paid ${fmtDate(r.paidDate)}` : `Invoice ${fmtDate(r.invoiceDate)}`}</span>
+                        <Docs r={r} compact />
+                        <span>by {r.recordedBy.split(" ")[0]}</span>
                       </div>
                     </Link>
                   </li>
                 ))}
               </ul>
               <div className="flex flex-col gap-2 border-t px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-muted-foreground">
-                  {pagination.total} record{pagination.total === 1 ? "" : "s"} · <Money sen={pagination.totalAmount} className="font-semibold text-foreground" />
+                {/* Says which records the money covers: approved ones are what "Spent" counts. */}
+                <span className="text-muted-foreground" data-testid="fund-footer-total">
+                  {pagination.total} record{pagination.total === 1 ? "" : "s"} · <Money sen={pagination.countedAmount} className="font-semibold text-foreground" /> approved (counted in Spent)
+                  {pagination.totalAmount !== pagination.countedAmount && (
+                    <>
+                      {" "}
+                      · <Money sen={pagination.totalAmount} className="font-medium text-foreground" /> across all statuses shown
+                    </>
+                  )}
                 </span>
                 <div className="flex items-center gap-3">
                   <div className="hidden items-center gap-2 sm:flex">

@@ -136,8 +136,8 @@ class CountedTotalsTest extends TestCase
     {
         $this->actingAsMember($this->club);
 
-        $this->get(route('member.dashboard'))
-            ->assertInertia(fn (Assert $page) => $page->where('clubs.0.fund.spent', 10000));
+        $this->get(route('member.clubs.fund', $this->club))
+            ->assertInertia(fn (Assert $page) => $page->where('fund.spent', 10000));
     }
 
     /** Spending is placed by cash date: paid_date, else the invoice date. */

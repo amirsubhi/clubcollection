@@ -48,7 +48,8 @@ class MemberPagesRenderTest extends TestCase
                 ->has('recentPaid', 0)
                 ->has('clubs', 1)
                 ->where('clubs.0.id', $this->club->id)
-                ->has('clubs.0.fund.categories')
+                ->where('clubs.0.fundUrl', route('member.clubs.fund', $this->club))
+                ->missing('clubs.0.fund')
                 ->where('account.logoutUrl', route('logout'))
             );
     }

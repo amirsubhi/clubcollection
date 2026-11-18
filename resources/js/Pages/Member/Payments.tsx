@@ -120,7 +120,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                       >
                         <input type="radio" name="frequency" value={p} checked={checked} disabled={disabled} onChange={() => form.setData("frequency", p)} className="sr-only" />
                         {p === defaultPlan && (
-                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">{t("recommended")}</span>
+                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">{t("recommended")}</span>
                         )}
                         <span className="text-base font-semibold">{t(`months_${PLAN_MONTHS[p]}`)}</span>
                         <span className="text-xs text-muted-foreground">{t(`freq_${p}`)}</span>
@@ -180,12 +180,16 @@ export default function Payments({ club, selectedYear, years, summary, payments,
   const t = useT();
   // Fees still owed, oldest first (the order to pay them in); history stays newest first.
   const open = payments.filter((p) => p.status === "due" || p.status === "overdue").sort(oldestFirst);
+  // Past its due date: "Perlu dibayar"; not yet due: "Akan datang".
+  const late = open.filter((p) => p.pastDue);
+  const notYet = open.filter((p) => !p.pastDue);
   const processing = payments.filter((p) => p.status === "processing").sort(oldestFirst);
   const verifying = payments.filter((p) => p.status === "verifying");
   const paid = payments.filter((p) => p.status === "paid");
   const groups = [
     { key: "processing", title: t("processingGroup"), items: processing },
-    { key: "open", title: t("stillToPay"), items: open },
+    { key: "late", title: t("needToPay"), items: late },
+    { key: "open", title: t("upcoming"), items: notYet },
     { key: "verifying", title: t("verifying"), items: verifying },
     { key: "paid", title: t("paidGroup"), items: paid },
   ].filter((g) => g.items.length > 0);
@@ -197,12 +201,12 @@ export default function Payments({ club, selectedYear, years, summary, payments,
       <Head title={t("history")} />
       <FlashBanner />
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <Label htmlFor="year" className="text-base font-semibold">
           {t("year")}
         </Label>
         <Select value={String(selectedYear)} onValueChange={changeYear}>
-          <SelectTrigger id="year" className="h-12 w-32 text-base">
+          <SelectTrigger id="year" className="h-12 w-max min-w-32 max-w-full text-base">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -215,19 +219,27 @@ export default function Payments({ club, selectedYear, years, summary, payments,
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-[20px] bg-accent p-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2">
+        <div className="min-w-0 rounded-[20px] bg-accent p-4">
           <div className="text-sm font-medium text-accent-foreground">{fill(t("paidInYear"), { y: selectedYear })}</div>
-          <Money sen={summary.paid} className="figure font-display text-[26px] font-extrabold leading-tight" />
+          <Money sen={summary.paid} className="figure font-display text-[1.625rem] font-extrabold leading-tight !whitespace-normal [overflow-wrap:anywhere]" />
         </div>
-        <div className="rounded-[20px] border bg-card p-4">
+        <div className="min-w-0 rounded-[20px] border bg-card p-4">
           <div className="text-sm font-medium text-muted-foreground">{fill(t("owingInYear"), { y: selectedYear })}</div>
-          <Money sen={summary.due + summary.overdue} className="figure font-display text-[26px] font-extrabold leading-tight" />
+          <Money sen={summary.due + summary.overdue} className="figure font-display text-[1.625rem] font-extrabold leading-tight !whitespace-normal [overflow-wrap:anywhere]" />
         </div>
       </div>
 
       {groups.length === 0 && (
         <p className="rounded-[20px] border bg-card p-5 text-center text-base text-muted-foreground">{fill(t("noPaymentsYear"), { y: selectedYear })}</p>
+      )}
+      {payAll && open.length > 0 && (
+        <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
+          <Link href={payAll.url} data-testid="payments-pay-all">
+            {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
+            <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
+          </Link>
+        </Button>
       )}
       {groups.map((g) => (
         <section key={g.key} aria-labelledby={`h-${g.key}`} className="flex flex-col gap-2">
@@ -239,14 +251,6 @@ export default function Payments({ club, selectedYear, years, summary, payments,
               <RefreshCw className="mt-1 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
               <span>{t("processingGroupNote")}</span>
             </p>
-          )}
-          {g.key === "open" && payAll && (
-            <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
-              <Link href={payAll.url} data-testid="payments-pay-all">
-                {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
-                <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
-              </Link>
-            </Button>
           )}
           <ul className="divide-y rounded-[20px] border bg-card">
             {g.items.map((p) => (

@@ -69,7 +69,7 @@ export function MoneyFlowDiagram({
           <path d="M86 62 C86 84 130 84 132 104" strokeWidth={w(fees)} markerEnd={`url(#${id}-a)`} />
           <path d="M254 62 C254 84 210 84 208 104" strokeWidth={w(otherIncome)} markerEnd={`url(#${id}-a)`} />
         </g>
-        <text x="170" y="86" textAnchor="middle" fontSize="11.5" fill="currentColor" className="opacity-80">{bm ? "dikutip" : "collected"}</text>
+        <text x="170" y="86" textAnchor="middle" fontSize="12" fill="currentColor" className="opacity-80">{bm ? "dikutip" : "collected"}</text>
         {/* fund */}
         <rect x="70" y="110" width="200" height="62" rx="14" className="fill-deep stroke-primary/40" strokeWidth="1.5" />
         <text x="170" y="134" textAnchor="middle" fontSize="13.5" fontWeight="800" className="fill-deep-foreground" style={{ fontFamily: '"Bricolage Grotesque", system-ui, sans-serif' }}>{bm ? "Dana kelab" : "Club fund"}</text>
@@ -87,7 +87,7 @@ export function MoneyFlowDiagram({
             <rect x={o.x} y="222" width="100" height="64" rx="12" className="fill-card stroke-border" strokeWidth="1.5" />
             <text x={o.x + 50} y="242" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="currentColor">{o.label}</text>
             <text x={o.x + 50} y="259" textAnchor="middle" fontSize="12" fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>{rmShort(o.amt)}</text>
-            <text x={o.x + 50} y="277" textAnchor="middle" fontSize="11" fill="currentColor" className="opacity-75">{o.sub}</text>
+            <text x={o.x + 50} y="277" textAnchor="middle" fontSize="12" fill="currentColor" className="opacity-75">{o.sub}</text>
           </g>
         ))}
       </svg>
@@ -99,22 +99,22 @@ export function MoneyFlowDiagram({
 export type FlowState = "draft" | "submitted" | "approved" | "returned" | "void";
 
 /**
- * Maker-checker flow: Draf → Dihantar → Diluluskan / Dikembalikan (back to Draf) → Batal.
+ * Maker-checker flow: Draft → Submitted → Approved / Returned (back to Draft) → Void.
  * The current state is the one filled with the primary colour.
  */
 export function ApprovalFlowDiagram({ current, className }: { current?: FlowState; className?: string }) {
   const id = useId().replace(/:/g, "");
-  const nodes: { key: FlowState; x: number; y: number; bm: string; en: string }[] = [
-    { key: "draft", x: 4, y: 26, bm: "Draf", en: "Draft" },
-    { key: "submitted", x: 124, y: 26, bm: "Dihantar", en: "Submitted" },
-    { key: "approved", x: 244, y: 26, bm: "Diluluskan", en: "Approved" },
-    { key: "returned", x: 64, y: 150, bm: "Dikembalikan", en: "Returned" },
-    { key: "void", x: 244, y: 150, bm: "Batal", en: "Void" },
+  const nodes: { key: FlowState; x: number; y: number; en: string }[] = [
+    { key: "draft", x: 4, y: 26, en: "Draft" },
+    { key: "submitted", x: 124, y: 26, en: "Submitted" },
+    { key: "approved", x: 244, y: 26, en: "Approved" },
+    { key: "returned", x: 64, y: 150, en: "Returned" },
+    { key: "void", x: 244, y: 150, en: "Void" },
   ];
   const W = 92;
   const H = 46;
   const claim =
-    "Maker-checker flow. The maker saves a Draf and submits it (Dihantar). A different admin either approves it (Diluluskan) or returns it with a reason (Dikembalikan), which sends it back to Draf. An approved record can only be voided (Batal) when two admins agree.";
+    "Maker-checker flow. The maker saves a draft and submits it. A different admin either approves it or returns it with a reason, which sends it back to draft. An approved record can only be voided when two admins agree.";
   return (
     <figure className={cn("flex flex-col gap-2", className)}>
       <svg viewBox="0 0 340 204" role="img" aria-label={claim} className="h-auto w-full max-w-[520px] text-foreground">
@@ -128,24 +128,21 @@ export function ApprovalFlowDiagram({ current, className }: { current?: FlowStat
           <path d="M80 148 Q50 120 50 76" markerEnd={`url(#${id}-a)`} />
           <path d="M290 74 V146" markerEnd={`url(#${id}-a)`} />
         </g>
-        <g fontSize="11.5" fill="currentColor" className="text-muted-foreground">
-          <text x="109" y="16" textAnchor="middle">hantar</text>
-          <text x="229" y="16" textAnchor="middle">lulus</text>
-          <text x="166" y="104">pulang</text>
-          <text x="166" y="118">+ sebab</text>
-          <text x="2" y="116">betulkan</text>
-          <text x="296" y="104">2 admin</text>
-          <text x="296" y="118">setuju</text>
+        <g fontSize="12" fill="currentColor" className="text-muted-foreground">
+          <text x="109" y="16" textAnchor="middle">submit</text>
+          <text x="229" y="16" textAnchor="middle">approve</text>
+          <text x="166" y="104">return</text>
+          <text x="166" y="118">+ reason</text>
+          <text x="2" y="116">fix</text>
+          <text x="284" y="104" textAnchor="end">2 admins</text>
+          <text x="284" y="118" textAnchor="end">agree</text>
         </g>
         {nodes.map((n) => {
           const on = n.key === current;
           return (
             <g key={n.key}>
               <rect x={n.x} y={n.y} width={W} height={H} rx="10" strokeWidth="1.5" className={on ? "fill-primary stroke-primary" : "fill-card stroke-border"} />
-              <text x={n.x + W / 2} y={n.y + 20} textAnchor="middle" fontSize="13" fontWeight="700" className={on ? "fill-primary-foreground" : "fill-foreground"}>
-                {n.bm}
-              </text>
-              <text x={n.x + W / 2} y={n.y + 36} textAnchor="middle" fontSize="11" className={on ? "fill-primary-foreground" : "fill-muted-foreground"}>
+              <text x={n.x + W / 2} y={n.y + 28} textAnchor="middle" fontSize="13" fontWeight="700" className={on ? "fill-primary-foreground" : "fill-foreground"}>
                 {n.en}
               </text>
             </g>

@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [v0.0.2] — Unreleased
 
+> **Upgrade note:** the March 2026 GitHub release `v1.0.0` (listed below as v0.0.1) is superseded. Do not upgrade it
+> in place: install this release fresh. From the first real install onwards, all schema changes are new, additive
+> migrations.
+
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
@@ -189,7 +193,8 @@ Security and accessibility hardening pass. No public API changes.
 
 ## [v0.0.1] — 2026-03-23
 
-(Published on GitHub as the `v1.0.0` release, which the version heading links to.)
+(Published on GitHub as the `v1.0.0` release, which the version heading links to. Superseded: do not upgrade it in
+place; see the upgrade note under v0.0.2.)
 
 First public release of Club Portal — a self-hosted club membership management system built with Laravel 13.
 

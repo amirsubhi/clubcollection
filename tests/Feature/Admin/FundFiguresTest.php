@@ -155,7 +155,7 @@ class FundFiguresTest extends TestCase
 
         $csv = $this->get(route('admin.clubs.ledger.export', $this->club).$q)->streamedContent();
         $this->assertStringContainsString('Opening Balance (RM),1,000.00', str_replace('"', '', $csv));
-        $this->assertStringContainsString('diubah secara manual', $csv);
+        $this->assertStringContainsString('Set manually', $csv);
 
         $computed = $this->get(route('admin.clubs.ledger.export', $this->club).'?from=2026-01-01&to=2026-11-16')->streamedContent();
         $this->assertStringContainsString('Opening Balance (RM),400.00', str_replace('"', '', $computed));
@@ -195,17 +195,18 @@ class FundFiguresTest extends TestCase
                 ->where('summary.out', 13000));
 
         $this->actingAsMember($this->club);
-        $this->get(route('member.dashboard'))
+        $this->get(route('member.clubs.fund', $this->club))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('clubs.0.fund.collected', 30000)
-                ->where('clubs.0.fund.spent', 13000)
-                ->where('clubs.0.fund.expenses', 8000)
-                ->where('clubs.0.fund.welfare', 5000)
-                ->where('clubs.0.fund.charges', 0)
-                ->missing('clubs.0.fund.welfareCount')
-                ->where('clubs.0.fund.fromReserves', 0)
-                ->where('clubs.0.fund.window.from', '2026-01-01')
-                ->where('clubs.0.fund.window.to', '2026-11-16'));
+                ->where('fund.collected', 30000)
+                ->where('fund.spent', 13000)
+                ->where('fund.expenses', 8000)
+                ->where('fund.welfare', 5000)
+                ->where('fund.charges', 0)
+                ->missing('fund.welfareCount')
+                ->where('fund.fromReserves', 0)
+                ->where('fund.balance', 57000)
+                ->where('fund.window.from', '2026-01-01')
+                ->where('fund.window.to', '2026-11-16'));
     }
 
     public function test_a_manual_opening_balance_is_dropped_when_from_moves(): void
@@ -225,7 +226,7 @@ class FundFiguresTest extends TestCase
         // Exports follow the same rule.
         $csv = $this->get(route('admin.clubs.ledger.export', $this->club).'?from=2026-04-01&to=2026-11-16&opening_balance=1000&opening_for=2026-01-01')->streamedContent();
         $this->assertStringContainsString('Opening Balance (RM),700.00', str_replace('"', '', $csv));
-        $this->assertStringNotContainsString('diubah secara manual', $csv);
+        $this->assertStringNotContainsString('Set manually', $csv);
     }
 
     /** Absorbed gateway fees are money out: a "bank / gateway charges" line in spent and the balance. */
@@ -248,7 +249,7 @@ class FundFiguresTest extends TestCase
         $this->assertSame($balance, $f->balance());
         $this->assertSame(55000 - 10000 - 100, $f->openingBalance(Carbon::create(2026, 1, 1)));
         $this->assertSame(250, $f->monthly(12)[3]['spent'], 'March: the two absorbed charges');
-        $this->assertContains(['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'amount' => 350], $f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
+        $this->assertContains(['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'kind' => 'charges', 'amount' => 350], $f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
 
         $this->actingAsClubAdmin($this->club);
         $this->get(route('admin.clubs.dashboard', $this->club))
@@ -275,7 +276,7 @@ class FundFiguresTest extends TestCase
 
         // CSV and PDF match the page.
         $csv = str_replace('"', '', $this->get(route('admin.clubs.ledger.export', $this->club))->streamedContent());
-        $this->assertStringContainsString('Bank / gateway charges (Caj bank / gateway) — Mar 2026', $csv);
+        $this->assertStringContainsString('Bank / gateway charges — Mar 2026', $csv);
         $this->assertStringContainsString('of which Bank / gateway charges (RM),3.50', $csv);
         $this->assertStringContainsString('Closing Balance (RM),'.number_format($balance / 100, 2), $csv);
         $pdf = null;
@@ -287,11 +288,11 @@ class FundFiguresTest extends TestCase
         $this->assertSame(2, collect($pdf['transactions'])->where('kind', 'charges')->count());
 
         $this->actingAsMember($this->club);
-        $this->get(route('member.dashboard'))
+        $this->get(route('member.clubs.fund', $this->club))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('clubs.0.fund.spent', 13350)
-                ->where('clubs.0.fund.charges', 350)
-                ->where('clubs.0.fund.categories', fn ($c) => collect($c)->contains(fn ($r) => $r['name'] === FundFigures::CHARGES_LABEL && $r['amount'] === 350)));
+                ->where('fund.spent', 13350)
+                ->where('fund.charges', 350)
+                ->where('fund.categories', fn ($c) => collect($c)->contains(fn ($r) => $r['name'] === FundFigures::CHARGES_LABEL && $r['amount'] === 350)));
     }
 
     public function test_member_card_notes_spending_from_reserves(): void
@@ -299,11 +300,44 @@ class FundFiguresTest extends TestCase
         $this->spend(400.00, '2026-07-01');
         $this->actingAsMember($this->club);
 
-        $this->get(route('member.dashboard'))
+        $this->get(route('member.clubs.fund', $this->club))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('clubs.0.fund.spent', 53000)
-                ->where('clubs.0.fund.collected', 30000)
-                ->where('clubs.0.fund.fromReserves', 23000));
+                ->where('fund.spent', 53000)
+                ->where('fund.collected', 30000)
+                ->where('fund.fromReserves', 23000)
+                // Paid from the fund balance: what is left as of today.
+                ->where('fund.balance', 57000 - 40000));
+    }
+
+    /** Welfare and bank charges are their own lines (welfare a total only, no case count); the lines add up to spent. */
+    public function test_spending_lines_keep_welfare_and_charges_separate(): void
+    {
+        $other = ExpenseCategory::factory()->for($this->club)->create(['name' => 'Equipment']);
+        Expense::factory()->approved()->create(['club_id' => $this->club->id, 'expense_category_id' => $other->id, 'amount' => 20.00, 'expense_date' => '2026-06-01', 'type' => 'welfare']);
+        $this->paidOnline('2026-03-10', 150);
+
+        $f = new FundFigures($this->club);
+        $lines = collect($f->byCategoryBetween(Carbon::create(2026, 1, 1), Carbon::create(2026, 11, 16)));
+        $this->assertSame([
+            ['name' => 'Events', 'kind' => 'expense', 'amount' => 8000],
+            ['name' => FundFigures::WELFARE_LABEL, 'nameMs' => FundFigures::WELFARE_LABEL_MS, 'kind' => 'welfare', 'amount' => 7000],
+            ['name' => FundFigures::CHARGES_LABEL, 'nameMs' => FundFigures::CHARGES_LABEL_MS, 'kind' => 'charges', 'amount' => 150],
+        ], $lines->all(), 'welfare in any category is one welfare line; Equipment holds no expense');
+        $w = $f->forWindow(FundFigures::yearToDate());
+        $this->assertSame($w['spent'], $lines->sum('amount'));
+
+        $this->actingAsMember($this->club);
+        $this->get(route('member.clubs.fund', $this->club))
+            ->assertInertia(fn (Assert $page) => $page
+                ->missing('fund.welfareCount')
+                ->where('fund.welfare', 7000)
+                ->where('fund.categories', fn ($c) => collect($c)->sum('amount') === $w['spent']
+                    && collect($c)->every(fn ($r) => array_keys($r) === array_values(array_intersect(['name', 'nameMs', 'kind', 'amount'], array_keys($r))))));
+
+        $this->actingAsClubAdmin($this->club);
+        $this->get(route('admin.clubs.dashboard', $this->club))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('categories', fn ($c) => collect($c)->pluck('kind')->sort()->values()->all() === ['charges', 'expense', 'welfare']));
     }
 
     public function test_dashboard_kpis_carry_their_window(): void

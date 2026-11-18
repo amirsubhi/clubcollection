@@ -15,8 +15,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Serves private attachments to admins of the owning club only. Members
  * never get a route to these files. show() is audited (attachment.viewed
  * for an opened preview, attachment.downloaded otherwise); thumb() serves
- * gallery thumbnails of images only and is authorized but not audited, so
- * merely rendering a record page does not flood the audit log.
+ * images only, as-is (gallery tiles and the large inline slip preview on
+ * Verifications), authorized but not audited, so merely rendering a page
+ * does not flood the audit log. Approve / reject log the slip ids and
+ * SHA-256 instead. Like show(), it is never cached.
  */
 class AttachmentController extends Controller
 {
@@ -35,7 +37,7 @@ class AttachmentController extends Controller
             'Content-Type' => $attachment->mime,
             'Content-Length' => (string) strlen($contents),
             'Content-Disposition' => 'inline',
-            'Cache-Control' => 'private, max-age=300',
+            'Cache-Control' => 'private, no-store, max-age=0',
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);

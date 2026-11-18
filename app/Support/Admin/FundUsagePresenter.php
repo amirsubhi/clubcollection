@@ -99,8 +99,8 @@ final class FundUsagePresenter
             'mime' => $a->mime,
             'sha256' => $a->sha256,
             'frozen' => $a->isFrozen(),
-            // Unaudited thumbnail for the gallery grid (images only); audited inline view
-            // when a preview is opened; audited download.
+            // Unaudited image for gallery tiles and the inline slip preview (images only, not
+            // cached); audited inline view when a preview is opened in full; audited download.
             'thumbUrl' => str_starts_with($a->mime, 'image/') ? route('admin.attachments.thumb', $a) : null,
             'url' => route('admin.attachments.show', ['attachment' => $a, 'inline' => 1]),
             'downloadUrl' => route('admin.attachments.show', $a),

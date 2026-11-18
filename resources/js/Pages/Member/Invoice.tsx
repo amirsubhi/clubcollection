@@ -1,7 +1,7 @@
 import { Hourglass, Lock, Printer, RefreshCw } from "lucide-react";
 import { Head, Link } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
-import { FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
+import { DueNote, FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { ReceiptActions } from "@/components/app/ReceiptActions";
 import { ReceiptCard } from "@/components/app/ReceiptCard";
@@ -82,7 +82,10 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
           </div>
           <div>
             <dt className="text-sm text-muted-foreground">{t("due")}</dt>
-            <dd className="font-semibold">{fmtDate(payment.dueDate, lang)}</dd>
+            <dd className="font-semibold">
+              {fmtDate(payment.dueDate, lang)}
+              <DueNote p={payment} />
+            </dd>
             {issuedOn && (
               <>
                 <dt className="mt-2 text-sm text-muted-foreground">{t("issuedOn")}</dt>

@@ -194,10 +194,9 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" integrity="sha384-G436+Z2nlA8+PNoeRvWdxKbvOf8E/y+lYxqht2iBwNHTQDV5CJr3+AGVj8fGZi5t" crossorigin="anonymous"></script>
+@include('partials.chart-js')
 <script nonce="{{ $cspNonce }}">
-(function () {
-    if (!window.Chart) return;
+window.cpWhenReady('chart', function () {
     // Colours come from the theme tokens (tokens.css), so the charts follow light / dark.
     const fallback = { '--chart-1-stroke': '91 79 207', '--chart-4': '249 203 211', '--chart-4-stroke': '184 64 90', '--chart-grid': '232 230 243', '--chart-axis': '95 92 122' };
     function tok(name, alpha) {
@@ -244,6 +243,6 @@
     paint();
     // Theme switched (menu or OS): repaint with the new tokens.
     new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
-})();
+});
 </script>
 @endpush

@@ -1,13 +1,16 @@
+import type { FundCategory } from "@/types/member";
 import type { ReactNode } from "react";
 import { Link } from "@inertiajs/react";
 import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart, Hourglass, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { CollectedSpentChart, KpiTile, SpentSplit } from "@/components/app/Charts";
+import { LazyCollectedSpentChart } from "@/components/app/LazyCollectedSpentChart";
+import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { CategoryBar } from "@/components/app/CategoryBar";
 import { toSlices } from "@/components/app/MemberParts";
-import { FundStatusBadge, StatusChip } from "@/components/app/StatusBadges";
+import { FundStatusBadge } from "@/components/app/FundStatusBadge";
+import { StatusChip } from "@/components/app/StatusBadges";
 import { Avatar, IconBubble, type Tone } from "@/components/app/Visuals";
 import { Button } from "@/components/ui/button";
 import { fmtDate, fmtDateTime, fmtPeriod, rm } from "@/lib/format";
@@ -50,7 +53,7 @@ interface Props {
   };
   monthly: MonthPoint[];
   monthlyWindow: FigureWindow;
-  categories: { name: string; amount: number }[];
+  categories: FundCategory[];
   queue: (FundRow & { canApprove: boolean })[];
   /** Transfer slips waiting for an admin (TransferVerificationController::card, without files). */
   slips: {
@@ -89,15 +92,15 @@ const delta = (pct: number | null) => (pct === null ? undefined : `${pct >= 0 ? 
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? "Selamat pagi" : h < 19 ? "Selamat petang" : "Selamat malam";
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-/** Pengesahan bayaran: transfer slips members sent, oldest first. */
+/** Payment verifications: transfer slips members sent, oldest first. */
 function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
   return (
     <Panel
       title="Transfer slips"
-      sub={slips.count > 0 ? `${slips.count} waiting to be checked · Menunggu pengesahan` : "Nothing to check · Tiada slip menunggu"}
+      sub={slips.count > 0 ? `${slips.count} waiting to be checked` : "Nothing to check"}
       action={
         <Link href={url} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
           Check <ArrowRight className="h-4 w-4" aria-hidden />
@@ -129,13 +132,25 @@ function SlipsPanel({ slips, url }: { slips: Props["slips"]; url: string }) {
   );
 }
 
+/* Matches FundFigures::balanceAt: every paid fee since records start, minus approved spending and bank charges. */
+function BalanceHint({ ledger }: { ledger: string }) {
+  return (
+    <>
+      All money in, minus everything spent, since the club&apos;s records start ·{" "}
+      <Link href={ledger} className="font-medium text-primary hover:underline">
+        See Ledger
+      </Link>
+    </>
+  );
+}
+
 export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
   const slices = toSlices(categories, { bm: "Lain-lain", en: "Others" });
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
   return (
     <AdminLayout nav={nav} active="dashboard" title="Dashboard">
       <PageHeader
-        eyebrow={`Papan pemuka · ${year}`}
+        eyebrow={`Dashboard · ${year}`}
         title={`${greeting()}, ${greetingName.split(" ")[0]}`}
         description="Where the club fund stands today, and what needs a second pair of eyes."
         actions={
@@ -157,7 +172,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint="All fees collected minus everything spent" Icon={Landmark} />
+        <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint={<BalanceHint ledger={urls.ledger} />} Icon={Landmark} />
         <KpiTile
           label="Collected"
           window={kpis.window.range}
@@ -188,14 +203,14 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <Panel title="Collected vs spent" sub={`${monthlyWindow.label} · RM per month · spent is approved expenses, welfare and bank charges`} className="lg:col-span-2">
-          <CollectedSpentChart data={monthly} lang="en" height={280} windowLabel={`${monthlyWindow.label} (${monthlyWindow.range})`} />
+          <LazyCollectedSpentChart data={monthly} lang="en" height={280} windowLabel={`${monthlyWindow.label} (${monthlyWindow.range})`} />
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-4">
           {(slips.count > 0 || slips.transferReady) && <SlipsPanel slips={slips} url={urls.verifications} />}
           <Panel
             title="Approvals queue"
-            sub="Menunggu kelulusan"
+            sub="Waiting for a second admin"
             action={
               <Link href={urls.fundUsage} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary hover:underline">
                 All <ArrowRight className="h-4 w-4" aria-hidden />
@@ -211,7 +226,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                     <div className="flex items-start gap-3">
                       <Avatar name={i.recordedBy} />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                           <span className="font-mono text-xs text-muted-foreground">{i.ref}</span>
                           <Money sen={i.amount} className="text-sm font-bold" />
                         </div>
@@ -221,16 +236,22 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2 pl-12">
+                    <div className="flex flex-wrap items-center gap-2 pl-12">
                       <FundStatusBadge status={i.status} />
                       {i.canApprove ? (
-                        <Button asChild size="sm" className="h-8">
+                        <Button asChild size="sm" className="ml-auto h-auto min-h-8 whitespace-normal">
                           <Link href={i.url}>Review</Link>
                         </Button>
                       ) : (
-                        <Link href={i.url} className="text-xs text-muted-foreground hover:underline">
-                          {i.recordedByMe ? "You recorded this" : "You can't approve this"}
-                        </Link>
+                        // Not theirs to approve: a clear "View" button, with the reason on its own line so the row wraps at 320 px.
+                        <>
+                          <Button asChild size="sm" variant="outline" className="ml-auto h-auto min-h-8 whitespace-normal">
+                            <Link href={i.url}>
+                              View<span className="sr-only"> {i.ref}</span>
+                            </Link>
+                          </Button>
+                          <span className="basis-full text-xs text-muted-foreground">{i.recordedByMe ? "You recorded this" : "You can't approve this"}</span>
+                        </>
                       )}
                     </div>
                   </li>
@@ -258,7 +279,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
             <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>
               {kpis.gatewayFees.payer === "member" && kpis.gatewayFees.absorbedYtd === 0
-                ? "Gateway fees are paid by members (dibayar ahli)."
+                ? "Gateway fees are paid by members."
                 : `Bank / gateway charges: the club absorbed ${rm(kpis.gatewayFees.absorbedYtd)} in gateway fees on online payments. They are counted in spent.`}
             </span>
           </p>
@@ -312,16 +333,16 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
                         {a.who} · {fmtDateTime(a.at)}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
+                    <div className="ml-auto flex flex-col items-end">
                       <span className="money text-sm font-bold">
                         {a.direction === "in" ? "+" : "−"}
                         {rm(a.amount)}
                       </span>
-                      <span className="text-[11px] font-medium text-muted-foreground">{a.direction === "in" ? "Money in" : "Money out"}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{a.direction === "in" ? "Money in" : "Money out"}</span>
                     </div>
                   </>
                 );
-                const cls = "-mx-2 flex min-h-12 items-center gap-3 rounded-md px-2 py-2";
+                const cls = "-mx-2 flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2 py-2";
                 return (
                   <li key={a.id}>
                     {a.url ? (

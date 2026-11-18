@@ -4,7 +4,7 @@ import { LogOut, Menu, Monitor, Moon, PanelLeft, Sun, UserRound } from "lucide-r
 import { Avatar } from "./Visuals";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +59,7 @@ function Brand({ collapsed, href, subtitle }: { collapsed?: boolean; href: strin
       <Logo />
       {!collapsed && (
         <span className="min-w-0">
-          <span className="block font-display text-[15px] font-extrabold leading-tight tracking-tight">Club Portal</span>
+          <span className="block font-display text-[0.9375rem] font-extrabold leading-tight tracking-tight">Club Portal</span>
           {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
         </span>
       )}
@@ -91,12 +91,12 @@ function NavList({ groups, active, collapsed }: { groups: AdminNavGroup[]; activ
                   {isActive && <span className="absolute -left-3 top-2 h-6 w-1 rounded-r-full bg-primary" aria-hidden />}
                   <it.Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
                   {!collapsed && <span className="truncate">{it.label}</span>}
-                  {!collapsed && it.disabled && <span className="ml-auto text-[11px]">soon</span>}
+                  {!collapsed && it.disabled && <span className="ml-auto text-xs">soon</span>}
                   {it.badge ? (
                     collapsed ? (
                       <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" aria-label={`${it.badge} waiting`} />
                     ) : (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">{it.badge}</span>
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">{it.badge}</span>
                     )
                   ) : null}
                 </>
@@ -231,62 +231,65 @@ export function AdminShell({ active, nav, user, userInitials, homeHref, brandSub
       return !c;
     });
   };
+  // Tooltips are admin-only (collapsed sidebar labels, fund status), so the provider lives here, not in app.tsx.
   return (
-    <div className="flex min-h-full flex-col">
-      <a
-        href="#main"
-        className="sr-only z-[60] rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-      >
-        Skip to content
-      </a>
-      <div className="bleed-x-flush flex flex-1">
-        {/* Outer aside stretches to the full page height (so the sidebar colour never stops short); inner column stays sticky. */}
-        <aside className={cn("hidden shrink-0 self-stretch border-r bg-sidebar transition-[width] duration-200 lg:block", collapsed ? "w-[68px]" : "w-64")}>
-          <div className={cn("sticky top-0 flex h-screen flex-col gap-6 py-4", collapsed ? "px-2" : "px-3")}>
-            <div className={cn(collapsed ? "flex justify-center" : "px-1")}>
-              <Brand collapsed={collapsed} href={homeHref} subtitle={brandSubtitle} />
+    <TooltipProvider delayDuration={200}>
+      <div className="flex min-h-full flex-col">
+        <a
+          href="#main"
+          className="sr-only z-[60] rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          Skip to content
+        </a>
+        <div className="bleed-x-flush flex flex-1">
+          {/* Outer aside stretches to the full page height (so the sidebar colour never stops short); inner column stays sticky. */}
+          <aside className={cn("hidden shrink-0 self-stretch border-r bg-sidebar transition-[width] duration-200 lg:block", collapsed ? "w-[68px]" : "w-64")}>
+            <div className={cn("sticky top-0 flex h-screen flex-col gap-6 py-4", collapsed ? "px-2" : "px-3")}>
+              <div className={cn(collapsed ? "flex justify-center" : "px-1")}>
+                <Brand collapsed={collapsed} href={homeHref} subtitle={brandSubtitle} />
+              </div>
+              {/* Padded out to the sidebar edge so the active item's bar (at -left-3) is not clipped by the scroll box. */}
+              <div className={cn("-mr-1 flex-1 overflow-y-auto pr-1", collapsed ? "-ml-2 pl-2" : "-ml-3 pl-3")}>
+                <NavList groups={nav} active={active} collapsed={collapsed} />
+              </div>
+              {!collapsed && sidebarFooter}
             </div>
-            {/* Padded out to the sidebar edge so the active item's bar (at -left-3) is not clipped by the scroll box. */}
-            <div className={cn("-mr-1 flex-1 overflow-y-auto pr-1", collapsed ? "-ml-2 pl-2" : "-ml-3 pl-3")}>
-              <NavList groups={nav} active={active} collapsed={collapsed} />
-            </div>
-            {!collapsed && sidebarFooter}
+          </aside>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="safe-x sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" aria-label="Open menu">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="bg-sidebar">
+                  <SheetTitle className="sr-only">Menu</SheetTitle>
+                  <SheetDescription className="sr-only">Admin navigation</SheetDescription>
+                  <div className="px-1 pr-10">
+                    <Brand href={homeHref} subtitle={brandSubtitle} />
+                  </div>
+                  <div className="pl-3">
+                    <NavList groups={nav} active={active} />
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <Button variant="ghost" size="icon" className="hidden shrink-0 lg:inline-flex" onClick={toggle} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-pressed={collapsed}>
+                <PanelLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              </Button>
+              <div className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden />
+              {search ?? <div className="flex-1" />}
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <ThemeMenu />
+                <UserMenu user={user} initials={userInitials} memberHref={memberHref} onLogout={onLogout} />
+              </div>
+            </header>
+            <main id="main" tabIndex={-1} className="safe-x flex-1 py-6 focus:outline-none lg:py-8">
+              <div className={cn("mx-auto flex flex-col gap-6", wide ? "max-w-7xl" : "max-w-3xl")}>{children}</div>
+            </main>
           </div>
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="safe-x sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0 lg:hidden" aria-label="Open menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="bg-sidebar">
-                <SheetTitle className="sr-only">Menu</SheetTitle>
-                <SheetDescription className="sr-only">Admin navigation</SheetDescription>
-                <div className="px-1 pr-10">
-                  <Brand href={homeHref} subtitle={brandSubtitle} />
-                </div>
-                <div className="pl-3">
-                  <NavList groups={nav} active={active} />
-                </div>
-              </SheetContent>
-            </Sheet>
-            <Button variant="ghost" size="icon" className="hidden shrink-0 lg:inline-flex" onClick={toggle} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-pressed={collapsed}>
-              <PanelLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            </Button>
-            <div className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden />
-            {search ?? <div className="flex-1" />}
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              <ThemeMenu />
-              <UserMenu user={user} initials={userInitials} memberHref={memberHref} onLogout={onLogout} />
-            </div>
-          </header>
-          <main id="main" tabIndex={-1} className="safe-x flex-1 py-6 focus:outline-none lg:py-8">
-            <div className={cn("mx-auto flex flex-col gap-6", wide ? "max-w-7xl" : "max-w-3xl")}>{children}</div>
-          </main>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

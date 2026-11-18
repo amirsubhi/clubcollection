@@ -73,6 +73,14 @@ Versions are the ones in `package-lock.json`.
 | `clsx` | 2.1.1 | MIT | Luke Edwards | https://github.com/lukeed/clsx |
 | `tailwind-merge` | 3.7.0 | MIT | 2021 Dany Castillo | https://github.com/dcastil/tailwind-merge |
 | `get-nonce` | 1.0.1 | MIT | 2020 Anton Korzunov | https://github.com/theKashey/get-nonce |
+| `bootstrap` | 5.3.8 | MIT | 2011-2025 The Bootstrap Authors | https://github.com/twbs/bootstrap |
+| `bootstrap-icons` | 1.13.2 | MIT | 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons |
+| `@popperjs/core` | 2.11.8 | MIT | 2019 Federico Zivolo | https://github.com/floating-ui/floating-ui/tree/v2.x |
+| `chart.js` | 4.6.1 | MIT | 2014-2024 Chart.js Contributors | https://github.com/chartjs/Chart.js |
+| `@kurkle/color` | 0.3.4 | MIT | Jukka Kurkela | https://github.com/kurkle/color |
+| `@fontsource-variable/plus-jakarta-sans` | 5.3.0 | OFL-1.1 | 2020 The Plus Jakarta Sans Project Authors | https://github.com/fontsource/font-files |
+| `@fontsource-variable/bricolage-grotesque` | 5.3.0 | OFL-1.1 | 2022 The Bricolage Grotesque Project Authors | https://github.com/fontsource/font-files |
+| `@fontsource/jetbrains-mono` | 5.3.0 | OFL-1.1 | 2020 The JetBrains Mono Project Authors | https://github.com/fontsource/font-files |
 
 `class-variance-authority` is under the Apache License 2.0; its full text, with all the others, is in
 `public/licenses.txt` (served at `/licenses.txt`).
@@ -106,22 +114,21 @@ mockup is not part of the app or its release.
 
 ---
 
-## Loaded from CDNs and font services
+## Bootstrap, Chart.js and fonts (self-hosted)
 
-The remaining Blade pages (login, installer and the classic admin pages) load these from jsDelivr. Versions are the
-ones pinned in `resources/views/layouts/*.blade.php`, `resources/views/install/index.blade.php` and the two Chart.js pages.
+The classic Blade pages (admin pages, installer) get **Bootstrap** and **Bootstrap Icons** from the build
+(`resources/css/classic.css`, `resources/js/classic.ts`), and the classic admin dashboard and the super admin's
+statistics page get **Chart.js** from `resources/js/classic-charts.ts`. Bootstrap's dropdowns and tooltips use
+**Popper** (`@popperjs/core`, MIT); Chart.js uses `@kurkle/color` (MIT). All are listed in the table above.
 
-| Library | Version | Licence | Copyright | Source |
-|---|---|---|---|---|
-| Bootstrap | 5.3.3 | MIT | 2011-2024 The Bootstrap Authors | https://github.com/twbs/bootstrap |
-| Bootstrap Icons | 1.11.3 | MIT | 2019-2024 The Bootstrap Authors | https://github.com/twbs/icons (page-body icons on the classic Blade pages only; the Blade sidebar and top bar use Lucide) |
-| Chart.js | 4.4.4 | MIT | 2014-2024 Chart.js Contributors | https://github.com/chartjs/Chart.js |
+Only when `public/build` is missing (or was built before these were bundled) do those pages fall back to the same
+libraries from jsDelivr, pinned to the versions above with Subresource Integrity hashes; the CSP allows
+`cdn.jsdelivr.net` only in that case.
 
-Chart.js draws the charts on the classic admin dashboard and the super admin's statistics page.
-
-**Fonts:** the React pages (`resources/views/app.blade.php`) load **Bricolage Grotesque**, **Plus Jakarta Sans** and
-**JetBrains Mono** from Google Fonts. All three are under the SIL Open Font License 1.1
-(https://openfontlicense.org). The Blade pages use Bootstrap's system font stack and load no text web fonts (only the Bootstrap Icons icon font).
+**Fonts:** **Plus Jakarta Sans** (body), **Bricolage Grotesque** (headings) and **JetBrains Mono** (reference numbers)
+are self-hosted from the Fontsource npm packages above (latin subset, `resources/css/fonts.css`); no page loads Google
+Fonts. The fonts are under the SIL Open Font License 1.1 (https://openfontlicense.org); the licence text ships in each
+package and in `public/licenses.txt`. The font files are used unmodified.
 
 ---
 
@@ -141,7 +148,7 @@ Chart.js draws the charts on the classic admin dashboard and the super admin's s
   classic Blade pages (inline SVG paths copied from lucide-react 1.73.0 into `app/Support/Admin/LucideIcons.php`; licence
   text in [`docs/THIRD-PARTY-LICENSES.md`](docs/THIRD-PARTY-LICENSES.md)).
 - **[Bootstrap](https://getbootstrap.com)** and **[Bootstrap Icons](https://icons.getbootstrap.com)** (MIT): the
-  remaining Blade pages (Bootstrap Icons only for icons inside the page body).
+  remaining Blade pages (Bootstrap Icons only for icons inside the page body), bundled by Vite.
 
 ### UX research
 
@@ -154,7 +161,7 @@ Apple's Human Interface Guidelines and others. Every rule and its source is list
 
 ## Trademarks
 
-ToyyibPay, Billplz, FPX, DuitNow and PayNet, Laravel, Inertia, React, Tailwind CSS, Bootstrap, Google Fonts, cPanel,
+ToyyibPay, Billplz, FPX, DuitNow and PayNet, Laravel, Inertia, React, Tailwind CSS, Bootstrap, cPanel,
 GitHub and the other product names mentioned in this project are trademarks or registered trademarks of their
 respective owners (FPX and DuitNow belong to Payments Network Malaysia Sdn Bhd, PayNet). They are used only to
 describe what the software works with. This project is not affiliated with, sponsored by or endorsed by any of them.

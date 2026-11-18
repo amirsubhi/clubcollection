@@ -24,8 +24,10 @@ const USERS = {
   adminB: "e2e.admin.b@clubportal.test",
 };
 const GATEWAY_HOST = "dev.toyyibpay.com"; // TOYYIBPAY_SANDBOX=true
-// Sandbox-only network noise: Google Fonts, and the Bootstrap CDN still used by the remaining legacy Blade pages.
-const IGNORED_HOSTS = (process.env.E2E_IGNORE_HOSTS || "fonts.googleapis.com,fonts.gstatic.com,cdn.jsdelivr.net").split(",").filter(Boolean);
+// Fonts, Bootstrap and Chart.js are served from public/build: a request to one of these hosts fails the run.
+const THIRD_PARTY_ASSET_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdn.jsdelivr.net"];
+// Hosts whose console errors and failed requests are ignored (none by default; comma-separated).
+const IGNORED_HOSTS = (process.env.E2E_IGNORE_HOSTS || "").split(",").filter(Boolean);
 const EXPENSE_SEN = 1234; // RM 12.34
 
 mkdirSync(OUT, { recursive: true });
@@ -105,6 +107,13 @@ function guard(page, label) {
     fail(`[${label}] console error on ${page.url()}: ${msg.text()} ${url}`);
   });
   page.on("pageerror", (err) => fail(`[${label}] uncaught error on ${page.url()}: ${err.message}`));
+  page.on("request", (req) => {
+    let host = "";
+    try {
+      host = new URL(req.url()).hostname;
+    } catch {}
+    if (THIRD_PARTY_ASSET_HOSTS.includes(host)) fail(`[${label}] third-party asset request on ${page.url()}: ${req.url()}`);
+  });
   page.on("requestfailed", (req) => {
     const err = req.failure()?.errorText || "";
     if (isIgnored(req.url()) || err.includes("ERR_ABORTED")) return;
@@ -231,9 +240,9 @@ try {
     if (res.status() !== 200 || body.trim() !== "ok") throw new Error(`webhook returned ${res.status()} ${body.slice(0, 80)}`);
     await api.dispose();
   });
-  await step("PayResult shows Berjaya", async () => {
+  await step("PayResult shows Bayaran berjaya", async () => {
     await m.page.goto(`${BASE}/my/payments/${paymentId}/thankyou?status_id=1&billcode=${encodeURIComponent(billCode)}`);
-    await m.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await m.page.getByText("Bayaran berjaya", { exact: true }).first().waitFor();
     await shot(m.page, "a4-pay-result");
     await m.page.goto(`${BASE}/my/dashboard`);
     await m.page.getByText("Semua yuran telah dibayar").first().waitFor();
@@ -270,7 +279,7 @@ try {
     await a.page.locator('input[type="file"][multiple]').setInputFiles([pngPath, pdfPath]);
     for (const [file, kind] of [["e2e-receipt.png", "Receipt"], ["e2e-invoice.pdf", "Invoice"]]) {
       await a.page.getByLabel(`Kind of ${file}`).click();
-      await a.page.getByRole("option", { name: new RegExp(`^${kind} ·`) }).click();
+      await a.page.getByRole("option", { name: kind, exact: true }).click();
     }
     await shot(a.page, "b3-create-filled");
     await Promise.all([a.page.waitForURL(/\/admin\/fund-usage\/\d+$/), a.page.getByRole("button", { name: "Submit for approval" }).click()]);
@@ -293,7 +302,7 @@ try {
     await shot(b.page, "c2-approve-dialog");
     await dialog.getByRole("button", { name: /^Approve/ }).click();
     await dialog.waitFor({ state: "detached" });
-    await b.page.getByText(/^Approved /).first().waitFor();
+    await b.page.getByText(/^Approved \d/).first().waitFor();
     await shot(b.page, "c3-approved");
   });
   await step("dashboard spent increases by the expense amount", async () => {
@@ -371,7 +380,7 @@ try {
     await dialog.getByRole("button", { name: /^Approve/ }).click();
     await dialog.waitFor({ state: "detached" });
     await e.page.getByText(/^Slip approved\./).first().waitFor();
-    await e.page.getByRole("tab", { name: /Recently handled/ }).click();
+    await e.page.getByRole("button", { name: /Recently handled/ }).click();
     await e.page.getByText("Approved", { exact: true }).first().waitFor();
     await shot(e.page, "e3-verifications-handled");
   });
@@ -437,7 +446,7 @@ try {
     if (res.status() !== 200 || (await res.text()).trim() !== "ok") throw new Error(`group webhook returned ${res.status()}`);
     await api.dispose();
     await f.page.goto(`${groupResultUrl}?status_id=1&billcode=${encodeURIComponent(groupBillCode)}`);
-    await f.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await f.page.getByText("Bayaran berjaya", { exact: true }).first().waitFor();
     await f.page.getByText("3 yuran dibayar sekali gus").first().waitFor();
     const lines = await f.page.locator('article[aria-label="Resit rasmi"] tbody tr').count();
     if (lines !== 4) throw new Error(`receipt has ${lines - 1} fee lines, expected 3`);
@@ -482,7 +491,7 @@ try {
   await h.ctx.close();
   await step("the group result page is now the receipt", async () => {
     await g.page.reload();
-    await g.page.getByText("Berjaya", { exact: true }).first().waitFor();
+    await g.page.getByText("Bayaran berjaya", { exact: true }).first().waitFor();
     await g.page.getByText("Pindahan bank / DuitNow").first().waitFor();
     await shot(g.page, "g3-pay-all-transfer-receipt");
   });

@@ -3,7 +3,8 @@ import { router } from "@inertiajs/react";
 import { ArrowDownLeft, ArrowUpRight, BarChart3, CalendarRange, CheckCircle2, FileDown, FileSpreadsheet, Landmark, PencilLine, Table2, Undo2 } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
-import { CollectedSpentChart, KpiTile, SpentSplit } from "@/components/app/Charts";
+import { LazyCollectedSpentChart } from "@/components/app/LazyCollectedSpentChart";
+import { KpiTile, SpentSplit } from "@/components/app/Kpi";
 import { adminPayLabel, payMeta, StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { DateHint, Input, Label, FieldError, FieldHint } from "@/components/ui/input";
@@ -199,15 +200,21 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
       )}
 
       <div className="flex flex-col gap-2 border-t pt-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        {/* The amount itself is the first tile below (and the ledger's first line); here only where it comes from and how to change it. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           <span className="font-medium">Opening balance</span>
-          <span className="money font-semibold">{rm(opening.amount)}</span>
-          {opening.source === "manual" ? (
-            <span className="text-muted-foreground">
-              Set by hand; the records say {rm(opening.computed)} · <span lang="ms">diubah secara manual</span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">Fund balance at the end of {fmtDate(opening.asOf)}, from the records</span>
+          <span className="text-muted-foreground">{opening.source === "manual" ? "Set by hand" : "From the records"}</span>
+          {!editOpening && (
+            <>
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditOpening(true)}>
+                <PencilLine aria-hidden /> Set manually
+              </Button>
+              {opening.source === "manual" && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => go({ from: filters.from, to: filters.to })}>
+                  <Undo2 aria-hidden /> Use the records again
+                </Button>
+              )}
+            </>
           )}
         </div>
         {editOpening ? (
@@ -245,18 +252,7 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
               {openingError ?? "Only for money the club held before it used this system. The page and exports will mark it as set manually."}
             </p>
           </form>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditOpening(true)}>
-              <PencilLine aria-hidden /> Set manually
-            </Button>
-            {opening.source === "manual" && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => go({ from: filters.from, to: filters.to })}>
-                <Undo2 aria-hidden /> Use the records again
-              </Button>
-            )}
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -275,16 +271,16 @@ function MonthlySection({ monthly, range, className }: { monthly: MonthRow[]; ra
       title="Month by month"
       sub="Money in and out per month, with the balance at each month end"
       action={
-        <Button type="button" variant="outline" size="sm" aria-pressed={chart} onClick={() => setChart((c) => !c)}>
+        <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal" aria-pressed={chart} onClick={() => setChart((c) => !c)}>
           {chart ? <Table2 aria-hidden /> : <BarChart3 aria-hidden />} {chart ? "Show as table" : "Show as chart"}
         </Button>
       }
     >
       {chart ? (
-        <CollectedSpentChart data={points} labels={{ collected: "Money in", spent: "Money out" }} windowLabel={range} showTable={false} height={260} />
+        <LazyCollectedSpentChart data={points} labels={{ collected: "Money in", spent: "Money out" }} windowLabel={range} showTable={false} height={260} />
       ) : (
         <div className="-mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full text-[13px] sm:min-w-[34rem] sm:text-sm">
+          <table className="w-full text-[0.8125rem] sm:min-w-[34rem] sm:text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th scope="col" className="px-4 py-2 font-semibold sm:pl-0">Month</th>
@@ -379,7 +375,7 @@ function OutstandingSection({ outstanding, className }: { outstanding: Props["ou
 
 function TransactionsSection({ transactions, summary, opening, from, to }: { transactions: Txn[]; summary: Props["summary"]; opening: Props["opening"]; from: string; to: string }) {
   // Phones start with 25 lines, wider screens with 100.
-  const [shown, setShown] = useState(() => (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? PAGE_PHONE : PAGE));
+  const [shown, setShown] = useState(() => (typeof window !== "undefined" && window.matchMedia("(max-width: 47.99em)").matches ? PAGE_PHONE : PAGE));
   const rows = transactions.slice(0, shown);
   const complete = rows.length === transactions.length;
   return (
@@ -411,7 +407,7 @@ function TransactionsSection({ transactions, summary, opening, from, to }: { tra
                   <td className="py-2 pr-2 text-muted-foreground">—</td>
                   <td className="whitespace-nowrap px-2 py-2 text-muted-foreground">{fmtDate(from)}</td>
                   <td className="px-2 py-2 italic text-muted-foreground" colSpan={4}>
-                    Opening balance brought forward{opening.source === "manual" ? " (diubah secara manual)" : ""}
+                    Opening balance brought forward{opening.source === "manual" ? " (set manually)" : ""}
                   </td>
                   <td className="py-2 pl-2 text-right font-semibold">
                     <Balance sen={opening.amount} />
@@ -458,16 +454,16 @@ function TransactionsSection({ transactions, summary, opening, from, to }: { tra
 
           {/* Phone: one card per line */}
           <ol className="flex flex-col divide-y md:hidden">
-            <li className="flex items-center justify-between gap-3 py-2 text-sm text-muted-foreground">
+            <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 py-2 text-sm text-muted-foreground">
               <span>
-                Opening balance{opening.source === "manual" ? " (diubah secara manual)" : ""}
+                Opening balance{opening.source === "manual" ? " (set manually)" : ""}
               </span>
               <Balance sen={opening.amount} className="font-semibold text-foreground" />
             </li>
             {rows.map((t) => (
               <li key={t.n} className="flex flex-col gap-1 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 font-medium">{t.description}</span>
+                <div className="flex flex-wrap items-start justify-between gap-x-3">
+                  <span className="min-w-0 break-words font-medium">{t.description}</span>
                   <span className="money shrink-0 font-semibold">
                     {t.direction === "in" ? "+" : "−"}
                     {rm(t.amount)}
@@ -515,7 +511,7 @@ export default function LedgerIndex({ nav, clubName, filters, presets, maxMonths
   return (
     <AdminLayout nav={nav} active="ledger" title="Ledger">
       <PageHeader
-        eyebrow={`Lejar kewangan · ${clubName}`}
+        eyebrow={clubName}
         title="Ledger"
         description="Every ringgit in and out for the period, with the running balance. The same figures as the dashboard, ready for the AGM."
         actions={
@@ -539,7 +535,7 @@ export default function LedgerIndex({ nav, clubName, filters, presets, maxMonths
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile
           label="Opening balance"
-          window={opening.source === "manual" ? "(diubah secara manual)" : `End of ${fmtDate(opening.asOf)}`}
+          window={opening.source === "manual" ? "(set manually)" : `End of ${fmtDate(opening.asOf)}`}
           value={rm(summary.opening)}
           hint={opening.source === "manual" ? `The records say ${rm(opening.computed)}` : "From the records"}
           Icon={Landmark}

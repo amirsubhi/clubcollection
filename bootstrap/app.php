@@ -47,5 +47,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // A typed URL (GET/HEAD) that exists only for other methods, e.g. /admin/members/{id}
+        // after its show route was removed, is a page that doesn't exist: 404, not 405.
+        // Trade-off: a GET link wrongly pointing at a POST-only route also shows a 404 in production,
+        // so locally the 405 is kept to make such mistakes visible during development.
+        $exceptions->map(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e) {
+            $typedUrl = request()->isMethod('GET') || request()->isMethod('HEAD');
+
+            return $typedUrl && ! app()->isLocal()
+                ? new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Not Found', $e)
+                : $e;
+        });
     })->create();

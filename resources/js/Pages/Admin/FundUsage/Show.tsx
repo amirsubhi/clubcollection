@@ -4,7 +4,8 @@ import { Ban, Pencil, Send, ShieldCheck, Trash2, UserX, Users } from "lucide-rea
 import { AdminLayout } from "@/components/app/AdminLayout";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Money } from "@/components/app/Money";
-import { FundStatusBadge, FundTypeBadge } from "@/components/app/StatusBadges";
+import { FundStatusBadge } from "@/components/app/FundStatusBadge";
+import { FundTypeBadge } from "@/components/app/StatusBadges";
 import { AttachmentGallery } from "@/components/app/AttachmentGallery";
 import { AuditTimeline } from "@/components/app/AuditTimeline";
 import { ApprovalRail } from "@/components/app/ApprovalRail";
@@ -12,7 +13,7 @@ import { ApprovalFlowDiagram } from "@/components/app/Diagrams";
 import { Stamp } from "@/components/app/Visuals";
 import { ApproveDialog, ReturnDialog, VoidDialog } from "@/components/app/FundDialogs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmtDate, fmtDateTime } from "@/lib/format";
@@ -98,6 +99,20 @@ function ConfirmDialog({ trigger, title, body, confirm, destructive, onConfirm }
   );
 }
 
+/**
+ * Approve / Return that this admin can't use: still focusable and announced with the reason (aria-disabled +
+ * aria-describedby), but a click does nothing (preventDefault stops the dialog trigger from opening).
+ */
+function blockedTrigger(blocked: boolean): ButtonProps {
+  if (!blocked) return { className: "w-full" };
+  return {
+    className: "w-full cursor-not-allowed opacity-50",
+    "aria-disabled": true,
+    "aria-describedby": "approval-blocker",
+    onClick: (e) => e.preventDefault(),
+  };
+}
+
 export default function FundUsageShow({ nav, item, events, can, approvalBlocker, needsSecondApprover, eligibleApprovers, urls }: Props) {
   const fi = toFundItem(item);
   const w = item.welfare;
@@ -140,8 +155,8 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
       )}
       {item.status === "submitted" && (
         <>
-          <ApproveDialog item={fi} triggerProps={{ disabled: !can.approve, className: "w-full" }} onConfirm={() => post(urls.approve, { declaration: true })} />
-          <ReturnDialog item={fi} triggerProps={{ disabled: !can.return, className: "w-full" }} onConfirm={(r) => post(urls.return, { reason: r ?? "" })} />
+          <ApproveDialog item={fi} triggerProps={blockedTrigger(!can.approve)} onConfirm={() => post(urls.approve, { declaration: true })} />
+          <ReturnDialog item={fi} triggerProps={blockedTrigger(!can.return)} onConfirm={(r) => post(urls.return, { reason: r ?? "" })} />
           {can.edit && (
             <Button variant="ghost" asChild>
               <Link href={urls.edit}>
@@ -149,7 +164,11 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
               </Link>
             </Button>
           )}
-          {approvalBlocker && <p className="text-xs text-muted-foreground">{approvalBlocker}</p>}
+          {(approvalBlocker || !can.approve || !can.return) && (
+            <p id="approval-blocker" className="text-xs text-muted-foreground">
+              {approvalBlocker ?? "Another admin has to approve or return this record."}
+            </p>
+          )}
         </>
       )}
       {item.status === "approved" &&
@@ -189,12 +208,12 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
             Fund Usage
           </Link>
         }
-        title={<span className="font-mono text-[26px] font-medium tracking-normal sm:text-[30px]">{item.ref}</span>}
+        title={<span className="font-mono text-[1.625rem] font-medium tracking-normal sm:text-[1.875rem]">{item.ref}</span>}
         description={item.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <FundTypeBadge type={item.type} />
-            <FundStatusBadge status={item.status} showBm returned={item.returned} />
+            <FundStatusBadge status={item.status} returned={item.returned} />
           </div>
         }
       />
@@ -203,7 +222,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
         <Alert variant="warning">
           <UserX aria-hidden />
           <div>
-            <AlertTitle>Needs second approver · Perlu pelulus kedua</AlertTitle>
+            <AlertTitle>Needs second approver</AlertTitle>
             <AlertDescription>
               {item.recordedByMe ? "You recorded this, so another admin must approve it. " : ""}
               {eligibleApprovers === 0
@@ -237,7 +256,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
         <Alert variant="danger">
           <Ban aria-hidden />
           <div>
-            <AlertTitle>Voided · Dibatalkan</AlertTitle>
+            <AlertTitle>Voided</AlertTitle>
             <AlertDescription>
               {item.voidReason}. Requested by {item.voidRequestedBy}, confirmed by {item.voidApprovedBy}. Excluded from all totals.
             </AlertDescription>
@@ -251,14 +270,14 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
             <CardContent className="flex flex-col gap-5 p-4 pt-5 sm:p-6">
               <div className="flex flex-col gap-1 pr-24 sm:pr-36">
                 <span className="text-sm text-muted-foreground">{item.type === "welfare" ? "Welfare payout" : item.paidDate ? "Amount paid" : "Amount"}</span>
-                <Money sen={item.amount} className="figure font-display text-[40px] font-extrabold leading-none tracking-tight" />
+                <Money sen={item.amount} className="figure font-display text-[2.5rem] font-extrabold leading-none tracking-tight" />
                 <span className="text-sm">
                   to <span className="font-semibold">{fi.payee}</span> · {item.category}
                 </span>
               </div>
               {(item.status === "approved" || item.status === "void") && (
                 <Stamp key={item.status} tone={item.status === "void" ? "danger" : "success"} className="absolute right-4 top-6 sm:right-8 sm:top-8 sm:text-3xl">
-                  {item.status === "void" ? "Batal" : "Lulus"}
+                  {item.status === "void" ? "Void" : "Approved"}
                 </Stamp>
               )}
               <div className="rounded-lg border bg-muted/40 p-3 sm:p-4">
@@ -269,7 +288,7 @@ export default function FundUsageShow({ nav, item, events, can, approvalBlocker,
                 <Row label="Paid to">{fi.payee}</Row>
                 {item.invoiceNo && (
                   <Row label="Invoice no.">
-                    <span className="font-mono text-[13px]">{item.invoiceNo}</span>
+                    <span className="font-mono text-[0.8125rem]">{item.invoiceNo}</span>
                   </Row>
                 )}
                 <Row label={item.type === "welfare" ? "Committee approval date" : "Invoice date"}>{fmtDate(item.invoiceDate)}</Row>

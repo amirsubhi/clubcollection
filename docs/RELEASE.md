@@ -47,6 +47,12 @@ that no longer exist. The web root stays the app's `public/` folder (see [INSTAL
 
 ## 3. Upgrade steps on the server
 
+> **`v1.0.0` (the March 2026 GitHub release) is superseded and must not be upgraded in place.** Its migrations were
+> later edited (there was no live data yet), so `migrate` cannot bring a `v1.0.0` database, or one from any build
+> before the next release tag, up to date. Install the next release tag fresh (see [INSTALL.md](INSTALL.md)), or
+> rebuild with `php artisan migrate:fresh --force` (this deletes all data), and re-enter the club's data. From the first real install onwards, every schema
+> change ships as a **new, additive migration**: never edit or delete a migration that a release has already shipped.
+
 **Back up first** (database, `storage/app/private`, `.env`; see [INSTALL.md](INSTALL.md#6-backups)). Then, in the
 app folder:
 
@@ -59,14 +65,14 @@ php artisan view:cache
 
 - Re-run `php artisan config:cache` whenever `.env` changes: a cached config ignores `.env`.
 - Bump `CACHE_VERSION` in `public/sw.js` for every release (see [PWA service worker](#pwa-service-worker-publicswjs)).
+- Always upload the fresh `public/build`. With an old or missing build, the classic admin pages load Bootstrap and
+  Chart.js from jsDelivr and the app shows system fonts until the new build is in place. Delete `public/hot` too: a
+  stray one makes the app think the bundle is present and removes jsDelivr from the CSP.
+- Install at the domain root (or a subdomain). Fonts and Bootstrap Icons are referenced as `/build/assets/...`, so a
+  subfolder install would not find them.
 - Read [CHANGELOG.md](../CHANGELOG.md) for new `.env` settings.
 - Use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84` on cPanel EasyApache) if `php` on the command line is older.
 - Never run `php artisan db:seed` on the server: the demo seeder refuses to run outside `local`/`testing`.
-
-> **Until the first real production install (the next release tag):** some columns were added by editing existing
-> migrations (there was no live data yet), so a database created by an earlier build must be rebuilt with
-> `php artisan migrate:fresh --force` (this deletes all data) instead of `migrate`. After that release, migrations
-> are additive only.
 
 ## Production `.env`
 

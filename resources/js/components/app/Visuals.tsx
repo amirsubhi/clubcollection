@@ -37,7 +37,7 @@ export function initials(name: string) {
 /** initials: when the server already made them (App\Support\Initials, shared with the Blade pages). */
 export function Avatar({ name, initials: given, size = 36, className, ring }: { name: string; initials?: string; size?: 28 | 36 | 44; className?: string; ring?: boolean }) {
   const tone = avatarTones[[...name].reduce((s, c) => s + c.charCodeAt(0), 0) % avatarTones.length];
-  const s = size === 28 ? "h-7 w-7 text-[11px]" : size === 36 ? "h-9 w-9 text-xs" : "h-11 w-11 text-sm";
+  const s = size === 28 ? "h-7 w-7 text-xs" : size === 36 ? "h-9 w-9 text-xs" : "h-11 w-11 text-sm";
   return (
     <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-bold", s, tone, ring && "ring-2 ring-card", className)} aria-hidden>
       {given ?? initials(name)}

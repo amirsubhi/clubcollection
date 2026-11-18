@@ -7,6 +7,9 @@ export default {
   content: ["./resources/views/app.blade.php", "./resources/views/layouts/auth.blade.php", "./resources/views/auth/{login,two-factor-challenge}.blade.php", "./resources/views/auth/passwords/{email,reset,confirm}.blade.php", "./resources/views/auth/partials/*.blade.php", "./resources/js/**/*.{ts,tsx}"],
   theme: {
     container: { center: true, padding: "1rem" },
+    // Breakpoints in em (same as Tailwind's px defaults at 16px): when the reader raises the browser text size,
+    // the layout steps down to the narrower one instead of squeezing a desktop grid sideways.
+    screens: { sm: "40em", md: "48em", lg: "64em", xl: "80em", "2xl": "96em" },
     extend: {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui", "-apple-system", '"Segoe UI"', "Roboto", "Helvetica", "Arial", "sans-serif"],

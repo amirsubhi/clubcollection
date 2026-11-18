@@ -84,7 +84,8 @@ amounts in the screenshots are made up.
 - **Front end:** member pages and the main admin pages (dashboard, Fund Usage, verifications, ledger, billing) use
   Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite. Sign-in pages are Blade with the same Tailwind
   styles. The remaining admin pages and the installer are Blade with Bootstrap 5 (re-skinned to the same look and
-  sidebar) loaded from jsDelivr with Subresource Integrity hashes.
+  sidebar), bundled by Vite from npm like the rest (jsDelivr with Subresource Integrity hashes only as a fallback
+  when `public/build` is missing). Fonts are self-hosted; no page calls a third-party host in normal use.
 - **Payments:** ToyyibPay and Billplz behind one gateway interface (per-club choice and credentials), plus manual
   bank / DuitNow transfer.
 - **Other:** `pragmarx/google2fa` (TOTP 2FA), `barryvdh/laravel-dompdf` (ledger PDF), Recharts (charts).
@@ -138,9 +139,11 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
    `APP_TIMEZONE=Asia/Kuala_Lumpur`, which the installer sets (UTC when unset, i.e. 4 pm in Malaysia). Dates on
    receipts, the ledger and the dashboard follow the same time zone. No queue worker is needed.
 
-> **Until the first real production install (the next release tag):** some columns were added by editing existing
-> migrations, so an existing database from an earlier build needs `php artisan migrate:fresh --force` (this deletes
-> all data). After that release, migrations will be additive only.
+> **The March 2026 GitHub release `v1.0.0` is superseded.** Do not upgrade a `v1.0.0` site in place: some columns
+> were added by editing existing migrations, so its database will not match. Install the next release tag fresh
+> instead (an existing database from an earlier build needs `php artisan migrate:fresh --force`, which deletes all
+> data). **From the first real install onwards, every schema change is a new, additive migration**; existing
+> migrations are never edited again.
 
 ## Payments
 

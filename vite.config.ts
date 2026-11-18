@@ -6,7 +6,7 @@ import { fileURLToPath, URL } from "node:url";
 export default defineConfig({
   plugins: [
     laravel({
-      input: ["resources/css/app.css", "resources/css/bootstrap-theme.css", "resources/js/app.tsx"],
+      input: ["resources/css/app.css", "resources/css/bootstrap-theme.css", "resources/js/app.tsx", "resources/css/classic.css", "resources/js/classic.ts", "resources/js/classic-charts.ts"],
       refresh: true,
     }),
     react(),

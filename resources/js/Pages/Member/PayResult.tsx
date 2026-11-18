@@ -211,14 +211,11 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
     const lines = "lines" in receipt ? receipt.lines : null;
     const viaTransfer = receipt.method === "transfer";
     return (
-      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("successChip")}>
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("paymentStatus")}>
         <Head title={t("successTitle")} />
         <div className="flex flex-col items-center gap-3 pt-2 text-center" aria-live="polite">
           <AnimatedTick />
-          <StatusChip Icon={ShieldCheck} tone="success" size="md">
-            {t("successChip")}
-          </StatusChip>
-          <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
+          <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("receiptEmailed")}</p>
         </div>
         {lines && <p className="-mt-2 text-center text-base font-semibold">{fill(t("paidTogether"), { n: lines.length })}</p>}
@@ -267,15 +264,10 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <Button asChild variant="outline" size="xl" className="w-full rounded-full">
             <Link href={dashboardUrl}>{t("backHome")}</Link>
           </Button>
-          {payment ? (
-            <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
-              <Link href={payment.urls.invoice}>{t("viewReceipt")}</Link>
-            </Button>
-          ) : (
-            <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
-              <Link href={paymentsUrl}>{t("viewPayments")}</Link>
-            </Button>
-          )}
+          {/* The receipt is already on screen, so no "Lihat resit" here: just the full payment list. */}
+          <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
+            <Link href={paymentsUrl}>{t("viewPayments")}</Link>
+          </Button>
         </div>
         <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
@@ -293,7 +285,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
           <StatusChip Icon={XCircle} tone="danger" size="md">
             {t("failedChip")}
           </StatusChip>
-          <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("failedTitle")}</h1>
+          <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("failedTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("failedReason")}</p>
         </div>
         {/* The return URL is unverified: say what we know (not received), never "no money was taken". */}
@@ -331,7 +323,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
         <StatusChip Icon={Clock} tone="warning" size="md">
           {t("processing")}
         </StatusChip>
-        <h1 className="font-display text-[28px] font-extrabold leading-tight tracking-tight">{t("pendingTitle")}</h1>
+        <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("pendingTitle")}</h1>
         <p className="text-base text-muted-foreground">{t("pendingBody")}</p>
       </div>
       <div role="alert" className="flex items-start gap-3 rounded-[20px] border-2 border-warning bg-warning-soft p-4">
@@ -357,7 +349,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
         </Button>
         {poll.checkedAt && (
           <p className="text-center text-sm text-muted-foreground" aria-live="polite">
-            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}
+            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString(lang === "bm" ? "ms-MY" : "en-MY", { hour: "numeric", minute: "2-digit", second: "2-digit" })}
           </p>
         )}
         <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">

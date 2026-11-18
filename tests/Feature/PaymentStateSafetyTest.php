@@ -433,7 +433,7 @@ class PaymentStateSafetyTest extends TestCase
 
         $res = $this->get(route('admin.clubs.payments.index', $this->club))->assertOk();
         $x = $this->dom($res->getContent());
-        $word = fn (Payment $p) => trim($x->query("//button[@data-record-id='{$p->id}']/ancestor::tr//td[contains(@class,'d-md-table-cell')]//span[@data-status]")->item(0)?->textContent ?? '');
+        $word = fn (Payment $p) => trim($x->query("//button[@data-record-id='{$p->id}']/ancestor::tr//td[contains(@class,'d-xl-table-cell')]//span[@data-status]")->item(0)?->textContent ?? '');
         $this->assertSame('Due', $word($due));
         $this->assertSame('Overdue', $word($overdue));
         $this->assertSame('FPX in progress', $word($processing));
@@ -452,7 +452,7 @@ class PaymentStateSafetyTest extends TestCase
             $this->assertSame(1, $x->query("//label[@for='{$id}']")->length, "label for {$id}");
         }
         $this->assertSame(1, $x->query('//div[@id="recordPaymentModal"]//input[@name="reference"]')->length);
-        $summary = preg_replace('/\s+/', ' ', $x->query('//section[@aria-label="Summary"]')->item(0)->textContent);
+        $summary = preg_replace('/\s+/', ' ', $x->query('//section[@data-testid="payments-summary"]')->item(0)->textContent);
         $this->assertStringContainsString('FPX in progress 1', $summary);
         $this->assertStringContainsString('Overdue 1', $summary);
         $this->assertStringContainsString('Due 1', $summary);
@@ -460,7 +460,7 @@ class PaymentStateSafetyTest extends TestCase
         // Row actions have visible words; edit and delete are under "More".
         $row = $x->query("//button[@data-record-id='{$due->id}']/ancestor::tr")->item(0);
         $text = preg_replace('/\s+/', ' ', $row->textContent);
-        foreach (['View', 'Record payment', 'More', 'Edit', 'Delete'] as $w) {
+        foreach (['Record payment', 'More', 'View', 'Edit', 'Delete'] as $w) {
             $this->assertStringContainsString($w, $text);
         }
 
