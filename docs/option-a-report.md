@@ -214,9 +214,10 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 
 ### cPanel deploy (summary; first install in `docs/INSTALL.md`, upgrades in `docs/RELEASE.md`)
 
-1. Build locally or in CI: `composer install --no-dev -o`, `npm ci && npm run build`. **The server never needs Node.**
-2. Upload the app including `vendor/` and `public/build/`. Leave out `node_modules/` and `public/hot`.
-3. On the server: `php artisan migrate --force`, `config:cache`, `route:cache`, `view:cache`.
+1. Get `clubportal-<version>.zip` from the GitHub Release (CI builds it on each `v*` tag) or build it with
+   `scripts/build-release.sh` (G3). It holds `vendor/` and `public/build/`. **The server never needs Composer or Node.**
+2. Upload and unzip it; for an upgrade, `cp -a` it over the app folder (never `.env` or `storage/`; see RELEASE.md).
+3. On the server: `php artisan migrate --force`, `optimize:clear`, `optimize`, then `app:doctor`.
 4. Bump `CACHE_VERSION` in `public/sw.js` every release.
 5. `.htaccess` needs Apache `mod_headers` (standard on cPanel) for the `sw.js`/manifest `no-cache` headers.
 6. Keep the previous release's `public/build/assets` for one release, so open tabs don't hit missing chunks.
@@ -250,6 +251,9 @@ Full list by area:
 - [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` and `pay-all` are throttled 10/min since G1. Left: cap `period_start`.
 - [ ] ToyyibPay sandbox (G1): check that the callback `refno` equals `billpaymentInvoiceNo` from `getBillTransactions` (the reconcile records that id; if they differ, the confirm-step count still stops a false "paid twice"), and run SANDBOX-TEST.md test 8 (lost callback settled by the 15-minute check).
 - [ ] G1 follow-ups: (a) the reconcile and the status check only look at **unsuperseded** bills, so a superseded bill (single or group) paid with a lost callback is never surfaced, and needs a manual check in the gateway; (b) the status JSON routes (`payments.status`, `payments.group-status`) have no route throttle of their own: gateway calls are capped at one per bill per 30 s, but the routes themselves are not rate-limited.
+- [ ] G3 follow-up: `tests/Feature/InstallationTest.php` writes the real `.env` (and `storage/app/.installed`) and
+  restores them afterwards. A killed test run can leave a modified `.env` behind, which on a production box would be the
+  live one. Point the installer at a temporary env file (and a temp storage path) in tests instead.
 - [ ] Billplz has no reconcile yet: add a get-bill call to `BillplzGateway` before Billplz goes live, or accept that a lost Billplz callback needs a manual check.
 - [ ] Billplz callback for a replaced bill on a per-club-key club (S1 keeps replaced bills in `payment_bills` and matches them; still to try in the Billplz sandbox).
 - [ ] **Real iPhone payment return** from FPX/bank in the installed PWA (separate cookie jar from Safari).
@@ -510,3 +514,8 @@ Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above wa
 - `chmod 0600` the temporary dump and the final backup zip on shared hosts.
 - An attachment deleted while a backup is being zipped fails that night's run (it exits non-zero and prunes nothing).
 - Inactive members get 403 on the payments list but can still open direct payment links for an open bill (in-flight payments complete); confirm the intended UX.
+
+### G3 follow-ups (non-blocking, from the final review)
+- Pin the publish job's third-party action (`softprops/action-gh-release`) to a commit SHA, since that job holds `contents: write`.
+- Prune vendor `tests/` folders from the zip to make it smaller (harmless, outside the web root).
+- Add `storage/app/.install-token` and `.env.example.bak` cases to the `--check-list` unit test (the regex already catches both).

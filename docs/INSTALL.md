@@ -41,9 +41,12 @@ because a few `php artisan` commands have to be run on the server.
 - A mailbox for sending email over SMTP (e.g. a cPanel email account such as `noreply@your-domain`).
 - Cron jobs (every cPanel plan has them).
 
-The server **never needs Node.js** and no queue worker or other background process: you upload ready-built files.
+The server **never needs Composer, Node.js or git**, and no queue worker or other background process: you upload
+the ready-built release zip.
 
-### On the machine that builds the release (your computer or CI)
+### Only if you build the release yourself (your computer or CI)
+
+Not needed when you download `clubportal-<version>.zip` from the GitHub Release (CI builds it).
 
 - **PHP 8.4** and **Composer**, to install the PHP packages into `vendor/`.
 - **Node.js 22** and npm, to build the front end into `public/build/`.
@@ -82,30 +85,26 @@ set `INSTALL_TOKEN` in `.env` and open `/install`.
 The steps below use `~/clubportal` as the app folder and `club.example.com` as the address; use your own.
 Do them in this order.
 
-### Step 1. Build the release (on your computer or in CI)
+### Step 1. Get the release zip
 
-Build from a **clean checkout**, so nothing from your own testing (a local `.env`, the demo database, uploaded test
-files) ends up on the server:
+Download `clubportal-<version>.zip` and `clubportal-<version>.zip.sha256` from the project's GitHub Releases page
+(the latest `v*` release) and check the zip with `sha256sum -c clubportal-<version>.zip.sha256` (Windows:
+`certutil -hashfile clubportal-<version>.zip SHA256`). It already holds `vendor/` and the built front end
+(`public/build/`), so the host needs no Composer or Node.
 
-```bash
-git clone https://github.com/amirsubhi/clubcollection.git clubportal && cd clubportal
-composer install --no-dev -o
-npm ci && npm run build
-```
-
-`npm run build` writes `public/build/` (with `manifest.json`), which the pages need. `public/build`, `vendor` and
-`node_modules` are not in git, so every release must be built this way.
+To build it yourself instead, run `scripts/build-release.sh <version> [git ref]` from a clone (PHP 8.4 with Composer,
+Node 22, git, zip). It builds from a clean `git archive` export, so nothing from your own testing (a local `.env`, the
+demo database, uploaded test files) ends up in it; see [RELEASE.md](RELEASE.md#1-get-the-release-zip).
 
 ### Step 2. Upload the files
 
-Upload the whole folder **including `vendor/` and `public/build/`**, for example as a zip through cPanel
-**File Manager** (then **Extract**). **Do not upload:**
-
-- `node_modules/`;
-- `public/hot` (a leftover one makes the pages load assets from a development server, so they show blank);
-- a local `.env`;
-- `database/*.sqlite` (your local database);
-- `storage/app/.installed` (it would switch the installer off).
+cPanel → **File Manager** → your home folder → **Upload** the zip → select it → **Extract**. This creates
+`clubportal-<version>/`; rename it to `clubportal` (or the folder name you chose) and delete the zip. If you already
+chose PHP 8.4 for the domain in **MultiPHP Manager**, check `public/.htaccess` afterwards: cPanel may have written its
+PHP-version lines into the old one. Choose PHP 8.4 there again after the upload so the new `public/.htaccess` gets
+them (check with `php -v` in the Terminal and `app:doctor` in step 13). The zip contains
+**no** `.env`, `node_modules/`, `public/hot`, `*.sqlite` database or `storage/` contents (only the empty folders), so
+there is nothing to remove: the installer starts from a clean state.
 
 ### Step 3. Point the domain at `public/`
 
@@ -380,8 +379,11 @@ Test a restore at least once, on a staging copy.
 
 ## 7. Upgrading
 
-Every later release (build, upload, `migrate --force`, caches, the PWA cache version) is described in
-[RELEASE.md](RELEASE.md).
+Every later release ships as the same zip. Upgrading is: upload and unzip it next to the app, `php artisan down`,
+back up, `cp -a` it over the app folder (keeping `.env` and `storage/`), restore cPanel's PHP-version lines in
+`public/.htaccess`, delete the files the CHANGELOG lists as removed, `migrate --force`, `optimize:clear` + `optimize`,
+`php artisan up`, then `app:doctor`. The step-by-step version (including the cPanel File Manager steps) is in
+[RELEASE.md](RELEASE.md#2-upgrade-a-site-with-the-zip).
 
 ---
 
@@ -418,7 +420,7 @@ The upload is bigger than PHP's `post_max_size`. Raise the limits as in [step 10
 
 ### Blank page, or the page has no styling
 
-- `public/build/` is missing or out of date: build it (`npm ci && npm run build`) and upload `public/build/`. Until then the sign-in page still works with a plain fallback style, but the pages after it do not.
+- `public/build/` is missing or out of date: extract the release zip again (it carries the matching `public/build/`). Until then the sign-in page still works with a plain fallback style, but the pages after it do not.
 - A leftover `public/hot` file on the server: delete it.
 - After an upgrade, hard-refresh the page; if it persists, check that `CACHE_VERSION` in `public/sw.js` was bumped
   (see [RELEASE.md](RELEASE.md#pwa-service-worker-publicswjs)).

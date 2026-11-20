@@ -60,6 +60,7 @@ class AppDoctor extends Command
         if ($this->option('json')) {
             $this->line((string) json_encode([
                 'environment' => (string) config('app.env'),
+                'version' => (string) config('app.version'),
                 'ok' => $fails === 0,
                 'summary' => ['pass' => (int) ($counts[self::PASS] ?? 0), 'warn' => (int) ($counts[self::WARN] ?? 0), 'fail' => $fails],
                 'checks' => $this->rows,
@@ -69,6 +70,7 @@ class AppDoctor extends Command
         }
 
         $this->info('Club Portal host check (read-only: nothing is changed)');
+        $this->line('Version: '.config('app.version').(config('app.commit') ? ' (commit '.substr((string) config('app.commit'), 0, 12).')' : ''));
         $this->line('Environment: '.config('app.env').($this->production ? '' : ' (not production: live-site-only checks show WARN instead of FAIL)'));
         $this->table(['Status', 'Check', 'Result', 'How to fix'], array_map(fn ($r) => [$r['status'], $r['check'], $r['result'], $r['fix']], $this->rows));
         $this->line(sprintf('%d FAIL, %d WARN, %d PASS.', $fails, (int) ($counts[self::WARN] ?? 0), (int) ($counts[self::PASS] ?? 0)));
