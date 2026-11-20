@@ -319,6 +319,8 @@ class PaymentController extends Controller
     public const REFUND_FLAG_ACTIONS = [
         'payment.gateway_paid_after_manual', 'payment.gateway_paid_during_verification', 'payment.gateway_paid_twice',
         'payment.group_bill_refund', 'payment.underpaid_webhook',
+        // G1: an online payment the app could not settle on its own (shown with its own wording).
+        'payment.unmatched_webhook', 'payment.webhook_amount_unknown',
     ];
 
     /** How a payment recorded by hand was made => payments.paid_via. */

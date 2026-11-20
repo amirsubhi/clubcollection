@@ -41,9 +41,12 @@ because a few `php artisan` commands have to be run on the server.
 - A mailbox for sending email over SMTP (e.g. a cPanel email account such as `noreply@your-domain`).
 - Cron jobs (every cPanel plan has them).
 
-The server **never needs Node.js** and no queue worker or other background process: you upload ready-built files.
+The server **never needs Composer, Node.js or git**, and no queue worker or other background process: you upload
+the ready-built release zip.
 
-### On the machine that builds the release (your computer or CI)
+### Only if you build the release yourself (your computer or CI)
+
+Not needed when you download `clubportal-<version>.zip` from the GitHub Release (CI builds it).
 
 - **PHP 8.4** and **Composer**, to install the PHP packages into `vendor/`.
 - **Node.js 22** and npm, to build the front end into `public/build/`.
@@ -82,30 +85,26 @@ set `INSTALL_TOKEN` in `.env` and open `/install`.
 The steps below use `~/clubportal` as the app folder and `club.example.com` as the address; use your own.
 Do them in this order.
 
-### Step 1. Build the release (on your computer or in CI)
+### Step 1. Get the release zip
 
-Build from a **clean checkout**, so nothing from your own testing (a local `.env`, the demo database, uploaded test
-files) ends up on the server:
+Download `clubportal-<version>.zip` and `clubportal-<version>.zip.sha256` from the project's GitHub Releases page
+(the latest `v*` release) and check the zip with `sha256sum -c clubportal-<version>.zip.sha256` (Windows:
+`certutil -hashfile clubportal-<version>.zip SHA256`). It already holds `vendor/` and the built front end
+(`public/build/`), so the host needs no Composer or Node.
 
-```bash
-git clone https://github.com/amirsubhi/clubcollection.git clubportal && cd clubportal
-composer install --no-dev -o
-npm ci && npm run build
-```
-
-`npm run build` writes `public/build/` (with `manifest.json`), which the pages need. `public/build`, `vendor` and
-`node_modules` are not in git, so every release must be built this way.
+To build it yourself instead, run `scripts/build-release.sh <version> [git ref]` from a clone (PHP 8.4 with Composer,
+Node 22, git, zip). It builds from a clean `git archive` export, so nothing from your own testing (a local `.env`, the
+demo database, uploaded test files) ends up in it; see [RELEASE.md](RELEASE.md#1-get-the-release-zip).
 
 ### Step 2. Upload the files
 
-Upload the whole folder **including `vendor/` and `public/build/`**, for example as a zip through cPanel
-**File Manager** (then **Extract**). **Do not upload:**
-
-- `node_modules/`;
-- `public/hot` (a leftover one makes the pages load assets from a development server, so they show blank);
-- a local `.env`;
-- `database/*.sqlite` (your local database);
-- `storage/app/.installed` (it would switch the installer off).
+cPanel → **File Manager** → your home folder → **Upload** the zip → select it → **Extract**. This creates
+`clubportal-<version>/`; rename it to `clubportal` (or the folder name you chose) and delete the zip. If you already
+chose PHP 8.4 for the domain in **MultiPHP Manager**, check `public/.htaccess` afterwards: cPanel may have written its
+PHP-version lines into the old one. Choose PHP 8.4 there again after the upload so the new `public/.htaccess` gets
+them (check with `php -v` in the Terminal and `app:doctor` in step 13). The zip contains
+**no** `.env`, `node_modules/`, `public/hot`, `*.sqlite` database or `storage/` contents (only the empty folders), so
+there is nothing to remove: the installer starts from a clean state.
 
 ### Step 3. Point the domain at `public/`
 
@@ -217,6 +216,10 @@ Emails are sent during the request, so no queue worker is needed.
 - **Billplz:** set `BILLPLZ_X_SIGNATURE_KEY` (from Billplz) in `.env` or per club, and `BILLPLZ_SANDBOX=false`.
 - Keep `TOYYIBPAY_VERIFY_CALLBACK=true` and `TOYYIBPAY_CHARGE_VERIFIED=false` until a ToyyibPay sandbox run has been
   done (see [payment-options.md](payment-options.md#nota-teknikal--technical-note)).
+- **Before real payments:** keep `TOYYIBPAY_SANDBOX=true` until the ToyyibPay sandbox test in
+  [SANDBOX-TEST.md](SANDBOX-TEST.md) has been run on a staging copy and every item has passed.
+  Until then, don't choose ToyyibPay as any live club's payment method: in sandbox mode a simulated payment would
+  mark a fee paid with no real money taken. Use bank transfer (slip upload) meanwhile.
 - If your host puts a proxy or load balancer in front of PHP, set `TRUSTED_PROXIES` to its IP addresses (comma
   separated), so rate limits and the audit log see the real visitor's IP.
 
@@ -252,6 +255,35 @@ Use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84`) if `php` is older. The s
 reminders (`payments:send-overdue-reminders`) daily at 08:00 in the app's time zone (`APP_TIMEZONE`). With the
 recommended `APP_TIMEZONE=Asia/Kuala_Lumpur` that is 8 am Malaysia time; without it the app uses UTC (4 pm in Malaysia).
 
+It also runs `payments:reconcile-open-bills` every 15 minutes: for each open ToyyibPay bill opened between 10 minutes
+and 3 days ago it asks ToyyibPay whether the bill was paid, and settles it exactly as the callback would have. So a
+lost callback no longer leaves a paid fee "Dalam proses" until the overdue reminder goes out. (Billplz bills are
+skipped and still rely on the Billplz callback.) Without the cron job this safety net does not run.
+
+It also makes the daily backup (`backup:run` at 02:15 Malaysia time, see [Backups](#6-backups)) and writes a heartbeat
+every minute, which `app:doctor` (step 13) checks.
+
+### Step 13. Check the server
+
+The last step, and again after any change to the server or `.env`:
+
+```bash
+php artisan app:doctor
+```
+
+It changes nothing. It prints one row per check (PHP 8.4 and its extensions, `APP_ENV` / `APP_DEBUG` / `APP_URL` /
+`SESSION_SECURE_COOKIE` / `APP_TIMEZONE`, the cache store, upload and memory limits, the private files folder,
+`storage:link`, the front-end build, webhook secrets, ToyyibPay sandbox mode, email, the cron job and the latest
+backup) marked **PASS**, **WARN** or **FAIL**, with a one-line fix for each problem. It never prints a key or secret.
+
+- Fix every **FAIL** row, run `php artisan config:cache` if you changed `.env`, and run it again. It exits with code 1
+  while anything fails (`--json` gives the same result for scripts).
+- Read every **WARN** row. "ToyyibPay mode" warns while `TOYYIBPAY_SANDBOX=true` and a club uses ToyyibPay: expected
+  on a staging site, not on the live one.
+- The cron row passes only once the cron job of step 12 has run (wait a minute or two after adding it).
+- PHP version, extensions and limits are those of the command-line PHP. The website's PHP can differ: check cPanel
+  **MultiPHP Manager** and **MultiPHP INI Editor** show the same values.
+
 ---
 
 ## 4. MySQL instead of SQLite
@@ -270,8 +302,9 @@ SQLite is fine for a club of a few hundred members. To use MySQL / MariaDB:
    DB_PASSWORD=...
    ```
 3. Make sure `pdo_mysql` is enabled. Keep `pdo_sqlite` enabled too: the installer checks for it.
-4. Carry on with step 6 (`migrate --force`). There is no `database/database.sqlite` to back up; back up the MySQL
-   database instead (cPanel → **Backup** or phpMyAdmin → Export).
+4. Carry on with step 6 (`migrate --force`). `php artisan backup:run` dumps the MySQL database with `mysqldump` when
+   the server has it; if not, it says so and backs up the files only, so back up the database with cPanel → **Backup**
+   (or phpMyAdmin → Export).
 
 PostgreSQL also works through `DB_CONNECTION=pgsql` with the `pdo_pgsql` extension.
 
@@ -296,29 +329,61 @@ Log in as the super admin, then:
 7. **Add members** one by one or by CSV import. Each gets a welcome email with a temporary password.
 8. **Send a test email:** log out and use **Forgot password?** on the login page with your own email. If it doesn't
    arrive, see [emails not sent](#emails-are-not-sent).
-9. **Try a payment** with the gateway's sandbox before going live, and check the pre-launch list in
+9. **Try a payment** with the gateway's sandbox before going live (for ToyyibPay follow
+   [SANDBOX-TEST.md](SANDBOX-TEST.md) on a staging copy), and check the pre-launch list in
    [option-a-report.md](option-a-report.md#before-go-live-checklist).
 
 The [user guide](USER-GUIDE.md) covers each of these screens in detail.
 
 ## 6. Backups
 
-Back up these together, regularly, and keep a copy **off the server**:
+### What the app backs up by itself
 
-| What | Where | Why |
-|---|---|---|
-| The whole `.env` | app folder | Holds `APP_KEY`, which encrypts documents, slips, welfare details and club gateway secrets (**without the same key a restored backup can't be read**), plus the webhook secret, SMTP password and global gateway keys. Keep this copy somewhere private. |
-| Uploaded documents and slips | `storage/app/private/` | Encrypted files; useless without `APP_KEY`, and the database is useless without them. |
-| Club logos | `storage/app/public/` | |
-| The database | `database/database.sqlite`, or a MySQL dump | All records. |
+`php artisan backup:run` runs **every day at 02:15** (Malaysia time) through the cron job of step 12. It writes one zip
+to `storage/app/backups/` (outside `public/`, never reachable from the web), named
+`<app-name>-YYYYmmdd-HHMMSS.zip`, holding:
 
-cPanel's **Backup** page (or your host's backup tool) can include the home folder and the MySQL databases. Test a
-restore at least once.
+- the **database**: for SQLite a consistent copy (`database/database.sqlite`, made with `VACUUM INTO`, safe while the
+  site runs); for MySQL a `mysqldump` (`database/database.sql`) when the server has `mysqldump`, otherwise only a
+  message telling you to use cPanel → **Backup** for the database;
+- the uploaded documents and slips (`storage/app/private/`, encrypted) and the club logos (`storage/app/public/`).
+
+It keeps the newest 14 zips (`--keep=N` to change; only its own `<app-name>-…` zips are ever deleted, and none when a run's
+zip has no database, because the copy failed or `mysqldump` isn't available) and records each run in the Audit Log ("System Backup"). Run it by
+hand any time: `php artisan backup:run`.
+
+**The zip never contains `.env` or `APP_KEY`.** The documents, slips, welfare details and club gateway keys are
+encrypted with `APP_KEY`: **without the same key a restored backup can't be read.** So:
+
+1. **Keep `APP_KEY` separately, off the server**, e.g. in the committee's password manager (copy the whole
+   `APP_KEY=base64:...` line from `.env` once, after the install). Keep a private copy of the whole `.env` too.
+2. **Download the backups off the server** regularly (File Manager → `storage/app/backups` → Download, at least
+   weekly). A backup that only lives on the same server is lost with it.
+3. cPanel's **Backup** page (or your host's tool) is a useful second copy of the home folder and MySQL databases.
+
+### Restore
+
+1. Install the same (or a newer) release as in [Path B](#3-path-b-cpanel-hosting), with `.env` holding the **original
+   `APP_KEY`** (do not run `key:generate`).
+2. Put the site in maintenance mode: `php artisan down`.
+3. Unzip the backup somewhere private (not under `public/`), then:
+   - SQLite: delete `database/database.sqlite-wal` and `database/database.sqlite-shm` if they exist (left over from the
+     old database, they would corrupt the restored one), then copy `database/database.sqlite` over the app's
+     `database/database.sqlite`;
+   - MySQL: import `database/database.sql` with phpMyAdmin → Import (or restore the cPanel database backup);
+   - copy `storage/app/private/` and `storage/app/public/` into the app's `storage/app/`.
+4. `php artisan migrate --force` (a newer release may add tables), `php artisan config:cache`, then `php artisan up`.
+5. Run `php artisan app:doctor`, log in, and open one document and one slip to confirm they can be read.
+
+Test a restore at least once, on a staging copy.
 
 ## 7. Upgrading
 
-Every later release (build, upload, `migrate --force`, caches, the PWA cache version) is described in
-[RELEASE.md](RELEASE.md).
+Every later release ships as the same zip. Upgrading is: upload and unzip it next to the app, `php artisan down`,
+back up, `cp -a` it over the app folder (keeping `.env` and `storage/`), restore cPanel's PHP-version lines in
+`public/.htaccess`, delete the files the CHANGELOG lists as removed, `migrate --force`, `optimize:clear` + `optimize`,
+`php artisan up`, then `app:doctor`. The step-by-step version (including the cPanel File Manager steps) is in
+[RELEASE.md](RELEASE.md#2-upgrade-a-site-with-the-zip).
 
 ---
 
@@ -355,7 +420,7 @@ The upload is bigger than PHP's `post_max_size`. Raise the limits as in [step 10
 
 ### Blank page, or the page has no styling
 
-- `public/build/` is missing or out of date: build it (`npm ci && npm run build`) and upload `public/build/`. Until then the sign-in page still works with a plain fallback style, but the pages after it do not.
+- `public/build/` is missing or out of date: extract the release zip again (it carries the matching `public/build/`). Until then the sign-in page still works with a plain fallback style, but the pages after it do not.
 - A leftover `public/hot` file on the server: delete it.
 - After an upgrade, hard-refresh the page; if it persists, check that `CACHE_VERSION` in `public/sw.js` was bumped
   (see [RELEASE.md](RELEASE.md#pwa-service-worker-publicswjs)).
@@ -379,4 +444,6 @@ The upload is bigger than PHP's `post_max_size`. Raise the limits as in [step 10
 
 The cron job isn't running. Check the path in the cron command (`cd /home/<user>/clubportal`), use the PHP 8.4
 binary, and temporarily replace `>> /dev/null 2>&1` with `>> ~/cron.log 2>&1` to see errors. Running
-`php artisan schedule:list` shows the reminder job and its next run.
+`php artisan schedule:list` shows the reminder job, the 15-minute `payments:reconcile-open-bills` check and their
+next runs. The same missing cron job also leaves FPX payments whose callback was lost "Dalam proses"; running
+`php artisan payments:reconcile-open-bills` by hand settles them.

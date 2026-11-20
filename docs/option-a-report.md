@@ -41,11 +41,11 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Follow-ups (non-blocking):**
 - Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside) so two tabs or a retry can't create two bills.
-- Payments list, generate-future and the dashboard club query should also respect `club_user.is_active` and `clubs.is_active`.
-- Before go-live: webhooks fail closed when neither a paid amount nor `bill_amount` is available.
-- Before go-live: when a bill code isn't found, fall back to `reference` (only with a paid amount present) so a member paying an old bill after an amount edit is matched or flagged in-app, not just logged.
+- ✅ Done in G2: the payments list, generate-future and the member and admin home club queries respect `club_user.is_active` and `clubs.is_active` (payments list and pay-ahead 403; the clubs drop off the home pages).
+- ✅ Done in G1: webhooks fail closed when neither a paid amount nor `bill_amount` is available (409, audited once as `payment.webhook_amount_unknown`, shown on the fee's admin page).
+- ✅ Done in G1 (flag only, by design): when a bill code isn't found but the reference (with that reference's own callback token) names a fee, it is **never settled** (the bill isn't ours, and `getBillTransactions` is not tied to our merchant account or reference, so anyone could pay a bill of their own and send its code). It is flagged on that fee and club instead (`payment.unmatched_webhook`, a warning on the admin payment page: check ToyyibPay before marking the fee paid).
 - Audit a second successful webhook with a different transaction id on an already-paid fee (double payment → refund).
-- Throttle `pay` and `generateFuture`; cap how far ahead `period_start` can go; unique index on (club, user, period_start).
+- Throttle `pay` and `generateFuture` (✅ both done; `pay` and `pay-all` got `throttle:10,1` in G1); cap how far ahead `period_start` can go; unique index on (club, user, period_start).
 - ToyyibPay sandbox: confirm the callback `amount` unit and whether customer-borne charges are included (alongside the `status` vs `status_id` check).
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
@@ -214,9 +214,10 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 
 ### cPanel deploy (summary; first install in `docs/INSTALL.md`, upgrades in `docs/RELEASE.md`)
 
-1. Build locally or in CI: `composer install --no-dev -o`, `npm ci && npm run build`. **The server never needs Node.**
-2. Upload the app including `vendor/` and `public/build/`. Leave out `node_modules/` and `public/hot`.
-3. On the server: `php artisan migrate --force`, `config:cache`, `route:cache`, `view:cache`.
+1. Get `clubportal-<version>.zip` from the GitHub Release (CI builds it on each `v*` tag) or build it with
+   `scripts/build-release.sh` (G3). It holds `vendor/` and `public/build/`. **The server never needs Composer or Node.**
+2. Upload and unzip it; for an upgrade, `cp -a` it over the app folder (never `.env` or `storage/`; see RELEASE.md).
+3. On the server: `php artisan migrate --force`, `optimize:clear`, `optimize`, then `app:doctor`.
 4. Bump `CACHE_VERSION` in `public/sw.js` every release.
 5. `.htaccess` needs Apache `mod_headers` (standard on cPanel) for the `sw.js`/manifest `no-cache` headers.
 6. Keep the previous release's `public/build/assets` for one release, so open tabs don't hit missing chunks.
@@ -227,36 +228,42 @@ never when `isProduction()`; it can also move uploads to `E2E_PRIVATE_ROOT`). Bo
 All ★ and go-live items from A1–A4 plus what A5 and the final review found. **Must-do before go-live** items are marked 🔴; the rest can follow soon after launch or are optional.
 
 **🔴 Must-do before go-live**
-- [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix.
+- [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix. ToyyibPay: follow [SANDBOX-TEST.md](SANDBOX-TEST.md) (`php artisan toyyibpay:sandbox-check`, callback field names in the Audit Log); real FPX stays off (`TOYYIBPAY_SANDBOX=true`) until every item passes.
 - [ ] Gateway secrets set on the host: `TOYYIBPAY_WEBHOOK_SECRET` and `BILLPLZ_X_SIGNATURE_KEY` (placeholders are refused).
 - [ ] Host WAF/ModSecurity and HTTPS/www redirects don't block or 301 the gateways' server-to-server POSTs.
-- [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database.
+- [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database. G2: `php artisan backup:run` (daily) zips the database and `storage/app/private`; INSTALL.md §6 covers keeping `APP_KEY` separately and downloading backups. Left on the host: store `APP_KEY` off-server and download the zips.
 - [ ] PHP 8.4 on the host; align `composer.json` (`php ^8.3`) with the lock so a wrong host fails loudly.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
-- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start).
-- [ ] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler.
+- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
+- [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
 
 Full list by area:
 
 **Payments**
-- [ ] ToyyibPay **sandbox** run end to end: confirm the callback `amount` unit (ringgit vs sen), whether customer-borne charges are included, and `status` vs `status_id`.
+- [ ] ToyyibPay **sandbox** run end to end: confirm the callback `amount` unit (ringgit vs sen), whether customer-borne charges are included, and `status` vs `status_id`. Script: [SANDBOX-TEST.md](SANDBOX-TEST.md).
 - [ ] In the same sandbox run (S1): confirm that ToyyibPay **retries a callback answered with a non-200** (the confirm step answers 503/409 and relies on it), how soon after payment `getBillTransactions` lists the transaction (a lag means 409s), and what its `billpaymentAmount` holds when the customer bears the charge.
 - [ ] Re-test a real sandbox callback on the host after the A5 **webhook CSRF fix** (it previously got 419).
 - [ ] `TOYYIBPAY_WEBHOOK_SECRET` set on the host to a random value (placeholders are refused).
 - [x] Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside). Done in S1.
-- [ ] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available.
-- [ ] **Reference fallback** when a bill code isn't found (only with a paid amount present).
+- [x] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available. Done in G1 (409 + `payment.webhook_amount_unknown`).
+- [x] **Reference fallback** when a bill code isn't found (only with a paid amount present). Done in G1 as flag-only: filed under the fee and club the reference names, never settled automatically (the unrecorded bill can't be proven ours).
 - [x] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment). Done in S1 (`payment.gateway_paid_twice`, flagged for a refund).
-- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` runs under a per-fee lock but has no throttle of its own.
+- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` and `pay-all` are throttled 10/min since G1. Left: cap `period_start`.
+- [ ] ToyyibPay sandbox (G1): check that the callback `refno` equals `billpaymentInvoiceNo` from `getBillTransactions` (the reconcile records that id; if they differ, the confirm-step count still stops a false "paid twice"), and run SANDBOX-TEST.md test 8 (lost callback settled by the 15-minute check).
+- [ ] G1 follow-ups: (a) the reconcile and the status check only look at **unsuperseded** bills, so a superseded bill (single or group) paid with a lost callback is never surfaced, and needs a manual check in the gateway; (b) the status JSON routes (`payments.status`, `payments.group-status`) have no route throttle of their own: gateway calls are capped at one per bill per 30 s, but the routes themselves are not rate-limited.
+- [ ] G3 follow-up: `tests/Feature/InstallationTest.php` writes the real `.env` (and `storage/app/.installed`) and
+  restores them afterwards. A killed test run can leave a modified `.env` behind, which on a production box would be the
+  live one. Point the installer at a temporary env file (and a temp storage path) in tests instead.
+- [ ] Billplz has no reconcile yet: add a get-bill call to `BillplzGateway` before Billplz goes live, or accept that a lost Billplz callback needs a manual check.
 - [ ] Billplz callback for a replaced bill on a per-club-key club (S1 keeps replaced bills in `payment_bills` and matches them; still to try in the Billplz sandbox).
 - [ ] **Real iPhone payment return** from FPX/bank in the installed PWA (separate cookie jar from Safari).
 
 **Data and files**
 - [ ] **Back up `APP_KEY`** off-server; document rotation with `APP_PREVIOUS_KEYS` (attachments and welfare fields are encrypted with it).
 - [ ] PHP upload limits on the host: `upload_max_filesize = 12M`, `post_max_size = 32M` (documented in `docs/INSTALL.md` step 10).
-- [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt).
-- [ ] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original.
-- [ ] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk).
+- [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt). `php artisan app:doctor` (G2) checks it (≥ 128M) with the upload limits, PHP 8.4, `APP_ENV`/`APP_DEBUG`/https/`SESSION_SECURE_COOKIE`, the cache store and the cron job: run it on the host.
+- [x] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original. Done in G2 (GD re-encoded copy, 480 px / 1600 px for the slip preview, EXIF dropped, 404 when it can't be decoded).
+- [x] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk). Done in G2 (members, fees, bills, expenses or documents → "Deactivate it instead").
 - [ ] From the first real production install (the next release tag), use additive migrations only.
 - [ ] Tell admins not to type personal data in description, return or void reasons.
 
@@ -357,7 +364,7 @@ Follow-ups (non-blocking):
 - Only if deploying without `public/build` (jsDelivr fallback): open one Blade admin page with devtools and confirm no SRI errors. Normal deploys bundle Bootstrap and Chart.js.
 
 ### R2a follow-ups (non-blocking)
-- 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
+- ✅ Done in G1 (was 🔴 P3): "Semak status bayaran" now asks ToyyibPay itself (status poll of the single-fee and group result pages, at most once per bill every 30 s), and `payments:reconcile-open-bills` runs every 15 minutes over open ToyyibPay bills opened 10 minutes to 3 days ago. Both settle through the webhook's own code (`SettlementService`) and audit `payment.reconciled`. Billplz bills are skipped (no get-bill call in `BillplzGateway` yet) and still rely on the callback.
 - Blade Payments summary total is a separate query from the status counts (harmless race).
 
 ### R2b follow-ups (non-blocking)
@@ -485,3 +492,30 @@ Audit:
 - Tests: pagination keeping `nodocs`; `nodocs=1&tab=void` returns nothing; drafts excluded from the count.
 
 Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above waits for real feedback after go-live.
+
+### P3a (sandbox prep) follow-ups
+- Warn at boot or in `sandbox-check` when `APP_ENV=production` and a club has ToyyibPay active while `TOYYIBPAY_SANDBOX=true`.
+- `sandbox-check --payment` on a fee whose member was deleted throws instead of refusing.
+- Bill names are cut at 30 characters after "Club Fee "; long club names lose their end (cosmetic).
+- Dedupe and "paid twice" flags now key on the callback `refno`; the sandbox run must confirm it is unique per payment.
+
+### G1 follow-ups (non-blocking, from the final review)
+- Status-check audit rows say "System" but keep the member's IP and user agent; blank them under `asSystem` or accept as trace data.
+- Reconcile: legacy fees (no `payment_bills` row) have no cursor, so with many in the 3-day window the same first rows are asked each run; the main cursor advances before processing (a crash skips the rest of that batch until it wraps).
+- `auditUnmatched` dedupe scans only the latest 500 entries across all clubs.
+- Add a `throttle` to the member status JSON routes (the gateway call is already capped per bill).
+- Extra-payment flags from reconcile show synthetic ids (`<txn>#2`); say in the flag text to look up the real transaction in ToyyibPay.
+- Largest remaining gap: a superseded bill paid with a lost callback is never surfaced.
+
+### G2 follow-ups (non-blocking, from the final review)
+- Doctor "Backups" row passes on any recent zip; match the backup name pattern and warn when the newest zip has no database.
+- Thumbnails over 25 MP or beyond `memory_limit` show a broken image (404); add a "preview unavailable" placeholder in the UI. "Open full size" still works.
+- Add the `exif` extension to the doctor (without it phone photos lose their rotation).
+- `chmod 0600` the temporary dump and the final backup zip on shared hosts.
+- An attachment deleted while a backup is being zipped fails that night's run (it exits non-zero and prunes nothing).
+- Inactive members get 403 on the payments list but can still open direct payment links for an open bill (in-flight payments complete); confirm the intended UX.
+
+### G3 follow-ups (non-blocking, from the final review)
+- Pin the publish job's third-party action (`softprops/action-gh-release`) to a commit SHA, since that job holds `contents: write`.
+- Prune vendor `tests/` folders from the zip to make it smaller (harmless, outside the web root).
+- Add `storage/app/.install-token` and `.env.example.bak` cases to the `--check-list` unit test (the regex already catches both).

@@ -147,6 +147,71 @@ class WebhookHardeningTest extends TestCase
         $this->assertSame('pending', $p->fresh()->status);
     }
 
+    // ── Documented callback shape: status + refno (no status_id / transaction_id) ──
+
+    public function test_documented_callback_shape_settles_the_fee(): void
+    {
+        $this->fakeToyyibConfirm();
+        $p = $this->pending();
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($p->reference), [
+            'refno' => 'TP-REF-1', 'status' => '1', 'reason' => 'Approved',
+            'billcode' => $p->bill_code, 'order_id' => $p->reference, 'amount' => '50.00',
+        ])->assertOk();
+
+        $fresh = $p->fresh();
+        $this->assertSame('paid', $fresh->status);
+        $this->assertSame('TP-REF-1', $fresh->transaction_id);
+    }
+
+    public function test_documented_failed_callback_does_not_settle(): void
+    {
+        $this->fakeToyyibConfirm();
+        $p = $this->pending();
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($p->reference), [
+            'refno' => 'TP-REF-2', 'status' => '3', 'reason' => 'Failed',
+            'billcode' => $p->bill_code, 'order_id' => $p->reference, 'amount' => '50.00',
+        ]);
+
+        $this->assertNotSame('paid', $p->fresh()->status);
+    }
+
+    public function test_bill_name_and_description_use_only_allowed_characters(): void
+    {
+        $this->assertSame('Club Fee Kelab Sukan Rekreasi', \App\Services\PaymentGateways\ToyyibPayGateway::safeText('Club Fee – Kelab Sukan & Rekreasi Contoh', 30));
+        $this->assertLessThanOrEqual(30, mb_strlen(\App\Services\PaymentGateways\ToyyibPayGateway::safeText(str_repeat('Kelab ', 20), 30)));
+        $this->assertSame('Club fee', \App\Services\PaymentGateways\ToyyibPayGateway::safeText('–––', 30));
+        $this->assertSame('Club Fee Kelab Cafe', \App\Services\PaymentGateways\ToyyibPayGateway::safeText('Club Fee – Kelab Café', 30));
+    }
+
+    public function test_array_valued_fields_are_refused_not_a_server_error(): void
+    {
+        $p = $this->pending();
+
+        $res = $this->post(route('webhook.toyyibpay').'?webhook_token=x', [
+            'refno' => ['a'], 'billcode' => [$p->bill_code], 'order_id' => [$p->reference], 'status' => '1',
+        ]);
+
+        $this->assertLessThan(500, $res->status());
+        $this->assertNotSame('paid', $p->fresh()->status);
+    }
+
+    public function test_text_status_with_numeric_status_id_still_settles(): void
+    {
+        $this->fakeToyyibConfirm();
+        $p = $this->pending();
+
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($p->reference), [
+            'status' => 'success', 'status_id' => '1', 'refno' => '', 'transaction_id' => 'TXN-MIX',
+            'billcode' => $p->bill_code, 'order_id' => $p->reference, 'amount' => '50.00',
+        ])->assertOk();
+
+        $fresh = $p->fresh();
+        $this->assertSame('paid', $fresh->status);
+        $this->assertSame('TXN-MIX', $fresh->transaction_id);
+    }
+
     // ── Confirm step (getBillTransactions) ───────────────────────────────
 
     public function test_confirm_step_settles_when_the_gateway_reports_the_payment(): void
@@ -199,7 +264,9 @@ class WebhookHardeningTest extends TestCase
     {
         config(['toyyibpay.verify_callback' => false]);
         Http::fake();
-        $p = $this->pending();
+        // The bill amount is known, so the callback can settle without a paid
+        // amount (with neither known it fails closed: SettlementTest, G1).
+        $p = $this->pending(['amount' => 50.00, 'bill_amount' => 50.00]);
 
         $this->toyyibCallback($p->bill_code, $p->reference)->assertOk();
 

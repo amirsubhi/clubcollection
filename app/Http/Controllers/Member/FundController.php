@@ -18,8 +18,9 @@ class FundController extends Controller
     public function show(Club $club): Response
     {
         $user = auth()->user();
-        // Members of the club only, as the club's payments page.
-        abort_unless($club->members()->where('users.id', $user->id)->exists(), 403);
+        // Active members of an active club only, as the club's payments page (G2).
+        abort_unless($club->is_active
+            && $club->members()->where('users.id', $user->id)->where('club_user.is_active', true)->exists(), 403);
 
         $ytd = FundFigures::yearToDate();
         $figures = new FundFigures($club);

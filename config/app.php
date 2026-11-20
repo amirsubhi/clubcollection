@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\ReleaseInfo;
+
 return [
 
     /*
@@ -27,6 +29,20 @@ return [
     */
 
     'env' => env('APP_ENV', 'production'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Release version
+    |--------------------------------------------------------------------------
+    |
+    | From release.json, which scripts/build-release.sh writes into the release
+    | zip. A git checkout has none, so the version is "dev" there.
+    |
+    */
+
+    'version' => ReleaseInfo::version(base_path('release.json')),
+
+    'commit' => ReleaseInfo::read(base_path('release.json'))['commit'] ?? null,
 
     /*
     |--------------------------------------------------------------------------

@@ -94,7 +94,8 @@ amounts in the screenshots are made up.
 
 - PHP **8.4** with `pdo_sqlite` (the installer checks for it even when the app uses MySQL), your database's driver
   and the usual Laravel extensions. `composer.json` still says `^8.3`, but `composer.lock` needs 8.4.
-- Composer and Node 22 **only to build** a release (`composer install`, `npm run build`). The server never runs Node.
+- Composer and Node 22 **only to build** a release (`scripts/build-release.sh`; CI does it for each `v*` tag). The
+  server never runs Composer or Node.
 
 The full list, with the extensions and why each is needed, is in [docs/INSTALL.md](docs/INSTALL.md#1-what-you-need).
 
@@ -123,9 +124,9 @@ members, fees and Fund Usage records. It refuses to run unless `APP_ENV` is `loc
 **Follow [docs/INSTALL.md](docs/INSTALL.md) for a first install**: it has every step, the `.env` values, MySQL,
 backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md). In short:
 
-1. Build from a clean checkout: `composer install --no-dev -o` and `npm ci && npm run build`.
-2. Upload the app with `vendor/` and `public/build/` (not `node_modules/`, `public/hot`, a local `.env`,
-   `database/*.sqlite` or `storage/app/.installed`), point the domain's document root at `public/`, and
+1. Download `clubportal-<version>.zip` (with `vendor/` and `public/build/` inside) and its `.sha256` from the GitHub
+   Release, or build it with `scripts/build-release.sh <version>`.
+2. Upload and extract it in cPanel File Manager, point the domain's document root at its `public/`, and
    `chmod -R 775 storage bootstrap/cache`.
 3. Create `.env` (`key:generate`, `APP_ENV=production`, `APP_DEBUG=false`, the exact `https://` `APP_URL`, a random
    `INSTALL_TOKEN` of 16+ characters), then `php artisan storage:link` and **`php artisan migrate --force`** (before

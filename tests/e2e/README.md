@@ -62,7 +62,7 @@ The member's fee is paid by the run, so **re-seed (the four database lines above
 
 | Variable | Where | Default | Meaning |
 |---|---|---|---|
-| `E2E_FAKE_GATEWAY=1` | server | off | Answers ToyyibPay `createBill` with a fake bill code, and `getBillTransactions` (the callback confirm step) with one successful payment of the bill's amount, via `Http::fake` (see below). |
+| `E2E_FAKE_GATEWAY=1` | server | off | Answers ToyyibPay `createBill` with a fake bill code, and `getBillTransactions` (the callback confirm step) with one successful payment of the bill's amount, via `Http::fake` (see below). A bill reads as paid only once the run's webhook for it has arrived, so the result page's status check (which asks the gateway, G1) can't settle it first. |
 | `E2E_PRIVATE_ROOT` | server | `storage/app/private` | Where uploaded test documents go, so the repo stays clean. |
 | `TOYYIBPAY_WEBHOOK_SECRET` | server | — | Must be set, 32+ characters (and match `E2E_WEBHOOK_SECRET`), or every webhook is refused. |
 | `E2E_BASE_URL` | script | `http://127.0.0.1:8000` | The running server. |

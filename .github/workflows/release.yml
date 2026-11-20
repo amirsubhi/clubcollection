@@ -1,0 +1,94 @@
+# G3: on a v* tag, run the tests, build the cPanel release zip with scripts/build-release.sh and attach
+# the zip and its .sha256 to the GitHub Release for that tag (created if it doesn't exist yet).
+# The build job is read-only; only the small publish job can write to the repository.
+# Upgrade steps for the zip: docs/RELEASE.md.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, curl, dom, fileinfo, filter, gd, mbstring, openssl, pdo, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies for the tests
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Run the tests (SQLite in memory, from phpunit.xml)
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan test
+
+      - name: Build the release zip
+        run: scripts/build-release.sh "${GITHUB_REF_NAME#v}" "$GITHUB_SHA"
+
+      - name: Keep the zip for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-zip
+          path: |
+            dist/clubportal-*.zip
+            dist/clubportal-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Fetch the zip
+        uses: actions/download-artifact@v4
+        with:
+          name: release-zip
+          path: dist
+
+      - name: Check the hash
+        working-directory: dist
+        run: sha256sum -c clubportal-*.zip.sha256
+
+      - name: Attach the zip to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # A tag with a dash (v0.0.3-rc1) is published as a pre-release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/clubportal-*.zip
+            dist/clubportal-*.zip.sha256
+          fail_on_unmatched_files: true

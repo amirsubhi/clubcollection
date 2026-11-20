@@ -116,7 +116,7 @@ Route::middleware('check_installed')->group(function () {
             // Review is the GET page (email links point here); pay is POST-only so a
             // link, prefetch or crawler can never open a bill at the gateway.
             Route::get('payments/{payment}/review', [MemberPayment::class, 'review'])->name('payments.review');
-            Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->name('payments.pay');
+            Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->middleware('throttle:10,1')->name('payments.pay');
             Route::get('payments/{payment}/status', [MemberPayment::class, 'status'])->name('payments.status');
             Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
             // Manual bank / DuitNow transfer: upload a slip; a club admin approves it.
@@ -125,7 +125,7 @@ Route::middleware('check_installed')->group(function () {
             Route::get('slips/{attachment}', [MemberPayment::class, 'slip'])->middleware('throttle:60,1')->name('payments.slip');
             // "Bayar semua": every open fee in a club with one bill or one slip (R1b).
             Route::get('clubs/{club}/pay-all', [MemberPayAll::class, 'review'])->name('payments.review-all');
-            Route::post('clubs/{club}/pay-all', [MemberPayAll::class, 'pay'])->name('payments.pay-all');
+            Route::post('clubs/{club}/pay-all', [MemberPayAll::class, 'pay'])->middleware('throttle:10,1')->name('payments.pay-all');
             Route::post('clubs/{club}/pay-all/transfer', [MemberPayAll::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer-all');
             Route::get('pay-all/{paymentBill}', [MemberPayAll::class, 'result'])->name('payments.group-result');
             Route::get('pay-all/{paymentBill}/status', [MemberPayAll::class, 'status'])->name('payments.group-status');

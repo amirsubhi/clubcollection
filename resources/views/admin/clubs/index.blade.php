@@ -69,7 +69,7 @@
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form action="{{ route('admin.clubs.destroy', $club) }}" method="POST" class="d-inline"
-                              data-confirm="Delete this club? This cannot be undone.">
+                              data-confirm="Delete this club? Only a club with no members or admins, fees, expenses or documents can be deleted (deactivate it otherwise). This cannot be undone.">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" aria-label="Delete club"><i class="bi bi-trash"></i></button>
                         </form>

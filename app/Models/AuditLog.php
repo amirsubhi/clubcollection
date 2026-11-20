@@ -96,9 +96,9 @@ class AuditLog extends Model
         return match (true) {
             in_array($verb, ['deleted', 'removed', 'voided', 'void_requested', 'transfer_rejected', 'rejected'], true)
                 => 'danger',
-            in_array($verb, ['approved', 'marked_paid', 'paid_via_webhook', 'transfer_approved', 'bank_change_approved'], true)
+            in_array($verb, ['approved', 'marked_paid', 'paid_via_webhook', 'reconciled', 'transfer_approved', 'bank_change_approved'], true)
                 => 'success',
-            in_array($verb, ['returned', 'underpaid_webhook', 'unmatched_webhook', 'webhook_unconfirmed', 'gateway_paid_twice',
+            in_array($verb, ['returned', 'underpaid_webhook', 'unmatched_webhook', 'webhook_unconfirmed', 'webhook_amount_unknown', 'gateway_paid_twice',
                 'gateway_paid_after_manual', 'gateway_paid_during_verification', 'marked_overdue'], true)
                 => 'warning',
             default

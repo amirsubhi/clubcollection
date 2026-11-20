@@ -19,6 +19,10 @@
                         Online payment received for a group bill ({{ $nv['bill_code'] ?? 'n/a' }}), but nothing was marked paid: refund it, or record the fees.
                     @elseif($flag->action === 'payment.underpaid_webhook')
                         Online payment was less than the bill{{ isset($nv['bill_code']) ? ' ('.$nv['bill_code'].')' : '' }}: nothing was marked paid. Refund it, or record the fee once the rest is paid.
+                    @elseif($flag->action === 'payment.unmatched_webhook')
+                        A payment for bill {{ $nv['bill_code'] ?? 'n/a' }} referencing this fee was reported, but the bill isn't ours: nothing was marked paid. Check {{ ($nv['gateway'] ?? '') === 'billplz' ? 'Billplz' : 'ToyyibPay' }} before marking the fee paid.
+                    @elseif($flag->action === 'payment.webhook_amount_unknown')
+                        Online payment reported{{ isset($nv['bill_code']) ? ' ('.$nv['bill_code'].')' : '' }}, but the amount paid is not known: nothing was marked paid. Check the gateway account, then record the fee by hand.
                     @elseif($flag->action === 'payment.gateway_paid_during_verification')
                         Paid online as well as by bank transfer: refund one of them to the member.
                     @else

@@ -35,6 +35,8 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!-- Sandbox callback audit entries are tested explicitly (ToyyibPaySandboxCheckTest). -->
+        <env name="TOYYIBPAY_LOG_CALLBACKS" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>
 </phpunit>

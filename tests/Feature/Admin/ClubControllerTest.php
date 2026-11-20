@@ -128,4 +128,37 @@ class ClubControllerTest extends TestCase
 
         $this->delete(route('admin.clubs.destroy', $club))->assertForbidden();
     }
+
+    // ── G2: deletion only for an empty club ─────────────────────────────────
+
+    public function test_destroy_is_refused_when_the_club_has_records(): void
+    {
+        $withMember = Club::factory()->create();
+        $withMember->members()->attach(User::factory()->create(), ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
+        $withFee = Club::factory()->create();
+        \App\Models\Payment::factory()->create(['club_id' => $withFee->id]);
+        $withExpense = Club::factory()->create();
+        \App\Models\Expense::factory()->create(['club_id' => $withExpense->id, 'expense_category_id' => \App\Models\ExpenseCategory::factory()->for($withExpense)->create()->id]);
+
+        $this->actingAsSuperAdmin();
+        foreach ([$withMember, $withFee, $withExpense] as $club) {
+            $this->delete(route('admin.clubs.destroy', $club))
+                ->assertRedirect(route('admin.clubs.index'))
+                ->assertSessionHas('error', 'This club has records (members or admins, fees, payment bills, expenses or documents). Deactivate it instead: Edit → untick Active.');
+            $this->assertModelExists($club);
+        }
+        $this->assertFalse(\App\Models\AuditLog::where('action', 'club.deleted')->exists());
+    }
+
+    public function test_empty_club_can_still_be_deleted_with_settings_only(): void
+    {
+        $this->actingAsSuperAdmin();
+        $club = Club::factory()->create();
+        \App\Models\ExpenseCategory::factory()->for($club)->create();
+
+        $this->delete(route('admin.clubs.destroy', $club))
+            ->assertRedirect(route('admin.clubs.index'))
+            ->assertSessionHas('success', 'Club deleted.');
+        $this->assertModelMissing($club);
+    }
 }

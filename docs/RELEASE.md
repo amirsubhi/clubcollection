@@ -4,74 +4,143 @@ This page is for **building a release and upgrading a site that is already insta
 (requirements, document root, `.env`, `migrate --force`, the `/install` wizard, SMTP, cron, MySQL, backups,
 troubleshooting) follow [INSTALL.md](INSTALL.md).
 
-The server never needs Node. Front-end assets are built locally or in CI and uploaded with the code.
+The server never needs Composer, Node or git. Every release is one zip, `clubportal-<version>.zip`, with `vendor/` and
+the built front end (`public/build/`) already inside.
 
-## 1. Build the release
+## 1. Get the release zip
 
-On a machine or CI runner with PHP 8.4 (`composer.lock` requires it; the host needs 8.4 too), Composer, Node 22
-and git, starting from a **clean checkout** of the release:
+**Normally: download it.** Pushing a tag `v*` (e.g. `v0.0.2`) runs `.github/workflows/release.yml`: it runs the tests
+on PHP 8.4, builds the zip with `scripts/build-release.sh` and attaches `clubportal-<version>.zip` and
+`clubportal-<version>.zip.sha256` to the GitHub Release for that tag. Download both and check the zip:
+
+```bash
+sha256sum -c clubportal-0.0.2.zip.sha256          # macOS: shasum -a 256 -c clubportal-0.0.2.zip.sha256
+```
+
+On Windows, `certutil -hashfile clubportal-0.0.2.zip SHA256` prints the hash to compare with the `.sha256` file.
+
+**Or build it yourself** on a machine with git, PHP 8.4 (`composer.lock` requires it) with Composer, Node 22, `zip` and
+`sha256sum`:
 
 ```bash
 git clone https://github.com/amirsubhi/clubcollection.git clubportal && cd clubportal
-git checkout <release tag or commit>
-composer install --no-dev -o
-npm ci && npm run build
+scripts/build-release.sh 0.0.2 v0.0.2      # <version> [git ref, default HEAD]
 ```
 
-`npm run build` writes `public/build/` (including `manifest.json`), which Laravel's `@vite` reads.
-`public/build`, `public/hot`, `vendor` and `node_modules` are git-ignored, so every release must run this step.
+The script exports the git ref with `git archive` into a temporary folder (never your working tree, so a local
+`.env`, the demo SQLite database, `storage/` contents or `node_modules` can't get in), then runs
+`composer install --no-dev --optimize-autoloader`, `npm ci && npm run build` and the licence generator
+(`npm run licenses`, see below). It then removes what the server doesn't need:
 
-If the release changed any dependency, regenerate the licence files and commit them with the release:
+- dropped: `node_modules/`, `tests/`, `mockup/`, `scripts/`, `.github/`, `phpunit.xml`, `public/hot`,
+  every `.env*` except `.env.example`, every `*.sqlite`, everything under `storage/` and `bootstrap/cache/` except
+  the empty folders and their `.gitignore` files;
+- kept: `app/`, `bootstrap/`, `config/`, `database/` (migrations and seeders), `lang/`, `public/` (with `build/` and
+  `licenses.txt`), `resources/`, `routes/`, `vendor/`, `artisan`, `composer.json`/`composer.lock` (Laravel reads
+  `composer.json`), the docs and `CHANGELOG.md`. The front-end sources and their configs (`resources/js`,
+  `vite.config.ts`, `package.json`...) stay too: they are small, not reachable from the web, and show what the bundle
+  was built from.
 
-```bash
-npm run licenses          # needs vendor/ and node_modules/ installed (as above)
-```
+It writes `release.json` (`version`, `commit`, `built_at`, `php_requirement`) into the app folder, which
+`php artisan app:doctor` shows as **Version** (`config('app.version')`; a git checkout shows `dev`). The result is
+`dist/clubportal-<version>.zip` (one top-level folder `clubportal-<version>/`) and its `.sha256`; the script refuses a
+zip that contains `.env`, `tests/`, `node_modules/`, a `.sqlite` file or `storage/` contents. `dist/` is git-ignored.
+If PHP on the build machine is older than 8.4, `COMPOSER_FLAGS=--ignore-platform-req=php scripts/build-release.sh ...`
+gets past Composer's check for a test build; release builds use PHP 8.4 (CI does).
 
-It reads `composer.lock` and `package-lock.json` plus each installed package's licence file, and writes
-`docs/THIRD-PARTY-LICENSES.md` (list and texts) and `public/licenses.txt` (the texts). `public/licenses.txt` is
-committed and uploaded with the release, so every site serves the licences of the code it runs at `/licenses.txt`.
+### Licence files
 
-## 2. Upload it
+The script regenerates `docs/THIRD-PARTY-LICENSES.md` and `public/licenses.txt` from `composer.lock` and
+`package-lock.json` (plus each installed package's licence file) and puts the fresh ones in the zip, so every site
+serves the licences of the code it runs at `/licenses.txt`. If they differ from the committed ones it prints a
+warning: run `npm run licenses` (needs `vendor/` and `node_modules/` installed) and commit both files.
 
-Upload the app, including `vendor/` and `public/build/`, over the existing folder (e.g. `~/clubportal`). **Do not
-upload or overwrite:**
-
-- `node_modules/`;
-- `public/hot` (a leftover one makes Laravel load assets from a Vite dev server);
-- a local `.env` (the server keeps its own);
-- `database/*.sqlite` (it would replace the live database);
-- `storage/` contents from your machine, in particular `storage/app/.installed` and `storage/app/private`.
-
-Keep the previous release's `public/build/assets` for one release, so tabs that are already open don't ask for chunks
-that no longer exist. The web root stays the app's `public/` folder (see [INSTALL.md](INSTALL.md#step-3-point-the-domain-at-public)).
-
-## 3. Upgrade steps on the server
+## 2. Upgrade a site with the zip
 
 > **`v1.0.0` (the March 2026 GitHub release) is superseded and must not be upgraded in place.** Its migrations were
 > later edited (there was no live data yet), so `migrate` cannot bring a `v1.0.0` database, or one from any build
 > before the next release tag, up to date. Install the next release tag fresh (see [INSTALL.md](INSTALL.md)), or
-> rebuild with `php artisan migrate:fresh --force` (this deletes all data), and re-enter the club's data. From the first real install onwards, every schema
-> change ships as a **new, additive migration**: never edit or delete a migration that a release has already shipped.
+> rebuild with `php artisan migrate:fresh --force` (this deletes all data), and re-enter the club's data. From the first
+> real install onwards, every schema change ships as a **new, additive migration**: never edit or delete a migration
+> that a release has already shipped, so `migrate --force` always upgrades in place.
 
-**Back up first** (database, `storage/app/private`, `.env`; see [INSTALL.md](INSTALL.md#6-backups)). Then, in the
-app folder:
+Read [CHANGELOG.md](../CHANGELOG.md) first: new `.env` settings, and the **files a release removes** (see step 4).
+The app folder below is `~/clubportal`; use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84` on cPanel EasyApache)
+if `php` in the Terminal is older. Do every step in cPanel → **Terminal**.
 
-```bash
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
+**Keep the downtime short.** While the site is down, payment gateway callbacks get a 503 too. ToyyibPay payments made
+in that window are picked up by the 15-minute `payments:reconcile-open-bills` check after `php artisan up`; Billplz
+retries its callback per its own retry policy. Upload the zip (step 1) *before* going down.
 
-- Re-run `php artisan config:cache` whenever `.env` changes: a cached config ignores `.env`.
-- Bump `CACHE_VERSION` in `public/sw.js` for every release (see [PWA service worker](#pwa-service-worker-publicswjs)).
-- Always upload the fresh `public/build`. With an old or missing build, the classic admin pages load Bootstrap and
-  Chart.js from jsDelivr and the app shows system fonts until the new build is in place. Delete `public/hot` too: a
-  stray one makes the app think the bundle is present and removes jsDelivr from the CSP.
+1. **Upload the zip** (site still up). cPanel → **File Manager** → your home folder (the one that *contains*
+   `clubportal`) → **Upload** `clubportal-<version>.zip`, then in the Terminal:
+   ```bash
+   cd ~ && sha256sum clubportal-<version>.zip          # compare with the .sha256 from the release
+   unzip -q clubportal-<version>.zip                    # creates ~/clubportal-<version>/ next to ~/clubportal/
+   ```
+2. **Maintenance mode, then back up** (in this order, so no payment or upload lands after the backup):
+   ```bash
+   cd ~/clubportal
+   php artisan down --secret="<a long random word>"
+   php artisan backup:run
+   cp -a public/.htaccess ~/htaccess-before-<version>   # cPanel MultiPHP may have written PHP-version lines into it
+   ```
+   Members see the maintenance page; opening `https://<domain>/<the secret>` once lets your browser through. Download
+   the new zip from `storage/app/backups` (database and uploaded files; see [INSTALL.md](INSTALL.md#6-backups)), and
+   keep your private copy of `.env` / `APP_KEY`.
+3. **Copy the new release over the site:**
+   ```bash
+   cp -a ~/clubportal-<version>/. ~/clubportal/
+   rm -f ~/clubportal/bootstrap/cache/*.php     # drop the old release's cached config/packages before any artisan call
+   chmod -R 775 ~/clubportal/storage ~/clubportal/bootstrap/cache   # cp -a resets folder modes to the zip's
+   ```
+   This merges folder by folder and overwrites changed files. The zip has **no `.env`**, no `public/hot` and only empty
+   `storage/` and `bootstrap/cache/` folders, so your `.env`, uploaded files, backups and `storage/app/.installed`
+   stay as they are. **Never delete `.env` or `storage/`**, and never "delete the old folder first".
+   - Don't use File Manager's **Move**/**Copy** for this: it does not reliably merge into existing folders and can
+     skip or replace whole folders. If you have no Terminal, ask the host to run the `cp -a` line for you.
+   - The web root stays the app's `public/` folder (see [INSTALL.md](INSTALL.md#step-3-point-the-domain-at-public)).
+4. **Restore the PHP version line and delete removed files:**
+   - `diff ~/htaccess-before-<version> ~/clubportal/public/.htaccess`. If the old file had cPanel's lines (a block
+     starting `# php -- BEGIN cPanel-generated handler`), copy that block back into the new `public/.htaccess`, or
+     choose PHP 8.4 for the domain again in cPanel → **MultiPHP Manager**. Without it the site may run on the host's
+     default (older) PHP.
+   - Delete every file the release's CHANGELOG entry lists as **removed**, in particular anything under
+     `app/Console/Commands/` (an old command class left behind is still loaded and scheduled). `cp -a` never deletes.
+5. **Database and caches:**
+   ```bash
+   php artisan migrate --force
+   php artisan optimize:clear
+   php artisan optimize          # config, routes, views and events cached again
+   ```
+6. **Bring the site back and check it:**
+   ```bash
+   php artisan up
+   php -v                        # 8.4
+   php artisan app:doctor        # every row PASS or an understood WARN; "Version" shows the new release
+   rm -rf ~/clubportal-<version> ~/clubportal-<version>.zip
+   ```
+   Open the site in the browser too: `app:doctor` checks the command-line PHP, the website's version is set in
+   MultiPHP Manager. `app:doctor` is read-only and exits with code 1 while any row is FAIL; each row has a one-line
+   fix (see [INSTALL.md step 13](INSTALL.md#step-13-check-the-server)).
+
+If something goes wrong before step 6, the site is still in maintenance mode: fix it, or roll back. The real rollback is
+the **database restore** from the step 2 backup (see [INSTALL.md](INSTALL.md#restore)), because migrations are not
+reversed; then copy the previous release's zip over the site the same way and run `rm -f bootstrap/cache/*.php`.
+Copying an older zip does not remove files the newer release added, so delete those (see its CHANGELOG entry) too.
+
+A one-command `php artisan app:update` (download, verify, extract, migrate) from the original plan is **still
+deferred**; until then the steps above are the upgrade path.
+
+Also:
+
+- Re-run `php artisan config:cache` (or `optimize`) whenever `.env` changes: a cached config ignores `.env`.
+- Bump `CACHE_VERSION` in `public/sw.js` for every release before tagging it (see
+  [PWA service worker](#pwa-service-worker-publicswjs)).
+- With an old or missing `public/build`, the classic admin pages load Bootstrap and Chart.js from jsDelivr and the
+  app shows system fonts. The zip always carries the matching build.
 - Install at the domain root (or a subdomain). Fonts and Bootstrap Icons are referenced as `/build/assets/...`, so a
   subfolder install would not find them.
-- Read [CHANGELOG.md](../CHANGELOG.md) for new `.env` settings.
-- Use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84` on cPanel EasyApache) if `php` on the command line is older.
 - Never run `php artisan db:seed` on the server: the demo seeder refuses to run outside `local`/`testing`.
 
 ## Production `.env`

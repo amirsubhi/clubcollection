@@ -20,4 +20,9 @@ return [
     // what billChargeToCustomer does (see ToyyibPayGateway::BILL_CHARGE_TO_CUSTOMER).
     // Until then ToyyibPay clubs cannot pass the gateway fee on to members.
     'charge_to_customer_verified' => (bool) env('TOYYIBPAY_CHARGE_VERIFIED', false),
+    // Sandbox test only (docs/SANDBOX-TEST.md): write each verified callback's
+    // field names and its non-secret values (allow-listed) to the audit log,
+    // so the tester can read what ToyyibPay really sends. Never active when
+    // TOYYIBPAY_SANDBOX=false, whatever this is set to.
+    'log_callbacks' => (bool) env('TOYYIBPAY_LOG_CALLBACKS', env('TOYYIBPAY_SANDBOX', true)),
 ];

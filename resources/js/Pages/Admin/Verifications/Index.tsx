@@ -119,8 +119,8 @@ const isPdf = (a: FundAttachment) => a.mime === "application/pdf" || a.name.toLo
 const isImage = (a: FundAttachment) => !!a.mime?.startsWith("image/");
 
 /**
- * The slip, large, inline. Images show from the unaudited thumbnail route (the same file the gallery
- * tile used), so a queue of 80 slips doesn't write 80 "viewed" audit rows on every load; "Open full size"
+ * The slip, large, inline. Images show from the unaudited thumbnail route (a 1600 px re-encoded copy,
+ * `?size=large`), so a queue of 80 slips doesn't write 80 "viewed" audit rows on every load; "Open full size"
  * and "Open PDF" use the audited inline view. PDFs aren't framed: the page CSP has object-src 'none' and
  * the attachment stream is sandboxed, which browsers won't render in a frame.
  */
@@ -138,7 +138,8 @@ function SlipPreview({ slips, member }: { slips: FundAttachment[]; member: strin
   if (!slip) {
     return <p className="flex min-h-40 items-center justify-center rounded-md border border-dashed p-6 text-sm text-muted-foreground">No slip file on record.</p>;
   }
-  const src = slip.thumbUrl ?? slip.url;
+  // The large (1600 px) re-encoded copy: readable and zoomable, never the original file.
+  const src = slip.thumbUrl ? `${slip.thumbUrl}?size=large` : slip.url;
   return (
     <figure className="flex min-w-0 flex-col gap-2" data-testid="slip-preview">
       {isImage(slip) && src ? (

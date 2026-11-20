@@ -96,8 +96,8 @@ class ToyyibPayGateway implements ConfirmsWebhookPayments, PaymentGateway
             $response = Http::asForm()->timeout(10)->post("{$this->baseUrl}/index.php/api/createBill", [
                 'userSecretKey' => $secretKey,
                 'categoryCode' => $categoryCode,
-                'billName' => $params['bill_name'],
-                'billDescription' => $params['description'],
+                'billName' => self::safeText((string) $params['bill_name'], 30),
+                'billDescription' => self::safeText((string) $params['description'], 100),
                 'billPriceSetting' => 1,
                 'billPayorInfo' => 1,
                 'billAmount' => (int) round($params['amount'] * 100),
@@ -194,31 +194,53 @@ class ToyyibPayGateway implements ConfirmsWebhookPayments, PaymentGateway
 
         $best = 0;
         $count = 0;
+        $txnId = null;
         foreach ($data as $txn) {
             if (! is_array($txn) || (string) ($txn['billpaymentStatus'] ?? '') !== '1') {
                 continue;
             }
             $amount = $txn['billpaymentAmount'] ?? null;
             if (is_numeric($amount) && (float) $amount > 0) {
-                $best = max($best, (int) round(((float) $amount) * 100));
+                $sen = (int) round(((float) $amount) * 100);
+                if ($sen > $best) {
+                    $best = $sen;
+                    $invoice = $txn['billpaymentInvoiceNo'] ?? null;
+                    $txnId = is_scalar($invoice) && (string) $invoice !== '' ? mb_substr((string) $invoice, 0, 191) : null;
+                }
                 $count++;
             }
         }
 
-        return new GatewayConfirmation($best, $count);
+        return new GatewayConfirmation($best, $count, $txnId);
+    }
+
+    /**
+     * ToyyibPay accepts only letters, digits, spaces and underscores in billName (max 30)
+     * and billDescription (max 100); anything else can make createBill fail.
+     */
+    public static function safeText(string $text, int $max): string
+    {
+        $clean = trim((string) preg_replace('/\s+/', ' ', (string) preg_replace('/[^A-Za-z0-9 _]/', ' ', \Illuminate\Support\Str::ascii($text))));
+
+        return rtrim(mb_substr($clean !== '' ? $clean : 'Club fee', 0, $max));
     }
 
     public function parseWebhook(Request $request): ?WebhookResult
     {
         $payload = $request->except(['webhook_token']);
 
-        $paid = isset($payload['status_id']) && (int) $payload['status_id'] === 1;
+        // The server callback posts `status` and `refno`; the return-URL query uses `status_id`
+        // and some integrations send `transaction_id`. Accept both shapes: 1 = success.
+        $isOne = fn ($v) => $v !== null && is_numeric($v) && (int) $v === 1;
+        $paid = $isOne($payload['status'] ?? null) || $isOne($payload['status_id'] ?? null);
+        $scalar = fn ($v) => is_scalar($v) && (string) $v !== '' ? (string) $v : null;
+        $txn = $scalar($payload['refno'] ?? null) ?? $scalar($payload['transaction_id'] ?? null);
 
         return new WebhookResult(
-            billCode: ! empty($payload['billcode']) ? (string) $payload['billcode'] : null,
-            reference: ! empty($payload['order_id']) ? (string) $payload['order_id'] : null,
+            billCode: $scalar($payload['billcode'] ?? null),
+            reference: $scalar($payload['order_id'] ?? null),
             paid: $paid,
-            transactionId: $payload['transaction_id'] ?? null,
+            transactionId: ($txn !== null && $txn !== '') ? (string) $txn : null,
             gateway: $this->name(),
             rawPayload: $payload,
             // ToyyibPay's callback `amount` is in ringgit (e.g. "10.00").

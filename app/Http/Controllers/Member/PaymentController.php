@@ -10,6 +10,8 @@ use App\Models\Payment;
 use App\Models\PaymentBill;
 use App\Services\AttachmentService;
 use App\Services\AuditService;
+use App\Services\Payments\FeeBillService;
+use App\Services\Payments\SettlementService;
 use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
@@ -21,7 +23,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -39,7 +40,9 @@ class PaymentController extends Controller
     {
         $user = auth()->user();
 
-        $this->authorizeClubMembership($user, $club);
+        // Only an active member of an active club (G2): a deactivated club or
+        // membership is not listed on the home page and its fees can't be paid.
+        $this->authorizeActiveMembership($user, $club);
 
         // Year selection — default to current year
         $selectedYear = (int) $request->get('year', now()->year);
@@ -376,73 +379,11 @@ class PaymentController extends Controller
             return Inertia::location($url);
         }
 
-        $user = auth()->user();
-        $fee = GatewayFee::forClub($club);
-        $refNo = 'PAY-'.$payment->id.'-'.time();
-        $callbackRoute = match ($gateway->name()) {
-            'toyyibpay' => 'webhook.toyyibpay',
-            'billplz' => 'webhook.billplz',
-            default => throw new \LogicException("No webhook route registered for gateway '{$gateway->name()}'"),
-        };
-
-        $result = $gateway->createBill([
-            'club' => $club,
-            'bill_name' => "Club Fee – {$club->name}",
-            'description' => "Payment for {$payment->period_start->format('M Y')} to {$payment->period_end->format('M Y')}",
-            'amount' => $payment->amount,
-            'return_url' => route('member.payments.thankyou', $payment),
-            'callback_url' => route($callbackRoute),
-            'reference_no' => $refNo,
-            'payer_name' => $user->name,
-            'payer_email' => $user->email,
-            'club_name' => $club->name,
-            'fee' => $fee,
-        ]);
+        $result = app(FeeBillService::class)->open($payment, $gateway, auth()->user());
 
         if (! $result) {
             return redirect()->route('member.payments.review', $payment)
                 ->with('error', 'member.bill_failed');
-        }
-
-        $billFields = ['bill_code', 'bill_amount', 'bill_fee_payer', 'bill_fee_sen', 'gateway', 'reference'];
-        $old = $payment->only($billFields);
-
-        // bill_amount is the fee amount; the fee mode is stored alongside so the
-        // bill is reused only while amount, gateway and fee mode all still match,
-        // and so the dashboard can total the fees the club absorbed.
-        DB::transaction(function () use ($payment, $result, $fee, $refNo) {
-            $payment->bills()->whereNull('superseded_at')->update(['superseded_at' => now()]);
-            $payment->bills()->create([
-                'gateway' => $result->gateway,
-                'bill_code' => $result->billCode,
-                'reference' => $refNo,
-                'amount_sen' => $payment->amountSen(),
-                'fee_payer' => $fee->payer,
-                'fee_sen' => $fee->feeSen,
-                'opened_at' => now(),
-            ]);
-            $payment->update([
-                'bill_code' => $result->billCode,
-                'bill_amount' => $payment->amount,
-                'bill_fee_payer' => $fee->payer,
-                'bill_fee_sen' => $fee->feeSen,
-                'reference' => $refNo,
-                'gateway' => $result->gateway,
-            ]);
-        });
-
-        // An earlier bill (other gateway, or a different amount) is superseded:
-        // it stays in payment_bills, so a late payment against it still settles
-        // (or is flagged when the amount is wrong).
-        if (! empty($old['bill_code'])) {
-            AuditService::log(
-                'payment.bill_replaced',
-                "Payment #{$payment->id}: bill {$old['bill_code']} (".($old['gateway'] ?? 'n/a').") replaced by {$result->billCode} ({$result->gateway}).",
-                $payment,
-                $payment->club_id,
-                $old,
-                $payment->only($billFields)
-            );
         }
 
         // A 409 + X-Inertia-Location for Inertia visits, a plain redirect otherwise.
@@ -452,9 +393,14 @@ class PaymentController extends Controller
     /**
      * JSON status for the PayResult page's polling. Owner only.
      */
-    public function status(Payment $payment): JsonResponse
+    public function status(Payment $payment, SettlementService $settlement): JsonResponse
     {
         $this->authorizePayment($payment);
+
+        // "Semak status bayaran" (G1): with an open bill, ask the gateway (at
+        // most once per bill every 30 s) in case its callback was lost.
+        $settlement->requeryForMember($payment);
+        $payment->refresh();
 
         return response()->json(['status' => P::displayStatus($payment)])
             ->header('Cache-Control', 'no-store');
@@ -737,15 +683,7 @@ class PaymentController extends Controller
         ];
     }
 
-    private function authorizeClubMembership($user, Club $club): void
-    {
-        $isMember = $club->members()->where('users.id', $user->id)->exists();
-        if (! $isMember) {
-            abort(403, 'You are not a member of this club.');
-        }
-    }
-
-    /** Active member of an active club (pay-ahead creates new fees). */
+    /** Active member of an active club (the payments list and pay-ahead). */
     private function authorizeActiveMembership($user, Club $club): void
     {
         $active = $club->is_active
