@@ -7,6 +7,29 @@ use Illuminate\Database\Eloquent\Model;
 
 class AuditService
 {
+    /** > 0 while asSystem() runs: entries are written as the system, whoever is signed in. */
+    private static int $systemDepth = 0;
+
+    /**
+     * Run $callback with every audit entry written as "System" (no user),
+     * e.g. a payment settled by a requery the member's status check started:
+     * the member did not mark anything paid.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public static function asSystem(callable $callback): mixed
+    {
+        self::$systemDepth++;
+        try {
+            return $callback();
+        } finally {
+            self::$systemDepth--;
+        }
+    }
+
     public static function log(
         string  $action,
         string  $description,
@@ -15,7 +38,7 @@ class AuditService
         array   $old     = [],
         array   $new     = []
     ): void {
-        $user = auth()->user();
+        $user = self::$systemDepth > 0 ? null : auth()->user();
 
         AuditLog::create([
             'user_id'        => $user?->id,

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\PaymentBill;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -18,7 +19,10 @@ use Illuminate\Support\Str;
  *    random bill code, so no real gateway is called;
  *  - the callback confirmation (getBillTransactions) is answered with one
  *    successful transaction for the amount the bill was opened for, so the
- *    real confirm step still runs against the e2e bill;
+ *    real confirm step still runs against the e2e bill. A bill counts as paid
+ *    only once the smoke's (verified) webhook for it has asked: before that,
+ *    the member's status-check requery (G1) sees it unpaid, so the smoke still
+ *    settles through the webhook and the pending screens stay deterministic;
  *  - E2E_PRIVATE_ROOT (optional) moves the private "local" disk, so test
  *    uploads stay out of storage/app/private.
  */
@@ -38,9 +42,14 @@ class E2eFakeGatewayServiceProvider extends ServiceProvider
         Http::fake([
             '*/index.php/api/createBill' => fn () => Http::response([['BillCode' => 'e2e'.Str::lower(Str::random(8))]]),
             '*/index.php/api/getBillTransactions' => function (Request $request) {
-                $bill = PaymentBill::where('gateway', 'toyyibpay')->where('bill_code', (string) ($request['billCode'] ?? ''))->first();
+                $code = (string) ($request['billCode'] ?? '');
+                $bill = PaymentBill::where('gateway', 'toyyibpay')->where('bill_code', $code)->first();
+                $flag = 'e2e:toyyibpay:paid:'.$code;
+                if ($bill && request()->is('webhook/*')) {
+                    Cache::forever($flag, true);
+                }
 
-                return Http::response($bill ? [[
+                return Http::response($bill && Cache::get($flag) ? [[
                     'billpaymentStatus' => '1',
                     'billpaymentAmount' => number_format($bill->amount_sen / 100, 2, '.', ''),
                 ]] : []);

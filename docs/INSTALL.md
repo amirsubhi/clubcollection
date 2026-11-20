@@ -256,6 +256,11 @@ Use the PHP 8.4 binary (e.g. `/usr/local/bin/ea-php84`) if `php` is older. The s
 reminders (`payments:send-overdue-reminders`) daily at 08:00 in the app's time zone (`APP_TIMEZONE`). With the
 recommended `APP_TIMEZONE=Asia/Kuala_Lumpur` that is 8 am Malaysia time; without it the app uses UTC (4 pm in Malaysia).
 
+It also runs `payments:reconcile-open-bills` every 15 minutes: for each open ToyyibPay bill opened between 10 minutes
+and 3 days ago it asks ToyyibPay whether the bill was paid, and settles it exactly as the callback would have. So a
+lost callback no longer leaves a paid fee "Dalam proses" until the overdue reminder goes out. (Billplz bills are
+skipped and still rely on the Billplz callback.) Without the cron job this safety net does not run.
+
 ---
 
 ## 4. MySQL instead of SQLite
@@ -384,4 +389,6 @@ The upload is bigger than PHP's `post_max_size`. Raise the limits as in [step 10
 
 The cron job isn't running. Check the path in the cron command (`cd /home/<user>/clubportal`), use the PHP 8.4
 binary, and temporarily replace `>> /dev/null 2>&1` with `>> ~/cron.log 2>&1` to see errors. Running
-`php artisan schedule:list` shows the reminder job and its next run.
+`php artisan schedule:list` shows the reminder job, the 15-minute `payments:reconcile-open-bills` check and their
+next runs. The same missing cron job also leaves FPX payments whose callback was lost "Dalam proses"; running
+`php artisan payments:reconcile-open-bills` by hand settles them.

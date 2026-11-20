@@ -194,18 +194,24 @@ class ToyyibPayGateway implements ConfirmsWebhookPayments, PaymentGateway
 
         $best = 0;
         $count = 0;
+        $txnId = null;
         foreach ($data as $txn) {
             if (! is_array($txn) || (string) ($txn['billpaymentStatus'] ?? '') !== '1') {
                 continue;
             }
             $amount = $txn['billpaymentAmount'] ?? null;
             if (is_numeric($amount) && (float) $amount > 0) {
-                $best = max($best, (int) round(((float) $amount) * 100));
+                $sen = (int) round(((float) $amount) * 100);
+                if ($sen > $best) {
+                    $best = $sen;
+                    $invoice = $txn['billpaymentInvoiceNo'] ?? null;
+                    $txnId = is_scalar($invoice) && (string) $invoice !== '' ? mb_substr((string) $invoice, 0, 191) : null;
+                }
                 $count++;
             }
         }
 
-        return new GatewayConfirmation($best, $count);
+        return new GatewayConfirmation($best, $count, $txnId);
     }
 
     /**

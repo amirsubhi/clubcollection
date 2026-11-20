@@ -264,7 +264,9 @@ class WebhookHardeningTest extends TestCase
     {
         config(['toyyibpay.verify_callback' => false]);
         Http::fake();
-        $p = $this->pending();
+        // The bill amount is known, so the callback can settle without a paid
+        // amount (with neither known it fails closed: SettlementTest, G1).
+        $p = $this->pending(['amount' => 50.00, 'bill_amount' => 50.00]);
 
         $this->toyyibCallback($p->bill_code, $p->reference)->assertOk();
 

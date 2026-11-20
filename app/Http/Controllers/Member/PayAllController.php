@@ -10,6 +10,7 @@ use App\Models\PaymentBill;
 use App\Services\AttachmentService;
 use App\Services\AuditService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
+use App\Services\Payments\SettlementService;
 use App\Services\TransferVerificationService;
 use App\Support\Member\MemberPaymentPresenter as P;
 use App\Support\Payments\DisplayStatus;
@@ -220,9 +221,12 @@ class PayAllController extends Controller
     }
 
     /** JSON status for the result page's polling. Owner only. */
-    public function status(PaymentBill $paymentBill): JsonResponse
+    public function status(PaymentBill $paymentBill, SettlementService $settlement): JsonResponse
     {
         self::authorizeGroup($paymentBill);
+        // "Semak status bayaran" (G1): ask the gateway, at most once per bill every 30 s.
+        $settlement->requeryGroupForMember($paymentBill);
+        $paymentBill->refresh();
         $paid = $paymentBill->paid_at && self::allStillPaid($paymentBill->orderedPayments()->get());
 
         return response()->json(['status' => $paid ? 'paid' : ($paymentBill->isTransfer() && $paymentBill->isOpen() ? 'verifying' : 'pending')])

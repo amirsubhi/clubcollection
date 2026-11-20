@@ -13,3 +13,10 @@ Artisan::command('inspire', function () {
 Schedule::command('payments:send-overdue-reminders')
     ->dailyAt('08:00')
     ->withoutOverlapping();
+
+// G1: settle FPX payments whose gateway callback was lost. Asks ToyyibPay
+// about open bills opened 10 minutes to 3 days ago (Billplz: callback only).
+// Needs the cron line from docs/INSTALL.md (schedule:run every minute).
+Schedule::command('payments:reconcile-open-bills')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();

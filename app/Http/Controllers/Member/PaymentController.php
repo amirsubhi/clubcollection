@@ -11,6 +11,7 @@ use App\Models\PaymentBill;
 use App\Services\AttachmentService;
 use App\Services\AuditService;
 use App\Services\Payments\FeeBillService;
+use App\Services\Payments\SettlementService;
 use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
@@ -390,9 +391,14 @@ class PaymentController extends Controller
     /**
      * JSON status for the PayResult page's polling. Owner only.
      */
-    public function status(Payment $payment): JsonResponse
+    public function status(Payment $payment, SettlementService $settlement): JsonResponse
     {
         $this->authorizePayment($payment);
+
+        // "Semak status bayaran" (G1): with an open bill, ask the gateway (at
+        // most once per bill every 30 s) in case its callback was lost.
+        $settlement->requeryForMember($payment);
+        $payment->refresh();
 
         return response()->json(['status' => P::displayStatus($payment)])
             ->header('Cache-Control', 'no-store');

@@ -42,10 +42,10 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 **Follow-ups (non-blocking):**
 - Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside) so two tabs or a retry can't create two bills.
 - Payments list, generate-future and the dashboard club query should also respect `club_user.is_active` and `clubs.is_active`.
-- Before go-live: webhooks fail closed when neither a paid amount nor `bill_amount` is available.
-- Before go-live: when a bill code isn't found, fall back to `reference` (only with a paid amount present) so a member paying an old bill after an amount edit is matched or flagged in-app, not just logged.
+- ✅ Done in G1: webhooks fail closed when neither a paid amount nor `bill_amount` is available (409, audited once as `payment.webhook_amount_unknown`, shown on the fee's admin page).
+- ✅ Done in G1 (flag only, by design): when a bill code isn't found but the reference (with that reference's own callback token) names a fee, it is **never settled** (the bill isn't ours, and `getBillTransactions` is not tied to our merchant account or reference, so anyone could pay a bill of their own and send its code). It is flagged on that fee and club instead (`payment.unmatched_webhook`, a warning on the admin payment page: check ToyyibPay before marking the fee paid).
 - Audit a second successful webhook with a different transaction id on an already-paid fee (double payment → refund).
-- Throttle `pay` and `generateFuture`; cap how far ahead `period_start` can go; unique index on (club, user, period_start).
+- Throttle `pay` and `generateFuture` (✅ both done; `pay` and `pay-all` got `throttle:10,1` in G1); cap how far ahead `period_start` can go; unique index on (club, user, period_start).
 - ToyyibPay sandbox: confirm the callback `amount` unit and whether customer-borne charges are included (alongside the `status` vs `status_id` check).
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
@@ -233,8 +233,8 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
 - [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database.
 - [ ] PHP 8.4 on the host; align `composer.json` (`php ^8.3`) with the lock so a wrong host fails loudly.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
-- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start).
-- [ ] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler.
+- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
+- [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
 
 Full list by area:
 
@@ -244,10 +244,13 @@ Full list by area:
 - [ ] Re-test a real sandbox callback on the host after the A5 **webhook CSRF fix** (it previously got 419).
 - [ ] `TOYYIBPAY_WEBHOOK_SECRET` set on the host to a random value (placeholders are refused).
 - [x] Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside). Done in S1.
-- [ ] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available.
-- [ ] **Reference fallback** when a bill code isn't found (only with a paid amount present).
+- [x] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available. Done in G1 (409 + `payment.webhook_amount_unknown`).
+- [x] **Reference fallback** when a bill code isn't found (only with a paid amount present). Done in G1 as flag-only: filed under the fee and club the reference names, never settled automatically (the unrecorded bill can't be proven ours).
 - [x] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment). Done in S1 (`payment.gateway_paid_twice`, flagged for a refund).
-- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` runs under a per-fee lock but has no throttle of its own.
+- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` and `pay-all` are throttled 10/min since G1. Left: cap `period_start`.
+- [ ] ToyyibPay sandbox (G1): check that the callback `refno` equals `billpaymentInvoiceNo` from `getBillTransactions` (the reconcile records that id; if they differ, the confirm-step count still stops a false "paid twice"), and run SANDBOX-TEST.md test 8 (lost callback settled by the 15-minute check).
+- [ ] G1 follow-ups: (a) the reconcile and the status check only look at **unsuperseded** bills, so a superseded bill (single or group) paid with a lost callback is never surfaced, and needs a manual check in the gateway; (b) the status JSON routes (`payments.status`, `payments.group-status`) have no route throttle of their own: gateway calls are capped at one per bill per 30 s, but the routes themselves are not rate-limited.
+- [ ] Billplz has no reconcile yet: add a get-bill call to `BillplzGateway` before Billplz goes live, or accept that a lost Billplz callback needs a manual check.
 - [ ] Billplz callback for a replaced bill on a per-club-key club (S1 keeps replaced bills in `payment_bills` and matches them; still to try in the Billplz sandbox).
 - [ ] **Real iPhone payment return** from FPX/bank in the installed PWA (separate cookie jar from Safari).
 
@@ -357,7 +360,7 @@ Follow-ups (non-blocking):
 - Only if deploying without `public/build` (jsDelivr fallback): open one Blade admin page with devtools and confirm no SRI errors. Normal deploys bundle Bootstrap and Chart.js.
 
 ### R2a follow-ups (non-blocking)
-- 🔴 P3: "Semak status bayaran" reads stored status only. Add a gateway requery on the status check, or a scheduled reconcile of open bills, so a lost callback does not leave a fee "Dalam proses" for 3 days and then trigger a reminder.
+- ✅ Done in G1 (was 🔴 P3): "Semak status bayaran" now asks ToyyibPay itself (status poll of the single-fee and group result pages, at most once per bill every 30 s), and `payments:reconcile-open-bills` runs every 15 minutes over open ToyyibPay bills opened 10 minutes to 3 days ago. Both settle through the webhook's own code (`SettlementService`) and audit `payment.reconciled`. Billplz bills are skipped (no get-bill call in `BillplzGateway` yet) and still rely on the callback.
 - Blade Payments summary total is a separate query from the status counts (harmless race).
 
 ### R2b follow-ups (non-blocking)
@@ -491,3 +494,11 @@ Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above wa
 - `sandbox-check --payment` on a fee whose member was deleted throws instead of refusing.
 - Bill names are cut at 30 characters after "Club Fee "; long club names lose their end (cosmetic).
 - Dedupe and "paid twice" flags now key on the callback `refno`; the sandbox run must confirm it is unique per payment.
+
+### G1 follow-ups (non-blocking, from the final review)
+- Status-check audit rows say "System" but keep the member's IP and user agent; blank them under `asSystem` or accept as trace data.
+- Reconcile: legacy fees (no `payment_bills` row) have no cursor, so with many in the 3-day window the same first rows are asked each run; the main cursor advances before processing (a crash skips the rest of that batch until it wraps).
+- `auditUnmatched` dedupe scans only the latest 500 entries across all clubs.
+- Add a `throttle` to the member status JSON routes (the gateway call is already capped per bill).
+- Extra-payment flags from reconcile show synthetic ids (`<txn>#2`); say in the flag text to look up the real transaction in ToyyibPay.
+- Largest remaining gap: a superseded bill paid with a lost callback is never surfaced.

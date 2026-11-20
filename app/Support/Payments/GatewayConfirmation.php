@@ -13,6 +13,8 @@ final readonly class GatewayConfirmation
     public function __construct(
         public int $amountSen,
         public int $successCount,
+        /** The gateway's own id for the largest successful payment, when it reports one (ToyyibPay billpaymentInvoiceNo). */
+        public ?string $transactionId = null,
     ) {}
 
     public function paid(): bool

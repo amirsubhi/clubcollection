@@ -218,6 +218,10 @@ Does ToyyibPay send the callback again when the portal doesn't answer "OK"?
 5. Wait up to **an hour** and watch the super admin's **Audit Log** for a **Payment Sandbox Callback** with that bill
    code. Write down the payment time and the time the entry appeared (or that none appeared).
 
+The scheduled check (`payments:reconcile-open-bills`, every 15 minutes) does not run while the site is down. After
+`php artisan up` it may mark the fee paid before ToyyibPay's retry arrives; that is expected. The retry must then still
+show as a **Payment Sandbox Callback** and must **not** add a "Payment Gateway Paid Twice" warning.
+
 Repeats: in tests 2 and 4 check that each fee has **exactly one** "Payment Paid Via Webhook" even if there are several
 "Payment Sandbox Callback" rows for the same bill, and **no** "Payment Gateway Paid Twice" warning.
 
@@ -226,6 +230,22 @@ Repeats: in tests 2 and 4 check that each fee has **exactly one** "Payment Paid 
 Right after a successful payment (test 2 or a new `--create` bill), run
 `php artisan toyyibpay:sandbox-check --bill=<bill code>` at once, and again after one minute. Note whether **Paid?**
 is YES immediately. A delay explains any "Payment Webhook Unconfirmed" rows in the Audit Log.
+
+### Test 8: a lost callback is settled by the scheduled check
+
+The portal asks ToyyibPay about open bills every 15 minutes (`payments:reconcile-open-bills`; it needs the cron job from
+INSTALL.md step 12), so a payment whose callback never arrives is still settled.
+
+1. As the test member, start paying a fee (as in test 2) but stop on the ToyyibPay payment page.
+2. `php artisan down`, then pay with success on the payment page. The callback now fails.
+3. `php artisan up` straight away. Do not wait for ToyyibPay to retry.
+4. Within **15 minutes** (or run `php artisan payments:reconcile-open-bills` by hand once 10 minutes have passed since
+   the bill was opened) the fee must show as paid, the member gets the receipt email, and the super admin's Audit Log
+   shows **Payment Reconciled** (source: reconcile) next to **Payment Paid Via Webhook**.
+5. Alternative: as the member, open Home and tap **Semak status bayaran**. Within a few seconds the result page must
+   change to **Berjaya** (the status check asks ToyyibPay itself, at most once every 30 seconds per bill; Audit Log
+   source: status_check).
+6. If ToyyibPay's retry arrives later: still exactly one "Paid Via Webhook" per fee and **no** "Paid Twice" warning.
 
 ## 5. What to send back
 
@@ -237,7 +257,7 @@ Send these to the developers (all of them are free of keys and passwords):
   **Payment Webhook Unconfirmed** and **Payment Paid Via Webhook** row;
 - the browser address after the `?` from tests 2 and 3;
 - the screenshots / totals from test 5;
-- the times from tests 6 and 7;
+- the times from tests 6, 7 and 8;
 - the filled-in checklist below.
 
 **Never send** `.env`, the User Secret Key, the webhook secret, or the whole `storage/logs/laravel.log`.
@@ -264,6 +284,7 @@ every item passed and any fixes are released.
 | 10 | Test 6: a callback arrived after maintenance mode ended (ToyyibPay retries); time noted | | |
 | 11 | Tests 2 and 4: one "Paid Via Webhook" per fee, no "Paid Twice" warning | | |
 | 12 | Test 7: `--bill` showed the payment immediately / after N seconds | | |
-| 13 | Settings restored: `TOYYIBPAY_CHARGE_VERIFIED=false`, Billing settings "Club absorbs it" | | |
+| 13 | Test 8: lost callback: fee paid within 15 minutes by the scheduled check (or at once by "Semak status bayaran"), "Payment Reconciled" in the Audit Log, no "Paid Twice" after a late retry | | |
+| 14 | Settings restored: `TOYYIBPAY_CHARGE_VERIFIED=false`, Billing settings "Club absorbs it" | | |
 
 Until every row says pass and the developers have confirmed, real FPX stays off (`TOYYIBPAY_SANDBOX=true`).
