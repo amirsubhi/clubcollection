@@ -40,7 +40,9 @@ class PaymentController extends Controller
     {
         $user = auth()->user();
 
-        $this->authorizeClubMembership($user, $club);
+        // Only an active member of an active club (G2): a deactivated club or
+        // membership is not listed on the home page and its fees can't be paid.
+        $this->authorizeActiveMembership($user, $club);
 
         // Year selection — default to current year
         $selectedYear = (int) $request->get('year', now()->year);
@@ -681,15 +683,7 @@ class PaymentController extends Controller
         ];
     }
 
-    private function authorizeClubMembership($user, Club $club): void
-    {
-        $isMember = $club->members()->where('users.id', $user->id)->exists();
-        if (! $isMember) {
-            abort(403, 'You are not a member of this club.');
-        }
-    }
-
-    /** Active member of an active club (pay-ahead creates new fees). */
+    /** Active member of an active club (the payments list and pay-ahead). */
     private function authorizeActiveMembership($user, Club $club): void
     {
         $active = $club->is_active

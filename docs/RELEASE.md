@@ -53,7 +53,8 @@ that no longer exist. The web root stays the app's `public/` folder (see [INSTAL
 > rebuild with `php artisan migrate:fresh --force` (this deletes all data), and re-enter the club's data. From the first real install onwards, every schema
 > change ships as a **new, additive migration**: never edit or delete a migration that a release has already shipped.
 
-**Back up first** (database, `storage/app/private`, `.env`; see [INSTALL.md](INSTALL.md#6-backups)). Then, in the
+**Back up first**: run `php artisan backup:run` and download the new zip from `storage/app/backups` (database and
+uploaded files; see [INSTALL.md](INSTALL.md#6-backups)), and keep your private copy of `.env` / `APP_KEY`. Then, in the
 app folder:
 
 ```bash
@@ -61,7 +62,11 @@ php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan app:doctor     # last step: every row PASS or an understood WARN
 ```
+
+- `app:doctor` is read-only and exits with code 1 while any row is FAIL; each row has a one-line fix (see
+  [INSTALL.md step 13](INSTALL.md#step-13-check-the-server)).
 
 - Re-run `php artisan config:cache` whenever `.env` changes: a cached config ignores `.env`.
 - Bump `CACHE_VERSION` in `public/sw.js` for every release (see [PWA service worker](#pwa-service-worker-publicswjs)).

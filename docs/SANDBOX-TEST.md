@@ -49,7 +49,7 @@ The staging site is a second, separate copy of the portal with its own database.
 3. Do **not** put password protection (cPanel **Directory Privacy**) on the staging site: it would block ToyyibPay's
    callbacks too.
 4. Install the portal into `~/clubportal-staging` exactly as in [INSTALL.md, Path B](INSTALL.md#3-path-b-cpanel-hosting),
-   steps 1 to 7 and 11, with these differences in `.env` (step 5):
+   steps 1 to 7, 11 and 12 (the cron job: test 8 and `app:doctor` need it), with these differences in `.env` (step 5):
 
    ```dotenv
    APP_URL=https://staging.example.com      # the staging address, exactly
@@ -87,6 +87,16 @@ The staging site is a second, separate copy of the portal with its own database.
    `https://dev.toyyibpay.com (sandbox)`, the webhook secret "set", and "Callback fields in audit log" "on". The
    command refuses to run at all when `TOYYIBPAY_SANDBOX=false`. If it says APP_ENV is production that is fine here:
    with `TOYYIBPAY_SANDBOX=true` no real payment can be taken.
+
+6. Check the server too:
+
+   ```bash
+   php artisan app:doctor
+   ```
+
+   Fix every FAIL row (see [INSTALL.md step 13](INSTALL.md#step-13-check-the-server)). On staging two WARN rows are
+   expected: **ToyyibPay mode** (`TOYYIBPAY_SANDBOX=true` while a club uses ToyyibPay: right for this test, wrong on
+   the live site) and **Mail** if you chose `MAIL_MAILER=log`.
 
 ## 3. Create test data by hand
 

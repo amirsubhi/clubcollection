@@ -127,6 +127,14 @@ class ClubController extends Controller
 
     public function destroy(Club $club)
     {
+        // The database cascade would wipe approved records and the audit trail's
+        // context: only a club with no members or admins, fees, bills, expenses or
+        // documents can be deleted. Anything else is deactivated instead.
+        if ($club->hasRecords()) {
+            return redirect()->route('admin.clubs.index')
+                ->with('error', 'This club has records (members or admins, fees, payment bills, expenses or documents). Deactivate it instead: Edit → untick Active.');
+        }
+
         $name = $club->name;
         if ($club->logo) {
             Storage::disk('public')->delete($club->logo);

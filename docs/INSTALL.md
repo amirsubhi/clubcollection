@@ -261,6 +261,30 @@ and 3 days ago it asks ToyyibPay whether the bill was paid, and settles it exact
 lost callback no longer leaves a paid fee "Dalam proses" until the overdue reminder goes out. (Billplz bills are
 skipped and still rely on the Billplz callback.) Without the cron job this safety net does not run.
 
+It also makes the daily backup (`backup:run` at 02:15 Malaysia time, see [Backups](#6-backups)) and writes a heartbeat
+every minute, which `app:doctor` (step 13) checks.
+
+### Step 13. Check the server
+
+The last step, and again after any change to the server or `.env`:
+
+```bash
+php artisan app:doctor
+```
+
+It changes nothing. It prints one row per check (PHP 8.4 and its extensions, `APP_ENV` / `APP_DEBUG` / `APP_URL` /
+`SESSION_SECURE_COOKIE` / `APP_TIMEZONE`, the cache store, upload and memory limits, the private files folder,
+`storage:link`, the front-end build, webhook secrets, ToyyibPay sandbox mode, email, the cron job and the latest
+backup) marked **PASS**, **WARN** or **FAIL**, with a one-line fix for each problem. It never prints a key or secret.
+
+- Fix every **FAIL** row, run `php artisan config:cache` if you changed `.env`, and run it again. It exits with code 1
+  while anything fails (`--json` gives the same result for scripts).
+- Read every **WARN** row. "ToyyibPay mode" warns while `TOYYIBPAY_SANDBOX=true` and a club uses ToyyibPay: expected
+  on a staging site, not on the live one.
+- The cron row passes only once the cron job of step 12 has run (wait a minute or two after adding it).
+- PHP version, extensions and limits are those of the command-line PHP. The website's PHP can differ: check cPanel
+  **MultiPHP Manager** and **MultiPHP INI Editor** show the same values.
+
 ---
 
 ## 4. MySQL instead of SQLite
@@ -279,8 +303,9 @@ SQLite is fine for a club of a few hundred members. To use MySQL / MariaDB:
    DB_PASSWORD=...
    ```
 3. Make sure `pdo_mysql` is enabled. Keep `pdo_sqlite` enabled too: the installer checks for it.
-4. Carry on with step 6 (`migrate --force`). There is no `database/database.sqlite` to back up; back up the MySQL
-   database instead (cPanel → **Backup** or phpMyAdmin → Export).
+4. Carry on with step 6 (`migrate --force`). `php artisan backup:run` dumps the MySQL database with `mysqldump` when
+   the server has it; if not, it says so and backs up the files only, so back up the database with cPanel → **Backup**
+   (or phpMyAdmin → Export).
 
 PostgreSQL also works through `DB_CONNECTION=pgsql` with the `pdo_pgsql` extension.
 
@@ -313,17 +338,45 @@ The [user guide](USER-GUIDE.md) covers each of these screens in detail.
 
 ## 6. Backups
 
-Back up these together, regularly, and keep a copy **off the server**:
+### What the app backs up by itself
 
-| What | Where | Why |
-|---|---|---|
-| The whole `.env` | app folder | Holds `APP_KEY`, which encrypts documents, slips, welfare details and club gateway secrets (**without the same key a restored backup can't be read**), plus the webhook secret, SMTP password and global gateway keys. Keep this copy somewhere private. |
-| Uploaded documents and slips | `storage/app/private/` | Encrypted files; useless without `APP_KEY`, and the database is useless without them. |
-| Club logos | `storage/app/public/` | |
-| The database | `database/database.sqlite`, or a MySQL dump | All records. |
+`php artisan backup:run` runs **every day at 02:15** (Malaysia time) through the cron job of step 12. It writes one zip
+to `storage/app/backups/` (outside `public/`, never reachable from the web), named
+`<app-name>-YYYYmmdd-HHMMSS.zip`, holding:
 
-cPanel's **Backup** page (or your host's backup tool) can include the home folder and the MySQL databases. Test a
-restore at least once.
+- the **database**: for SQLite a consistent copy (`database/database.sqlite`, made with `VACUUM INTO`, safe while the
+  site runs); for MySQL a `mysqldump` (`database/database.sql`) when the server has `mysqldump`, otherwise only a
+  message telling you to use cPanel → **Backup** for the database;
+- the uploaded documents and slips (`storage/app/private/`, encrypted) and the club logos (`storage/app/public/`).
+
+It keeps the newest 14 zips (`--keep=N` to change; only its own `<app-name>-…` zips are ever deleted, and none when a run's
+zip has no database, because the copy failed or `mysqldump` isn't available) and records each run in the Audit Log ("System Backup"). Run it by
+hand any time: `php artisan backup:run`.
+
+**The zip never contains `.env` or `APP_KEY`.** The documents, slips, welfare details and club gateway keys are
+encrypted with `APP_KEY`: **without the same key a restored backup can't be read.** So:
+
+1. **Keep `APP_KEY` separately, off the server**, e.g. in the committee's password manager (copy the whole
+   `APP_KEY=base64:...` line from `.env` once, after the install). Keep a private copy of the whole `.env` too.
+2. **Download the backups off the server** regularly (File Manager → `storage/app/backups` → Download, at least
+   weekly). A backup that only lives on the same server is lost with it.
+3. cPanel's **Backup** page (or your host's tool) is a useful second copy of the home folder and MySQL databases.
+
+### Restore
+
+1. Install the same (or a newer) release as in [Path B](#3-path-b-cpanel-hosting), with `.env` holding the **original
+   `APP_KEY`** (do not run `key:generate`).
+2. Put the site in maintenance mode: `php artisan down`.
+3. Unzip the backup somewhere private (not under `public/`), then:
+   - SQLite: delete `database/database.sqlite-wal` and `database/database.sqlite-shm` if they exist (left over from the
+     old database, they would corrupt the restored one), then copy `database/database.sqlite` over the app's
+     `database/database.sqlite`;
+   - MySQL: import `database/database.sql` with phpMyAdmin → Import (or restore the cPanel database backup);
+   - copy `storage/app/private/` and `storage/app/public/` into the app's `storage/app/`.
+4. `php artisan migrate --force` (a newer release may add tables), `php artisan config:cache`, then `php artisan up`.
+5. Run `php artisan app:doctor`, log in, and open one document and one slip to confirm they can be read.
+
+Test a restore at least once, on a staging copy.
 
 ## 7. Upgrading
 

@@ -15,7 +15,9 @@ class DashboardController extends Controller
     public function index(): Response
     {
         $user = auth()->user();
-        $clubs = $user->clubs()->where('clubs.is_active', true)->orderBy('clubs.name')->get();
+        // Active clubs where the membership is active too (G2): a deactivated
+        // club or membership drops off the member's home page.
+        $clubs = $user->clubs()->where('clubs.is_active', true)->wherePivot('is_active', true)->orderBy('clubs.name')->get();
         $clubIds = $clubs->pluck('id');
         $year = now()->year;
 

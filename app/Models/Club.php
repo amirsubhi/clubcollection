@@ -137,6 +137,20 @@ class Club extends Model
     }
 
     /**
+     * Whether deleting this club would destroy anything worth keeping: members,
+     * fees, gateway bills, expenses or documents (G2: such a club can only be
+     * deactivated).
+     */
+    public function hasRecords(): bool
+    {
+        return $this->members()->exists()
+            || $this->payments()->exists()
+            || $this->expenses()->exists()
+            || \Illuminate\Support\Facades\DB::table('payment_bills')->where('club_id', $this->id)->exists()
+            || \Illuminate\Support\Facades\DB::table('attachments')->where('club_id', $this->id)->exists();
+    }
+
+    /**
      * Check whether this club has its own ToyyibPay credentials configured.
      */
     public function hasToyyibPayCredentials(): bool

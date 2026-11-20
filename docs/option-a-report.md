@@ -41,7 +41,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 
 **Follow-ups (non-blocking):**
 - Lock `pay` per payment (`Cache::lock("pay:{id}")`, re-read the row inside) so two tabs or a retry can't create two bills.
-- Payments list, generate-future and the dashboard club query should also respect `club_user.is_active` and `clubs.is_active`.
+- ✅ Done in G2: the payments list, generate-future and the member and admin home club queries respect `club_user.is_active` and `clubs.is_active` (payments list and pay-ahead 403; the clubs drop off the home pages).
 - ✅ Done in G1: webhooks fail closed when neither a paid amount nor `bill_amount` is available (409, audited once as `payment.webhook_amount_unknown`, shown on the fee's admin page).
 - ✅ Done in G1 (flag only, by design): when a bill code isn't found but the reference (with that reference's own callback token) names a fee, it is **never settled** (the bill isn't ours, and `getBillTransactions` is not tied to our merchant account or reference, so anyone could pay a bill of their own and send its code). It is flagged on that fee and club instead (`payment.unmatched_webhook`, a warning on the admin payment page: check ToyyibPay before marking the fee paid).
 - Audit a second successful webhook with a different transaction id on an already-paid fee (double payment → refund).
@@ -230,7 +230,7 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
 - [ ] ToyyibPay and Billplz **sandbox** runs end to end on the real host, including a real callback after the webhook CSRF fix. ToyyibPay: follow [SANDBOX-TEST.md](SANDBOX-TEST.md) (`php artisan toyyibpay:sandbox-check`, callback field names in the Audit Log); real FPX stays off (`TOYYIBPAY_SANDBOX=true`) until every item passes.
 - [ ] Gateway secrets set on the host: `TOYYIBPAY_WEBHOOK_SECRET` and `BILLPLZ_X_SIGNATURE_KEY` (placeholders are refused).
 - [ ] Host WAF/ModSecurity and HTTPS/www redirects don't block or 301 the gateways' server-to-server POSTs.
-- [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database.
+- [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database. G2: `php artisan backup:run` (daily) zips the database and `storage/app/private`; INSTALL.md §6 covers keeping `APP_KEY` separately and downloading backups. Left on the host: store `APP_KEY` off-server and download the zips.
 - [ ] PHP 8.4 on the host; align `composer.json` (`php ^8.3`) with the lock so a wrong host fails loudly.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
 - [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
@@ -257,9 +257,9 @@ Full list by area:
 **Data and files**
 - [ ] **Back up `APP_KEY`** off-server; document rotation with `APP_PREVIOUS_KEYS` (attachments and welfare fields are encrypted with it).
 - [ ] PHP upload limits on the host: `upload_max_filesize = 12M`, `post_max_size = 32M` (documented in `docs/INSTALL.md` step 10).
-- [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt).
-- [ ] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original.
-- [ ] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk).
+- [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt). `php artisan app:doctor` (G2) checks it (≥ 128M) with the upload limits, PHP 8.4, `APP_ENV`/`APP_DEBUG`/https/`SESSION_SECURE_COOKIE`, the cache store and the cron job: run it on the host.
+- [x] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original. Done in G2 (GD re-encoded copy, 480 px / 1600 px for the slip preview, EXIF dropped, 404 when it can't be decoded).
+- [x] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk). Done in G2 (members, fees, bills, expenses or documents → "Deactivate it instead").
 - [ ] From the first real production install (the next release tag), use additive migrations only.
 - [ ] Tell admins not to type personal data in description, return or void reasons.
 
@@ -502,3 +502,11 @@ Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above wa
 - Add a `throttle` to the member status JSON routes (the gateway call is already capped per bill).
 - Extra-payment flags from reconcile show synthetic ids (`<txn>#2`); say in the flag text to look up the real transaction in ToyyibPay.
 - Largest remaining gap: a superseded bill paid with a lost callback is never surfaced.
+
+### G2 follow-ups (non-blocking, from the final review)
+- Doctor "Backups" row passes on any recent zip; match the backup name pattern and warn when the newest zip has no database.
+- Thumbnails over 25 MP or beyond `memory_limit` show a broken image (404); add a "preview unavailable" placeholder in the UI. "Open full size" still works.
+- Add the `exif` extension to the doctor (without it phone photos lose their rotation).
+- `chmod 0600` the temporary dump and the final backup zip on shared hosts.
+- An attachment deleted while a backup is being zipped fails that night's run (it exits non-zero and prunes nothing).
+- Inactive members get 403 on the payments list but can still open direct payment links for an open bill (in-flight payments complete); confirm the intended UX.

@@ -153,7 +153,9 @@ class AttachmentTest extends TestCase
     {
         $res = $this->get(route('admin.attachments.thumb', $this->attachment));
         $res->assertOk();
-        $this->assertSame($this->original, $res->getContent());
+        // G2: a re-encoded copy, never the original bytes.
+        $this->assertNotSame($this->original, $res->getContent());
+        $this->assertSame([40, 40], array_slice(getimagesizefromstring($res->getContent()), 0, 2));
         $this->assertSame('image/jpeg', $res->headers->get('Content-Type'));
         // Unaudited, so never cached either (same as the audited view).
         $this->assertStringContainsString('no-store', (string) $res->headers->get('Cache-Control'));
@@ -179,5 +181,118 @@ class AttachmentTest extends TestCase
             ->where('item.attachments.0.thumbUrl', route('admin.attachments.thumb', $this->attachment))
             ->where('item.attachments.1.thumbUrl', null));
         $this->assertFalse(AuditLog::whereIn('action', ['attachment.viewed', 'attachment.downloaded'])->exists(), 'rendering the page audits nothing');
+    }
+
+    // ── G2: real thumbnails ─────────────────────────────────────────────────
+
+    /** A JPEG with an EXIF block (camera make + a marker) spliced in after SOI. */
+    private static function jpegWithExif(int $w, int $h, string $marker = 'SECRETCAM', ?int $orientation = null): string
+    {
+        $img = imagecreatetruecolor($w, $h);
+        for ($x = 0; $x < $w; $x += 50) {
+            imagefilledrectangle($img, $x, 0, $x + 49, $h, imagecolorallocate($img, ($x * 7) % 256, ($x * 3) % 256, 120));
+        }
+        ob_start();
+        imagejpeg($img, null, 92);
+        $jpeg = (string) ob_get_clean();
+
+        // A little-endian TIFF block: Make (ASCII, stored after the IFD) and optionally Orientation (SHORT, inline).
+        $value = $marker."\0";
+        $count = $orientation === null ? 1 : 2;
+        $dataOffset = 8 + 2 + 12 * $count + 4;
+        $tiff = "II*\0".pack('V', 8).pack('v', $count)
+            .pack('vvVV', 0x010F, 2, strlen($value), $dataOffset)
+            .($orientation === null ? '' : pack('vvVvv', 0x0112, 3, 1, $orientation, 0))
+            .pack('V', 0).$value;
+        $app1 = "Exif\0\0".$tiff;
+
+        return substr($jpeg, 0, 2)."\xFF\xE1".pack('n', strlen($app1) + 2).$app1.substr($jpeg, 2);
+    }
+
+    private function storeImage(string $bytes, string $name = 'slip.jpg'): Attachment
+    {
+        $expense = Expense::firstOrFail();
+        $file = UploadedFile::fake()->createWithContent($name, $bytes);
+        $this->post(route('admin.clubs.fund-usage.store', $this->club), [
+            'intent' => 'draft', 'type' => 'expense', 'expense_category_id' => $expense->expense_category_id,
+            'description' => 'Stationery', 'payee' => 'Popular Bookstore', 'amount' => '12.30',
+            'expense_date' => now()->toDateString(), 'files' => [$file], 'kinds' => ['receipt'],
+        ])->assertSessionHasNoErrors();
+
+        return Attachment::where('original_name', $name)->firstOrFail();
+    }
+
+    public function test_thumbnail_is_downscaled_and_has_no_exif(): void
+    {
+        $original = self::jpegWithExif(2000, 1500);
+        $this->assertSame('SECRETCAM', @exif_read_data('data://image/jpeg;base64,'.base64_encode($original))['Make'] ?? null, 'fixture carries EXIF');
+        $attachment = $this->storeImage($original);
+
+        $res = $this->get(route('admin.attachments.thumb', $attachment))->assertOk();
+        $thumb = $res->getContent();
+        $this->assertSame('image/jpeg', $res->headers->get('Content-Type'));
+        $this->assertSame([480, 360], array_slice(getimagesizefromstring($thumb), 0, 2));
+        $this->assertLessThan(strlen($original), strlen($thumb));
+        $this->assertStringNotContainsString('SECRETCAM', $thumb);
+        $this->assertStringNotContainsString("Exif\0\0", $thumb);
+        $this->assertSame((string) strlen($thumb), $res->headers->get('Content-Length'));
+
+        // The slip preview's larger copy: still re-encoded, capped at 1600 px.
+        $large = $this->get(route('admin.attachments.thumb', $attachment).'?size=large')->assertOk()->getContent();
+        $this->assertSame([1600, 1200], array_slice(getimagesizefromstring($large), 0, 2));
+        $this->assertStringNotContainsString('SECRETCAM', $large);
+        $this->assertFalse(AuditLog::whereIn('action', ['attachment.viewed', 'attachment.downloaded'])->exists());
+    }
+
+    public function test_thumbnail_applies_exif_orientation_to_the_copy(): void
+    {
+        // Stored landscape, tagged "rotate 90° clockwise" (6), as a phone shoots a portrait photo.
+        $original = self::jpegWithExif(600, 300, 'SECRETCAM', 6);
+        $this->assertSame(6, @exif_read_data('data://image/jpeg;base64,'.base64_encode($original))['Orientation'] ?? null, 'fixture is tagged');
+        $attachment = $this->storeImage($original, 'portrait.jpg');
+
+        $thumb = $this->get(route('admin.attachments.thumb', $attachment))->assertOk()->getContent();
+        $this->assertSame([240, 480], array_slice(getimagesizefromstring($thumb), 0, 2), 'portrait after applying the tag');
+        $this->assertStringNotContainsString('SECRETCAM', $thumb);
+
+        // Small enough already: the large copy keeps the size but is still re-encoded and upright.
+        $large = $this->get(route('admin.attachments.thumb', $attachment).'?size=large')->assertOk()->getContent();
+        $this->assertSame([300, 600], array_slice(getimagesizefromstring($large), 0, 2));
+        $this->assertNotSame($original, $large);
+        $this->assertStringNotContainsString('SECRETCAM', $large);
+    }
+
+    public function test_thumbnail_keeps_png_as_png(): void
+    {
+        $img = imagecreatetruecolor(900, 300);
+        ob_start();
+        imagepng($img);
+        $attachment = $this->storeImage((string) ob_get_clean(), 'slip.png');
+
+        $res = $this->get(route('admin.attachments.thumb', $attachment))->assertOk();
+        $this->assertSame('image/png', $res->headers->get('Content-Type'));
+        $this->assertSame([480, 160], array_slice(getimagesizefromstring($res->getContent()), 0, 2));
+    }
+
+    public function test_thumbnail_that_cannot_be_decoded_is_404_never_the_original(): void
+    {
+        $expense = Expense::firstOrFail();
+        Storage::disk('local')->put('clubs/broken.bin', Crypt::encryptString('not really a jpeg'));
+        $broken = $expense->attachments()->create([
+            'club_id' => $this->club->id, 'kind' => 'receipt', 'original_name' => 'broken.jpg', 'path' => 'clubs/broken.bin',
+            'mime' => 'image/jpeg', 'size' => 17, 'sha256' => str_repeat('0', 64), 'uploaded_by' => $this->admin->id,
+        ]);
+
+        $res = $this->get(route('admin.attachments.thumb', $broken))->assertNotFound();
+        $this->assertStringNotContainsString('not really a jpeg', $res->getContent());
+    }
+
+    public function test_thumbnail_refuses_images_over_25_megapixels(): void
+    {
+        // Only the header is read for the size check: a 6000 x 5000 PNG header on a tiny file.
+        $png = "\x89PNG\r\n\x1a\n".pack('N', 13).'IHDR'.pack('NNCCCCC', 6000, 5000, 8, 2, 0, 0, 0);
+        $png .= pack('N', crc32(substr($png, 12, 17)));
+        $this->assertSame([6000, 5000], array_slice(getimagesizefromstring($png), 0, 2));
+        $this->assertNull(\App\Support\Images\Thumbnailer::make($png, 'image/png'));
     }
 }
