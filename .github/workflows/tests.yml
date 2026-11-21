@@ -1,0 +1,107 @@
+# Runs on every push to master and every pull request: type check, build, and the PHPUnit suite on SQLite,
+# MariaDB 10.11 (the production database on the cPanel hosts) and MySQL 8.0. SQLite ignores column lengths and
+# accepts any bytes, so only the MariaDB / MySQL runs catch values too long for a column or invalid UTF-8.
+# On the database runs the migrations are also rolled back and re-run, to keep every down() working.
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHPUnit (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: sqlite
+            connection: sqlite
+            image: ""
+            health: ""
+          - db: mariadb-10.11
+            connection: mariadb
+            image: mariadb:10.11
+            health: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
+          - db: mysql-8.0
+            connection: mysql
+            image: mysql:8.0
+            health: --health-cmd="mysqladmin ping -h 127.0.0.1 -proot" --health-interval=5s --health-timeout=5s --health-retries=20
+
+    services:
+      # An empty image (the SQLite run) starts no service container.
+      db:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: clubportal_test
+        ports:
+          - 3306:3306
+        options: ${{ matrix.health }}
+
+    env:
+      # phpunit.xml sets SQLite in memory but doesn't force it, so these take over on the database runs.
+      DB_CONNECTION: ${{ matrix.connection }}
+      DB_HOST: ${{ matrix.connection != 'sqlite' && '127.0.0.1' || '' }}
+      DB_PORT: ${{ matrix.connection != 'sqlite' && '3306' || '' }}
+      DB_DATABASE: ${{ matrix.connection != 'sqlite' && 'clubportal_test' || ':memory:' }}
+      DB_USERNAME: ${{ matrix.connection != 'sqlite' && 'root' || '' }}
+      DB_PASSWORD: ${{ matrix.connection != 'sqlite' && 'root' || '' }}
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, curl, dom, fileinfo, filter, gd, mbstring, openssl, pdo, pdo_mysql, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci --no-audit --no-fund
+
+      - name: Type check
+        if: matrix.connection == 'sqlite'
+        run: npm run typecheck
+
+      - name: Build the front end (the tests read the Vite manifest)
+        run: npm run build
+
+      - name: Prepare .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Migrations run, roll back and run again
+        if: matrix.connection != 'sqlite'
+        run: |
+          php artisan migrate --force
+          php artisan migrate:reset --force
+          php artisan migrate --force
+          php artisan migrate:fresh --force
+
+      - name: Run the tests
+        run: php artisan test

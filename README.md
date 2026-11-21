@@ -192,8 +192,10 @@ npm run typecheck         # tsc --noEmit
 npm run build             # production build
 ```
 
-SQLite ignores column lengths, so also run the suite on MariaDB or MySQL before a release. Point it at an empty
-test database (it is wiped):
+SQLite ignores column lengths, so the suite also has to pass on MariaDB and MySQL. CI
+([.github/workflows/tests.yml](.github/workflows/tests.yml)) runs it on SQLite, MariaDB 10.11 and MySQL 8.0 for every
+push to `master` and every pull request. To run it on your own MariaDB / MySQL, point it at an empty test database
+(it is wiped):
 
 ```bash
 DB_CONNECTION=mariadb DB_HOST=127.0.0.1 DB_PORT=3306 DB_DATABASE=clubportal_test \

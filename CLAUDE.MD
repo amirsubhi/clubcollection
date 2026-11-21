@@ -101,7 +101,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 | `npm ci && npm run build` | build `public/build` (needed to serve any Inertia page; tests that render the root view call `withoutVite()`) |
 | `npm run dev` / `composer dev` | Vite dev server / `artisan serve` + queue + log tail |
 | `php artisan test` (`composer test`) | PHPUnit, SQLite in memory; `RefreshDatabase` + `.installed` marker in `TestCase` |
-| `DB_CONNECTION=mariadb DB_HOST=… DB_PORT=… DB_DATABASE=<empty test db> DB_USERNAME=… DB_PASSWORD=… php artisan test` | same suite on MariaDB / MySQL (`phpunit.xml` env isn't forced); must pass on SQLite, MariaDB 10.11 and MySQL 8.0 |
+| `DB_CONNECTION=mariadb DB_HOST=… DB_PORT=… DB_DATABASE=<empty test db> DB_USERNAME=… DB_PASSWORD=… php artisan test` | same suite on MariaDB / MySQL (`phpunit.xml` env isn't forced); must pass on SQLite, MariaDB 10.11 and MySQL 8.0 (CI: `.github/workflows/tests.yml`, every push to master and PR) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `php artisan db:seed` | demo data, local/testing only; super admin password from `SEED_SUPER_ADMIN_PASSWORD` or printed once |
 | `node tests/e2e/smoke.mjs` | browser smoke test; setup in `tests/e2e/README.md` |
