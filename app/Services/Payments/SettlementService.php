@@ -325,8 +325,12 @@ class SettlementService
     {
         return DB::transaction(function () use ($billId, $result, $confirmation) {
             // Fee rows first, then the bill: the same order as markPaymentPaid
-            // (fee, then bill), so the two paths can't deadlock.
-            $ids = DB::table('payment_bill_items')->where('payment_bill_id', $billId)->pluck('payment_id')->all();
+            // (fee, then bill), so the two paths can't deadlock. A locking read
+            // here, not a plain one: on MariaDB / MySQL (REPEATABLE READ) the first
+            // plain read fixes the snapshot, so a delivery that waited for these
+            // locks would not see the refund flag the previous one just wrote,
+            // and would write it again.
+            $ids = DB::table('payment_bill_items')->where('payment_bill_id', $billId)->sharedLock()->pluck('payment_id')->all();
             $fees = Payment::whereIn('id', $ids)->with('user')
                 ->orderBy('id')->lockForUpdate()->get()
                 ->sortBy(fn (Payment $p) => [$p->due_date->toDateString(), $p->period_start->toDateString(), $p->id])->values();
