@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('action', 100);
             $table->nullableMorphs('auditable');
             $table->foreignId('club_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('description');
+            $table->text('description'); // settlement notes can run past 255 characters
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();
             $table->string('ip_address', 45)->nullable();

@@ -20,6 +20,8 @@ class BackupRunTest extends TestCase
 {
     private string $root;
 
+    private string $defaultConnection;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -37,6 +39,7 @@ class BackupRunTest extends TestCase
         ]);
 
         // A real SQLite file outside the test transaction (VACUUM INTO can't run inside one).
+        $this->defaultConnection = config('database.default');
         touch("{$this->root}/db.sqlite");
         config([
             'database.connections.backup_scratch' => ['driver' => 'sqlite', 'database' => "{$this->root}/db.sqlite", 'prefix' => '', 'foreign_key_constraints' => true],
@@ -49,7 +52,7 @@ class BackupRunTest extends TestCase
     protected function tearDown(): void
     {
         // RefreshDatabase rolls back "the default connection": point it back first.
-        config(['database.default' => 'sqlite']);
+        config(['database.default' => $this->defaultConnection]);
         DB::purge('backup_scratch');
         $root = $this->root;
         parent::tearDown();

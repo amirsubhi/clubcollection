@@ -210,4 +210,20 @@ class InstallationTest extends BaseTestCase
         \App\Http\Controllers\InstallController::$minimumPhp = \App\Http\Controllers\InstallController::MIN_PHP;
         $this->get('/install')->assertSee('PHP &gt;= 8.4', false);
     }
+
+    public function test_installer_checks_the_pdo_driver_of_the_configured_database(): void
+    {
+        // Only the driver name is read; the real connection is put back before tearDown uses it.
+        $default = config('database.default');
+        $driver = config("database.connections.{$default}.driver");
+        try {
+            config(["database.connections.{$default}.driver" => 'mariadb']);
+            $this->get('/install')->assertSee('PDO MySQL / MariaDB Extension')->assertDontSee('PDO SQLite Extension');
+
+            config(["database.connections.{$default}.driver" => 'sqlite']);
+            $this->get('/install')->assertSee('PDO SQLite Extension')->assertDontSee('PDO MySQL / MariaDB Extension');
+        } finally {
+            config(["database.connections.{$default}.driver" => $driver]);
+        }
+    }
 }

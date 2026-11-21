@@ -14,8 +14,8 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
 
 ## Stack
 
-- **PHP 8.4** (`composer.lock` needs it; `composer.json` still says `^8.3`), **Laravel 13**.
-- SQLite by default; `database` driver for session, cache (locks, rate limits) and queue; mail `log` locally.
+- **PHP 8.4** (`composer.json` and `composer.lock` need it), **Laravel 13**.
+- SQLite by default (dev and tests); production target is MariaDB 10.11 on cPanel (`DB_CONNECTION=mariadb`). SQLite ignores VARCHAR lengths: run the suite on MariaDB too. `database` driver for session, cache (locks, rate limits) and queue; mail `log` locally.
 - **Two front ends side by side:**
   - **Inertia 2 + React 18 + TypeScript + Tailwind 3** (Vite) for member pages and the admin Dashboard, Fund Usage and
     Verifications. Root view `resources/views/app.blade.php`, pages in `resources/js/Pages/{Member,Admin}`, shared
@@ -101,6 +101,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 | `npm ci && npm run build` | build `public/build` (needed to serve any Inertia page; tests that render the root view call `withoutVite()`) |
 | `npm run dev` / `composer dev` | Vite dev server / `artisan serve` + queue + log tail |
 | `php artisan test` (`composer test`) | PHPUnit, SQLite in memory; `RefreshDatabase` + `.installed` marker in `TestCase` |
+| `DB_CONNECTION=mariadb DB_HOST=… DB_PORT=… DB_DATABASE=<empty test db> DB_USERNAME=… DB_PASSWORD=… php artisan test` | same suite on MariaDB / MySQL (`phpunit.xml` env isn't forced); must pass on SQLite, MariaDB 10.11 and MySQL 8.0 |
 | `npm run typecheck` | `tsc --noEmit` |
 | `php artisan db:seed` | demo data, local/testing only; super admin password from `SEED_SUPER_ADMIN_PASSWORD` or printed once |
 | `node tests/e2e/smoke.mjs` | browser smoke test; setup in `tests/e2e/README.md` |
@@ -120,6 +121,11 @@ Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 ## Pitfalls
 
 - Until the first real production install (the next release tag) migrations are edited in place (no live data); an old database needs `migrate:fresh`. After that, additive only.
+- MariaDB / MySQL (strict mode) refuse what SQLite accepts: a value longer than its VARCHAR (1406), invalid UTF-8
+  (1366; cut strings with `mb_strcut`, not `substr`), and a duplicate that differs only in case or accents under
+  `utf8mb4_unicode_ci` (1062; compare emails lowercased). MySQL 8 stores JSON with its keys sorted: never compare or
+  hash JSON columns by key order. In migrations, an index that starts with a foreign-key column replaces the FK's own
+  index, so a `down()` that drops it must put a plain index back first (error 1553).
 - `CACHE_STORE` must not be `array` in production (pay lock, rate limits).
 - `bootstrap/app.php`'s `withMiddleware` callback runs before `.env` is loaded: never read `env()` there. Trusted proxies
   come from `config('app.trusted_proxies')` (`TRUSTED_PROXIES`) via `AppServiceProvider::configureTrustedProxies()`.

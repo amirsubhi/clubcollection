@@ -116,7 +116,7 @@
         {{-- ── System Requirements ─────────────────────────────── --}}
         <p class="section-title"><i class="bi bi-cpu me-1"></i>System Requirements</p>
         <div class="card border-0 bg-light rounded-3 mb-4 px-3">
-            @foreach(['php', 'sqlite', 'storage', 'env'] as $key)
+            @foreach(['php', 'database', 'storage', 'env'] as $key)
                 <div class="req-item">
                     <span class="req-label">{{ $requirements[$key]['label'] }}</span>
                     <span class="d-flex align-items-center gap-2">

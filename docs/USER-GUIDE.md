@@ -294,7 +294,9 @@ reminder. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` 
 ### Other admin tasks
 
 - **Members**: add a member (they get a welcome email with a temporary password) or **Import** a CSV (template on the
-  import page; up to 1,000 rows). Club admins can't add or change club admins; only the super admin can.
+  import page; up to 1,000 rows). Emails are matched without regard to capitals, so `Ali@club.my` is refused when
+  `ali@club.my` already has an account; a CSV saved by Excel on Windows (accented names such as "José") is read
+  correctly. Club admins can't add or change club admins; only the super admin can.
   **Removing** a member only takes them out of the club: their fees and payments stay (shown as theirs, or "Former
   member" if the account is deleted later), so the fund figures, ledger and AGM history don't change. To stop
   someone being billed while keeping them listed, set them inactive instead.
@@ -313,8 +315,8 @@ The full first-install steps (server requirements, `.env`, `migrate --force`, em
 backups and troubleshooting) are in [INSTALL.md](INSTALL.md). The installer itself works like this:
 
 1. With `.env` ready and `php artisan migrate --force` done ([INSTALL.md steps 5–6](INSTALL.md#step-5-create-env)),
-   open `https://<your-domain>/install`. **Club Portal Setup** checks PHP, SQLite and that `storage/` and `.env` are
-   writable.
+   open `https://<your-domain>/install`. **Club Portal Setup** checks PHP, the PDO extension for your database (MySQL / MariaDB
+   or SQLite) and that `storage/` and `.env` are writable.
 2. Enter the **INSTALL_TOKEN from your .env**, the application name and URL (the exact `https://` address members will
    use), and the super admin's name, email and a strong password (12+ characters with upper and lower case, numbers
    and symbols).

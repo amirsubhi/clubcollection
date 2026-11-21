@@ -55,7 +55,7 @@ class LoginController extends Controller
             'action'      => $action,
             'description' => $description,
             'ip_address'  => $request->ip(),
-            'user_agent'  => substr((string) $request->userAgent(), 0, 255),
+            'user_agent'  => mb_strcut(mb_scrub((string) $request->userAgent()), 0, 255),
         ]);
     }
 
@@ -81,7 +81,7 @@ class LoginController extends Controller
                 'action'      => 'auth.logout',
                 'description' => "User '{$user->name}' logged out.",
                 'ip_address'  => $request->ip(),
-                'user_agent'  => substr((string) $request->userAgent(), 0, 255),
+                'user_agent'  => mb_strcut(mb_scrub((string) $request->userAgent()), 0, 255),
             ]);
         }
 

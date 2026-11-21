@@ -80,7 +80,8 @@ amounts in the screenshots are made up.
 
 ## Tech stack
 
-- **Backend:** Laravel 13 (PHP 8.4), SQLite by default (MySQL / PostgreSQL via `.env`), database sessions, cache and queue.
+- **Backend:** Laravel 13 (PHP 8.4); MariaDB 10.11 or MySQL 8.0+ for a live site, SQLite for a local copy and the
+  tests; database sessions, cache and queue.
 - **Front end:** member pages and the main admin pages (dashboard, Fund Usage, verifications, ledger, billing) use
   Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite. Sign-in pages are Blade with the same Tailwind
   styles. The remaining admin pages and the installer are Blade with Bootstrap 5 (re-skinned to the same look and
@@ -92,8 +93,9 @@ amounts in the screenshots are made up.
 
 ## Requirements
 
-- PHP **8.4** with `pdo_sqlite` (the installer checks for it even when the app uses MySQL), your database's driver
-  and the usual Laravel extensions. `composer.json` still says `^8.3`, but `composer.lock` needs 8.4.
+- PHP **8.4** with your database's PDO driver (`pdo_mysql` for MariaDB / MySQL, `pdo_sqlite` for SQLite) and the
+  usual Laravel extensions.
+- A database: **MariaDB 10.11** or **MySQL 8.0+** for a live site; SQLite for a local copy and the tests.
 - Composer and Node 22 **only to build** a release (`scripts/build-release.sh`; CI does it for each `v*` tag). The
   server never runs Composer or Node.
 
@@ -188,6 +190,14 @@ To report a security vulnerability, please don't open a public issue: see [SECUR
 php artisan test          # PHPUnit feature and unit tests (SQLite in memory)
 npm run typecheck         # tsc --noEmit
 npm run build             # production build
+```
+
+SQLite ignores column lengths, so also run the suite on MariaDB or MySQL before a release. Point it at an empty
+test database (it is wiped):
+
+```bash
+DB_CONNECTION=mariadb DB_HOST=127.0.0.1 DB_PORT=3306 DB_DATABASE=clubportal_test \
+  DB_USERNAME=... DB_PASSWORD=... php artisan test
 ```
 
 An end-to-end browser smoke test (Playwright) covers paying online, paying by transfer, Fund Usage approval and slip

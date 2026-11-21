@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Admin\FundFigures;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -160,9 +161,15 @@ class R1dFollowUpsTest extends TestCase
         Payment::factory()->forClub($this->club)->forMember($gone)->create(['status' => 'overdue', 'amount' => 30.00, 'paid_date' => null, 'period_start' => '2026-07-01', 'due_date' => '2026-07-31']);
         // The fee rows point at a user that no longer exists (as if removed
         // outside the app). SQLite checks deferred keys only at commit, and the
-        // test transaction is rolled back.
-        DB::statement('PRAGMA defer_foreign_keys = ON');
-        DB::table('payments')->where('user_id', $gone->id)->update(['user_id' => 999999]);
+        // test transaction is rolled back; MySQL / MariaDB skip the check while
+        // FOREIGN_KEY_CHECKS is off.
+        $orphan = fn () => DB::table('payments')->where('user_id', $gone->id)->update(['user_id' => 999999]);
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA defer_foreign_keys = ON');
+            $orphan();
+        } else {
+            Schema::withoutForeignKeyConstraints($orphan);
+        }
 
         $this->actingAsClubAdmin($this->club);
         $this->get(route('admin.clubs.ledger', $this->club).'?from=2026-01-01&to=2026-11-16')
