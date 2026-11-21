@@ -134,7 +134,7 @@ class TwoFactorChallengeController extends Controller
             'action'      => $action,
             'description' => $description,
             'ip_address'  => $request->ip(),
-            'user_agent'  => substr((string) $request->userAgent(), 0, 255),
+            'user_agent'  => mb_strcut(mb_scrub((string) $request->userAgent()), 0, 255),
         ]);
     }
 }

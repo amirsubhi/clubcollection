@@ -5,7 +5,7 @@ This is the complete guide to a first install of Club Portal. It covers:
 - [what you need](#1-what-you-need);
 - [Path A: a local copy for trying it out or development](#2-path-a-local-development);
 - [Path B: a live site on cPanel hosting](#3-path-b-cpanel-hosting) (the usual setup);
-- [using MySQL instead of SQLite](#4-mysql-instead-of-sqlite);
+- [the database: MariaDB / MySQL on a live site](#4-mariadb--mysql);
 - [what to do after the install](#5-after-the-install) and [backups](#6-backups);
 - [troubleshooting](#8-troubleshooting).
 
@@ -29,14 +29,17 @@ because a few `php artisan` commands have to be run on the server.
 
   | Extension | Why |
   |---|---|
-  | `pdo_sqlite` | The installer checks for it, **even if you use MySQL**. Also the default database. |
-  | `pdo_mysql` | Only if you use MySQL / MariaDB. |
+  | `pdo_mysql` | MariaDB / MySQL (the usual choice on cPanel). |
+  | `pdo_sqlite` | Only if you use SQLite (local copies, very small clubs). |
   | `mbstring`, `openssl`, `ctype`, `filter`, `hash`, `session`, `tokenizer`, `pcre`, `json` | Laravel. |
   | `fileinfo` | Detecting the type of uploaded slips and documents. |
   | `dom`, `libxml`, `iconv` | The ledger PDF (dompdf) and the 2FA QR code. |
   | `gd` (recommended) | dompdf uses it to draw the club logo in the ledger PDF. |
 
-- A database: **SQLite** (a single file, nothing to set up; the default) or **MySQL / MariaDB** (see [section 4](#4-mysql-instead-of-sqlite)).
+- A database: **MariaDB / MySQL** for a live site (see [section 4](#4-mariadb--mysql)), or **SQLite** (a single file, nothing to set up; the default in `.env.example`, fine for a local copy).
+  Supported: **MariaDB 10.11** (tested; 10.6+ should work) and **MySQL 8.0+** (8.0 tested), including MySQL builds such as Percona Server
+  and hosted MySQL (Amazon RDS / Aurora, Google Cloud SQL). Databases that only speak the MySQL protocol (TiDB,
+  PlanetScale / Vitess, SingleStore) handle foreign keys and row locks differently and are not supported.
 - **HTTPS** for the domain (cPanel → **SSL/TLS Status** → AutoSSL). Payments, logins and the installable app all need it.
 - A mailbox for sending email over SMTP (e.g. a cPanel email account such as `noreply@your-domain`).
 - Cron jobs (every cPanel plan has them).
@@ -179,7 +182,7 @@ on cPanel EasyApache (check with `php -v`).
 Straight away, open `https://club.example.com/install`. Without `INSTALL_TOKEN` the installer is disabled; with it,
 whoever reaches the page first still needs the token.
 
-1. **Club Portal Setup** checks the PHP version, the `pdo_sqlite` extension, and that `storage/` and `.env` are
+1. **Club Portal Setup** checks the PHP version, the PDO extension of your database (`pdo_mysql` or `pdo_sqlite`), and that `storage/` and `.env` are
    writable. Fix anything marked red, then reload.
 2. Enter the **install token**, the application name and URL (the same `https://` address as `APP_URL`), and the
    super admin's name, email and password (12+ characters with upper and lower case, numbers and symbols).
@@ -286,22 +289,26 @@ backup) marked **PASS**, **WARN** or **FAIL**, with a one-line fix for each prob
 
 ---
 
-## 4. MySQL instead of SQLite
+## 4. MariaDB / MySQL
 
-SQLite is fine for a club of a few hundred members. To use MySQL / MariaDB:
+Use MariaDB (or MySQL) for a live site: cPanel hosts run it and back it up. SQLite is for a local copy or a very
+small club. The test suite passes on MariaDB 10.11 and MySQL 8.0.
 
-1. cPanel → **MySQL Databases**: create a database and a user, and add the user to the database with
-   **All Privileges**. cPanel prefixes both names with your account name (e.g. `myacct_clubportal`).
-2. In `.env`, before step 6:
+1. cPanel → **MySQL Databases** (MariaDB shows under the same name): create a database and a user, and add the user
+   to the database with **All Privileges**. cPanel prefixes both names with your account name
+   (e.g. `myacct_clubportal`). Any database collation is fine: the tables are created as `utf8mb4`.
+2. In `.env`, before step 6 (`DB_CONNECTION=mariadb` for MariaDB, `mysql` for MySQL):
    ```dotenv
-   DB_CONNECTION=mysql
+   DB_CONNECTION=mariadb
    DB_HOST=localhost
    DB_PORT=3306
    DB_DATABASE=myacct_clubportal
    DB_USERNAME=myacct_clubuser
    DB_PASSWORD=...
    ```
-3. Make sure `pdo_mysql` is enabled. Keep `pdo_sqlite` enabled too: the installer checks for it.
+   `DB_HOST` is `localhost` unless the host keeps databases on a separate server: then use the server name cPanel
+   shows on the **MySQL Databases** or **Manage My Databases** page.
+3. Make sure `pdo_mysql` is enabled (`pdo_sqlite` is not needed).
 4. Carry on with step 6 (`migrate --force`). `php artisan backup:run` dumps the MySQL database with `mysqldump` when
    the server has it; if not, it says so and backs up the files only, so back up the database with cPanel → **Backup**
    (or phpMyAdmin → Export).

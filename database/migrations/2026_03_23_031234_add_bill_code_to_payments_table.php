@@ -34,7 +34,7 @@ return new class extends Migration
             $table->string('transfer_ref', 60)->nullable()->after('transfer_date');
             // The club's bank-statement reference the approving admin typed. Kept
             // apart from `reference`, which the webhook uses to find gateway bills.
-            $table->string('transfer_bank_ref', 100)->nullable()->after('transfer_ref');
+            $table->string('transfer_bank_ref', 255)->nullable()->after('transfer_ref');
             $table->timestamp('transfer_submitted_at')->nullable()->after('transfer_ref');
             $table->foreignId('verified_by')->nullable()->after('transfer_submitted_at')->constrained('users')->nullOnDelete();
             $table->timestamp('verified_at')->nullable()->after('verified_by');

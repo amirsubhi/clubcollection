@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { TableView } from "./Kpi";
@@ -87,6 +87,10 @@ export function CollectedSpentChart({
     (lang === "bm"
       ? `${range}: dikutip ${rm(totalIn)}, dibelanjakan ${rm(totalOut)}.`
       : `${range}: ${config.collected.label.toLowerCase()} ${rm(totalIn)}, ${config.spent.label.toLowerCase()} ${rm(totalOut)}.`);
+  // On a phone, label every other month counted back from the latest, so the
+  // labels are evenly spaced and the current month is always named.
+  const narrow = useNarrow();
+  const ticks = narrow && data.length > 7 ? data.filter((_, i) => (last - i) % 2 === 0).map((d) => d.full) : undefined;
   // Unique per chart: two charts on a page must not share pattern ids.
   const uid = useId().replace(/:/g, "");
   const hatchId = `${uid}-spent`;
@@ -104,7 +108,7 @@ export function CollectedSpentChart({
             </pattern>
           </defs>
           <CartesianGrid vertical={false} strokeWidth={1} />
-          <XAxis dataKey="full" tickFormatter={(v: string) => v.split(" ")[0]} tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={6} fontSize={12} />
+          <XAxis dataKey="full" tickFormatter={(v: string) => v.split(" ")[0]} tickLine={false} axisLine={false} tickMargin={8} ticks={ticks} interval={ticks ? 0 : "preserveStartEnd"} minTickGap={6} fontSize={12} />
           <YAxis tickLine={false} axisLine={false} tickFormatter={compact} width={48} fontSize={12} tickCount={5} domain={[0, "auto"]} allowDecimals={false} />
           <ReferenceLine y={0} strokeWidth={1} />
           <ChartTooltip
@@ -155,4 +159,17 @@ export function CollectedSpentChart({
       )}
     </figure>
   );
+}
+
+/** True below the phone breakpoint (48em), following resizes. */
+function useNarrow(): boolean {
+  const query = "(max-width: 47.99em)";
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return narrow;
 }

@@ -30,6 +30,24 @@ return new class extends Migration
 
     public function down(): void
     {
+        // MySQL / MariaDB let a foreign key use any index that starts with its
+        // column, and drop the key's own index once one is added above. Give
+        // each key a plain index back first, or the drops below fail (1553).
+        if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            foreach (['payments' => ['club_id', 'user_id', 'recorded_by'], 'expenses' => ['club_id', 'recorded_by']] as $name => $columns) {
+                // Indexes left once this migration's own are gone.
+                $ours = ['payments_club_status_idx', 'payments_club_paid_date_idx', 'payments_user_id_idx', 'payments_recorded_by_idx', 'expenses_club_date_idx', 'expenses_recorded_by_idx'];
+                $kept = collect(Schema::getIndexes($name))->reject(fn ($i) => in_array($i['name'], $ours, true));
+                Schema::table($name, function (Blueprint $table) use ($columns, $kept) {
+                    foreach ($columns as $column) {
+                        if (! $kept->contains(fn ($i) => ($i['columns'][0] ?? null) === $column)) {
+                            $table->index($column);
+                        }
+                    }
+                });
+            }
+        }
+
         Schema::table('payments', function (Blueprint $table) {
             $table->dropIndex('payments_club_status_idx');
             $table->dropIndex('payments_club_paid_date_idx');

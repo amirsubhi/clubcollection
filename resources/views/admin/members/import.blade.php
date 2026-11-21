@@ -72,7 +72,7 @@
                         <div id="f-file-help" class="form-text">Max file size: 2 MB. Must be a valid <code>.csv</code> file.</div>
                         @error('file')<div id="f-file-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-                    <div class="d-flex gap-2 align-items-center">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-upload me-1"></i>Import Members
                         </button>

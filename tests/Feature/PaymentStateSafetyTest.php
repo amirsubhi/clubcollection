@@ -246,7 +246,12 @@ class PaymentStateSafetyTest extends TestCase
 
             $log = AuditLog::where('action', 'payment.marked_paid')->where('auditable_id', $fee->id)->sole();
             $this->assertSame((int) $admin->id, (int) $log->user_id);
-            $this->assertSame(['status' => 'paid', 'paid_date' => '2026-11-10', 'paid_via' => $paidVia, 'method' => $method, 'reference' => "REF-{$method}"], $log->new_values);
+            // Compared without key order: MySQL's JSON type stores keys sorted.
+            $expected = ['status' => 'paid', 'paid_date' => '2026-11-10', 'paid_via' => $paidVia, 'method' => $method, 'reference' => "REF-{$method}"];
+            $actual = $log->new_values;
+            ksort($expected);
+            ksort($actual);
+            $this->assertSame($expected, $actual);
             $this->assertSame('pending', $log->old_values['status']);
         }
     }

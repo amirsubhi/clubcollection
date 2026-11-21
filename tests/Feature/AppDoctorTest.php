@@ -121,7 +121,7 @@ class AppDoctorTest extends TestCase
             'toyyibpay.sandbox' => true,
             'toyyibpay.webhook_secret' => 'your_webhook_secret_here',
         ]);
-        $this->probe('8.3.6', ['upload_max_filesize' => '2M', 'post_max_size' => '8M', 'memory_limit' => '64M'], ['gd', 'pdo_sqlite']);
+        $this->probe('8.3.6', ['upload_max_filesize' => '2M', 'post_max_size' => '8M', 'memory_limit' => '64M'], ['gd', 'pdo_sqlite', 'pdo_mysql']);
         @unlink(SchedulerHeartbeat::path());
         file_put_contents("{$this->root}/public/hot", 'http://localhost:5173');
 
@@ -139,7 +139,9 @@ class AppDoctorTest extends TestCase
             $this->assertSame($row['status'] === 'PASS', $row['fix'] === '', "{$row['check']}: a fix exactly when not passing");
         }
         $extensions = collect($json['checks'])->firstWhere('check', 'PHP extensions');
-        $this->assertSame('missing: gd, pdo_sqlite', $extensions['result']);
+        // Only the PDO driver of the connection in use is required (the suite also runs on MariaDB).
+        $driver = config('database.connections.'.config('database.default').'.driver');
+        $this->assertSame('missing: gd, '.(in_array($driver, ['mysql', 'mariadb'], true) ? 'pdo_mysql' : 'pdo_sqlite'), $extensions['result']);
         $this->assertStringContainsString('SANDBOX-TEST.md', collect($json['checks'])->firstWhere('check', 'ToyyibPay mode')['fix']);
     }
 
@@ -203,12 +205,13 @@ class AppDoctorTest extends TestCase
 
     public function test_database_that_cannot_connect_is_reported_as_such(): void
     {
+        $default = config('database.default');
         config([
             'database.connections.missing' => ['driver' => 'sqlite', 'database' => "{$this->root}/nope/none.sqlite", 'prefix' => ''],
             'database.default' => 'missing',
         ]);
         [$code, $status, $json] = $this->doctor();
-        config(['database.default' => 'sqlite']);
+        config(['database.default' => $default]);
 
         $this->assertSame(1, $code);
         $this->assertSame('FAIL', $status['Database']);

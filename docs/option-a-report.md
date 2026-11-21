@@ -2,12 +2,9 @@
 
 Running log of each Option A step: what was built, review findings, and follow-ups.
 
-**Status (15 Nov 2026):** A1–A5, P1 (billing plans and gateway fee), P2 (bank / DuitNow transfer with slip upload),
-S1 (security hardening) and two documentation rounds are done. Docs round 2 added the installation guide
-(`docs/INSTALL.md`), `SECURITY.md`, the credits and generated third-party licence list (`CREDITS.md`,
-`docs/THIRD-PARTY-LICENSES.md`, `scripts/licenses.mjs`) and `mockup/README.md`, and changed the licence holder to
-"Amir Subhi and clubcollection contributors". **Next: P3**, the 🔴 must-dos in the
-[before go-live checklist](#before-go-live-checklist), starting with a ToyyibPay sandbox run.
+**Status (22 Nov 2026):** A1–A5, P1–P3a, S1, R1–R7, G1–G3 and D1 (MariaDB / MySQL readiness) are done. The app
+targets MariaDB 10.11 on cPanel and the suite passes on SQLite, MariaDB 10.11 and MySQL 8.0. **Next:** the 🔴
+must-dos in the [before go-live checklist](#before-go-live-checklist), starting with a ToyyibPay sandbox run.
 
 ## A1 — Front-end foundation
 
@@ -232,7 +229,8 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
 - [ ] Gateway secrets set on the host: `TOYYIBPAY_WEBHOOK_SECRET` and `BILLPLZ_X_SIGNATURE_KEY` (placeholders are refused).
 - [ ] Host WAF/ModSecurity and HTTPS/www redirects don't block or 301 the gateways' server-to-server POSTs.
 - [ ] `APP_KEY` backed up off-server; `storage/app/private` (outside `public_html`) included in backups with the database. G2: `php artisan backup:run` (daily) zips the database and `storage/app/private`; INSTALL.md §6 covers keeping `APP_KEY` separately and downloading backups. Left on the host: store `APP_KEY` off-server and download the zips.
-- [ ] PHP 8.4 on the host; align `composer.json` (`php ^8.3`) with the lock so a wrong host fails loudly.
+- [ ] PHP 8.4 on the host (both cPanel hosts offer it; it only needs enabling). `composer.json` already says `^8.4`.
+- [ ] Create the MariaDB database and user on the host and set `DB_CONNECTION=mariadb` (INSTALL.md section 4). Don't go live on SQLite.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
 - [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
 - [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
@@ -275,7 +273,7 @@ Full list by area:
 - [ ] Keep the previous build's assets for one release.
 - [ ] Install at the domain root, or fix absolute paths and set `ASSET_URL` for a subfolder.
 - [ ] Add a production test that `/dev/ui-kit` returns 404.
-- [ ] Add a CI workflow (`npm ci && npm run typecheck && npm run build`, `php artisan test`). Optionally add the e2e smoke as a nightly job.
+- [ ] Add a CI workflow (`npm ci && npm run typecheck && npm run build`, `php artisan test`), with the tests on a MariaDB service as well as SQLite (D1). Optionally add the e2e smoke as a nightly job.
 
 **Product and decisions**
 - [ ] Confirm with the committee that members may see club-wide fund totals.
@@ -519,3 +517,36 @@ Design rounds stop here (critique 32/40, audit 19/20). Remaining polish above wa
 - Pin the publish job's third-party action (`softprops/action-gh-release`) to a commit SHA, since that job holds `contents: write`.
 - Prune vendor `tests/` folders from the zip to make it smaller (harmless, outside the web root).
 - Add `storage/app/.install-token` and `.env.example.bak` cases to the `--check-list` unit test (the regex already catches both).
+
+## D1 — MariaDB / MySQL readiness
+
+**Why:** both cPanel hosts run MariaDB 10.11, so production is MariaDB, not SQLite. SQLite ignores VARCHAR lengths and
+stores any bytes, so the suite never saw what MariaDB / MySQL strict mode refuses. The code must stay MySQL-compatible.
+
+**Fixed:**
+- Columns too short for what the app allows (edited in place, no live data yet): `audit_logs.description` → `text`
+  (settlement notes run past 255), `expenses.description` → 500 (the form allows 500),
+  `payments.transfer_bank_ref` → 255 (mark-paid allows 255).
+- Member CSV import: emails are matched without case (a mixed-case duplicate was a 500 on MariaDB and a second account
+  on SQLite), a lost race becomes a row error, names over 255 characters are refused, and Windows-1252 files (Excel on
+  Windows) are converted to UTF-8 instead of failing with error 1366.
+- User agents are cut with `mb_strcut` after `mb_scrub` (a `substr` could split a character: error 1366).
+- Bank-detail approval fingerprint sorts the JSON keys (MySQL 8 stores JSON with sorted keys, so the hash changed).
+- `add_performance_indexes` `down()` puts the foreign keys' plain indexes back before dropping (error 1553 on rollback).
+- Installer checks the PDO extension of the configured database (it checked `pdo_sqlite` even on MySQL).
+- Import page buttons wrap on phones ("Cancel" was cut off); the dashboard chart labels every other month on phones.
+- Docs: INSTALL.md section 4 is "MariaDB / MySQL" (`DB_CONNECTION=mariadb`, supported versions, collation),
+  README, `.env.example`, CLAUDE.MD, USER-GUIDE.
+
+**Verified:** 737/737 tests on SQLite, MariaDB 10.11.14 and MySQL 8.0.46; `migrate:fresh` → `reset` → `migrate` on
+both; LAN test bed moved to MariaDB with every table copied (row counts match); browser sweep as super admin, club
+admin and member at 320 / 390 / 768 / 1366 px, light and dark, BM and EN, on MariaDB and MySQL: no server errors and
+no sideways scrolling. Slip approval, a 300-character Fund Usage entry and the CSV cases checked in the browser.
+
+### D1 follow-ups
+- Run the 400-callback concurrency test on MariaDB (row-lock deadlocks 1213 / lock timeouts 1205).
+- Back up and restore on MariaDB: `backup:run` uses `mysqldump` (or `mariadb-dump`) from PATH; check it on the host.
+- CI runs the tests on SQLite only: add a MariaDB service job (see the checklist).
+- On SQLite `LOWER()` folds ASCII only, so a CSV email differing only in a non-ASCII capital isn't caught there
+  (MariaDB's collation catches it). The `LOWER(email)` lookup can't use the index; fine at club size.
+- Screenshot open menus and dialogs ("More", record payment, approvals) in the next browser sweep.

@@ -142,19 +142,27 @@ class InstallController extends Controller
 
     private function checkRequirements(): array
     {
-        // composer.lock needs PHP 8.4, even though composer.json still says ^8.3.
+        // composer.json and composer.lock need PHP 8.4.
         $minPhp     = self::$minimumPhp;
         $phpOk      = version_compare(PHP_VERSION, $minPhp, '>=');
-        $sqliteOk   = extension_loaded('pdo_sqlite');
+        // Only the PDO driver of the configured connection (DB_CONNECTION) is needed.
+        $driver     = (string) config('database.connections.'.config('database.default').'.driver');
+        [$pdo, $pdoName] = match ($driver) {
+            'mysql', 'mariadb' => ['pdo_mysql', 'PDO MySQL / MariaDB'],
+            'pgsql'  => ['pdo_pgsql', 'PDO PostgreSQL'],
+            'sqlsrv' => ['pdo_sqlsrv', 'PDO SQL Server'],
+            default  => ['pdo_sqlite', 'PDO SQLite'],
+        };
+        $dbOk       = extension_loaded($pdo);
         $storageOk  = is_writable(storage_path('app'));
         $envOk      = file_exists(base_path('.env')) && is_writable(base_path('.env'));
 
         return [
             'php'      => ['pass' => $phpOk,     'label' => 'PHP >= '.preg_replace('/\.0$/', '', $minPhp), 'value' => PHP_VERSION],
-            'sqlite'   => ['pass' => $sqliteOk,  'label' => 'PDO SQLite Extension', 'value' => $sqliteOk ? 'Enabled' : 'Missing'],
+            'database' => ['pass' => $dbOk,      'label' => $pdoName.' Extension', 'value' => $dbOk ? 'Enabled' : 'Missing'],
             'storage'  => ['pass' => $storageOk, 'label' => 'Storage Writable',     'value' => $storageOk ? 'Writable' : 'Not writable'],
             'env'      => ['pass' => $envOk,     'label' => '.env File Writable',   'value' => $envOk ? 'Writable' : 'Missing or not writable'],
-            'all_pass' => $phpOk && $sqliteOk && $storageOk && $envOk,
+            'all_pass' => $phpOk && $dbOk && $storageOk && $envOk,
         ];
     }
 

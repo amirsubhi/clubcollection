@@ -10,7 +10,9 @@ use App\Models\FeeRate;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Support\Export\CsvSafe;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -209,7 +211,12 @@ class MemberController extends Controller
                 ];
                 break;
             }
-            $rawRows[] = [$row, $line];
+            // Excel on Windows saves "CSV" as Windows-1252, not UTF-8; MySQL / MariaDB
+            // refuse such bytes (error 1366), so convert them.
+            $rawRows[] = [$row, array_map(
+                fn ($cell) => is_string($cell) && ! mb_check_encoding($cell, 'UTF-8') ? mb_convert_encoding($cell, 'UTF-8', 'Windows-1252') : $cell,
+                $line
+            )];
         }
         fclose($handle);
 
@@ -221,7 +228,11 @@ class MemberController extends Controller
                 if ($email) $candidateEmails[] = $email;
             }
         }
-        $existingEmails = User::whereIn('email', $candidateEmails)->pluck('email', 'email')->all();
+        // Keyed in lower case: MySQL / MariaDB compare emails without case, and two
+        // spellings of one address must not become two rows (or a 1062 error).
+        $existingEmails = User::query()
+            ->whereIn(DB::raw('LOWER(email)'), array_map('mb_strtolower', $candidateEmails))
+            ->pluck('email')->mapWithKeys(fn ($e) => [mb_strtolower($e) => true])->all();
 
         $imported       = 0;
         $validJobLevels = ['gm', 'agm', 'manager', 'executive', 'non_exec'];
@@ -254,6 +265,13 @@ class MemberController extends Controller
                 continue;
             }
 
+            // The Add member form's limit (and the column's: MySQL / MariaDB reject longer).
+            // filter_var above already refuses an email of 255+ characters.
+            if (mb_strlen($name) > 255) {
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'Name is longer than 255 characters.'];
+                continue;
+            }
+
             if (! in_array($jobLevel, $validJobLevels, true)) {
                 $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid job_level '{$jobLevel}'. Must be: " . implode(', ', $validJobLevels) . '.'];
                 continue;
@@ -275,22 +293,28 @@ class MemberController extends Controller
                 continue;
             }
 
-            if (isset($existingEmails[$email])) {
+            if (isset($existingEmails[mb_strtolower($email)])) {
                 $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'A user with this email already exists. Add them manually.'];
                 continue;
             }
 
             // Mark as seen to prevent duplicate rows in the same file.
-            $existingEmails[$email] = $email;
+            $existingEmails[mb_strtolower($email)] = true;
 
             $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
 
-            $user = User::create([
-                'name'     => $name,
-                'email'    => $email,
-                'password' => Hash::make($temporaryPassword),
-                'role'     => $role === 'admin' ? 'admin' : 'member',
-            ]);
+            try {
+                $user = User::create([
+                    'name'     => $name,
+                    'email'    => $email,
+                    'password' => Hash::make($temporaryPassword),
+                    'role'     => $role === 'admin' ? 'admin' : 'member',
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                // Someone added the same address while the file was being imported.
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'A user with this email already exists. Add them manually.'];
+                continue;
+            }
 
             $club->members()->attach($user->id, [
                 'role'        => $role,

@@ -20,7 +20,7 @@ return new class extends Migration
             // (App\Models\Expense::TYPES / STATUSES), never DB enums.
             $table->string('type', 20)->default('expense');      // expense | welfare
             $table->string('status', 20)->default('draft');      // draft | submitted | approved | void
-            $table->string('description');
+            $table->string('description', 500); // the Fund Usage form allows 500
             $table->string('payee')->nullable();
             $table->string('invoice_no', 100)->nullable();
             $table->decimal('amount', 10, 2);

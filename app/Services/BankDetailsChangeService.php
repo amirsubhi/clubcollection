@@ -174,7 +174,13 @@ class BankDetailsChangeService
     /** Identifies one pending request (the approval form carries it back). */
     public function version(Club $club): string
     {
-        return sha1(json_encode([$club->bank_change_requested_at?->format('Y-m-d H:i:s'), (int) $club->bank_change_requested_by, $club->pending_bank_change]));
+        // Key order is not stable across databases (MySQL's JSON type sorts keys), so sort first.
+        $pending = $club->pending_bank_change;
+        if (is_array($pending)) {
+            ksort($pending);
+        }
+
+        return sha1(json_encode([$club->bank_change_requested_at?->format('Y-m-d H:i:s'), (int) $club->bank_change_requested_by, $pending]));
     }
 
     private function details(array $values): array
