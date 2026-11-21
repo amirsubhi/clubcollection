@@ -71,7 +71,7 @@ class Payment extends Model
             // is still open at its billed amount, otherwise flagged for a refund.
             if ($payment->wasChanged('amount')
                 || ($payment->wasChanged('status') && in_array($payment->status, ['paid', 'pending_verification'], true))) {
-                PaymentBill::openGatewayGroupsContaining($payment->id)->update(['superseded_at' => now()]);
+                PaymentBill::supersedeOpenGroupsContaining($payment->id);
             }
         });
 
@@ -80,7 +80,7 @@ class Payment extends Model
             if ($payment->inAnyTransferGroup()) {
                 throw new \LogicException('Cannot delete a fee that is part of a group transfer slip.');
             }
-            PaymentBill::openGatewayGroupsContaining($payment->id)->update(['superseded_at' => now()]);
+            PaymentBill::supersedeOpenGroupsContaining($payment->id);
         });
     }
 

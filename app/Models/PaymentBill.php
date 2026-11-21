@@ -122,4 +122,28 @@ class PaymentBill extends Model
             ->whereNull('superseded_at')
             ->whereIn('id', fn ($q) => $q->select('payment_bill_id')->from('payment_bill_items')->where('payment_id', $paymentId));
     }
+
+    /**
+     * Supersede the open gateway group bills that cover the fee. The ids come
+     * first and the UPDATE goes by primary key: as one UPDATE with the subquery,
+     * MariaDB / MySQL scan the payment_id index for "payment_id IS NULL" and lock
+     * every member's group bills, so two settlements at once deadlocked (1213).
+     * The id read is a locking one so it sees committed rows, not the snapshot.
+     * payment_id and method never change, so they are checked here rather than
+     * in the UPDATE, whose WHERE then has no index but the primary key.
+     */
+    public static function supersedeOpenGroupsContaining(int $paymentId): void
+    {
+        $ids = DB::table('payment_bill_items')->where('payment_id', $paymentId)
+            ->orderBy('payment_bill_id')->sharedLock()->pluck('payment_bill_id')->all();
+        $ids = static::query()->whereKey($ids)->whereNull('payment_id')->where('method', 'gateway')
+            ->orderBy('id')->pluck('id')->all();
+        if ($ids === []) {
+            return;
+        }
+        static::query()->whereKey($ids)
+            ->whereNull('paid_at')
+            ->whereNull('superseded_at')
+            ->update(['superseded_at' => now()]);
+    }
 }

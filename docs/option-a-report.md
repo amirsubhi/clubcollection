@@ -544,8 +544,18 @@ admin and member at 320 / 390 / 768 / 1366 px, light and dark, BM and EN, on Mar
 no sideways scrolling. Slip approval, a 300-character Fund Usage entry and the CSV cases checked in the browser.
 
 ### D1 follow-ups
-- Run the 400-callback concurrency test on MariaDB (row-lock deadlocks 1213 / lock timeouts 1205).
-- Back up and restore on MariaDB: `backup:run` uses `mysqldump` (or `mariadb-dump`) from PATH; check it on the host.
+- ✅ Concurrency on MariaDB / MySQL (22 Nov). 400 simultaneous callbacks to the test site: 0 server errors (302
+  refused, 98 throttled; the throttle's `cache` table is on MariaDB). Settlement race (24 processes settling the same
+  90 fees through single and "Bayar semua" bills at once) found two bugs, both fixed: superseding a fee's group bills
+  locked every member's group bills (deadlocks, error 1213, in every run; now by primary key, see
+  `PaymentBill::supersedeOpenGroupsContaining`), and a group delivery that waited for the fee locks read a stale
+  REPEATABLE READ snapshot and wrote a second refund flag (the first read in `markGroupPaid` is now a locking one).
+  After the fix: 0 errors and no duplicate flags in 10 runs (24,000 settle calls) on MariaDB 10.11 and MySQL 8.0.
+- ✅ Backup and restore on MariaDB (22 Nov): `backup:run` with MySQL 8's `mysqldump` and with MariaDB's own; both
+  dumps restored cleanly and every table matched the live database (row counts and `CHECKSUM TABLE`; `audit_logs` only
+  differs by the backup's own `system.backup` row), and the zipped uploads were byte-identical. A dump made by
+  MariaDB 10.11.8+ starts with a `/*M!999999\- enable the sandbox mode */` line that older MariaDB and MySQL clients
+  refuse: restore on the same host (or the same MariaDB version) it was made on.
 - ✅ CI now runs the tests on SQLite, MariaDB 10.11 and MySQL 8.0 (`.github/workflows/tests.yml`).
 - On SQLite `LOWER()` folds ASCII only, so a CSV email differing only in a non-ASCII capital isn't caught there
   (MariaDB's collation catches it). The `LOWER(email)` lookup can't use the index; fine at club size.
