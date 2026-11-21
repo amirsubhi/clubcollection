@@ -20,7 +20,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ✅ Done in R3d: `cdn.jsdelivr.net` is only allowed when the jsDelivr fallback is in use (no `public/build`).
 - ✅ Done in R3d: fonts are self-hosted; Google hosts removed from the CSP.
 - Align `<html lang>` with the shared `locale` (members get `ms`).
-- Add a CI workflow: `npm ci && npm run typecheck && npm run build` plus `php artisan test`.
+- ✅ Done in D1: CI workflow (`.github/workflows/tests.yml`): type check, build, tests on SQLite, MariaDB and MySQL.
 - Add a production-environment test that `/dev/ui-kit` returns 404.
 - Identify the one npm package with no declared licence; confirm the CC-BY-4.0 one is `caniuse-lite` (build-time only).
 - `docs/RELEASE.md`: document `ASSET_URL` for subdirectory installs and `rm -f public/hot` before upload.
@@ -273,7 +273,7 @@ Full list by area:
 - [ ] Keep the previous build's assets for one release.
 - [ ] Install at the domain root, or fix absolute paths and set `ASSET_URL` for a subfolder.
 - [ ] Add a production test that `/dev/ui-kit` returns 404.
-- [ ] Add a CI workflow (`npm ci && npm run typecheck && npm run build`, `php artisan test`), with the tests on a MariaDB service as well as SQLite (D1). Optionally add the e2e smoke as a nightly job.
+- [x] Add a CI workflow (`npm ci && npm run typecheck && npm run build`, `php artisan test`), with the tests on a MariaDB service as well as SQLite (D1). Done: `.github/workflows/tests.yml` runs on SQLite, MariaDB 10.11 and MySQL 8.0 and rolls the migrations back and forward. Left (optional): the e2e smoke as a nightly job.
 
 **Product and decisions**
 - [ ] Confirm with the committee that members may see club-wide fund totals.
@@ -546,7 +546,7 @@ no sideways scrolling. Slip approval, a 300-character Fund Usage entry and the C
 ### D1 follow-ups
 - Run the 400-callback concurrency test on MariaDB (row-lock deadlocks 1213 / lock timeouts 1205).
 - Back up and restore on MariaDB: `backup:run` uses `mysqldump` (or `mariadb-dump`) from PATH; check it on the host.
-- CI runs the tests on SQLite only: add a MariaDB service job (see the checklist).
+- ✅ CI now runs the tests on SQLite, MariaDB 10.11 and MySQL 8.0 (`.github/workflows/tests.yml`).
 - On SQLite `LOWER()` folds ASCII only, so a CSV email differing only in a non-ASCII capital isn't caught there
   (MariaDB's collation catches it). The `LOWER(email)` lookup can't use the index; fine at club size.
 - Screenshot open menus and dialogs ("More", record payment, approvals) in the next browser sweep.
