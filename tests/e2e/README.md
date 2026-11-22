@@ -23,7 +23,8 @@ running `php artisan serve`:
 7. **"Bayar semua" by transfer:** another member sends one slip (`YURAN-G{id}`) for three fees → Admin B sees one
    card listing the fees and the total and approves the set → the group page is now the receipt.
 
-The run signs in more than five times, so it pauses about a minute once for the login rate limit.
+The run signs in many times, so it pauses about a minute after every fifth sign-in to stay clear of the login rate
+limits (5 a minute per account + IP, 30 per IP).
 
 Every step is screenshotted in light and dark (member 390×844, admin 1366×860). The run fails on any
 console error, uncaught page error, failed request, CSP violation or horizontal overflow, and exits
@@ -50,6 +51,7 @@ php artisan db:seed --class='Database\Seeders\E2eSeeder' --force
 
 # Terminal 1 — APP_ENV must be local (it is in .env) for the fake gateway to switch on.
 E2E_FAKE_GATEWAY=1 \
+REQUIRE_ADMIN_2FA=false \
 E2E_PRIVATE_ROOT=/tmp/clubportal-e2e-private \
 TOYYIBPAY_WEBHOOK_SECRET=e2e-webhook-secret-local-only-0123456789 \
 php artisan serve --host=127.0.0.1 --port=8000 --no-reload
@@ -63,6 +65,7 @@ The member's fee is paid by the run, so **re-seed (the four database lines above
 | Variable | Where | Default | Meaning |
 |---|---|---|---|
 | `E2E_FAKE_GATEWAY=1` | server | off | Answers ToyyibPay `createBill` with a fake bill code, and `getBillTransactions` (the callback confirm step) with one successful payment of the bill's amount, via `Http::fake` (see below). A bill reads as paid only once the run's webhook for it has arrived, so the result page's status check (which asks the gateway, G1) can't settle it first. |
+| `REQUIRE_ADMIN_2FA=false` | server | `true` | The seeded admins A and B have no 2FA; with the default they would be sent to the 2FA setup page instead of the dashboard. Never set it to false on a live site. |
 | `E2E_PRIVATE_ROOT` | server | `storage/app/private` | Where uploaded test documents go, so the repo stays clean. |
 | `TOYYIBPAY_WEBHOOK_SECRET` | server | — | Must be set, 32+ characters (and match `E2E_WEBHOOK_SECRET`), or every webhook is refused. |
 | `E2E_BASE_URL` | script | `http://127.0.0.1:8000` | The running server. |

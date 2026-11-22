@@ -232,6 +232,10 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
 - [ ] PHP 8.4 on the host (both cPanel hosts offer it; it only needs enabling). `composer.json` already says `^8.4`.
 - [ ] Create the MariaDB database and user on the host and set `DB_CONNECTION=mariadb` (INSTALL.md section 4). Don't go live on SQLite.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
+- [ ] S2 sign-in hardening: `REQUIRE_ADMIN_2FA=true` (every admin sets up 2FA at the next sign-in), `TRUSTED_PROXIES`
+  empty unless a real proxy, HSTS left at this host only unless the whole domain is HTTPS, and the post-install
+  `curl -I` checks in INSTALL.md §5 (`.env`, `vendor/`, logs, `.git` not reachable; headers once on pages and
+  static files; `expose_php` off).
 - [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
 - [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
 

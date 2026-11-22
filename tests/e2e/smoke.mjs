@@ -162,7 +162,7 @@ async function newPage(browser, label, viewport, mobile) {
 }
 let logins = 0;
 async function login(page, email) {
-  // POST /login is throttled to 5 a minute per IP: the run signs in more often than that, so pace it.
+  // POST /login allows 5 a minute per account + IP (30 per IP); the run signs in often, so pace it to stay clear.
   if (++logins % 5 === 0) {
     log("waiting 61 s for the login rate limit");
     await new Promise((r) => setTimeout(r, 61000));

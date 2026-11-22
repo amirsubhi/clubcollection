@@ -58,7 +58,15 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 - `POST /webhook/toyyibpay` and `/webhook/billplz`: outside `check_installed`, no auth, `throttle:webhooks`, and
   `withoutMiddleware(PreventRequestForgery::class)`. Laravel 13's web group runs `PreventRequestForgery`; excluding
   `VerifyCsrfToken` does **not** work (tests skip CSRF, so only `WebhookCsrfExemptionTest` / e2e catch it).
-- Everything else is inside `check_installed` (needs `storage/app/.installed`), then `['auth', 'auth.session', 'two_factor']`:
+- Everything else is inside `check_installed` (needs `storage/app/.installed`), then
+  `['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor']`:
+  - `password_changed` (`EnsurePasswordChanged`): `users.must_change_password` (set where an admin emails a temporary
+    password: member store, CSV import, admin store) sends the user to `password.change` (Blade, auth layout) until
+    done; only that page and `logout` pass. Cleared there and by a password reset.
+  - `admin_two_factor` (`RequireAdminTwoFactor`): with `config('security.require_admin_two_factor')`
+    (`REQUIRE_ADMIN_2FA`, default true) an admin (`isAdmin()`) without 2FA only gets `profile.security`,
+    `profile.2fa.enable|confirm`, `password.change*` and `logout`. `Tests\TestCase` sets it false; turn it on in a
+    test that needs it. Both redirect with `Inertia::location` (409 for Inertia visits).
   - `member` group, prefix `/my`: member pages. `MemberOnly` only checks auth (admins can use it too).
   - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log.
   - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
@@ -91,7 +99,12 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 - **Audit every write**: `AuditService::log($action, $description, $model, $clubId, $old = [], $new = [])` (positional).
 - **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Allowed hosts: jsDelivr, Google Fonts;
   form-action allows the ToyyibPay and Billplz hosts.
-- **Rate limits**: login, 2FA verify, installer, CSV import `throttle:5,1`; password reset `throttle:password-reset`;
+- **Rate limits**: named limiters in `AppServiceProvider`: `login` (5/min per account + IP, 30/min per IP; a hit is a
+  `Lockout` event), `two-factor`, `install`, `password-reset`, `password-change`, `two-factor-setup`, `webhooks`; CSV
+  import `throttle:5,1`. Per-account sign-in pause: `App\Support\Auth\AccountLoginBlock` (keyed on the user id, 10
+  failures / 15 min; config `security.account_login`). Sign-in audit rows and owner emails:
+  `App\Listeners\AuthSecurityListener` (auto-discovered: don't register it by hand). Mail that must not slow the
+  answer: `App\Support\AfterResponse` (no queue worker on cPanel);
   Fund Usage / verification / billing writes `throttle:20,1`; slip upload and pay-ahead `throttle:10,1`.
 - **Exports**: `Cache-Control: no-store`, attachment disposition, `CsvSafe` for formula cells.
 - **Gateway access** goes through `PaymentGatewayManager::for($club)`, never a concrete gateway.
@@ -116,6 +129,9 @@ Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 ## Testing conventions
 
 - Helpers in `Tests\TestCase`: `actingAsSuperAdmin()`, `actingAsClubAdmin($club)`, `actingAsMember($club)`.
+  `TestCase` also turns off `security.require_admin_two_factor` and fakes the breached-password check
+  (`$fakeBreachedPasswordCheck = false` + `Http::fake` to test the real one). New passwords use `Password::defaults()`
+  (12+, not breached): test passwords must be 12+ characters.
 - Cross-club access to admin resources: `assertForbidden()`. Member routes hide other people's data with 404:
   `assertNotFound()`.
 - 2FA challenge tests pre-seed `withSession(['two_factor_user_id' => $id])`.
