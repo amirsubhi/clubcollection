@@ -6,11 +6,14 @@ their labels are quoted in BM as they appear. Admin pages are in English. Everyo
 - [Members](#members): [pay by FPX](#pay-by-fpx) · [pay by bank transfer](#pay-by-bank-transfer--duitnow) ·
   [pay all at once](#pay-all-open-fees-at-once-bayar-semua) · [receipts](#view-an-invoice-or-receipt) · [pay ahead](#pay-ahead) · [install as an app](#install-as-an-app-pwa) · [2FA](#turn-on-two-factor-authentication)
 - [Treasurer / club admin](#treasurer--club-admin): [bill the month](#bill-the-club-each-month-generate-fees) · [verify slips](#verify-transfer-slips) ·
+  [record a payment](#record-a-payment-received-by-hand) · [cancel a payment](#cancel-a-payment) ·
   [record an expense or welfare case](#record-an-expense-or-welfare-case) · [approve a record](#approve-someone-elses-record) ·
-  [bank details](#change-the-clubs-bank-details) · [plans and gateway fee](#billing-plans-and-gateway-fee) ·
+  [bank details](#change-the-clubs-bank-details) · [club profile](#club-profile-and-financial-year) ·
+  [receipt numbers](#receipt-numbers) · [plans and gateway fee](#billing-plans-and-gateway-fee) ·
   [bank charges](#bank-and-gateway-charges) · [ledger and the AGM](#the-ledger-and-the-agm) · [reminders](#overdue-reminders) ·
   [job levels](#set-up-job-levels-before-fee-rates)
-- [Super admin](#super-admin): [install](#install-the-app) · [create a club](#create-a-club) · [grant club admin](#make-someone-a-club-admin)
+- [Super admin](#super-admin): [install](#install-the-app) · [create a club](#create-a-club) · [grant club admin](#make-someone-a-club-admin) ·
+  [portal settings](#portal-settings) · [privacy notice](#privacy-notice)
 
 ---
 
@@ -48,8 +51,9 @@ an email about it. Wait and try again, or use **Lupa kata laluan?** to reset you
 2. Under **Pilih cara bayar**, keep **FPX (perbankan dalam talian)**.
 3. Tap **Bayar RM …**. You go to ToyyibPay or Billplz, pick your bank and pay there. Don't close the window until it
    finishes.
-4. You come back to a result page: **Berjaya** (paid), **Dalam proses** (still waiting for the gateway; the page checks
-   again by itself) or **Bayaran belum diterima**. The fee is marked paid only when the gateway confirms it to the
+4. You come back to a result page: **Bayaran berjaya** (paid), **Kami sedang mengesahkan bayaran anda…** (marked
+   **Dalam proses**: still waiting for the gateway; the page checks again by itself) or **Bayaran tidak berjaya**
+   (with **Bayaran belum diterima** and what to do if money already left your account). The fee is marked paid only when the gateway confirms it to the
    server, and the receipt is emailed to you.
 
 If the club passes the gateway fee to members, the review page shows it as a separate line before you pay.
@@ -66,15 +70,16 @@ No gateway charge. Shown only when the club has published its bank details.
 2. Transfer the exact amount to the account shown (tap **Salin** to copy the account number or DuitNow ID).
 3. Type the reference shown under **Rujukan (taip dalam pindahan)**, e.g. `YURAN-179`, in your bank's reference or
    note field, so the treasurer can match it.
-4. Under **Hantar slip pindahan**, add 1 to 3 files (photo or PDF, up to 10 MB each). On a phone, **Ambil gambar**
-   opens the camera.
+4. Under **Hantar slip pindahan**, add 1 to 3 files (photo or PDF, up to 10 MB each). On a phone, **Ambil gambar
+   slip** opens the camera.
 5. Check **Tarikh pindahan**, optionally fill in **No. rujukan bank (pilihan)**, and tap **Hantar slip**.
 
 <br clear="right">
 
 <img src="screenshots/member-verifying.png" width="260" align="right" alt="Member home while the slip is being checked">
 
-The fee now shows **Menunggu pengesahan** / **Disemak** and is no longer counted as owed. **Don't pay it again.**
+The fee now shows **Menunggu pengesahan** (with **Slip dihantar** under it in the list) and is no longer counted as
+owed. **Don't pay it again.**
 When the treasurer approves the slip, the fee becomes paid and the receipt is emailed to you. If the slip is
 rejected you get an email with the reason, and the fee page shows **Slip anda belum diterima**: send the right slip or
 pay online.
@@ -121,7 +126,7 @@ as usual (FPX or slip, on its own or with "Bayar semua"): you get a new receipt 
 still mentions the cancelled one. A "Bayar semua" receipt that was cancelled shows "Resit … dibatalkan" instead of
 the receipt. If the money already left your account and was not refunded, don't pay again: contact the treasurer.
 
-**Notis privasi** (privacy notice) is linked from **Utama** → Akaun and from the sign-in page.
+**Notis privasi** (privacy notice) is linked from **Utama** → **Akaun saya** and from the sign-in page.
 
 <br clear="right">
 
@@ -156,9 +161,10 @@ old name or icon until the app is removed from the home screen and added again.
 
 ### Turn on two-factor authentication
 
-**Akaun saya → Keselamatan & 2FA** (admins: **Security & 2FA** in the sidebar). Confirm your password, tap
-**Enable 2FA**, scan the QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, etc.) and
-enter the 6-digit code. **Save the recovery codes** shown once: each one logs you in once if you lose your phone.
+**Akaun saya → Keselamatan & 2FA** (admins: **Security & 2FA** in the sidebar). Members tap **Hidupkan 2FA**
+(Turn on 2FA), confirm their password, scan the QR code with an authenticator app (Google Authenticator, Microsoft
+Authenticator, etc.), enter the 6-digit code and tap **Sahkan dan hidupkan**. Admins do the same with **Enable 2FA**
+and then **Confirm & Enable 2FA**. **Save the recovery codes** shown once: each one logs you in once if you lose your phone.
 After 5 wrong codes the challenge locks for 15 minutes.
 
 2FA is optional for members. **Admins (club admins and the super admin) must turn it on:** until they do, every admin
@@ -186,7 +192,7 @@ Ledger and the member card.
 
 **Two-person rule.** Anything that moves or redirects money needs a second admin: approving a Fund Usage record,
 voiding one, changing the bank details, and approving a slip for your own fee. You can never check your own work or
-your own fee.
+your own fee: you can't record, cancel or delete a payment on your own fee, or change its amount, either.
 
 ### Bill the club each month (Generate fees)
 
@@ -240,6 +246,26 @@ A **Bayar semua** slip shows as one card with every fee it covers and the total 
 Approving or rejecting it moves all the fees together. If one of them was paid online in the meantime, the card says
 so and shows the amount to refund; the rest can still be approved.
 
+### Record a payment received by hand
+
+For money the club received outside the app: cash, a bank transfer the member didn't send a slip for, or another way.
+
+1. Under **Payments**, open the fee (or use the button on its row) and choose **Record payment…**.
+2. Pick **How was it paid?**: **Cash**, **Bank transfer** or **Other**.
+3. Set **Date received** (not in the future, and not before the start of the fee's period, or the day the fee was
+   created if that is earlier) and,
+   optionally, a **Reference** (a receipt number, bank reference or short note; it is kept in the audit log).
+4. **Record payment**.
+
+The fee is paid and gets a receipt number; the member sees it as paid, but is **not** emailed. The Audit Log has a
+**Payment Marked Paid** row.
+
+- If the member has a transfer slip waiting for the fee, you are sent to **Verifications**: approve or reject the
+  slip there instead.
+- If the member has an FPX payment in progress, the dialog warns you and asks you to tick **I checked: the FPX payment
+  did not go through**. Check with the member first: if that payment also goes through, they have paid twice.
+- You can't record a payment on your own fee; another admin must (the super admin can).
+
 ### Cancel a payment
 
 Use **Cancel payment…** on a paid fee's payment page when a payment turns out not to be good: an approved slip
@@ -266,7 +292,7 @@ What happens:
   taken back and receipted on its own is left alone.
 - Everything stays on record: the payment page lists every cancelled payment (date, by whom, receipt number,
   amount, reason and note), the slips stay attached (a fee with slips still can't be deleted), and the Audit Log has
-  one **payment.cancelled** row per fee.
+  one **Payment Cancelled** row per fee.
 - The member gets one email (BM and EN) with neutral wording for the reason, for example "Kami tidak dapat
   mengesahkan bayaran ini" or "Bayaran ini telah dikembalikan kepada anda".
 - A cancelled online payment can't come back: a repeat of its gateway callback is ignored.
@@ -384,13 +410,19 @@ The number is on the member's receipt, the receipt email, the Payments list and 
 
 Also on **Billing settings**:
 
-- **Billing plans members can choose**: monthly, quarterly and/or yearly for paying ahead, and the **Default plan**
-  that is pre-selected. Yearly or quarterly billing means fewer gateway charges.
-- **Gateway fee**: **Club absorbs it** (members pay the fee amount only) or **Member pays it** (shown on the review page
-  and added to what they pay). For ToyyibPay clubs "Member pays it" stays disabled until it has been checked in the
+- **Plans members can choose**: monthly, quarterly and/or yearly for paying ahead (**Allowed plans**), and the
+  **Default plan** that is pre-selected. Yearly or quarterly billing means fewer gateway charges.
+- **Gateway fee**: **The club absorbs it** (members pay the fee amount only) or **The member pays it** (shown on the
+  review page and added to what they pay). For ToyyibPay clubs "The member pays it" stays disabled until it has been checked in the
   ToyyibPay sandbox and enabled on the server.
 - **Gateway fee per bill (RM)**: what your gateway plan charges per bill (e.g. RM1.00). Used for the review page,
   savings hints and the dashboard's fee total; the gateway applies its own fee.
+- **Grace period after the due date (days)**, 0 to 60: until then members see **Perlu dibayar** (Due); after it the
+  fee shows **Lewat** (Overdue), the member gets one reminder email and the fee counts as overdue on the admin pages.
+  With 0 a fee is overdue the day after its due date.
+- **Member help by WhatsApp (optional)**: a **WhatsApp number** (the club's or the treasurer's work number; members
+  see it). When set, the **Perlu bantuan?** links on members' payment pages, receipts and rejected slips open WhatsApp
+  with the fee and reference already typed in; left empty, they stay email links.
 
 See [payment-options.md](payment-options.md) for a comparison of charges.
 
@@ -420,8 +452,8 @@ Each category can have a **Name in Bahasa Melayu** (Expense categories page); me
 1. **Ledger**: choose **This year**, **Last 12 months** or **Custom dates** (up to 24 months).
 2. The **Opening balance** is worked out from the records (everything collected minus everything approved as spent
    before the start date), so it matches the dashboard. **Set manually** overrides it, e.g. with the balance from
-   last year's audited accounts; the page and the exports then mark it "(diubah secara manual)" and show what the
-   records say.
+   last year's audited accounts; the page and the exports then mark it "(set manually)", and the page shows what
+   the records say.
 3. Read the summary tiles (money in, money out with the expenses / welfare / bank charges split, closing balance),
    **Month by month** (**Show as chart** for a chart) and the transactions with a running balance. **Fees not yet
    received** lists open fees; they are not in the balance until paid.
@@ -483,7 +515,7 @@ keeps at least one active level. Every add, rename, reorder, deactivation and de
 - **Fee Rates**: monthly fee per active [job level](#set-up-job-levels-before-fee-rates). **Discounts**: fixed or
   percentage discounts.
 - **Payments**: all fees, [generate the month's fees](#bill-the-club-each-month-generate-fees), add one fee by hand,
-  mark a fee paid by hand (not your own), or
+  [record a payment received by hand](#record-a-payment-received-by-hand) (not your own fee), or
   [cancel a payment](#cancel-a-payment). On a phone the status shows
   under the member's name and the table scrolls sideways for the rest.
 - **Audit Log**: every change in the club, who made it and when.
