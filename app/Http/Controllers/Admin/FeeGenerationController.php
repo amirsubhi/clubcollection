@@ -53,6 +53,7 @@ class FeeGenerationController extends Controller
             'dueError' => $dueError,
             // The field shows what was typed when it was refused (then there is nothing to confirm).
             'dueInput' => $dueError ? (string) $request->query('due_date') : $due->toDateString(),
+            'earliestDue' => MonthlyFeeGenerator::earliestDueDate($month),
             'latestDue' => MonthlyFeeGenerator::latestDueDate($month),
             'preview' => $preview,
             'fingerprint' => MonthlyFeeGenerator::fingerprint($preview, $month, $due),
@@ -115,8 +116,8 @@ class FeeGenerationController extends Controller
     }
 
     /**
-     * A due date from today (a past one would have the overdue reminder email everyone at once) up to the end
-     * of the month after the billed month.
+     * A due date from today (a past one would have the overdue reminder email everyone at once) and not before
+     * the billed month's 1st, up to the end of the month after the billed month.
      *
      * @return array{0: ?Carbon, 1: ?string}
      */
@@ -128,6 +129,10 @@ class FeeGenerationController extends Controller
         }
         if ($due->lt(today())) {
             return [null, 'The due date can\'t be in the past.'];
+        }
+        $earliest = MonthlyFeeGenerator::earliestDueDate($month);
+        if ($due->lt($earliest)) {
+            return [null, 'The due date can\'t be before the month it bills starts ('.$earliest->format('j M Y').').'];
         }
         $latest = MonthlyFeeGenerator::latestDueDate($month);
         if ($due->gt($latest)) {

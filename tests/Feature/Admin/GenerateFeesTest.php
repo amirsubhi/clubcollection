@@ -302,6 +302,24 @@ class GenerateFeesTest extends TestCase
             ->assertDontSee('data-testid="generate-confirm"', false);
     }
 
+    public function test_next_months_fees_cannot_fall_due_before_that_month_starts(): void
+    {
+        $this->generate('2026-12', '2026-11-30', 5, 6800)
+            ->assertSessionHas('error', "The due date can't be before the month it bills starts (1 Dec 2026).");
+        $this->assertSame(0, Payment::whereDate('period_start', '2026-12-01')->count());
+
+        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-12', 'due_date' => '2026-11-20', 'due_for' => '2026-12']))
+            ->assertOk()->assertSeeText("The due date can't be before the month it bills starts (1 Dec 2026).")
+            ->assertSee('min="2026-12-01"', false)
+            ->assertDontSee('data-testid="generate-confirm"', false);
+        // This month: today is the earliest.
+        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11']))->assertSee('min="2026-11-16"', false);
+
+        // The month's 1st itself is fine.
+        $this->generate('2026-12', '2026-12-01', 5, 6800)->assertSessionHas('success');
+        $this->assertSame(['2026-12-01'], Payment::whereDate('period_start', '2026-12-01')->pluck('due_date')->map->toDateString()->unique()->values()->all());
+    }
+
     public function test_switching_the_month_starts_from_that_months_default_due_date(): void
     {
         // The form was showing November (due today) and the admin picks December.

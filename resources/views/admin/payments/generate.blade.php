@@ -38,7 +38,7 @@
             </div>
             <div class="col-sm-4">
                 <label for="g-due" class="form-label small fw-semibold mb-1">Due date</label>
-                <input id="g-due" type="date" name="due_date" value="{{ $dueInput }}" min="{{ today()->toDateString() }}" max="{{ $latestDue->toDateString() }}"
+                <input id="g-due" type="date" name="due_date" value="{{ $dueInput }}" min="{{ $earliestDue->toDateString() }}" max="{{ $latestDue->toDateString() }}"
                        class="form-control @if($dueError) is-invalid @endif" aria-describedby="g-due-help @if($dueError) g-due-error @endif" @if($dueError) aria-invalid="true" @endif>
                 @if($dueError)<div id="g-due-error" role="alert" class="invalid-feedback">{{ $dueError }}</div>@endif
             </div>
@@ -46,7 +46,8 @@
                 <button type="submit" class="btn btn-outline-primary">Show the list</button>
             </div>
             <div id="g-due-help" class="form-text col-12 mt-1">
-                Today or later (a past date would mark the fees overdue at once). Overdue reminders are emailed
+                Today or later (a past date would mark the fees overdue at once), and not before the month starts.
+                Overdue reminders are emailed
                 {{ $club->overdueGraceDays() }} {{ $club->overdueGraceDays() === 1 ? 'day' : 'days' }} after it.
             </div>
         </form>

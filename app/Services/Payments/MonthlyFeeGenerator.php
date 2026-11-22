@@ -79,6 +79,17 @@ class MonthlyFeeGenerator
         return $due->lt(today()) ? today() : $due;
     }
 
+    /**
+     * The earliest due date accepted: today, or the billed month's 1st when that is later (next month's fees
+     * can't fall due before that month starts).
+     */
+    public static function earliestDueDate(CarbonInterface $month): Carbon
+    {
+        $first = Carbon::parse($month)->startOfMonth()->startOfDay();
+
+        return $first->gt(today()) ? $first : today();
+    }
+
     /** The latest due date accepted: the last day of the month after the billed month (catches a mistyped year). */
     public static function latestDueDate(CarbonInterface $month): Carbon
     {
