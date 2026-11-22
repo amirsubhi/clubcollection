@@ -47,7 +47,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Sign-in pages: the "Need help?" section names a club contact only when exactly one active club exists
         // (a guest's club is unknown, and listing several clubs' contacts would hand them to anyone).
-        View::composer('layouts.auth', function ($view) {
+        // auth.login too: its "how to join" section is rendered before the layout, so the layout's data is not there yet.
+        View::composer(['layouts.auth', 'auth.login'], function ($view) {
             // Error pages use this layout too, and must render without a database: no contact then.
             $clubs = rescue(fn () => Club::query()->where('is_active', true)->limit(2)->get(['id', 'name', 'email', 'whatsapp_number']), collect(), false);
             $club = $clubs->count() === 1 ? $clubs->first() : null;
