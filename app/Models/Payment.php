@@ -38,11 +38,26 @@ class Payment extends Model
             'transfer_group_id' => 'integer',
             'transfer_submitted_at' => 'datetime',
             'verified_at' => 'datetime',
+            'issuer_snapshot' => 'array',
         ];
     }
 
     protected static function booted(): void
     {
+        // Receipt snapshot (settings phase 1): the club details a receipt is issued with, written once when the
+        // fee becomes paid, whatever the path (gateway settlement, transfer approval, an admin recording it, a
+        // group bill, a fee created as paid). Never overwritten, so later edits to the club profile don't change
+        // an issued receipt. Not fillable: only this hook writes it.
+        static::saving(function (Payment $payment) {
+            if ($payment->status === 'paid' && $payment->issuer_snapshot === null
+                && (! $payment->exists || $payment->isDirty('status'))) {
+                $club = Club::find($payment->club_id);
+                if ($club !== null) {
+                    $payment->issuer_snapshot = $club->issuerSnapshot();
+                }
+            }
+        });
+
         // An open gateway bill is for a fixed amount. When the fee amount
         // changes (admin edit or anywhere else), drop the bill so the member
         // gets a fresh one instead of paying the stale amount.
