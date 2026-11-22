@@ -6,6 +6,8 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Admin\ClubController;
 use App\Http\Controllers\Admin\ClubBillingController;
+use App\Http\Controllers\Admin\ClubProfileController;
+use App\Http\Controllers\Admin\PortalSettingsController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\FeeRateController;
 use App\Http\Controllers\Admin\JobLevelController;
@@ -150,6 +152,9 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('admins', AdminUserController::class)->except('show');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+            // Portal name and logo (App\Support\Portal\PortalSettings).
+            Route::get('portal-settings', [PortalSettingsController::class, 'edit'])->name('portal-settings.edit');
+            Route::put('portal-settings', [PortalSettingsController::class, 'update'])->middleware('throttle:20,1')->name('portal-settings.update');
         });
 
         // ── Club Admin + Super Admin ─────────────────────────────────
@@ -166,6 +171,10 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('clubs.job-levels', JobLevelController::class)->shallow()->only(['index', 'store', 'update', 'destroy']);
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
+
+            // Club profile: name, logo, contact, registration no., address, financial year (club admins of this club + super admin).
+            Route::get('clubs/{club}/profile', [ClubProfileController::class, 'edit'])->name('clubs.profile.edit');
+            Route::put('clubs/{club}/profile', [ClubProfileController::class, 'update'])->middleware('throttle:20,1')->name('clubs.profile.update');
 
             // Billing plans and gateway-fee settings (club admins of this club + super admin).
             Route::get('clubs/{club}/billing', [ClubBillingController::class, 'edit'])->name('clubs.billing.edit');

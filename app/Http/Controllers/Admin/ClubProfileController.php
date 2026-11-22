@@ -1,0 +1,109 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Club;
+use App\Services\AuditService;
+use App\Services\LogoService;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+/**
+ * Club profile (settings phase 1): the club's name, logo, contact email, registration number, address and the
+ * month its financial year starts. Members see these on invoices and receipts (an issued receipt keeps the
+ * details it was issued with: payments.issuer_snapshot). Club admins of this club (club_admin middleware) and
+ * the super admin.
+ */
+class ClubProfileController extends Controller
+{
+    /** Fields compared for the audit log (the logo as its stored path, never the file). */
+    private const AUDITED = ['name', 'email', 'registration_no', 'address', 'financial_year_start_month', 'logo'];
+
+    public const MONTHS = [
+        1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June',
+        7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December',
+    ];
+
+    public function __construct(private LogoService $logos) {}
+
+    public function edit(Club $club): View
+    {
+        return view('admin.clubs.profile', [
+            'club' => $club,
+            'months' => self::MONTHS,
+            'gdAvailable' => LogoService::available(),
+        ]);
+    }
+
+    public function update(Request $request, Club $club)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'registration_no' => 'nullable|string|max:60',
+            'address' => 'nullable|string|max:500',
+            'financial_year_start_month' => 'required|integer|between:1,12',
+            'logo' => LogoService::rules(),
+            'remove_logo' => 'boolean',
+        ], LogoService::messages() + [
+            'financial_year_start_month.between' => 'Choose a month from January to December.',
+        ], [
+            'registration_no' => 'registration no.',
+            'financial_year_start_month' => 'financial year start',
+        ]);
+
+        $new = [
+            'name' => trim($data['name']),
+            'email' => self::clean($data['email'] ?? null),
+            'registration_no' => self::clean($data['registration_no'] ?? null),
+            'address' => self::cleanAddress($data['address'] ?? null),
+            'financial_year_start_month' => (int) $data['financial_year_start_month'],
+        ];
+
+        // A new file wins over "remove". The old file is kept on disk: receipts issued with it still show it.
+        if ($request->hasFile('logo')) {
+            $new['logo'] = $this->logos->store($request->file('logo'), 'club-logos');
+        } elseif ($request->boolean('remove_logo')) {
+            $new['logo'] = null;
+        }
+
+        $old = $club->only(self::AUDITED);
+        // Explicit attributes only (no mass assignment from the request).
+        $club->forceFill($new)->save();
+        $after = $club->only(self::AUDITED);
+
+        $changedOld = array_diff_assoc(array_map(fn ($v) => (string) $v, $old), array_map(fn ($v) => (string) $v, $after));
+        $changed = array_keys($changedOld);
+        if ($changed !== []) {
+            AuditService::log(
+                'club.profile_updated',
+                "Club '{$club->name}' profile updated (".implode(', ', $changed).').',
+                $club,
+                $club->id,
+                array_intersect_key($old, array_flip($changed)),
+                array_intersect_key($after, array_flip($changed))
+            );
+        }
+
+        return redirect()->route('admin.clubs.profile.edit', $club)->with('success', $changed === [] ? 'Nothing changed.' : 'Club profile saved.');
+    }
+
+    private static function clean(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /** Trim each line and drop empty ones at the ends; Windows line endings become \n. */
+    private static function cleanAddress(?string $value): ?string
+    {
+        $value = trim(str_replace(["\r\n", "\r"], "\n", (string) $value));
+        if ($value === '') {
+            return null;
+        }
+
+        return implode("\n", array_map('trim', explode("\n", $value)));
+    }
+}

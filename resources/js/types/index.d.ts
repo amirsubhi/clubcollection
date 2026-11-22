@@ -22,6 +22,8 @@ export interface SharedProps {
   locale: string;
   /** The route-bound {club}, or null when the route has none. */
   club: SharedClub | null;
+  /** Portal settings: the portal name (else APP_NAME / "Club Portal"). */
+  portal: { name: string };
 }
 
 declare module "@inertiajs/core" {

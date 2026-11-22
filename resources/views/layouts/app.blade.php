@@ -37,7 +37,7 @@
         })();
     </script>
     @include('partials.pwa-head')
-    <title>@yield('title', 'Admin') · Club Portal</title>
+    <title>@yield('title', 'Admin') · {{ config('app.name') }}</title>
     {{-- Inline page scripts that need window.bootstrap or window.Chart start from here: the bundled copies are module scripts and run after them. --}}
     <script nonce="{{ $cspNonce }}">
         window.cpWhenReady = function (name, fn) {
@@ -65,7 +65,9 @@
         .sidebar-inner { display: flex; flex-direction: column; gap: 1.25rem; width: 100%; padding: 1rem 0.75rem; }
         .sidebar-brand { display: flex; align-items: center; gap: 0.625rem; min-height: 2.75rem; padding: 0 0.25rem; color: var(--bs-body-color); text-decoration: none; border-radius: 8px; }
         .sidebar-brand .logo { display: flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: 10px; background: var(--bs-primary); flex-shrink: 0; }
-        .sidebar-brand .name { display: block; font-weight: 800; font-size: 0.9375rem; line-height: 1.2; }
+        .sidebar-brand .logo-img { background: #fff; border: 1px solid var(--bs-border-color); padding: 2px; overflow: hidden; }
+        .sidebar-brand .logo-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .sidebar-brand .name { display: block; overflow-wrap: anywhere; font-weight: 800; font-size: 0.9375rem; line-height: 1.2; }
         .sidebar-brand .sub { display: block; font-size: 0.8125rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 11.5rem; }
         .admin-nav { display: flex; flex-direction: column; gap: 1.25rem; }
         .admin-nav .group-title { padding: 0 0.625rem 0.375rem; font-size: 0.8125rem; font-weight: 600; color: var(--bs-secondary-color); overflow-wrap: anywhere; }
@@ -132,6 +134,9 @@
             <div class="offcanvas-body p-0">
                 <div class="sidebar-inner">
                     <a href="{{ $adminNav['homeHref'] }}" class="sidebar-brand">
+                        @if ($adminNav['brandLogoUrl'] ?? null)
+                            <span class="logo logo-img" aria-hidden="true"><img src="{{ $adminNav['brandLogoUrl'] }}" alt=""></span>
+                        @else
                         <span class="logo" aria-hidden="true" style="color:#fff">
                             <svg viewBox="0 0 36 36" width="36" height="36">
                                 <g stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5">
@@ -144,8 +149,9 @@
                                 <circle cx="26" cy="24" r="3.5" fill="currentColor" />
                             </svg>
                         </span>
+                        @endif
                         <span class="min-w-0">
-                            <span class="name">Club Portal</span>
+                            <span class="name">{{ $adminNav['brandName'] ?? config('app.name') }}</span>
                             @if ($adminNav['brandSubtitle'])
                                 <span class="sub">{{ $adminNav['brandSubtitle'] }}</span>
                             @endif

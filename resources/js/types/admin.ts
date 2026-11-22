@@ -5,6 +5,9 @@ export interface AdminNavProps {
   groups: { title: string; items: { key: string; label: string; href: string; icon: string; external: boolean; badge?: number | null }[] }[];
   homeHref: string;
   brandSubtitle: string | null;
+  /** Portal name (Portal settings, else APP_NAME) and the portal logo, if one is set (AdminNav::brand()). */
+  brandName?: string;
+  brandLogoUrl?: string | null;
   user: { name: string; initials: string; roleLabel: string };
   memberHref: string;
   logoutUrl: string;
@@ -15,6 +18,8 @@ export interface FigureWindow {
   key: string;
   /** e.g. "This year so far", "Last 12 months". */
   label: string;
+  /** Short name for a period tab: "This year", or "FY 2026/27" when the club's financial year starts in another month. */
+  short?: string;
   /** e.g. "1 Jan – 15 Nov 2026". */
   range: string;
   from: string;

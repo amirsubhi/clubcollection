@@ -21,6 +21,8 @@ import {
   SlidersHorizontal,
   BadgeCheck,
   UserCog,
+  IdCard,
+  Settings,
 } from "lucide-react";
 import { AdminShell, type AdminNavGroup } from "./AdminShell";
 import { Alert } from "@/components/ui/alert";
@@ -35,6 +37,8 @@ const icons: Record<string, typeof Menu> = {
   rates: Coins,
   levels: Layers,
   billing: SlidersHorizontal,
+  profile: IdCard,
+  settings: Settings,
   discounts: Percent,
   categories: FolderTree,
   ledger: BookOpen,
@@ -118,6 +122,8 @@ export function AdminLayout({
         userInitials={nav.user.initials}
         homeHref={nav.homeHref}
         brandSubtitle={nav.brandSubtitle ?? undefined}
+        brandName={nav.brandName}
+        brandLogoUrl={nav.brandLogoUrl ?? undefined}
         memberHref={nav.memberHref}
         onLogout={() => {
           router.clearHistory();

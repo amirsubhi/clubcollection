@@ -34,7 +34,15 @@ export interface AdminNavGroup {
   items: AdminNavItem[];
 }
 
-function Logo({ className }: { className?: string }) {
+function Logo({ className, src }: { className?: string; src?: string }) {
+  if (src) {
+    // The portal's own logo (Portal settings) on a light tile, so a dark or transparent logo stays visible in dark mode.
+    return (
+      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border bg-white p-0.5", className)} aria-hidden>
+        <img src={src} alt="" className="max-h-full max-w-full object-contain" />
+      </span>
+    );
+  }
   return (
     <span className={cn("relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-primary", className)} aria-hidden>
       <svg viewBox="0 0 36 36" className="h-9 w-9">
@@ -53,13 +61,13 @@ function Logo({ className }: { className?: string }) {
   );
 }
 
-function Brand({ collapsed, href, subtitle }: { collapsed?: boolean; href: string; subtitle?: string }) {
+function Brand({ collapsed, href, subtitle, name = "Club Portal", logoUrl }: { collapsed?: boolean; href: string; subtitle?: string; name?: string; logoUrl?: string }) {
   return (
-    <Link href={href} className="flex min-h-11 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <Logo />
+    <Link href={href} className="flex min-h-11 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={collapsed ? name : undefined}>
+      <Logo src={logoUrl} />
       {!collapsed && (
         <span className="min-w-0">
-          <span className="block font-display text-[0.9375rem] font-extrabold leading-tight tracking-tight">Club Portal</span>
+          <span className="block break-words font-display text-[0.9375rem] font-extrabold leading-tight tracking-tight">{name}</span>
           {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
         </span>
       )}
@@ -211,8 +219,12 @@ export interface AdminShellProps {
   userInitials?: string;
   /** Where the logo links to (admin landing). */
   homeHref: string;
-  /** Second line under "Club Portal", e.g. "KSR · Bendahari". */
+  /** Second line under the portal name, e.g. "KSR · Bendahari". */
   brandSubtitle?: string;
+  /** Portal name (Portal settings); "Club Portal" when not given. */
+  brandName?: string;
+  /** Portal logo (Portal settings); the built-in mark when not given. */
+  brandLogoUrl?: string;
   /** Optional search or other control placed in the top bar. */
   search?: ReactNode;
   /** Optional card at the bottom of the sidebar. */
@@ -223,7 +235,7 @@ export interface AdminShellProps {
   wide?: boolean;
 }
 
-export function AdminShell({ active, nav, user, userInitials, homeHref, brandSubtitle, search, sidebarFooter, memberHref, onLogout, children, wide = true }: AdminShellProps) {
+export function AdminShell({ active, nav, user, userInitials, homeHref, brandSubtitle, brandName, brandLogoUrl, search, sidebarFooter, memberHref, onLogout, children, wide = true }: AdminShellProps) {
   const [collapsed, setCollapsed] = useState(() => readPref("cp-sidebar") === "collapsed");
   const toggle = () => {
     setCollapsed((c) => {
@@ -246,7 +258,7 @@ export function AdminShell({ active, nav, user, userInitials, homeHref, brandSub
           <aside className={cn("hidden shrink-0 self-stretch border-r bg-sidebar transition-[width] duration-200 lg:block", collapsed ? "w-[68px]" : "w-64")}>
             <div className={cn("sticky top-0 flex h-screen flex-col gap-6 py-4", collapsed ? "px-2" : "px-3")}>
               <div className={cn(collapsed ? "flex justify-center" : "px-1")}>
-                <Brand collapsed={collapsed} href={homeHref} subtitle={brandSubtitle} />
+                <Brand collapsed={collapsed} href={homeHref} subtitle={brandSubtitle} name={brandName} logoUrl={brandLogoUrl} />
               </div>
               {/* Padded out to the sidebar edge so the active item's bar (at -left-3) is not clipped by the scroll box. */}
               <div className={cn("-mr-1 flex-1 overflow-y-auto pr-1", collapsed ? "-ml-2 pl-2" : "-ml-3 pl-3")}>
@@ -267,7 +279,7 @@ export function AdminShell({ active, nav, user, userInitials, homeHref, brandSub
                   <SheetTitle className="sr-only">Menu</SheetTitle>
                   <SheetDescription className="sr-only">Admin navigation</SheetDescription>
                   <div className="px-1 pr-10">
-                    <Brand href={homeHref} subtitle={brandSubtitle} />
+                    <Brand href={homeHref} subtitle={brandSubtitle} name={brandName} logoUrl={brandLogoUrl} />
                   </div>
                   <div className="pl-3">
                     <NavList groups={nav} active={active} />

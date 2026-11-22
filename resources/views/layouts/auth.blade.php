@@ -29,6 +29,7 @@
             body > div { max-width: 420px; margin: 0 auto; padding: 16px; }
             header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
             header svg, .sr-only { display: none; }
+            header img { width: 40px; height: 40px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
             nav a { margin-left: 8px; color: #5B4FCF; font-weight: 700; }
             .auth-card { background: #fff; border: 1px solid #DEDCEC; border-radius: 16px; padding: 24px; margin: 32px 0; }
             label, input:not([type=checkbox]), .auth-btn { display: block; width: 100%; box-sizing: border-box; }
@@ -45,7 +46,17 @@
 <body class="auth-page">
     <div class="safe-x mx-auto flex min-h-[100dvh] w-full max-w-[452px] flex-col">
         <header class="flex flex-wrap items-center justify-between gap-3 gap-y-2 pt-5">
-            <div class="flex min-w-0 flex-[1_1_8rem] items-center gap-2.5">
+            {{-- With exactly one active club its name and logo head the page (AppServiceProvider: authBrand), the
+                 portal name under it; otherwise the portal's own name and logo (Portal settings). The logo sits on a
+                 white tile so a dark or transparent logo stays visible in dark mode. --}}
+            @php($brand = $authBrand ?? ['kind' => 'portal', 'name' => config('app.name'), 'logoUrl' => null, 'portal' => config('app.name')])
+            @php($brandLogo = $brand['logoUrl'] ?: ($brand['kind'] === 'club' ? \App\Support\Portal\PortalSettings::logoUrl() : null))
+            <div class="flex min-w-0 flex-[1_1_8rem] items-center gap-2.5" data-brand-kind="{{ $brand['kind'] }}">
+                @if ($brandLogo)
+                <span class="auth-logo flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[13px] border bg-white p-0.5">
+                    <img src="{{ $brandLogo }}" alt="{{ $brand['logoUrl'] ? $brand['name'] : $brand['portal'] }}" class="max-h-full max-w-full object-contain" width="40" height="40" data-testid="auth-logo">
+                </span>
+                @else
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-primary" aria-hidden="true">
                     <svg viewBox="0 0 36 36" class="h-8 w-8">
                         <g stroke="rgb(var(--primary-foreground))" stroke-opacity="0.5" stroke-width="1.5">
@@ -58,7 +69,13 @@
                         <circle cx="26" cy="24" r="3.5" fill="rgb(var(--primary-foreground))" />
                     </svg>
                 </span>
-                <span class="min-w-0 break-words font-display text-lg font-bold leading-tight tracking-tight" data-testid="auth-brand">{{ config('app.name') }}</span>
+                @endif
+                <span class="min-w-0">
+                    <span class="block break-words font-display text-lg font-bold leading-tight tracking-tight" data-testid="auth-brand">{{ $brand['name'] }}</span>
+                    @if ($brand['kind'] === 'club' && $brand['portal'] !== $brand['name'])
+                        <span class="block break-words text-sm leading-snug text-muted-foreground" data-testid="auth-brand-portal">{{ $brand['portal'] }}</span>
+                    @endif
+                </span>
             </div>
             <nav aria-label="Bahasa / Language" class="inline-flex shrink-0 rounded-full border bg-card p-0.5 text-sm font-bold">
                 @foreach (['bm' => 'BM', 'en' => 'EN'] as $code => $label)
