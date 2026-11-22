@@ -66,7 +66,7 @@
                         @endif
                     </td>
                     <td class="text-end">
-                        <form action="{{ route('admin.fee-rates.destroy', [$club, $rate]) }}" method="POST" class="d-inline"
+                        <form action="{{ route('admin.fee-rates.destroy', $rate) }}" method="POST" class="d-inline"
                               data-confirm="Delete this rate record?">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" aria-label="Delete rate"><i class="bi bi-trash"></i></button>

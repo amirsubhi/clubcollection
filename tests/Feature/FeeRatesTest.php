@@ -42,6 +42,24 @@ class FeeRatesTest extends TestCase
         return FeeRates::monthlySen($this->club, $this->member, Carbon::parse($month.'-01'));
     }
 
+    public function test_each_delete_button_on_the_rates_page_deletes_its_own_rate(): void
+    {
+        // The button used to post to /admin/fee-rates/{club id}?{rate id}: it deleted the rate whose id equals the
+        // club's (here the first, closed one), never the one clicked.
+        $this->rate(15, '2025-01-01', '2025-12-31');
+        $keep = $this->rate(20, '2026-01-01');
+        $target = $this->rate(25, '2026-01-01', null, 'manager');
+        $this->actingAsClubAdmin($this->club);
+
+        $html = $this->get(route('admin.clubs.fee-rates.index', $this->club))->assertOk()->getContent();
+        $this->assertStringContainsString('action="'.route('admin.fee-rates.destroy', $target).'"', $html);
+        $this->assertStringNotContainsString('fee-rates/'.$this->club->id.'?', $html);
+
+        $this->delete(route('admin.fee-rates.destroy', $target))->assertRedirect();
+        $this->assertModelMissing($target);
+        $this->assertModelExists($keep);
+    }
+
     public function test_the_open_rate_applies_from_its_start(): void
     {
         $this->rate(10, '2026-03-01');
