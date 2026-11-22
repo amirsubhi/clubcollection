@@ -14,7 +14,7 @@
         @else
         <div class="alert alert-info small">
             <i class="bi bi-info-circle me-1"></i>
-            Setting new rates will automatically close existing active rates for updated job levels.
+            A new rate takes over from its start date: the rates of that level in force then end the day before.
             The levels are this club's own: add or rename them on the <a href="{{ route('admin.clubs.job-levels.index', $club) }}">Job Levels</a> page.
         </div>
         <div class="card shadow-sm">
@@ -45,7 +45,7 @@
                                 <input type="date" id="rate-{{ $key }}-from" aria-describedby="rate-{{ $key }}-from-help" @error('rates.'.$loop->index.'.effective_from') aria-invalid="true" @enderror name="rates[{{ $loop->index }}][effective_from]"
                                        class="form-control @error('rates.'.$loop->index.'.effective_from') is-invalid @enderror"
                                        value="{{ old('rates.'.$loop->index.'.effective_from', date('Y-m-d')) }}">
-                                <div class="form-text" id="rate-{{ $key }}-from-help">Existing rate for this level will be closed on this date.</div>
+                                <div class="form-text" id="rate-{{ $key }}-from-help">The current rate of this level ends the day before (a rate saved earlier that starts on or after this date is replaced).</div>
                             </div>
                         </div>
                     </fieldset>

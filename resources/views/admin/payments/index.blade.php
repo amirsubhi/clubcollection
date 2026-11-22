@@ -67,7 +67,10 @@
             <div class="col-md-3 d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-sm btn-primary">Filter</button>
                 <a href="{{ route('admin.clubs.payments.index', $club) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
-                <a href="{{ route('admin.clubs.payments.create', $club) }}" class="btn btn-sm btn-success ms-auto">
+                <a href="{{ route('admin.clubs.payments.generate', $club) }}" class="btn btn-sm btn-outline-success ms-auto" data-testid="generate-fees-link">
+                    <i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Generate fees for a month
+                </a>
+                <a href="{{ route('admin.clubs.payments.create', $club) }}" class="btn btn-sm btn-success">
                     <i class="bi bi-plus-lg me-1"></i>Add
                 </a>
             </div>

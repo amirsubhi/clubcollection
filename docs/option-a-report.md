@@ -620,3 +620,37 @@ independent review (4 minor, fixed); browser run on the test bed (slip cancel, s
 - Cancel workers only cancel online payments: a slip approval racing a cancel was not run concurrently.
 - Cancelling a payment dated in an earlier financial year changes that year's totals (the audit log is the trail).
 - Test bed `LOG_LEVEL=warning` hides log-mailer emails: cancellation emails were checked by the suite only.
+
+## Monthly fee generation (branch `monthly-fees`, on top of `cancel-payment-impl`)
+
+**Generate fees** (Payments → "Generate fees for a month"): pick this or next month and a due date, preview every
+member (billed RM x, or skipped: inactive, joined later, no rate / RM 0 rate, already has a fee covering the month,
+busy), confirm; the server recomputes and refuses if anything changed since the preview (count, total and a
+fingerprint of who and how much). Rerun is safe. One `FeeRates` rule prices generation and pay ahead (each month at
+its own rate); a future-dated rate keeps the old one until the day before; a backdated correction replaces what it
+covers; deleting an open rate reopens its predecessor; a data migration closes old gaps. Overdue reminders now only
+go to active members of active clubs.
+
+Also fixed: every Delete button on Fee Rates deleted rate #club_id (present since the first commit; found in the
+browser).
+
+**Verified:** 1030 tests on SQLite, MariaDB, MySQL; four simultaneous generations of one month on both databases
+(41 members, each billed once, total right); upgrade/rollback/re-upgrade with data; browser on the test bed
+(preview, confirm prompt, create, rerun creates nothing, member sees the fee; future rate saved, pay-ahead priced
+RM 40 + 45 + 45 = RM 130 and charged that, future rates deleted and the old ones reopened).
+
+### Monthly fee follow-ups
+- Generation racing a member's pay ahead for the same month was not run concurrently (the shared lock and the
+  unique index cover it in code and tests).
+- A fee an admin deleted on purpose comes back if the month is generated again.
+- Generated fees carry no discount; only this month and next can be generated.
+- The overdue reminder job ran only inside the test suite.
+
+## User guides (Word, English)
+
+`docs/guides/Club-Portal-Member-Guide.docx` and `docs/guides/Club-Portal-Treasurer-and-Club-Admin-Guide.docx`, guide
+version 1.0 for v0.0.2: screenshots from a throwaway demo club (seeded, renamed "Sunrise Staff Club"), every label
+checked against the code, reviewed by a copywriter pass (which corrected nine claims) and the advisor; both pass the
+Office XML validator. Not rendered to pages (no LibreOffice here): the contents page fills in when Word updates fields
+on opening. They are edited in Word from now on; the generator script and screenshots are kept outside the repo
+(~/Documents/Club Portal guides/) and would overwrite manual edits if rerun.

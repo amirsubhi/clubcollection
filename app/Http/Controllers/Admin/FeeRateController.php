@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\FeeRate;
 use App\Services\AuditService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -50,11 +51,16 @@ class FeeRateController extends Controller
         $newRates = [];
         DB::transaction(function () use ($request, $club, $names, &$newRates) {
             foreach ($request->rates as $rate) {
-                // Close previous active rate for this level
+                // The new rate takes over from its start date: every rate of the level still in force then (open,
+                // or ending on/after the day before) now ends the day before. That keeps the old rate until a
+                // future-dated one starts (no gap), and a backdated correction ("RM 8 since October") wins over a
+                // rate saved earlier that starts after it: such a row ends before it starts and is kept only as
+                // history (FeeRates ignores it).
+                $closeOn = Carbon::parse($rate['effective_from'])->startOfDay()->subDay()->toDateString();
                 $club->feeRates()
                     ->where('job_level', $rate['job_level'])
-                    ->whereNull('effective_to')
-                    ->update(['effective_to' => now()->toDateString()]);
+                    ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $closeOn))
+                    ->update(['effective_to' => $closeOn]);
 
                 $club->feeRates()->create([
                     'job_level'      => $rate['job_level'],
@@ -90,11 +96,30 @@ class FeeRateController extends Controller
         $this->authorizeClubAdmin($club);
 
         $old = $feeRate->only(['job_level', 'monthly_amount', 'effective_from', 'effective_to']);
-        $feeRate->delete();
+        $reopened = null;
+        DB::transaction(function () use ($club, $feeRate, &$reopened) {
+            $wasOpen = $feeRate->effective_to === null;
+            $from = $feeRate->effective_from->copy();
+            $feeRate->delete();
+
+            // Deleting the open rate of a level would leave the rate before it closed: a silent gap from the
+            // deleted rate's start onwards. The rate that ended the day before it started is in force again. A row
+            // replaced before it started (it starts on/after the deleted one) is history and stays as it is.
+            if ($wasOpen && ! $club->feeRates()->where('job_level', $feeRate->job_level)->whereNull('effective_to')->exists()) {
+                $reopened = $club->feeRates()
+                    ->where('job_level', $feeRate->job_level)
+                    ->whereDate('effective_to', $from->copy()->subDay()->toDateString())
+                    ->whereDate('effective_from', '<', $from->toDateString())
+                    ->orderByDesc('effective_from')->orderByDesc('id')
+                    ->first();
+                $reopened?->update(['effective_to' => null]);
+            }
+        });
 
         AuditService::log(
             'fee_rate.deleted',
-            "Fee rate for '{$club->jobLevelName($old['job_level'])}' (RM {$old['monthly_amount']}, from {$old['effective_from']}) deleted.",
+            "Fee rate for '{$club->jobLevelName($old['job_level'])}' (RM {$old['monthly_amount']}, from {$old['effective_from']}) deleted."
+                .($reopened ? " The rate before it (RM {$reopened->monthly_amount}, from {$reopened->effective_from->toDateString()}) is in force again." : ''),
             null,
             $club->id,
             $old

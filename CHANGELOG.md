@@ -17,6 +17,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
+### Added (user guides)
+- `docs/guides/`: an English **Member Guide** and **Treasurer & Club Admin Guide** as Word documents (guide version 1.0,
+  for v0.0.2) with screenshots, a version table and a contents page, ready to edit and share with clubs.
+
+### Added (monthly fee generation)
+- **Generate fees for a month** (Payments → "Generate fees for a month", `GET|POST /admin/clubs/{club}/payments/generate`,
+  `admin.clubs.payments.generate[.store]`, club admins of the club and the super admin, POST `throttle:6,1`): bills
+  every member a monthly fee for this month or next month at the rate in force for their job level, with a due date
+  from today (default the 15th) to the end of the following month. A preview lists every member as billed or
+  skipped (inactive membership, joined after the month, already has a fee covering the month in any status or plan,
+  no rate, rate is RM 0); the POST recomputes it and refuses when the count, the total or a fingerprint of who is
+  billed what (HMAC of the billed member + amount pairs, month and due date) changed. The due date can't be before
+  the billed month's 1st. Fees are created one by one under the member's pay-ahead lock with active membership (in
+  an active club) and the overlap checked again (a duplicate is reported as already billed). One
+  `payment.created` audit row per fee carrying the run key and one `payment.generated` summary row. No email is sent;
+  an inactive club is refused. Known limit: a fee deleted on purpose is created again if the month is generated again.
+- `App\Support\Payments\FeeRates`: the one rule for a member's monthly fee (the rate in force in the month; the
+  latest start wins; a rate that ends before it starts never counts; no rate = null, RM 0 = 0, a waived month),
+  used by Generate fees and pay ahead.
+- Data migration `2026_11_26_000000_close_fee_rate_gaps`: extends a rate the old form closed on the day a
+  later-starting rate was entered to the day before that rate, so the months in between have a rate again
+  (`down()` is a no-op).
+
+### Changed (monthly fee generation)
+- **Pay ahead** prices a period as the sum of each month's rate in force, so a future-dated rate applies from its
+  start month (with one rate, amounts are unchanged). A RM 0 month adds nothing; a period with a month that has no
+  rate, or that totals RM 0, is refused.
+- **Fee rates**: a new rate ends every rate of the level still in force on the day before it starts. A rate that
+  starts later keeps the old one until then (it used to end today, leaving the months in between without a rate;
+  the list labels it "From …"), and a backdated correction wins over a rate saved earlier that starts after it
+  (kept as history, "Replaced before it started"). Deleting a level's open rate reopens the rate that ended the
+  day before it started.
+- **Overdue reminders** only take fees of an active club whose member still has an active membership in it: fees of
+  inactive or removed members and of inactive clubs are no longer flipped to overdue or emailed. A reactivated
+  member's fees are reminded on the next run.
+
 ### Added (cancel payment)
 - **Cancel payment** ("Batalkan bayaran", `PaymentCancellationService`): on a paid fee's admin page, **Cancel
   payment…** opens a form with a reason that fits how it was paid (checked slip: not genuine, money not received,

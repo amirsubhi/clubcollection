@@ -51,6 +51,7 @@ class AuditLog extends Model
             'member.removed'        => 'Member Removed',
             'member.imported'       => 'Members Imported (CSV)',
             'payment.created'       => 'Payment Created',
+            'payment.generated'     => 'Fees Generated',
             'payment.updated'       => 'Payment Updated',
             'payment.marked_paid'   => 'Payment Marked Paid',
             'payment.deleted'       => 'Payment Deleted',

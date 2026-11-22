@@ -63,8 +63,10 @@ Billplz sandbox run on your own host.
 - **Billing settings**: which plans members may choose, the default plan, who pays the gateway fee, and the club's
   bank / DuitNow details. A change to the bank details waits for a second admin to approve it.
 - Members (add one by one or import CSV, welcome email with a temporary password), **job levels** each club defines
-  for itself (a new club starts with one, "Ahli"; rename, reorder, add or deactivate them), fee rates per job level,
-  discounts, payments, expense categories (with an optional BM name for members).
+  for itself (a new club starts with one, "Ahli"; rename, reorder, add or deactivate them), fee rates per job level
+  (a new rate can start on a later date), discounts, payments, expense categories (with an optional BM name for members).
+- **Generate fees for a month**: bill every member of the club at their level's rate in one step, after a preview
+  that shows who is billed and who is skipped and why (inactive, joined later, already billed, no rate).
 - **Ledger** with period presets, an opening balance worked out from the records (or set by hand, clearly marked),
   money in / out tiles, month-by-month table or chart, running balance, monthly bank-charge rows and outstanding fees,
   exported as CSV (Excel-ready) or PDF (A4 landscape for the AGM). The user guide says
@@ -90,7 +92,7 @@ Billplz sandbox run on your own host.
 | <img src="docs/screenshots/admin-ledger.png" alt="Financial ledger"> | <img src="docs/screenshots/admin-dashboard-dark.png" alt="Admin dashboard in dark mode"> |
 | Ledger with CSV / PDF export | Dark theme |
 
-More, with step-by-step instructions, in the [user guide](docs/USER-GUIDE.md). All names, emails, bank details and
+More, with step-by-step instructions, in the [user guide](docs/USER-GUIDE.md). Printable, editable Word guides with screenshots (English): [Member Guide](docs/guides/Club-Portal-Member-Guide.docx) and [Treasurer & Club Admin Guide](docs/guides/Club-Portal-Treasurer-and-Club-Admin-Guide.docx). All names, emails, bank details and
 amounts in the screenshots are made up.
 
 ## Tech stack

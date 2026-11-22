@@ -16,6 +16,7 @@ use App\Services\TransferVerificationService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Member\MemberPaymentPresenter as P;
 use App\Support\Payments\DisplayStatus;
+use App\Support\Payments\FeeRates;
 use App\Support\Payments\GatewayFee;
 use App\Support\Payments\OpenFeeSet;
 use Carbon\Carbon;
@@ -410,8 +411,10 @@ class PaymentController extends Controller
 
     /**
      * Pay ahead: one fee record covering 1, 3 or 12 months (as the club allows),
-     * priced at the member's monthly rate × months. Starts at most 12 months
-     * ahead and never overlaps a period the member already has.
+     * priced as the sum of the member's rate in force in each month it covers
+     * (FeeRates; the same rate × months unless a future-dated rate starts inside
+     * the period). Starts at most 12 months ahead and never overlaps a period
+     * the member already has.
      */
     public function generateFuture(Request $request, Club $club)
     {
@@ -427,11 +430,6 @@ class PaymentController extends Controller
             return back()->with('error', 'member.plan_not_allowed');
         }
 
-        $monthlySen = $this->monthlyFeeSen($club, $user);
-        if ($monthlySen === null) {
-            return back()->with('error', 'member.no_fee_rate');
-        }
-
         $months = Club::PLAN_MONTHS[$request->frequency];
         $start = Carbon::parse($request->period_start)->startOfMonth();
         $end = $start->copy()->addMonthsNoOverflow($months)->subDay();
@@ -442,6 +440,15 @@ class PaymentController extends Controller
         }
         if ($end->gt(self::latestFutureEnd())) {
             return back()->with('error', 'member.too_far_ahead');
+        }
+
+        $totalSen = $this->periodFeeSen($club, $user, $start, $months);
+        if ($totalSen === null) {
+            return back()->with('error', 'member.no_fee_rate');
+        }
+        // Every month of the period is waived (RM 0 rates): there is nothing to pay.
+        if ($totalSen === 0) {
+            return back()->with('error', 'member.waived_period');
         }
 
         // Serialise per member+club so two quick submits can't both pass the
@@ -467,7 +474,7 @@ class PaymentController extends Controller
                     'club_id' => $club->id,
                     'user_id' => $user->id,
                     'recorded_by' => $user->id,
-                    'amount' => number_format(($monthlySen * $months) / 100, 2, '.', ''),
+                    'amount' => number_format($totalSen / 100, 2, '.', ''),
                     'frequency' => $request->frequency,
                     'period_start' => $start->toDateString(),
                     'period_end' => $end->toDateString(),
@@ -535,13 +542,15 @@ class PaymentController extends Controller
         return now()->startOfMonth()->addMonthsNoOverflow(12)->endOfMonth()->startOfDay();
     }
 
-    /** The member's current monthly fee in sen, or null when no rate is set. */
-    private function monthlyFeeSen(Club $club, $user): ?int
+    /**
+     * The fee for $months months from $start in sen: the member's rate in force in each month (FeeRates),
+     * added up (a RM 0 month adds nothing). Null when any of those months has no rate.
+     */
+    private function periodFeeSen(Club $club, $user, Carbon $start, int $months): ?int
     {
-        $level = $club->members()->where('users.id', $user->id)->first()?->pivot->job_level;
-        $feeRate = $club->feeRates()->where('job_level', $level)->whereNull('effective_to')->first();
+        $rates = FeeRates::monthlySenByMonth($club, $user, array_map(fn (int $i) => $start->copy()->addMonthsNoOverflow($i), range(0, $months - 1)));
 
-        return $feeRate ? P::sen($feeRate->monthly_amount) : null;
+        return in_array(null, $rates, true) ? null : array_sum($rates);
     }
 
     /**
@@ -570,6 +579,14 @@ class PaymentController extends Controller
         $paidUntil = $club->payments()->where('user_id', $user->id)->max('period_end');
         $fee = GatewayFee::forClub($club);
 
+        // The member's rate in force in each month that can be paid ahead (FeeRates): the form adds up
+        // the months a plan covers, as generateFuture() does.
+        $months = [];
+        for ($m = $nextMonth->copy(); $m->lte($maxEnd); $m->addMonthNoOverflow()) {
+            $months[] = $m->copy();
+        }
+        $monthRates = FeeRates::monthlySenByMonth($club, $user, $months);
+
         return [
             'action' => route('member.payments.generate-future', $club),
             // Start months not yet covered; the first is the default. Empty when
@@ -580,7 +597,9 @@ class PaymentController extends Controller
             'paidUntil' => $paidUntil ? Carbon::parse($paidUntil)->toDateString() : null,
             'plans' => $club->allowedPlans(),
             'defaultPlan' => $club->defaultPlan(),
-            'monthlySen' => $this->monthlyFeeSen($club, $user),
+            // The rate for the first offered month (null = no rate yet: the form says so).
+            'monthlySen' => $monthRates[$free[0] ?? $nextMonth->toDateString()] ?? null,
+            'monthRates' => $monthRates,
             'feePayer' => $fee->payer,
             'feeSen' => $fee->feeSen,
         ];

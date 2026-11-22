@@ -25,9 +25,18 @@ class SendOverdueReminders extends Command
         // progress are checked per fee (DisplayStatus): only a fee shown as
         // overdue is flipped and reminded. A fee whose slip is being checked
         // is not 'pending', so it never gets here.
+        // Only fees of an active club whose member is still an active member of it: a deactivated or removed
+        // membership (or club) is left 'pending' and nobody is emailed. Reactivated, the member's fees are
+        // reminded on the next run ('overdue' doubles as "already reminded").
         Payment::with(['user', 'club'])
             ->where('status', 'pending')
             ->where('due_date', '<', now()->toDateString())
+            ->whereHas('club', fn ($q) => $q->where('is_active', true))
+            ->whereHas('user')
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('club_user')
+                ->whereColumn('club_user.club_id', 'payments.club_id')
+                ->whereColumn('club_user.user_id', 'payments.user_id')
+                ->where('club_user.is_active', true))
             ->chunkById(200, function ($chunk) use (&$sent, &$marked) {
                 DisplayStatus::prime($chunk);
                 foreach ($chunk as $payment) {

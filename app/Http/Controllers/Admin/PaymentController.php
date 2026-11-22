@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Services\AuditService;
 use App\Services\Payments\PaymentCancellationService;
 use App\Support\Payments\DisplayStatus;
+use App\Support\Payments\FeeRates;
 use App\Support\Payments\OwnFeeRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -84,7 +85,8 @@ class PaymentController extends Controller
     {
         $members   = $club->members()->wherePivot('is_active', true)->get();
         $discounts = $club->discounts()->where('is_active', true)->get();
-        $feeRates  = $club->feeRates()->whereNull('effective_to')->get()->keyBy('job_level');
+        // The amount hint: the rate in force this month (a future-dated rate is not "current" yet).
+        $feeRates  = FeeRates::inForce($club, now());
         $jobLevels = $club->jobLevelNames();
 
         return view('admin.payments.create', compact('club', 'members', 'discounts', 'feeRates', 'jobLevels'));

@@ -27,7 +27,10 @@ interface Props {
     paidUntil: string | null;
     plans: ("monthly" | "quarterly" | "yearly")[];
     defaultPlan: "monthly" | "quarterly" | "yearly";
+    /** Rate for the first offered month; null = no rate set yet. */
     monthlySen: number | null;
+    /** The member's rate in force in each month that can be paid ahead (first-of-month ISO date → sen; null = no rate). */
+    monthRates: Record<string, number | null>;
     feePayer: "club" | "member";
     feeSen: number;
   };
@@ -51,8 +54,14 @@ function periodEnd(start: string, months: number): string {
   return last.toISOString().slice(0, 10);
 }
 
+/** ISO date of the first day of the month `i` months after the first-of-month `start`. */
+function monthAfter(start: string, i: number): string {
+  const [y, m] = start.slice(0, 7).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + i, 1)).toISOString().slice(0, 10);
+}
+
 /** Pay ahead: 1, 3 or 12 months (as the club allows), with the gateway-charge saving vs paying monthly. */
-function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans, defaultPlan, monthlySen, feePayer, feeSen }: Props["futureForm"]) {
+function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans, defaultPlan, monthlySen, monthRates, feePayer, feeSen }: Props["futureForm"]) {
   const t = useT();
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
@@ -62,14 +71,27 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
     return ok(preferred) ? preferred : ([...plans].reverse().find(ok) ?? preferred);
   };
   const form = useForm<{ period_start: string; frequency: Plan }>({ period_start: defaultStart ?? "", frequency: firstFit(defaultStart, defaultPlan) });
-  // A plan is offered only if its period ends within the 12-month cap from the chosen start.
-  const fits = (p: Plan) => !!form.data.period_start && periodEnd(form.data.period_start, PLAN_MONTHS[p]) <= maxEnd;
+  // The fee for a plan from the chosen start: each month's rate added up, as the server bills it
+  // (the same rate × months unless a new rate starts inside the period). Null when a month has no rate.
+  const priceFor = (p: Plan): number | null => {
+    if (!form.data.period_start) return null;
+    let sum = 0;
+    for (let i = 0; i < PLAN_MONTHS[p]; i++) {
+      const r = monthRates[monthAfter(form.data.period_start, i)];
+      if (r === null || r === undefined) return null;
+      sum += r;
+    }
+    return sum;
+  };
+  // A plan is offered only if its period ends within the 12-month cap from the chosen start, every month has a
+  // rate, and it costs something (RM 0 months are waived; a period of only those has nothing to pay).
+  const fits = (p: Plan) => !!form.data.period_start && periodEnd(form.data.period_start, PLAN_MONTHS[p]) <= maxEnd && (priceFor(p) ?? 0) > 0;
   const chooseStart = (v: string) => {
     form.setData((d) => ({ period_start: v, frequency: firstFit(v, d.frequency) }));
   };
   const memberPays = feePayer === "member" && feeSen > 0;
   const chosen = PLAN_MONTHS[form.data.frequency];
-  const totalFor = (p: Plan) => (monthlySen ?? 0) * PLAN_MONTHS[p] + (memberPays ? feeSen : 0);
+  const totalFor = (p: Plan) => (priceFor(p) ?? 0) + (memberPays ? feeSen : 0);
   const saving = feeSen * (chosen - 1);
 
   const submit = (e: FormEvent) => {
@@ -124,7 +146,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                         )}
                         <span className="text-base font-semibold">{t(`months_${PLAN_MONTHS[p]}`)}</span>
                         <span className="text-xs text-muted-foreground">{t(`freq_${p}`)}</span>
-                        <span className="money text-sm font-bold">{rm((monthlySen ?? 0) * PLAN_MONTHS[p])}</span>
+                        <span className="money text-sm font-bold">{priceFor(p) === null ? "–" : rm(priceFor(p) ?? 0)}</span>
                       </label>
                     );
                   })}
