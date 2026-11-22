@@ -16,7 +16,7 @@ final class PortalSettings
 {
     public const CACHE_KEY = 'portal-settings.v1';
 
-    public const KEYS = ['name', 'logo'];
+    public const KEYS = ['name', 'logo', 'brand'];
 
     /** config key holding APP_NAME as it was before a portal name was applied (AppServiceProvider). */
     public const DEFAULT_NAME_CONFIG = 'app.default_name';
@@ -27,7 +27,7 @@ final class PortalSettings
     /**
      * Every setting (missing ones null).
      *
-     * @return array{name: ?string, logo: ?string}
+     * @return array{name: ?string, logo: ?string, brand: ?string}
      */
     public static function all(): array
     {
