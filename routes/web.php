@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ClubController;
 use App\Http\Controllers\Admin\ClubBillingController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\FeeRateController;
+use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ExpenseController;
@@ -148,6 +149,9 @@ Route::middleware('check_installed')->group(function () {
 
             Route::resource('clubs.members', MemberController::class)->shallow()->except('show');
             Route::resource('clubs.fee-rates', FeeRateController::class)->shallow()->only(['index', 'create', 'store', 'destroy']);
+            // The club's own job levels (fee rates are set per level). Shallow actions authorize via the level's club.
+            Route::patch('job-levels/{jobLevel}/active', [JobLevelController::class, 'setActive'])->name('job-levels.active');
+            Route::resource('clubs.job-levels', JobLevelController::class)->shallow()->only(['index', 'store', 'update', 'destroy']);
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
 
