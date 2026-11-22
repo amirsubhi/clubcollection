@@ -250,7 +250,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   zoom; the classic Payments table shown as cards on small screens.
 - **R3d, performance:** fonts self-hosted (Fontsource, Google Fonts removed), Bootstrap, Bootstrap Icons and
   Chart.js bundled by Vite (zero third-party requests in the normal path), and a smaller entry chunk for member pages.
-- **R4:** PHP 8.4 required; branded 404 / 405 pages for unknown URLs (`FallbackController`); recovery codes without
+- **R4:** PHP 8.4 required; a catch-all route (`FallbackController`) so unknown URLs get the branded 404 page; recovery codes without
   look-alike characters; `route:cache` works again. Scores: critique 30/40, audit 18/20, no axe WCAG A/AA violations.
 - **R5:** member Fund page and Home "Akan datang" grouping refined; sign-in help with the club's WhatsApp or email;
   audit log with friendly record names (FU numbers) that stacks on small screens.

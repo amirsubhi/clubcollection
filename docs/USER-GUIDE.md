@@ -70,8 +70,8 @@ No gateway charge. Shown only when the club has published its bank details.
 2. Transfer the exact amount to the account shown (tap **Salin** to copy the account number or DuitNow ID).
 3. Type the reference shown under **Rujukan (taip dalam pindahan)**, e.g. `YURAN-179`, in your bank's reference or
    note field, so the treasurer can match it.
-4. Under **Hantar slip pindahan**, add 1 to 3 files (photo or PDF, up to 10 MB each). On a phone, **Ambil gambar
-   slip** opens the camera.
+4. Under **Hantar slip pindahan**, add 1 to 3 files (photo or PDF, up to 10 MB each). On a phone,
+   **Ambil gambar slip** opens the camera.
 5. Check **Tarikh pindahan**, optionally fill in **No. rujukan bank (pilihan)**, and tap **Hantar slip**.
 
 <br clear="right">
@@ -161,10 +161,10 @@ old name or icon until the app is removed from the home screen and added again.
 
 ### Turn on two-factor authentication
 
-**Akaun saya → Keselamatan & 2FA** (admins: **Security & 2FA** in the sidebar). Members tap **Hidupkan 2FA**
-(Turn on 2FA), confirm their password, scan the QR code with an authenticator app (Google Authenticator, Microsoft
-Authenticator, etc.), enter the 6-digit code and tap **Sahkan dan hidupkan**. Admins do the same with **Enable 2FA**
-and then **Confirm & Enable 2FA**. **Save the recovery codes** shown once: each one logs you in once if you lose your phone.
+**Akaun saya → Keselamatan & 2FA** (admins: **Security & 2FA** in the sidebar). Members enter their password and
+tap **Hidupkan 2FA** (Turn on 2FA), scan the QR code with an authenticator app (Google Authenticator, Microsoft
+Authenticator, etc.), then enter the 6-digit code and the password again and tap **Sahkan dan hidupkan**. Admins do
+the same with **Enable 2FA** and then **Confirm & Enable 2FA**. **Save the recovery codes** shown once: each one logs you in once if you lose your phone.
 After 5 wrong codes the challenge locks for 15 minutes.
 
 2FA is optional for members. **Admins (club admins and the super admin) must turn it on:** until they do, every admin
@@ -452,8 +452,8 @@ Each category can have a **Name in Bahasa Melayu** (Expense categories page); me
 1. **Ledger**: choose **This year**, **Last 12 months** or **Custom dates** (up to 24 months).
 2. The **Opening balance** is worked out from the records (everything collected minus everything approved as spent
    before the start date), so it matches the dashboard. **Set manually** overrides it, e.g. with the balance from
-   last year's audited accounts; the page and the exports then mark it "(set manually)", and the page shows what
-   the records say.
+   last year's audited accounts; the page and the exports then mark it as **set manually**, and the page shows
+   what the records say.
 3. Read the summary tiles (money in, money out with the expenses / welfare / bank charges split, closing balance),
    **Month by month** (**Show as chart** for a chart) and the transactions with a running balance. **Fees not yet
    received** lists open fees; they are not in the balance until paid.
