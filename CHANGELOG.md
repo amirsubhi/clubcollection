@@ -17,6 +17,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
+### Added (monthly fee generation)
+- **Generate fees for a month** (Payments → "Generate fees for a month", `GET|POST /admin/clubs/{club}/payments/generate`,
+  `admin.clubs.payments.generate[.store]`, club admins of the club and the super admin, POST `throttle:6,1`): bills
+  every member a monthly fee for this month or next month at the rate in force for their job level, with a due date
+  from today (default the 15th) to the end of the following month. A preview lists every member as billed or
+  skipped (inactive membership, joined after the month, already has a fee covering the month in any status or plan,
+  no rate / RM 0); the POST recomputes it and refuses when the count or total changed. Fees are created one by one
+  under the member's pay-ahead lock with the overlap checked again (a duplicate is reported as already billed). One
+  `payment.created` audit row per fee carrying the run key and one `payment.generated` summary row. No email is sent;
+  an inactive club is refused. Known limit: a fee deleted on purpose is created again if the month is generated again.
+- `App\Support\Payments\FeeRates`: the one rule for a member's monthly fee (the rate in force in the month; the
+  latest start wins; none or RM 0 = nothing to bill), used by Generate fees and pay ahead.
+
+### Changed (monthly fee generation)
+- **Pay ahead** prices a period as the sum of each month's rate in force, so a future-dated rate applies from its
+  start month (with one rate, amounts are unchanged). A period with a month that has no rate (or RM 0) is refused.
+- **Fee rates**: saving a rate that starts later keeps the old rate in force until the day before (it used to end
+  today, leaving the months in between without a rate); the list labels such a rate "From …".
+- **Overdue reminders** only take fees of an active club whose member still has an active membership in it: fees of
+  inactive or removed members and of inactive clubs are no longer flipped to overdue or emailed. A reactivated
+  member's fees are reminded on the next run.
+
 ### Added (cancel payment)
 - **Cancel payment** ("Batalkan bayaran", `PaymentCancellationService`): on a paid fee's admin page, **Cancel
   payment…** opens a form with a reason that fits how it was paid (checked slip: not genuine, money not received,

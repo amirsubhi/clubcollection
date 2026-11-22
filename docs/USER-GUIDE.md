@@ -5,7 +5,7 @@ their labels are quoted in BM as they appear. Admin pages are in English. Everyo
 
 - [Members](#members): [pay by FPX](#pay-by-fpx) · [pay by bank transfer](#pay-by-bank-transfer--duitnow) ·
   [pay all at once](#pay-all-open-fees-at-once-bayar-semua) · [receipts](#view-an-invoice-or-receipt) · [pay ahead](#pay-ahead) · [install as an app](#install-as-an-app-pwa) · [2FA](#turn-on-two-factor-authentication)
-- [Treasurer / club admin](#treasurer--club-admin): [verify slips](#verify-transfer-slips) ·
+- [Treasurer / club admin](#treasurer--club-admin): [bill the month](#bill-the-club-each-month-generate-fees) · [verify slips](#verify-transfer-slips) ·
   [record an expense or welfare case](#record-an-expense-or-welfare-case) · [approve a record](#approve-someone-elses-record) ·
   [bank details](#change-the-clubs-bank-details) · [plans and gateway fee](#billing-plans-and-gateway-fee) ·
   [bank charges](#bank-and-gateway-charges) · [ledger and the AGM](#the-ledger-and-the-agm) · [reminders](#overdue-reminders) ·
@@ -136,6 +136,9 @@ On **Bayaran**, open **Bayar lebih awal** at the bottom:
 2. Choose **Bulan mula** (next month or later) and tap **Teruskan · RM …**.
 3. A new invoice is created; pay it by FPX or transfer as above.
 
+The price is your rate for each month the plan covers, added up: if the club has already set a new rate starting in
+one of those months, those months are at the new rate.
+
 <br clear="right">
 
 ### Install as an app (PWA)
@@ -183,6 +186,35 @@ Ledger and the member card.
 **Two-person rule.** Anything that moves or redirects money needs a second admin: approving a Fund Usage record,
 voiding one, changing the bank details, and approving a slip for your own fee. You can never check your own work or
 your own fee.
+
+### Bill the club each month (Generate fees)
+
+Fees are not created on their own: once a month, bill the whole club in one go.
+
+1. **Fee Rates** first: every [job level](#set-up-job-levels-before-fee-rates) needs a monthly rate. A new rate can
+   start on a later date (for example 1 January); the old rate stays in force until the day before.
+2. **Payments → Generate fees for a month.** Pick the month (this month or next month only) and the **due date**
+   (by default the 15th, or today when that has passed; it can't be in the past, or the overdue reminder would
+   email everyone the next morning), then **Show the list**.
+3. The list shows every member and what will happen: **Will be billed** (amount, level and rate) or **Skipped** with
+   the reason:
+   - **Inactive membership**: set inactive on Members.
+   - **Joined after the month**: their join date is after the month's last day.
+   - **No fee rate for their level**: their level has no rate for that month, or a rate of RM 0.
+   - **Already has a fee covering the month**: any fee of theirs that covers part of the month, whatever its status
+     (paid, unpaid, overdue, a cancelled payment, a quarterly or yearly plan paid ahead).
+4. Check the count and total, then **Create N fees**. Each fee is a monthly fee at the member's rate for that month,
+   with no discount. Nobody is emailed: members see the new fee in the portal, and the
+   [overdue reminder](#overdue-reminders) follows the due date. Admins' own fees are created too.
+
+If anything changed after you opened the list (a member, a rate, a fee), nothing is created and you are asked to look
+at the list again. Running the same month again is safe: only members not billed yet are added (with a new due date
+if you pick one). One limit: a fee you **deleted** on purpose is created again when you generate that month again, so
+after deleting one, set the member inactive or check the list before confirming. Every fee created is in the
+**Audit Log** ("Payment Created", with the run's key) plus one **Fees Generated** row with the month, count, total and
+the skipped counts.
+
+To bill one member by hand (a different amount, a discount, a quarterly fee), use **Payments → Add** as before.
 
 ### Verify transfer slips
 
@@ -403,8 +435,10 @@ statement by payments still in transit; match them by the bill reference or `YUR
 
 ### Overdue reminders
 
-Every day at **08:00 Malaysia time** the portal marks fees past their due date as overdue and emails each member a
-reminder. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` (set by the installer; see
+Every day at **08:00 Malaysia time** the portal marks fees past their due date (plus the club's grace days) as
+overdue and emails each member a reminder, once per fee. Only active members of an active club are reminded: a fee of
+an inactive or removed member, or of an inactive club, is left as it is and nobody is emailed. If the member is made
+active again, the next morning's run reminds them. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` (set by the installer; see
 [INSTALL.md](INSTALL.md)). Without the time zone it runs at 08:00 UTC, which is 4 pm in Malaysia.
 
 ### Set up job levels before fee rates
@@ -442,7 +476,8 @@ keeps at least one active level. Every add, rename, reorder, deactivation and de
   someone being billed while keeping them listed, set them inactive instead.
 - **Fee Rates**: monthly fee per active [job level](#set-up-job-levels-before-fee-rates). **Discounts**: fixed or
   percentage discounts.
-- **Payments**: all fees, generate fee records, mark a fee paid by hand (not your own), or
+- **Payments**: all fees, [generate the month's fees](#bill-the-club-each-month-generate-fees), add one fee by hand,
+  mark a fee paid by hand (not your own), or
   [cancel a payment](#cancel-a-payment). On a phone the status shows
   under the member's name and the table scrolls sideways for the rest.
 - **Audit Log**: every change in the club, who made it and when.
