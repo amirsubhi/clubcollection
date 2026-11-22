@@ -37,7 +37,7 @@ app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, P
                                TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
 app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
 app/Http/Controllers/          InstallController, WebhookController, HomeController, PrivacyController, Auth/*
-app/Models/                    User, Club, Payment, PaymentBill, Expense, WelfareCase, Attachment, FeeRate,
+app/Models/                    User, Club, Payment, PaymentBill, PaymentCancellation, Expense, WelfareCase, Attachment, FeeRate,
                                Discount, ExpenseCategory, AuditLog, ClubJobLevel, PortalSetting
 app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
@@ -76,7 +76,8 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `privacy_contact_name|email`, kept out of `PortalSettings::KEYS`); plain text only, escaped, paragraphs from blank
   lines; a neutral placeholder when unset. Never ship default legal wording.
   - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
-    attachments, club profile (`admin.clubs.profile.edit|update`), billing, ledger.
+    attachments, club profile (`admin.clubs.profile.edit|update`), billing, ledger, Cancel payment
+    (`GET|POST /admin/payments/{payment}/cancel`, `admin.payments.cancel-form|cancel`).
 - `GET /app.webmanifest` (`pwa.manifest`, `AppManifestController`): outside `check_installed`, no auth, and the
   session / cookie / CSRF / Inertia middleware removed (no Set-Cookie). It only reads settings: never generate icons there.
 - `/two-factor-challenge` deliberately has **no `auth`**: login logs the user out and stores `two_factor_user_id`;
@@ -118,9 +119,21 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   group bill / slip: `SettlementService::markGroupPaid()` and `TransferVerificationService::approveGroup()` allocate
   once with the bill id and set `receipt_no` + `receiptAllocationId` on each fee **before** saving it (so the hook
   skips it). `payments.receipt_no` is not unique (a group shares it); uniqueness is on `receipt_allocations`
-  (club + number, club + year + seq). A revert clears `receipt_no` and voids its `receipt_allocation_payments` row;
+  (club + number, club + year + seq). Leaving paid (Cancel payment) clears `receipt_no` and voids its `receipt_allocation_payments` row;
   never reuse a number, never promise gap-free. Display with `Payment::receiptNumber()` /
   `MemberPaymentPresenter::groupReceiptNo()` (legacy `RCP-{id}` / `RCP-G{id}` when null). Not fillable.
+- **Cancel payment** (`App\Services\Payments\PaymentCancellationService`, `admin.payments.cancel-form|cancel`): the
+  only way a paid fee goes back to unpaid (`PaymentController::update()` refuses a status change of a paid fee).
+  Reason codes per `paidMethod()` (slip / manual / gateway; `REASONS`), validated on the server; note internal (never
+  sent to the member). A fee whose `receipt_no` matches a group `payment_bills` row (payment_id NULL) is cancelled
+  with every fee still carrying that number (never match a NULL number). A `payment_cancellations` row per fee is
+  written **before** the save (it copies receipt no., snapshot, paid fields); the fee is saved through Eloquent to
+  `pending` (the hook voids the number), clearing paid_via/gateway/verified_*/transfer_* and `transfer_group_id`
+  (the set stays traceable via `payment_bill_items` + `payment_cancellations.payment_bill_id`). Never clear
+  `payments.transaction_id` or the bill's `transaction_id`/`paid_at` there: `transactionAlreadyUsed()` (which also
+  reads `payment_cancellations`) refuses replays. One `payment.cancelled` audit row per fee, one `PaymentCancelled`
+  email per cancel after the commit (a mail failure is logged only). Member props: `MemberPaymentPresenter::cancellation()`
+  / `groupCancellation()` (receipt no., date, reason code only).
 - **Financial year**: "this year" for a club is `FundFigures::yearToDate($today, $club)` /
   `financialYearStart()` / `yearLabel()` (`clubs.financial_year_start_month`, 1 = calendar year, label "FY 2026/27"
   otherwise). Don't use `startOfYear()` for a club's year. The classic dashboard and the member payments list still
@@ -148,6 +161,8 @@ by id) → `payment_bills` (the bill being settled) → `receipt_counters` (one 
 approval locks its `payment_bills` row before its fees; that row is only reached through the slip. The receipt
 counter is always taken after the caller's own locks; rows locked after it (the fee's own bill, open group bills
 covering the fee, via the Payment `saved` hook) are reached only through fee rows the transaction already holds.
+Cancel payment follows the path that settled the set: a slip group's `payment_bills` row, then its fees by id (as
+slip approval); an online group bill after its fees (as `markGroupPaid`); no receipt counter.
 Advance the counter with the upsert in `ReceiptNumbers::allocate()` (never "SELECT … FOR UPDATE, insert if
 missing": a locking read of a missing row takes a gap lock and two first receipts of a year deadlock). A deadlock
 (1213) rolls back the whole transaction: never catch it and carry on.
@@ -170,7 +185,7 @@ missing": a locking read of a missing row takes a gap lock and two first receipt
   sign-in takes at least `auth.timebox_duration` (500 ms, `AUTH_TIMEBOX_MICROSECONDS`) so unknown emails are not faster. Sign-in audit rows and owner emails:
   `App\Listeners\AuthSecurityListener` (auto-discovered: don't register it by hand). Mail that must not slow the
   answer: `App\Support\AfterResponse` (no queue worker on cPanel);
-  Fund Usage / verification / billing writes `throttle:20,1`; slip upload and pay-ahead `throttle:10,1`.
+  Fund Usage / verification / billing writes `throttle:20,1`; slip upload, pay-ahead and Cancel payment `throttle:10,1`.
 - **Exports**: `Cache-Control: no-store`, attachment disposition, `CsvSafe` for formula cells.
 - **Gateway access** goes through `PaymentGatewayManager::for($club)`, never a concrete gateway.
 

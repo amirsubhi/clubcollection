@@ -114,6 +114,13 @@ club details it was issued with, so it doesn't change if the club later renames 
 club has written a receipt footer, it is printed at the bottom of the receipt and the receipt email. Tap
 **Cetak** to print or save it as PDF.
 
+If the treasurer **cancels a payment** (for example a slip that could not be confirmed, or an online payment that
+was refunded), you get an email, and the fee shows as unpaid again with a note at the top: "Resit RCP-2026-0001
+telah dibatalkan pada 10 Mac 2026. Kami tidak dapat mengesahkan bayaran ini. Yuran ini belum dibayar." Pay it again
+as usual (FPX or slip, on its own or with "Bayar semua"): you get a new receipt with a new number, and the fee page
+still mentions the cancelled one. A "Bayar semua" receipt that was cancelled shows "Resit … dibatalkan" instead of
+the receipt. If the money already left your account and was not refunded, don't pay again: contact the treasurer.
+
 **Notis privasi** (privacy notice) is linked from **Utama** → Akaun and from the sign-in page.
 
 <br clear="right">
@@ -194,6 +201,40 @@ your own fee.
 A **Bayar semua** slip shows as one card with every fee it covers and the total (also one row on the dashboard).
 Approving or rejecting it moves all the fees together. If one of them was paid online in the meantime, the card says
 so and shows the amount to refund; the rest can still be approved.
+
+### Cancel a payment
+
+Use **Cancel payment…** on a paid fee's payment page when a payment turns out not to be good: an approved slip
+was fake, the money never reached the club, a payment was recorded by mistake, or an online payment was refunded to
+the member. (The status on the Edit page can no longer take a fee back from Paid.)
+
+1. Open the fee under **Payments** and choose **Cancel payment…**.
+2. Pick the **reason**. Only the reasons that fit how it was paid are offered: a checked slip (not genuine, money
+   not received, recorded by mistake, other), recorded by hand with "Record payment…" (money not received, recorded
+   by mistake, other), online FPX (refunded, other: the gateway confirmed that money, so it is never "not
+   received").
+3. Optionally add a **note** (up to 500 characters). It is for the admins and the audit log only; the member never
+   sees it.
+4. Tick the confirmation and **Cancel payment**.
+
+What happens:
+
+- The fee is unpaid again. Its receipt number becomes void (never reused) and paying again issues a new one.
+- A fee paid in a set ("Bayar semua", one FPX bill or one slip) shares its receipt with the other fees, so the
+  whole set is cancelled together: the form lists the fees and the total first. A fee of the set that was already
+  taken back and receipted on its own is left alone.
+- Everything stays on record: the payment page lists every cancelled payment (date, by whom, receipt number,
+  amount, reason and note), the slips stay attached (a fee with slips still can't be deleted), and the Audit Log has
+  one **payment.cancelled** row per fee.
+- The member gets one email (BM and EN) with neutral wording for the reason, for example "Kami tidak dapat
+  mengesahkan bayaran ini" or "Bayaran ini telah dikembalikan kepada anda".
+- A cancelled online payment can't come back: a repeat of its gateway callback is ignored.
+- You can't cancel a payment for your own fee; another admin must (the super admin can).
+
+**Figures**: a cancelled fee is no longer income. It drops out of the collected total (and any gateway charge the
+club absorbed on it) for the date it was paid. Cancelling a payment dated in an **earlier financial year** changes
+that year's totals (the form warns you); if that year was already reported at an AGM, the Audit Log is the trail
+of what changed and why.
 
 ### Record an expense or welfare case
 
@@ -285,9 +326,9 @@ date received later does not renumber it.
 - **One payment, one number**: a "Bayar semua" FPX bill or transfer slip is one receipt, so all its fees share one
   number; each fee is listed on it with its invoice number. Each fee's own receipt page says it is part of that
   receipt (how many fees, the total) and links to it; sharing from there sends the whole receipt.
-- **Audit Log**: every fee marked paid names its receipt number, and setting a paid fee back or deleting it names the
+- **Audit Log**: every fee marked paid names its receipt number, and cancelling a payment or deleting a fee names the
   number that became void, so every gap in the sequence can be explained.
-- **Never reused**: a fee taken back from paid (status changed on the payment's Edit page) loses its receipt number,
+- **Never reused**: a fee taken back from paid ([Cancel payment](#cancel-a-payment)) loses its receipt number,
   which stays recorded as void (shown on the payment page as "Earlier receipt no."); when the fee is paid again it
   gets a new number. The numbers are therefore never reused, but they are **not guaranteed gap-free**.
 - **Prefix**: set on **Club profile**. A new prefix is used only for receipts issued from then on; the year's running
@@ -322,7 +363,7 @@ Record a charge by hand, as a normal expense in a **Bank charges** category (cre
 if your club doesn't have it), when:
 
 - the bank charges the club something the portal can't see (monthly account fee, DuitNow or IBG charges); or
-- you **reverted a fee that was paid online**: its gateway charge leaves the figures while the fee is not paid, and
+- you **cancelled a payment made online**: its gateway charge leaves the figures while the fee is not paid, and
   counts again if you mark the fee paid by hand. But if the member then settles it by transfer slip or a new online
   bill, that payment replaces the earlier charge (none for a slip, the new bill's own charge), so the first gateway
   charge is no longer counted. The gateway still kept it: record it as a bank-charges expense with the gateway
@@ -398,7 +439,8 @@ keeps at least one active level. Every add, rename, reorder, deactivation and de
   someone being billed while keeping them listed, set them inactive instead.
 - **Fee Rates**: monthly fee per active [job level](#set-up-job-levels-before-fee-rates). **Discounts**: fixed or
   percentage discounts.
-- **Payments**: all fees, generate fee records, mark a fee paid by hand (not your own). On a phone the status shows
+- **Payments**: all fees, generate fee records, mark a fee paid by hand (not your own), or
+  [cancel a payment](#cancel-a-payment). On a phone the status shows
   under the member's name and the table scrolls sideways for the rest.
 - **Audit Log**: every change in the club, who made it and when.
 
