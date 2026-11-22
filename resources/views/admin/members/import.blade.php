@@ -123,8 +123,15 @@
                             <tr>
                                 <td><code>job_level</code></td>
                                 <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">Yes</span></td>
-                                <td><code>gm</code>, <code>agm</code>, <code>manager</code>, <code>executive</code>, <code>non_exec</code></td>
-                                <td>manager</td>
+                                <td>
+                                    One of this club's active <a href="{{ route('admin.clubs.job-levels.index', $club) }}">job levels</a>, by name or code (any case):
+                                    @forelse($jobLevels as $code => $name)
+                                        <br>{{ $name }} (<code>{{ $code }}</code>)
+                                    @empty
+                                        <br><span class="text-danger">None yet: add a job level first.</span>
+                                    @endforelse
+                                </td>
+                                <td>{{ array_values($jobLevels)[0] ?? 'Ahli' }}</td>
                             </tr>
                             <tr>
                                 <td><code>role</code></td>
@@ -143,8 +150,8 @@
                 </div>
                 <div class="bg-light rounded p-3 font-monospace small text-muted">
                     name,email,job_level,role,joined_date<br>
-                    Ahmad Razif,razif@company.com,manager,member,{{ date('Y-m-d') }}<br>
-                    Siti Nora,nora@company.com,executive,admin,{{ date('Y-m-d') }}
+                    Ahmad Razif,razif@company.com,{{ array_values($jobLevels)[0] ?? 'Ahli' }},member,{{ date('Y-m-d') }}<br>
+                    Siti Nora,nora@company.com,{{ array_keys($jobLevels)[0] ?? 'member' }},admin,{{ date('Y-m-d') }}
                 </div>
                 <p class="text-muted small mt-3 mb-0">
                     <i class="bi bi-envelope me-1"></i>

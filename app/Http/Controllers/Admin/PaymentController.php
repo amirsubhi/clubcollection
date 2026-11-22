@@ -6,7 +6,6 @@ use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Discount;
-use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Services\AuditService;
 use App\Support\Payments\DisplayStatus;
@@ -75,7 +74,7 @@ class PaymentController extends Controller
             'grace_days'    => $club->overdueGraceDays(),
         ];
 
-        $jobLevels = FeeRate::jobLevelLabels();
+        $jobLevels = $club->jobLevelNames();
 
         return view('admin.payments.index', compact('club', 'payments', 'summary', 'jobLevels', 'status', 'month', 'jobLevel'));
     }
@@ -85,7 +84,7 @@ class PaymentController extends Controller
         $members   = $club->members()->wherePivot('is_active', true)->get();
         $discounts = $club->discounts()->where('is_active', true)->get();
         $feeRates  = $club->feeRates()->whereNull('effective_to')->get()->keyBy('job_level');
-        $jobLevels = FeeRate::jobLevelLabels();
+        $jobLevels = $club->jobLevelNames();
 
         return view('admin.payments.create', compact('club', 'members', 'discounts', 'feeRates', 'jobLevels'));
     }

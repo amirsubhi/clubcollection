@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
-    /** The labels FeeRate::jobLevelLabels() returned before levels were per club. */
+    /** The codes and labels the portal hard-coded (FeeRate) before levels were per club. */
     private const LEGACY_LEVELS = [
         'gm' => 'GM',
         'agm' => 'AGM',
@@ -37,8 +37,15 @@ return new class extends Migration
             $table->unique(['club_id', 'code']);
         });
 
+        $this->backfill();
+    }
+
+    /** Give every club that has no job levels the five legacy ones (public for the test: no DDL). */
+    public function backfill(): void
+    {
         $now = now();
-        foreach (DB::table('clubs')->orderBy('id')->pluck('id') as $clubId) {
+        $without = DB::table('clubs')->whereNotExists(fn ($q) => $q->from('club_job_levels')->whereColumn('club_job_levels.club_id', 'clubs.id'));
+        foreach ($without->orderBy('id')->pluck('id') as $clubId) {
             $rows = [];
             foreach (array_keys(self::LEGACY_LEVELS) as $i => $code) {
                 $rows[] = [

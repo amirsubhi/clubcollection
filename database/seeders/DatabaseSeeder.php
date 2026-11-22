@@ -59,13 +59,16 @@ class DatabaseSeeder extends Seeder
             'bank_account_no'   => '1234 5678 9012',
         ]);
 
-        // Default fee rates
+        // Job levels: the default "Ahli" every new club gets, plus two sample levels (the admins add their own).
+        $club->createDefaultJobLevel();
+        $club->jobLevels()->create(['code' => 'executive', 'name' => 'Eksekutif', 'sort_order' => 2]);
+        $club->jobLevels()->create(['code' => 'manager', 'name' => 'Pengurus', 'sort_order' => 3]);
+
+        // Default fee rates, one per level
         $rates = [
-            'gm'        => 50.00,
-            'agm'       => 30.00,
-            'manager'   => 20.00,
+            'member'    => 5.00,
             'executive' => 10.00,
-            'non_exec'  => 5.00,
+            'manager'   => 20.00,
         ];
 
         foreach ($rates as $level => $amount) {

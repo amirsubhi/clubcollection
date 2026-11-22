@@ -44,7 +44,7 @@ class HomeController extends Controller
             return view('home', compact('totalClubs', 'totalMembers', 'totalAdmins'));
         }
 
-        $clubs = $user->clubs()->where('clubs.is_active', true)->wherePivot('is_active', true)->get();
+        $clubs = $user->clubs()->where('clubs.is_active', true)->wherePivot('is_active', true)->with('jobLevels')->get();
         return view('home', compact('clubs'));
     }
 }

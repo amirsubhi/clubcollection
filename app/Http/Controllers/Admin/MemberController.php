@@ -6,7 +6,6 @@ use App\Http\Controllers\Concerns\AuthorizesClubResource;
 use App\Http\Controllers\Controller;
 use App\Mail\MemberWelcome;
 use App\Models\Club;
-use App\Models\FeeRate;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Support\Export\CsvSafe;
@@ -17,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class MemberController extends Controller
 {
@@ -26,14 +26,15 @@ class MemberController extends Controller
     {
         $this->authorizeClubAdmin($club);
         $members = $club->members()->paginate(20);
-        $jobLevels = FeeRate::jobLevelLabels();
+        $jobLevels = $club->jobLevelNames();
         return view('admin.members.index', compact('club', 'members', 'jobLevels'));
     }
 
     public function create(Club $club)
     {
         $this->authorizeClubAdmin($club);
-        $jobLevels = FeeRate::jobLevelLabels();
+        // New members go on an active level only.
+        $jobLevels = $club->activeJobLevelNames();
         return view('admin.members.create', compact('club', 'jobLevels'));
     }
 
@@ -43,7 +44,7 @@ class MemberController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|max:255',
             'email'       => 'required|email|max:255|unique:users,email',
-            'job_level'   => 'required|in:gm,agm,manager,executive,non_exec',
+            'job_level'   => ['required', 'string', Rule::in(array_keys($club->activeJobLevelNames()))],
             // Club admins don't see the role field: a missing role is 'member'.
             'role'        => 'nullable|in:admin,member',
             'joined_date' => 'required|date',
@@ -79,7 +80,7 @@ class MemberController extends Controller
 
         AuditService::log(
             'member.added',
-            "Member '{$user->name}' ({$user->email}) added to club as {$data['role']} / {$data['job_level']}.",
+            "Member '{$user->name}' ({$user->email}) added to club as {$data['role']} / {$club->jobLevelName($data['job_level'])}.",
             $user,
             $club->id,
             [],
@@ -98,9 +99,9 @@ class MemberController extends Controller
         $club  = $this->resolveClubForMember($club, $member);
         $this->authorizeClubAdmin($club);
 
-        $jobLevels = FeeRate::jobLevelLabels();
         $pivot     = $club->members()->where('users.id', $member->id)->first()?->pivot;
         $this->assertMayManageRow($pivot?->role);
+        $jobLevels = $this->levelChoices($club, $pivot?->job_level);
         return view('admin.members.edit', compact('club', 'member', 'jobLevels', 'pivot'));
     }
 
@@ -109,16 +110,18 @@ class MemberController extends Controller
         $club = $this->resolveClubForMember($club, $member);
         $this->authorizeClubAdmin($club);
 
+        $pivot  = $club->members()->where('users.id', $member->id)->first()?->pivot;
+        abort_unless($pivot, 404);
+
         $data = $request->validate([
-            'job_level'   => 'required|in:gm,agm,manager,executive,non_exec',
+            // An active level, or the one the member is on now (even if it has been deactivated since).
+            'job_level'   => ['required', 'string', Rule::in(array_keys($this->levelChoices($club, $pivot->job_level)))],
             // Club admins don't see the role field: a missing role keeps the current one.
             'role'        => 'nullable|in:admin,member',
             'joined_date' => 'required|date',
             'is_active'   => 'boolean',
         ]);
 
-        $pivot  = $club->members()->where('users.id', $member->id)->first()?->pivot;
-        abort_unless($pivot, 404);
         $data['role'] ??= $pivot->role;
         // Club admin rows and the admin role are the super admin's to manage.
         $this->assertMayManageRow($pivot->role);
@@ -177,7 +180,51 @@ class MemberController extends Controller
     public function import(Club $club)
     {
         $this->authorizeClubAdmin($club);
-        return view('admin.members.import', compact('club'));
+        $jobLevels = $club->activeJobLevelNames();
+        return view('admin.members.import', compact('club', 'jobLevels'));
+    }
+
+    /**
+     * Levels to offer in a member's form: the active ones, plus the member's current level when it has been
+     * deactivated (so saving the form doesn't force a change).
+     *
+     * @return array<string, string> code => name
+     */
+    private function levelChoices(Club $club, ?string $current): array
+    {
+        $choices = $club->activeJobLevelNames();
+        if ($current !== null && $current !== '' && ! isset($choices[$current])) {
+            $choices[$current] = $club->jobLevelName($current).' (inactive)';
+        }
+
+        return $choices;
+    }
+
+    /**
+     * The CSV job_level cell to a level code: the club's active levels by code, then by name, both without
+     * regard to case (the Job levels page keeps names unique and distinct from other levels' codes). Null when
+     * nothing matches.
+     *
+     * @param  array<string, string>  $levels  code => name
+     */
+    private static function resolveLevel(string $cell, array $levels): ?string
+    {
+        $wanted = mb_strtolower(trim($cell));
+        if ($wanted === '') {
+            return null;
+        }
+        foreach ($levels as $code => $name) {
+            if (mb_strtolower($code) === $wanted) {
+                return $code;
+            }
+        }
+        foreach ($levels as $code => $name) {
+            if (mb_strtolower($name) === $wanted) {
+                return $code;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -235,7 +282,7 @@ class MemberController extends Controller
             ->pluck('email')->mapWithKeys(fn ($e) => [mb_strtolower($e) => true])->all();
 
         $imported       = 0;
-        $validJobLevels = ['gm', 'agm', 'manager', 'executive', 'non_exec'];
+        $levels         = $club->activeJobLevelNames();
         $validRoles     = ['member', 'admin'];
         $canGrant       = auth()->user()->isSuperAdmin();
 
@@ -272,8 +319,10 @@ class MemberController extends Controller
                 continue;
             }
 
-            if (! in_array($jobLevel, $validJobLevels, true)) {
-                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid job_level '{$jobLevel}'. Must be: " . implode(', ', $validJobLevels) . '.'];
+            $levelCode = self::resolveLevel($jobLevel, $levels);
+            if ($levelCode === null) {
+                $accepted = $levels ? implode(', ', array_map(fn ($code, $name) => "{$name} ({$code})", array_keys($levels), $levels)) : 'none: add a job level first';
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => "Invalid job_level '{$jobLevel}'. Use a job level name or code of this club: {$accepted}."];
                 continue;
             }
 
@@ -318,7 +367,7 @@ class MemberController extends Controller
 
             $club->members()->attach($user->id, [
                 'role'        => $role,
-                'job_level'   => $jobLevel,
+                'job_level'   => $levelCode,
                 'joined_date' => date('Y-m-d', $ts),
                 'is_active'   => true,
             ]);
@@ -364,10 +413,13 @@ class MemberController extends Controller
             'Content-Disposition' => 'attachment; filename="members-import-template.csv"',
         ];
 
-        $callback = function () {
+        // The sample row uses one of the club's own levels (by name; its code works too).
+        $sampleLevel = array_values($club->activeJobLevelNames())[0] ?? 'Ahli';
+
+        $callback = function () use ($sampleLevel) {
             $handle = fopen('php://output', 'w');
             CsvSafe::put($handle, ['name', 'email', 'job_level', 'role', 'joined_date']);
-            CsvSafe::put($handle, ['Ahmad Razif', 'razif@example.com', 'manager', 'member', date('Y-m-d')]);
+            CsvSafe::put($handle, ['Ahmad Razif', 'razif@example.com', $sampleLevel, 'member', date('Y-m-d')]);
             fclose($handle);
         };
 

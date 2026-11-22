@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
-use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Support\Member\MemberPaymentPresenter as P;
 use App\Support\Payments\DisplayStatus;
@@ -45,14 +44,15 @@ class DashboardController extends Controller
         $openCounts = fn (int $clubId, string $status) => $open->where('club_id', $clubId)
             ->filter(fn (Payment $p) => $statuses[$p->id] === $status)->count();
 
-        $jobLevels = FeeRate::jobLevelLabels();
+        $clubs->load('jobLevels');
 
-        $clubCards = $clubs->map(function ($club) use ($rawStats, $jobLevels, $openCounts) {
+        $clubCards = $clubs->map(function ($club) use ($rawStats, $openCounts) {
             $s = $rawStats[$club->id] ?? null;
             return [
                 'id' => $club->id,
                 'name' => $club->name,
-                'jobLevel' => $jobLevels[$club->pivot->job_level] ?? $club->pivot->job_level,
+                // The club's own name for the member's level (the code if the level is gone).
+                'jobLevel' => $club->jobLevelName($club->pivot->job_level),
                 'role' => $club->pivot->role,
                 'paymentsUrl' => route('member.payments.index', $club),
                 'summary' => [
