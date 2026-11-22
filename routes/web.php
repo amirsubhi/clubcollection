@@ -29,7 +29,7 @@ use App\Http\Controllers\Member\PayAllController as MemberPayAll;
 // ── Installation wizard (only accessible when NOT installed) ────────────────
 Route::middleware('redirect_if_installed')->group(function () {
     Route::get('/install', [InstallController::class, 'index'])->name('install');
-    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:5,1')->name('install.process');
+    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:install')->name('install.process');
 });
 
 // ── Payment gateway webhooks — external, no install check, no CSRF ────────
@@ -62,12 +62,14 @@ Route::middleware('check_installed')->group(function () {
         // `guest` middleware sends a signed-in user on to /home.
         Route::get('/', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('front');
 
-        // Register disabled; login throttled to 5 attempts / minute per IP+email
+        // Register disabled.
         Auth::routes(['register' => false]);
 
-        // Override login POST with explicit rate limiting
+        // Replaces Auth::routes()' POST /login (no name, so it doesn't clash with GET 'login' under route:cache).
+        // throttle:login (AppServiceProvider): 5 a minute per email + IP and 30 a minute per IP (an office network
+        // shares one IP); LoginController also pauses one account for 15 minutes after 10 wrong passwords.
         Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
-            ->middleware('throttle:5,1');  // replaces Auth::routes()' POST /login; no name, so it doesn't clash with GET 'login' (route:cache)
+            ->middleware('throttle:login');
 
         // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
         // on their own named limiter (AppServiceProvider).
@@ -88,7 +90,7 @@ Route::middleware('check_installed')->group(function () {
         // Throttle the verify POST to defend against brute-forcing TOTP codes
         // (10**6 search space) and recovery codes (8 codes, alphanumeric).
         Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:two-factor')
             ->name('two-factor.verify');
     }); // auth_locale
 

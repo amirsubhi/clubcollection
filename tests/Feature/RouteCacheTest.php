@@ -30,6 +30,6 @@ class RouteCacheTest extends TestCase
         $post = collect(Route::getRoutes()->getRoutes())
             ->first(fn ($r) => $r->uri() === 'login' && in_array('POST', $r->methods(), true));
         $this->assertNotNull($post);
-        $this->assertContains('throttle:5,1', $post->gatherMiddleware());
+        $this->assertContains('throttle:login', $post->gatherMiddleware());
     }
 }

@@ -22,4 +22,22 @@ return [
         'preload' => (bool) env('HSTS_PRELOAD', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Sign-in protection per account
+    |--------------------------------------------------------------------------
+    |
+    | After max_failures wrong passwords for one email within decay_minutes
+    | (from any IP), sign-in for that email pauses for block_minutes. It is
+    | never permanent and never blocks a password reset
+    | (App\Support\Auth\AccountLoginBlock).
+    |
+    */
+
+    'account_login' => [
+        'max_failures' => (int) env('LOGIN_ACCOUNT_MAX_FAILURES', 10),
+        'decay_minutes' => (int) env('LOGIN_ACCOUNT_DECAY_MINUTES', 15),
+        'block_minutes' => (int) env('LOGIN_ACCOUNT_BLOCK_MINUTES', 15),
+    ],
+
 ];

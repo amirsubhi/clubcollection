@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 class AuditService
@@ -53,6 +54,24 @@ class AuditService
             'new_values'     => $new ?: null,
             'ip_address'     => request()->ip(),
             'user_agent'     => mb_strcut(mb_scrub((string) request()->userAgent()), 0, 255),
+        ]);
+    }
+
+    /**
+     * Sign-in events (failed password, lockout, account pause, password reset): written as the account
+     * concerned, like the auth.login rows, since nobody is signed in yet. $account null = an email with no
+     * account; the typed email itself is never stored (it may be a mistyped password).
+     */
+    public static function logAccount(?User $account, string $action, string $description): void
+    {
+        AuditLog::create([
+            'user_id'     => $account?->id,
+            'user_name'   => $account?->name ?? 'Guest',
+            'user_role'   => $account?->role ?? 'guest',
+            'action'      => $action,
+            'description' => mb_strcut($description, 0, 1000),
+            'ip_address'  => request()->ip(),
+            'user_agent'  => mb_strcut(mb_scrub((string) request()->userAgent()), 0, 255),
         ]);
     }
 }

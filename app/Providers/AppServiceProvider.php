@@ -4,10 +4,13 @@ namespace App\Providers;
 
 use App\Models\Club;
 use App\Services\PaymentGateways\PaymentGatewayManager;
+use App\Support\Auth\AccountLoginBlock;
 use App\Support\Contact\WhatsAppNumber;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -57,6 +60,21 @@ class AppServiceProvider extends ServiceProvider
         // Turning 2FA on checks the password (and a TOTP code): 5 tries a minute per user, its own bucket.
         RateLimiter::for('two-factor-setup', fn (Request $request) => Limit::perMinute(5)->by('2fa-setup|'.($request->user()?->id ?? $request->ip())));
 
+        // Sign-in (POST /login): 5 a minute per account (or unknown email) + IP, and 30 a minute per IP. A staff club often signs in
+        // from one office network (one public IP), so the per-IP ceiling is high enough for many colleagues at
+        // once; the per-email limit stops guessing one account. On top of that, LoginController pauses an
+        // account after 10 wrong passwords from any IP (App\Support\Auth\AccountLoginBlock). A hit limit is
+        // audited (Lockout event) and answered with the friendly 429 page.
+        RateLimiter::for('login', fn (Request $request) => [
+            Limit::perMinute(30)->by('login-ip|'.$request->ip())->response(self::loginLimitResponse(...)),
+            Limit::perMinute(5)->by('login|'.AccountLoginBlock::accountKey(is_string($email = $request->input('email')) ? $email : '').'|'.$request->ip())
+                ->response(self::loginLimitResponse(...)),
+        ]);
+        // The 2FA challenge POST and the installer each have their own bucket (they used to share the
+        // unnamed throttle:5,1 counter with sign-in). The challenge also locks per account after 5 wrong codes.
+        RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by('2fa|'.$request->ip()));
+        RateLimiter::for('install', fn (Request $request) => Limit::perMinute(5)->by('install|'.$request->ip()));
+
         self::configureTrustedProxies();
 
         // Sign-in pages: the "Need help?" section names a club contact only when exactly one active club exists
@@ -80,6 +98,17 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->isProduction()) {
             self::pinRootUrl();
         }
+    }
+
+    /**
+     * A sign-in limit was hit: record a Lockout (audit log), then answer with the usual "Too many attempts,
+     * please wait about N seconds" page (resources/views/errors/429, BM/EN, sign-in styling).
+     */
+    public static function loginLimitResponse(Request $request, array $headers): never
+    {
+        event(new Lockout($request));
+
+        throw new ThrottleRequestsException('Too Many Attempts.', null, $headers);
     }
 
     /**
