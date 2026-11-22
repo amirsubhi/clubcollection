@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\FeeRateController;
 use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\FeeGenerationController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\ExpenseCategoryController;
 use App\Http\Controllers\Admin\FundUsageController;
@@ -204,6 +205,9 @@ Route::middleware('check_installed')->group(function () {
             // The previous Blade dashboard (month filter, paid/unpaid members, job levels).
             Route::get('clubs/{club}/dashboard/classic', [DashboardController::class, 'classic'])->name('clubs.dashboard.classic');
 
+            // "Generate fees for a month" (MonthlyFeeGenerator): preview, then create; literal routes before the resource.
+            Route::get('clubs/{club}/payments/generate', [FeeGenerationController::class, 'preview'])->name('clubs.payments.generate');
+            Route::post('clubs/{club}/payments/generate', [FeeGenerationController::class, 'store'])->middleware('throttle:6,1')->name('clubs.payments.generate.store');
             Route::resource('clubs.payments', PaymentController::class)->shallow();
             Route::patch('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid'])->name('payments.mark-paid');
             // "Cancel payment" (PaymentCancellationService): a paid fee, or the set it was paid with, back to unpaid with a reason.

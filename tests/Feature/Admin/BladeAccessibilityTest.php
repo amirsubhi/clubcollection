@@ -105,6 +105,7 @@ class BladeAccessibilityTest extends TestCase
             'member import' => route('admin.members.import', $this->club),
             'payments' => route('admin.clubs.payments.index', $this->club),
             'payment create' => route('admin.clubs.payments.create', $this->club),
+            'generate fees' => route('admin.clubs.payments.generate', $this->club),
             'payment show' => route('admin.payments.show', $payment),
             'payment edit' => route('admin.payments.edit', $payment),
             'fee rates' => route('admin.clubs.fee-rates.index', $this->club),
