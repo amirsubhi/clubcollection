@@ -236,10 +236,9 @@ class ReceiptSnapshotTest extends TestCase
         $fee->update(['status' => 'paid', 'paid_date' => now()->toDateString()]);
         $this->renameClub();
 
-        // Later saves, a revert and paying again keep the first snapshot.
+        // Later saves while it stays paid keep the first snapshot (a revert starts over: see the test below).
         $fee->update(['notes' => 'checked']);
-        $fee->update(['status' => 'pending', 'paid_date' => null]);
-        $fee->update(['status' => 'paid', 'paid_date' => now()->toDateString()]);
+        $fee->fresh()->update(['paid_date' => now()->subDay()->toDateString()]);
 
         $this->assertOldSnapshot($fee);
     }
