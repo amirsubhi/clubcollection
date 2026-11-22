@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PieChart, RefreshCw, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import { MemberShell } from "@/components/app/MemberShell";
+import { ClubMark, MemberShell } from "@/components/app/MemberShell";
 import { InstallPrompt } from "@/components/app/InstallPrompt";
 import { FlashBanner, PaymentRow, SectionCard } from "@/components/app/MemberParts";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
@@ -224,11 +224,14 @@ function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
   return (
     <section aria-labelledby={hid} className="flex flex-col gap-3">
       {multi ? (
-        <div className="px-1">
-          <h2 id={hid} className="break-words font-display text-xl font-bold tracking-tight">
-            {club.name}
-          </h2>
-          <p className="text-sm text-muted-foreground">{club.jobLevel}</p>
+        <div className="flex items-center gap-3 px-1">
+          {club.logoUrl && <ClubMark src={club.logoUrl} alt={club.name} className="h-10 w-10" />}
+          <div className="min-w-0">
+            <h2 id={hid} className="break-words font-display text-xl font-bold tracking-tight">
+              {club.name}
+            </h2>
+            <p className="text-sm text-muted-foreground">{club.jobLevel}</p>
+          </div>
         </div>
       ) : (
         <h2 id={hid} className="sr-only">
@@ -245,7 +248,7 @@ function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-display text-lg font-bold leading-snug tracking-tight">{t("moneyGoes")}</span>
-          <span className="block text-sm text-muted-foreground">{t("moneyGoesLink")}</span>
+          <span className="block text-sm text-muted-foreground">{t(club.fyStartMonth > 1 ? "moneyGoesLinkFy" : "moneyGoesLink")}</span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
       </Link>
@@ -261,7 +264,7 @@ function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
 export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs, dashboardUrl, account }: Props) {
   const t = useT();
   const { lang } = useLang();
-  const { auth } = usePage().props;
+  const { auth, portal } = usePage().props;
   const multi = clubs.length > 1;
   const firstName = (auth.user?.name ?? "").split(" ")[0];
   // "Bayaran" tab: the club of the oldest open fee (what the member most likely needs), else the first club.
@@ -275,7 +278,8 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
     <MemberShell
       tab="home"
       navHrefs={navHrefs}
-      clubName={multi ? fill(t("clubsN"), { n: clubs.length }) : (clubs[0]?.name ?? "Club Portal")}
+      clubName={multi ? fill(t("clubsN"), { n: clubs.length }) : (clubs[0]?.name ?? portal?.name ?? "Club Portal")}
+      clubLogoUrl={multi ? null : clubs[0]?.logoUrl}
       title={`${t("hi")}, ${firstName}`}
     >
       <Head title={t("navHome")} />

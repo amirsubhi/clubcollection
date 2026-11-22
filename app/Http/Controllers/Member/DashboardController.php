@@ -51,6 +51,9 @@ class DashboardController extends Controller
             return [
                 'id' => $club->id,
                 'name' => $club->name,
+                // Club profile: the logo (same-origin /storage URL; null without one) and the financial year start.
+                'logoUrl' => $club->logo_url,
+                'fyStartMonth' => $club->financialYearStartMonth(),
                 // The club's own name for the member's level (the code if the level is gone).
                 'jobLevel' => $club->jobLevelName($club->pivot->job_level),
                 'role' => $club->pivot->role,

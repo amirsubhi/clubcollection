@@ -33,13 +33,33 @@ export interface MemberReceipt {
   method: "gateway" | "transfer" | "manual";
   transactionId: string | null;
   reference: string | null;
+  /** The club as the receipt was issued (payments.issuer_snapshot; the live club for older fees). */
+  issuer?: ReceiptIssuer;
+}
+
+/** MemberPaymentPresenter::issuer(): who issued a receipt. logoUrl is a same-origin /storage URL. */
+export interface ReceiptIssuer {
+  name: string;
+  registrationNo: string | null;
+  address: string | null;
+  email: string | null;
+  logoUrl: string | null;
 }
 
 /** Props every single-payment page receives (PaymentController::context()). */
 export interface PaymentContext {
   member: { name: string; email: string };
   /** whatsapp: digits for wa.me when the club set a help number (PaymentController::payClubProps). */
-  payClub: { id: number; name: string; email: string | null; whatsapp: string | null };
+  payClub: {
+    id: number;
+    name: string;
+    email: string | null;
+    whatsapp: string | null;
+    /** Club profile as it is now (invoice header). */
+    logoUrl?: string | null;
+    registrationNo?: string | null;
+    address?: string | null;
+  };
   paymentsUrl: string;
   dashboardUrl: string;
 }
@@ -56,6 +76,10 @@ export interface FundCategory {
 export interface HomeClub {
   id: number;
   name: string;
+  /** Club profile logo (same-origin /storage URL), or null. */
+  logoUrl: string | null;
+  /** Month (1-12) the club's financial year starts; 1 = the calendar year. */
+  fyStartMonth: number;
   jobLevel: string;
   role: string;
   paymentsUrl: string;

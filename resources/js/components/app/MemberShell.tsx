@@ -31,7 +31,18 @@ export function LangToggle() {
   );
 }
 
-export function ClubMark({ className }: { className?: string }) {
+/**
+ * The club's logo (Club profile) on a white tile, so a dark or transparent logo stays visible in dark mode; the
+ * portal's built-in mark when there is none. alt = the club's name.
+ */
+export function ClubMark({ className, src, alt }: { className?: string; src?: string | null; alt?: string }) {
+  if (src) {
+    return (
+      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[14px] border bg-white p-0.5", className)}>
+        <img src={src} alt={alt ?? ""} className="max-h-full max-w-full object-contain" />
+      </span>
+    );
+  }
   return (
     <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-primary", className)} aria-hidden>
       <svg viewBox="0 0 36 36" className="h-9 w-9">
@@ -52,6 +63,7 @@ export function ClubMark({ className }: { className?: string }) {
 
 export function MemberShell({
   clubName,
+  clubLogoUrl,
   tab,
   navHrefs,
   title,
@@ -63,6 +75,8 @@ export function MemberShell({
 }: {
   /** Short club name shown above the page title. */
   clubName: string;
+  /** The club's logo (Club profile), shown instead of the built-in mark on pages without a back button. */
+  clubLogoUrl?: string | null;
   tab: MemberTab;
   /** URL for each bottom-nav tab; tabs without a URL are not shown. */
   navHrefs: Partial<Record<MemberTab, string>>;
@@ -104,7 +118,7 @@ export function MemberShell({
               <ArrowLeft className="h-6 w-6" strokeWidth={1.75} />
             </Link>
           ) : (
-            <ClubMark />
+            <ClubMark src={clubLogoUrl} alt={clubName} />
           )}
           <div className="min-w-0 flex-[1_1_8rem]">
             <div className="break-words text-sm leading-snug text-muted-foreground">{clubName}</div>

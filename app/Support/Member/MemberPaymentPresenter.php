@@ -2,8 +2,10 @@
 
 namespace App\Support\Member;
 
+use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentBill;
+use App\Services\LogoService;
 use App\Support\Payments\DisplayStatus;
 use Illuminate\Support\Collection;
 
@@ -87,6 +89,44 @@ final class MemberPaymentPresenter
     }
 
     /**
+     * The club as a receipt names it: the details the fee was issued with (payments.issuer_snapshot, written
+     * when it became paid), or, for a fee paid before snapshots existed, the club as it is now.
+     *
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string}
+     */
+    public static function issuer(Payment $payment): array
+    {
+        $snap = is_array($payment->issuer_snapshot) ? $payment->issuer_snapshot : null;
+        if ($snap === null || ! filled($snap['name'] ?? null)) {
+            return self::issuerOf($payment->club);
+        }
+
+        return [
+            'name' => (string) $snap['name'],
+            'registrationNo' => ($snap['registration_no'] ?? null) ?: null,
+            'address' => ($snap['address'] ?? null) ?: null,
+            'email' => ($snap['email'] ?? null) ?: null,
+            'logoUrl' => LogoService::url($snap['logo'] ?? null),
+        ];
+    }
+
+    /**
+     * The club's details as they are now (invoices, and old receipts without a snapshot).
+     *
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string}
+     */
+    public static function issuerOf(Club $club): array
+    {
+        return [
+            'name' => (string) $club->name,
+            'registrationNo' => $club->registration_no ?: null,
+            'address' => $club->address ?: null,
+            'email' => $club->email ?: null,
+            'logoUrl' => $club->logo_url,
+        ];
+    }
+
+    /**
      * Receipt fields for a paid fee (null otherwise).
      *
      * @return array<string, mixed>|null
@@ -109,6 +149,8 @@ final class MemberPaymentPresenter
             'reference' => $payment->paid_via === 'transfer'
                 ? ($payment->transfer_bank_ref ?? $payment->transfer_ref ?? $payment->transferReference())
                 : $payment->reference,
+            // Who issued it, as it was when the fee was paid (issuer_snapshot; the live club for older fees).
+            'issuer' => self::issuer($payment),
         ];
     }
 
@@ -147,6 +189,8 @@ final class MemberPaymentPresenter
             'method' => $transfer ? 'transfer' : 'gateway',
             'transactionId' => $transfer ? null : $bill->transaction_id,
             'reference' => $transfer ? ($lead->transfer_bank_ref ?? $lead->transfer_ref ?? $bill->reference) : $bill->reference,
+            // Every fee of the set was paid at once, so the first fee's snapshot names the issuer.
+            'issuer' => self::issuer($lead),
             'lines' => $fees->map(fn (Payment $p) => [
                 'id' => $p->id,
                 'receiptNo' => self::receiptNo($p),

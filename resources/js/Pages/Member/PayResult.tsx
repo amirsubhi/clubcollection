@@ -5,7 +5,7 @@ import { MemberShell } from "@/components/app/MemberShell";
 import { FlashBanner, HelpLine, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { ReceiptActions } from "@/components/app/ReceiptActions";
-import { ReceiptCard } from "@/components/app/ReceiptCard";
+import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate } from "@/lib/format";
@@ -220,7 +220,7 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
         </div>
         {lines && <p className="-mt-2 text-center text-base font-semibold">{fill(t("paidTogether"), { n: lines.length })}</p>}
         <ReceiptCard
-          club={{ name: payClub.name }}
+          club={receiptClub(receipt.issuer, payClub)}
           member={{ name: member.name }}
           receipt={{
             receiptNo: receipt.receiptNo,

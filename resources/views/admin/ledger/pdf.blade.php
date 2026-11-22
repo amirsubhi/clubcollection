@@ -123,6 +123,13 @@
                 <td>
                     <div class="report-title">Financial Ledger Report</div>
                     <div class="report-club">{{ $club->name }}</div>
+                    {{-- Club profile, when set (escaped; the address keeps its line breaks). --}}
+                    @if($club->registration_no)
+                    <div class="report-meta">Registration no.: {{ $club->registration_no }}</div>
+                    @endif
+                    @if($club->address)
+                    <div class="report-meta">{!! nl2br(e($club->address)) !!}</div>
+                    @endif
                     <div class="report-meta">
                         Period: {{ $filters['from']->format('d M Y') }} — {{ $filters['to']->format('d M Y') }}
                         &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -133,7 +140,7 @@
                     </div>
                 </td>
                 <td class="report-logo-cell">
-                    @if($club->logo)
+                    @if($club->logo && is_file(storage_path('app/public/' . $club->logo)))
                     <img src="{{ storage_path('app/public/' . $club->logo) }}" alt="{{ $club->name }} logo" style="max-height:40px;max-width:120px">
                     @endif
                 </td>
