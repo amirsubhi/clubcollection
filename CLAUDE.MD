@@ -33,15 +33,15 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
 
 ```
 app/Contracts/                 PaymentGateway, ConfirmsWebhookPayments
-app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
+app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, PrivacyNotice, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
                                TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
 app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
-app/Http/Controllers/          InstallController, WebhookController, HomeController, Auth/*
+app/Http/Controllers/          InstallController, WebhookController, HomeController, PrivacyController, Auth/*
 app/Models/                    User, Club, Payment, PaymentBill, Expense, WelfareCase, Attachment, FeeRate,
                                Discount, ExpenseCategory, AuditLog, ClubJobLevel, PortalSetting
 app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
-app/Support/                   Portal/PortalSettings (portal name + logo), presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
+app/Support/                   Portal/PortalSettings (portal name + logo), Portal/PrivacyNotice, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                WebhookSecret, BillplzSignature, ...), Export/CsvSafe
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
 routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC)
@@ -69,7 +69,12 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
     test that needs it. Both redirect with `Inertia::location` (409 for Inertia visits).
   - `member` group, prefix `/my`: member pages. `MemberOnly` only checks auth (admins can use it too).
   - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log, portal settings
-    (`admin.portal-settings.edit|update`).
+    (`admin.portal-settings.edit|update`), privacy notice (`/admin/portal-settings/privacy`,
+    `admin.privacy-notice.edit|update`; named apart so `admin.portal-settings.*` doesn't match it).
+- `GET /privacy` (`privacy`): public privacy notice, inside `check_installed` + `auth_locale`, no `auth`/`guest`
+  (members open it too). Text from `App\Support\Portal\PrivacyNotice` (portal_settings keys `privacy_notice_ms|en`,
+  `privacy_contact_name|email`, kept out of `PortalSettings::KEYS`); plain text only, escaped, paragraphs from blank
+  lines; a neutral placeholder when unset. Never ship default legal wording.
   - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
     attachments, club profile (`admin.clubs.profile.edit|update`), billing, ledger.
 - `/two-factor-challenge` deliberately has **no `auth`**: login logs the user out and stores `two_factor_user_id`;
@@ -101,8 +106,10 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `portal/{uuid}.png` on the `public` disk. Never delete an old logo file (receipt snapshots point at it). Build URLs
   with `LogoService::url()` / `Club::logo_url` (null when the file is gone).
 - **Receipt snapshot**: `payments.issuer_snapshot` (not fillable) is written once by `Payment::booted()` (saving)
-  when a fee becomes paid, from `Club::issuerSnapshot()`; never overwritten (also not on a revert). Receipts use
-  `MemberPaymentPresenter::issuer()` (snapshot, else the live club for older fees); invoices use the live club.
+  when a fee becomes paid, from `Club::issuerSnapshot()`; never overwritten while paid (a revert clears it). Receipts use
+  `MemberPaymentPresenter::issuer()` (snapshot, else the live club for older fees); invoices use the live club. The
+  club's receipt footer (`clubs.receipt_footer`, plain text, max 300) is in the snapshot; an older snapshot without a
+  `footer` key shows none. Render it escaped (`whitespace-pre-line` in React, `nl2br(e())` in Blade).
 - **Financial year**: "this year" for a club is `FundFigures::yearToDate($today, $club)` /
   `financialYearStart()` / `yearLabel()` (`clubs.financial_year_start_month`, 1 = calendar year, label "FY 2026/27"
   otherwise). Don't use `startOfYear()` for a club's year. The classic dashboard and the member payments list still

@@ -108,8 +108,11 @@ When more than one fee is open (pending or overdue), **Utama** shows **Bayar sem
 Open any fee from **Utama** or **Bayaran**. An unpaid fee shows its invoice; a paid fee shows the **Resit rasmi**
 (official receipt) with the payment method (FPX with the transaction ID, or **Pindahan bank / DuitNow**). Both are
 headed with the club's logo, name, registration no. and address (when the club has set them). A receipt keeps the
-club details it was issued with, so it doesn't change if the club later renames itself or changes its logo. Tap
+club details it was issued with, so it doesn't change if the club later renames itself or changes its logo. If the
+club has written a receipt footer, it is printed at the bottom of the receipt and the receipt email. Tap
 **Cetak** to print or save it as PDF.
+
+**Notis privasi** (privacy notice) is linked from **Utama** → Akaun and from the sign-in page.
 
 <br clear="right">
 
@@ -253,9 +256,12 @@ Switching **Offer bank transfer / DuitNow to members** off takes effect at once 
 - **Financial year starts in**: the month your club's year begins. "This year" on the Dashboard, Fund Usage, the Ledger
   (its default period and the year preset) and the members' "where the money went" page then runs from the 1st of that
   month, labelled e.g. **FY 2026/27**. January (the default) is the calendar year.
+- **Receipt footer** (optional): plain text of up to 300 characters, printed under "This is a computer-generated
+  receipt" on the official receipt and the receipt email, e.g. a thank-you note or the treasurer's contact. Line
+  breaks are kept; tabs and other control characters are refused; anything that looks like HTML is shown as typed.
 
 Every change is in the Audit Log with the old and new values. **Receipts already issued keep the details they were
-issued with**: a fee paid before you change the name or logo still shows the old ones on its receipt. (Fees paid
+issued with**: a fee paid before you change the name, logo or receipt footer still shows the old ones on its receipt. (Fees paid
 before this feature existed show the club as it is now.) Unpaid invoices always show the current details. Old logo
 files are kept on the server for that reason.
 
@@ -416,3 +422,16 @@ admin can't be demoted or removed.
 emails and the admin sidebar; left empty it is the `APP_NAME` from `.env`) and the **portal logo** (same rules as a
 club logo), shown in the admin sidebar and on the sign-in pages. When exactly one club is active, the sign-in pages
 show that club's name and logo instead, with the portal name under it. Changes are audited.
+
+### Privacy notice
+
+**Privacy notice** (super admin section of the sidebar, under Portal settings) holds the portal's privacy notice in
+**Bahasa Melayu** and **English** (up to 10,000 characters each) and an optional **data protection contact** (a name
+or role and an email). Anyone can read it at `/privacy`, without signing in: it is linked from the sign-in pages and
+from the member app (**Utama** → Akaun). The page is in BM by default with the BM/EN switch; when only one language
+is filled in, both switches show that one and say so.
+
+The text is plain text: leave a blank line between paragraphs; HTML or Markdown is shown as typed, never run. No
+wording is supplied for you: until a notice is saved, `/privacy` says "The club has not published its privacy notice
+yet. Ask your club administrator." Write the notice with whoever is responsible for your club's personal data (in
+Malaysia, the PDPA 2010 applies). Every change is in the platform Audit Log.

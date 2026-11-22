@@ -36,7 +36,9 @@ Billplz sandbox run on your own host.
     reference, the member uploads 1–3 slips (photo or PDF) and the fee shows "Menunggu pengesahan" until a
     treasurer approves it.
 - Invoice and official receipt ("Resit rasmi") for every fee, with a print button, headed with the club's logo,
-  name, registration no. and address. A receipt keeps the club details it was issued with.
+  name, registration no. and address, and the club's own receipt footer. A receipt keeps the club details it was
+  issued with.
+- A public **privacy notice** page (`/privacy`, BM and English), linked from the sign-in page and the member app.
 - Payment history by year and **pay ahead** ("Bayar lebih awal") for 1, 3 or 12 months, using the plans the club allows.
 - Add to home screen (PWA) with a small install tip.
 
@@ -53,7 +55,7 @@ Billplz sandbox run on your own host.
   approved or rejected as one set.
 - **Club profile**: the club's name, logo, contact email, registration no. (ROS/PPM), address and the month its
   financial year starts ("this year" on the dashboard, Fund Usage, ledger and member pages then runs from that
-  month). Logos are PNG / JPEG / WebP only, re-encoded on the server.
+  month), and an optional receipt footer. Logos are PNG / JPEG / WebP only, re-encoded on the server.
 - **Billing settings**: which plans members may choose, the default plan, who pays the gateway fee, and the club's
   bank / DuitNow details. A change to the bank details waits for a second admin to approve it.
 - Members (add one by one or import CSV, welcome email with a temporary password), **job levels** each club defines
@@ -68,6 +70,8 @@ Billplz sandbox run on your own host.
 **For the super admin**
 - Clubs (including each club's gateway and credentials), administrators, platform statistics and the platform-wide
   audit log. Only the super admin can make someone a club admin.
+- **Privacy notice**: the portal's privacy notice in BM and English and a data-protection contact, shown on the
+  public `/privacy` page (plain text; a neutral placeholder until one is written).
 
 ## Screenshots
 
