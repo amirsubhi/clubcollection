@@ -21,7 +21,10 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
     Verifications. Root view `resources/views/app.blade.php`, pages in `resources/js/Pages/{Member,Admin}`, shared
     components in `resources/js/components/{app,ui}`, BM/EN strings in `resources/js/lib/i18n.ts` (members default
     to `ms`), theme in `resources/js/lib/theme.tsx`. Props are shared by `HandleInertiaRequests`.
-  - **Blade + Bootstrap 5 from jsDelivr** for login/2FA/password pages, installer and the remaining admin pages
+  - **Blade + Tailwind** (same tokens, `resources/css/app.css` `.auth-*`, layout `layouts/auth.blade.php`) for the
+    sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
+    2FA challenge and password pages.
+  - **Blade + Bootstrap 5 from jsDelivr** for the installer and the remaining admin pages
     (members, payments, fee rates, discounts, categories, billing settings, ledger, audit logs, clubs, admins,
     statistics, classic dashboard). Use Bootstrap classes there, Tailwind only in the React pages.
 - `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade, CDN).

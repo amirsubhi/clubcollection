@@ -56,12 +56,12 @@ if (app()->environment('local', 'testing')) {
 // ── All other routes — require app to be installed ─────────────────────────
 Route::middleware('check_installed')->group(function () {
 
-    Route::get('/', function () {
-        return redirect()->route('login');
-    });
-
     // Sign-in pages: BM by default, EN via the page's switch (AuthPageLocale).
     Route::middleware('auth_locale')->group(function () {
+        // The front page is the sign-in page itself (no extra step before the form). LoginController's
+        // `guest` middleware sends a signed-in user on to /home.
+        Route::get('/', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('front');
+
         // Register disabled; login throttled to 5 attempts / minute per IP+email
         Auth::routes(['register' => false]);
 

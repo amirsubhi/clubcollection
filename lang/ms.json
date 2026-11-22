@@ -66,5 +66,11 @@
     "Email :club": "E-mel :club",
     "Forgot password? Reset it yourself": "Lupa kata laluan? Tetapkan semula sendiri",
     "That action is not available here": "Tindakan itu tidak tersedia di sini",
-    "This page was opened in a way it does not support.": "Halaman ini dibuka dengan cara yang tidak disokong."
+    "This page was opened in a way it does not support.": "Halaman ini dibuka dengan cara yang tidak disokong.",
+    "Show": "Tunjuk",
+    "Hide": "Sorok",
+    "password": "kata laluan",
+    "New member? How to join": "Ahli baru? Cara menyertai",
+    "There is no sign-up form. Your club admin adds you as a member, then you get an email with your sign-in details and a temporary password.": "Tiada borang daftar. Pentadbir kelab akan menambah anda sebagai ahli, kemudian anda akan menerima e-mel berserta butiran log masuk dan kata laluan sementara.",
+    "To join, or if you cannot sign in, contact your club admin.": "Untuk menyertai, atau jika anda tidak dapat log masuk, hubungi pentadbir kelab anda."
 }

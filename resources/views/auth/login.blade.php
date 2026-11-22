@@ -17,9 +17,17 @@
 
     <div>
         <label for="password" class="auth-label">{{ __('Password') }}</label>
-        <input id="password" type="password" name="password" class="auth-input"
-               required autocomplete="current-password"
-               @error('password') aria-invalid="true" aria-describedby="auth-error" @enderror>
+        {{-- Show/hide: the button stays hidden until the script below runs (no JS or blocked JS = a plain field). --}}
+        <div class="relative">
+            <input id="password" type="password" name="password" class="auth-input pr-24"
+                   required autocomplete="current-password"
+                   @error('password') aria-invalid="true" aria-describedby="auth-error" @enderror>
+            <button type="button" id="password-toggle" class="auth-link absolute inset-y-0 right-1 px-3" hidden
+                    aria-controls="password" aria-pressed="false" data-testid="password-toggle"
+                    data-show="{{ __('Show') }}" data-hide="{{ __('Hide') }}">
+                <span data-label>{{ __('Show') }}</span><span class="sr-only"> {{ __('password') }}</span>
+            </button>
+        </div>
         {{-- After the password field, so Tab goes email → password without a stop in between. --}}
         @if (Route::has('password.request'))
             <p class="mt-2 text-sm"><a href="{{ route('password.request') }}" class="auth-link inline-flex min-h-11 items-center">{{ __('Forgot password?') }}</a></p>
@@ -33,4 +41,41 @@
 
     <button type="submit" class="auth-btn">{{ __('Sign in') }}</button>
 </form>
+
+<script nonce="{{ $cspNonce ?? '' }}">
+(function () {
+    var input = document.getElementById('password');
+    var btn = document.getElementById('password-toggle');
+    if (! input || ! btn) return;
+    var label = btn.querySelector('[data-label]');
+    btn.hidden = false;
+    btn.addEventListener('click', function () {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+        label.textContent = show ? btn.dataset.hide : btn.dataset.show;
+        input.focus();
+    });
+    // Never submit the password as a visible field left on screen.
+    input.form.addEventListener('submit', function () { input.type = 'password'; });
+})();
+</script>
+@endsection
+
+{{-- Front page: how to join. There is no self sign-up; the club admin adds members. --}}
+@section('after-card')
+<section class="auth-card mt-4" aria-labelledby="join-heading" data-testid="auth-join">
+    <h2 id="join-heading" class="font-display text-xl font-bold leading-tight">{{ __('New member? How to join') }}</h2>
+    <p class="mt-2 text-base text-muted-foreground">{{ __('There is no sign-up form. Your club admin adds you as a member, then you get an email with your sign-in details and a temporary password.') }}</p>
+    <p class="mt-2 text-base text-muted-foreground">{{ __('To join, or if you cannot sign in, contact your club admin.') }}</p>
+    @if ($authHelpClub ?? null)
+        <p class="mt-1">
+            @if ($authHelpClub['whatsapp'])
+                <a href="https://wa.me/{{ $authHelpClub['whatsapp'] }}" target="_blank" rel="noopener noreferrer" class="auth-link" data-testid="auth-join-whatsapp">{{ __('WhatsApp :club', ['club' => $authHelpClub['name']]) }}</a>
+            @else
+                <a href="mailto:{{ $authHelpClub['email'] }}" class="auth-link" data-testid="auth-join-email">{{ __('Email :club', ['club' => $authHelpClub['name']]) }}</a>
+            @endif
+        </p>
+    @endif
+</section>
 @endsection

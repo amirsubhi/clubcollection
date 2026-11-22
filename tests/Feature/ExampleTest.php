@@ -12,9 +12,8 @@ class ExampleTest extends TestCase
      */
     public function test_the_application_returns_a_successful_response(): void
     {
-        // The root URL redirects unauthenticated users to the login page
-        $response = $this->get('/');
-
-        $response->assertRedirect(route('login'));
+        // The root URL is the sign-in page itself (see FrontPageTest)
+        $this->withoutVite();
+        $this->get('/')->assertOk()->assertSee('action="'.route('login').'"', false);
     }
 }

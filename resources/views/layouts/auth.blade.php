@@ -81,6 +81,7 @@
                     @yield('content')
                 </div>
             </div>
+            @yield('after-card')
         </main>
 
         <footer class="pb-6 text-center text-sm leading-relaxed text-muted-foreground" data-testid="auth-footer">

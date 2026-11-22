@@ -15,7 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
-  Login, the installer and the remaining admin pages are still Blade + Bootstrap.
+  The installer and the remaining admin pages are still Blade + Bootstrap.
+- **Front page:** `/` is now the sign-in page itself (no redirect), with a "New member? How to join" section
+  (no self sign-up: contact your club admin, linked when there is one active club) and a show/hide password button.
 - **Member app:** Home (amount due, upcoming and recent fees, club-wide "where your money goes" totals), Payments by
   year with pay-ahead, invoice / official receipt, Review & pay (POST-only pay) and a status-aware result page.
 - **Fund Usage:** expenses and welfare (kebajikan) cases with maker-checker approval (conflict-of-interest
