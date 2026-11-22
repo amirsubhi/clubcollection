@@ -24,6 +24,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Two-factor authentication for administrators
+    |--------------------------------------------------------------------------
+    |
+    | When true, a super admin or club admin without 2FA is sent to the
+    | Security page until they turn it on (App\Http\Middleware\RequireAdminTwoFactor).
+    | Members are never forced. The test suite turns it off in Tests\TestCase.
+    |
+    */
+
+    'require_admin_two_factor' => (bool) env('REQUIRE_ADMIN_2FA', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Sign-in protection per account
     |--------------------------------------------------------------------------
     |

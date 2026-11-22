@@ -74,6 +74,49 @@ class User extends Authenticatable
         return true;
     }
 
+    /**
+     * Index of the stored recovery code that $typed matches, or false. Compared without case, spaces or
+     * dashes ("abcd efgh" matches "ABCD-EFGH"), in constant time per code.
+     */
+    public function findRecoveryCode(string $typed): int|false
+    {
+        $norm = fn ($c) => strtoupper(preg_replace('/[\s-]+/', '', (string) $c));
+        $typed = $norm($typed);
+        if ($typed === '') {
+            return false;
+        }
+
+        foreach ($this->getTwoFactorRecoveryCodes() as $i => $code) {
+            if (hash_equals($norm($code), $typed)) {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * A current TOTP code (not replayed) or one of the recovery codes. A matched recovery code is used up.
+     */
+    public function verifyTwoFactorCodeOrRecoveryCode(string $input): bool
+    {
+        $input = trim($input);
+        if (preg_match('/^\d{6}$/', $input)) {
+            return $this->verifyTwoFactorCode($input);
+        }
+
+        $index = $this->findRecoveryCode($input);
+        if ($index === false) {
+            return false;
+        }
+
+        $codes = $this->getTwoFactorRecoveryCodes();
+        unset($codes[$index]);
+        $this->forceFill(['two_factor_recovery_codes' => encrypt(json_encode(array_values($codes)))])->save();
+
+        return true;
+    }
+
     // ── Role helpers ───────────────────────────────────────────────────────
 
     public function isSuperAdmin(): bool

@@ -68,12 +68,13 @@ class TwoFactorTest extends TestCase
         // verified so we exercise the controller.
         $this->withSession(['two_factor_verified' => true]);
 
-        $this->delete(route('profile.2fa.disable'), ['password' => 'wrong'])
+        $code = (new Google2FA())->getCurrentOtp('JBSWY3DPEHPK3PXP');
+        $this->delete(route('profile.2fa.disable'), ['password' => 'wrong', 'code' => $code])
             ->assertSessionHasErrors('password');
 
         $this->assertNotNull($user->fresh()->two_factor_confirmed_at);
 
-        $this->delete(route('profile.2fa.disable'), ['password' => 'SuperSecret!2026'])
+        $this->delete(route('profile.2fa.disable'), ['password' => 'SuperSecret!2026', 'code' => $code])
             ->assertRedirect(route('profile.security'));
 
         $this->assertNull($user->fresh()->two_factor_confirmed_at);

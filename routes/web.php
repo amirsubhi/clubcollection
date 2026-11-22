@@ -98,7 +98,9 @@ Route::middleware('check_installed')->group(function () {
     // whose password changed, e.g. after a password reset (S1).
     // password_changed: an account with an emailed temporary password must choose its own first
     // (EnsurePasswordChanged); it allows only the change-password page and logout.
-    Route::middleware(['auth', 'auth.session', 'two_factor', 'password_changed'])->group(function () {
+    // admin_two_factor: with REQUIRE_ADMIN_2FA (default on) a super admin / club admin without 2FA is sent to
+    // the Security page to set it up (RequireAdminTwoFactor). Members are never forced.
+    Route::middleware(['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
 
         // ── Change password (sign-in page style, BM by default) ─────────────

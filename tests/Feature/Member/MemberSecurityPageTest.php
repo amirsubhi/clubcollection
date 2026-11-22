@@ -140,16 +140,22 @@ class MemberSecurityPageTest extends TestCase
         $this->get(route('profile.security'))->assertInertia(fn (Assert $page) => $page->where('recoveryCodes', null));
     }
 
-    public function test_member_can_turn_2fa_off_with_the_password(): void
+    public function test_member_can_turn_2fa_off_with_the_password_and_a_recovery_code(): void
     {
         $this->post(route('profile.2fa.enable'), ['current_password' => 'password']);
         $code = (new Google2FA())->getCurrentOtp($this->member->fresh()->getTwoFactorSecret());
         $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'password']);
+        $recovery = $this->member->fresh()->getTwoFactorRecoveryCodes()[0];
 
-        $this->delete(route('profile.2fa.disable'), ['password' => 'wrong'])->assertSessionHasErrors('password');
+        $this->delete(route('profile.2fa.disable'), ['password' => 'wrong', 'code' => $recovery])->assertSessionHasErrors('password');
         $this->assertNotNull($this->member->fresh()->two_factor_confirmed_at);
 
-        $this->delete(route('profile.2fa.disable'), ['password' => 'password'])
+        // The password alone is not enough (AdminTwoFactorRequirementTest), and the code just used to turn it on
+        // can't be replayed. (Enable, confirm and disable share one 5-a-minute limit.)
+        $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => $code])->assertSessionHasErrors(['code' => 'member.2fa_disable_code_invalid']);
+        $this->assertNotNull($this->member->fresh()->two_factor_confirmed_at);
+
+        $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => strtolower($recovery)])
             ->assertRedirect(route('profile.security'))
             ->assertSessionHas('success', 'member.2fa_disabled')
             ->assertSessionHas('inertia.clear_history', true);

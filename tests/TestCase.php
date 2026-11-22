@@ -26,6 +26,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Most tests sign in as admins without 2FA; AdminTwoFactorRequirementTest turns the rule back on.
+        config(['security.require_admin_two_factor' => false]);
+
         if ($this->fakeBreachedPasswordCheck) {
             $this->app->extend(UncompromisedVerifier::class, fn () => new class implements UncompromisedVerifier
             {

@@ -220,14 +220,39 @@ function SetupForm({ setup, url }: { setup: NonNullable<Props["setup"]>; url: st
 
 function DisableForm({ url }: { url: string }) {
   const t = useT();
-  const form = useForm({ password: "" });
+  const form = useForm({ password: "", code: "" });
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    form.delete(url, { preserveScroll: true, onError: () => focusFirstInvalid("disable-2fa") });
+    form.delete(url, { preserveScroll: true, onError: () => focusFirstInvalid("disable-2fa"), onFinish: () => form.reset("code") });
   };
   return (
     <form id="disable-2fa" onSubmit={submit} noValidate className="flex flex-col gap-4 border-t pt-4">
       <Password id="disable_password" hint="secTurnOffHint" error={form.errors.password} value={form.data.password} onChange={(v) => form.setData("password", v)} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="disable_code" className="text-base">
+          {t("secTurnOffCode")}
+        </Label>
+        <Input
+          id="disable_code"
+          className="h-12 font-mono text-base tracking-wider"
+          autoComplete="one-time-code"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={64}
+          required
+          value={form.data.code}
+          invalid={!!form.errors.code}
+          aria-describedby="disable_code-note"
+          onChange={(e) => form.setData("code", e.target.value)}
+        />
+        {form.errors.code ? (
+          <ErrorText id="disable_code-note" msg={form.errors.code} />
+        ) : (
+          <p id="disable_code-note" className="text-sm text-muted-foreground">
+            {t("secTurnOffCodeHint")}
+          </p>
+        )}
+      </div>
       <SubmitButton busy={form.processing} variant="outline">
         <ShieldOff aria-hidden /> {t("secTurnOff")}
       </SubmitButton>

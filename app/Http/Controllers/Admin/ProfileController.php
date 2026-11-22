@@ -26,7 +26,10 @@ class ProfileController extends Controller
             return $this->memberSecurity($user, $recoveryCodes);
         }
 
-        return $this->noStore(response()->view('admin.profile.security', compact('user', 'recoveryCodes')));
+        // Shown when RequireAdminTwoFactor sent them here: 2FA must be on before the admin pages open.
+        $twoFactorRequired = \App\Http\Middleware\RequireAdminTwoFactor::applies($user);
+
+        return $this->noStore(response()->view('admin.profile.security', compact('user', 'recoveryCodes', 'twoFactorRequired')));
     }
 
     /** Secrets and recovery codes must not be kept by the browser or a proxy cache. */
@@ -184,12 +187,25 @@ class ProfileController extends Controller
 
     public function disableTwoFactor(Request $request)
     {
-        $request->validate(['password' => 'required|current_password'], $this->memberMessages([
+        // The password alone is not enough (a borrowed, unlocked session, or a password someone saw): the
+        // second factor itself must be shown too, as a current code or one of the recovery codes.
+        $request->validate([
+            'password' => 'required|current_password',
+            'code' => 'required|string|max:64',
+        ], $this->memberMessages([
             'password.required' => 'member.2fa_password_invalid',
             'password.current_password' => 'member.2fa_password_invalid',
+            'code.required' => 'member.2fa_disable_code_invalid',
+            'code.string' => 'member.2fa_disable_code_invalid',
+            'code.max' => 'member.2fa_disable_code_invalid',
         ]));
 
         $user = auth()->user();
+        if ($user->hasEnabledTwoFactor() && ! $user->verifyTwoFactorCodeOrRecoveryCode((string) $request->input('code'))) {
+            AuditService::log('2fa.disable_failed', '2FA not disabled: wrong authenticator or recovery code.');
+
+            return back()->withErrors(['code' => $this->flashText('2fa_disable_code_invalid', 'That code is not right. Enter the 6-digit code from your authenticator app, or one of your recovery codes.')]);
+        }
         $user->forceFill([
             'two_factor_secret'         => null,
             'two_factor_recovery_codes' => null,
