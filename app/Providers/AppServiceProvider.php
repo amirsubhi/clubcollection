@@ -14,6 +14,7 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -71,8 +72,13 @@ class AppServiceProvider extends ServiceProvider
                 ->response(self::loginLimitResponse(...)),
         ]);
         // The 2FA challenge POST and the installer each have their own bucket (they used to share the
-        // unnamed throttle:5,1 counter with sign-in). The challenge also locks per account after 5 wrong codes.
-        RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by('2fa|'.$request->ip()));
+        // unnamed throttle:5,1 counter with sign-in). The challenge: 5 a minute per pending account (the
+        // session's two_factor_user_id) + IP, 30 a minute per IP (admins in one office share an IP); it also
+        // locks per account after 5 wrong codes (TwoFactorChallengeController).
+        RateLimiter::for('two-factor', fn (Request $request) => [
+            Limit::perMinute(30)->by('2fa-ip|'.$request->ip()),
+            Limit::perMinute(5)->by('2fa|'.(int) ($request->hasSession() ? $request->session()->get('two_factor_user_id') : 0).'|'.$request->ip()),
+        ]);
         // Change password checks the current one: 5 tries a minute per user.
         RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by('password-change|'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('install', fn (Request $request) => Limit::perMinute(5)->by('install|'.$request->ip()));
@@ -104,11 +110,15 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * A sign-in limit was hit: record a Lockout (audit log), then answer with the usual "Too many attempts,
-     * please wait about N seconds" page (resources/views/errors/429, BM/EN, sign-in styling).
+     * please wait about N seconds" page (resources/views/errors/429, BM/EN, sign-in styling). One Lockout per
+     * IP per wait, however many more posts arrive, so a flood can't fill the audit log.
      */
     public static function loginLimitResponse(Request $request, array $headers): never
     {
-        event(new Lockout($request));
+        $seconds = max(1, (int) ($headers['Retry-After'] ?? 60));
+        if (Cache::add('login-lockout-audited|'.$request->ip(), true, $seconds)) {
+            event(new Lockout($request));
+        }
 
         throw new ThrottleRequestsException('Too Many Attempts.', null, $headers);
     }

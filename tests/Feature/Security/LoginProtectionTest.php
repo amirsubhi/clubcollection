@@ -72,6 +72,23 @@ class LoginProtectionTest extends TestCase
             ->post(route('two-factor.verify'), ['code' => '123456'])->assertRedirect(route('login'));
     }
 
+    public function test_the_two_factor_limit_is_per_pending_account_so_admins_on_one_ip_are_not_blocked_by_each_other(): void
+    {
+        $a = User::factory()->create(['role' => 'admin']);
+        $b = User::factory()->create(['role' => 'admin']);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])->withSession(['two_factor_user_id' => $a->id])
+                ->post(route('two-factor.verify'), ['code' => '000000']);
+        }
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])->withSession(['two_factor_user_id' => $a->id])
+            ->post(route('two-factor.verify'), ['code' => '000000'])->assertStatus(429);
+
+        // A colleague's challenge from the same office IP still answers.
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])->withSession(['two_factor_user_id' => $b->id])
+            ->post(route('two-factor.verify'), ['code' => '000000'])->assertStatus(302);
+    }
+
     public function test_the_limit_is_per_email_so_colleagues_on_one_office_ip_can_still_sign_in(): void
     {
         $colleague = User::factory()->create(['role' => 'member', 'email' => 'colleague@example.test']);
@@ -104,6 +121,10 @@ class LoginProtectionTest extends TestCase
             $this->attempt('locked@example.test', 'wrong');
         }
         $this->attempt('locked@example.test', 'wrong')->assertStatus(429);
+        // More blocked posts in the same wait add no rows.
+        for ($i = 0; $i < 3; $i++) {
+            $this->attempt('locked@example.test', 'wrong')->assertStatus(429);
+        }
 
         $rows = AuditLog::where('action', 'auth.lockout')->get();
         $this->assertCount(1, $rows);

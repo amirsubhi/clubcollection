@@ -21,9 +21,9 @@ class ForcedPasswordChangeTest extends TestCase
 
     private function memberWithTemporaryPassword(Club $club): User
     {
-        $user = User::factory()->create(['role' => 'member']);
+        // actingAsMember signs the user in too; tests that need a guest sign out themselves.
+        $user = $this->actingAsMember($club);
         $user->forceFill(['must_change_password' => true])->save();
-        $club->members()->attach($user, ['role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
 
         return $user;
     }
