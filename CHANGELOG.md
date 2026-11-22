@@ -6,6 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Documentation
+- `docs/INSTALL.md`: `composer.json` requires PHP `^8.4` too (the "still says ^8.3" note is gone); the extension
+  table lists `curl`, `xml` and `zip` (required by `app:doctor`; the backup uses `ZipArchive`); the `app:doctor`
+  summary names the APP_KEY, Database and "No Vite dev-server file" rows; PostgreSQL is marked untested (CI covers
+  SQLite, MariaDB and MySQL).
+- `docs/RELEASE.md`: the list of what the release build drops matches `scripts/build-release.sh` (`CLAUDE.MD`,
+  `public/storage`, `.phpunit.result.cache`, `.git` folders under `vendor/`).
+- `SECURITY.md`: `v2.0.0` is the supported release (fixes land on `master` and ship in the next tag); the password
+  rules are described accurately (12+ characters and the breached-password check for resets and changes; the
+  installer's own rule for the first super admin); the per-account sign-in pause settings
+  (`LOGIN_ACCOUNT_MAX_FAILURES` / `_DECAY_MINUTES` / `_BLOCK_MINUTES`) with their defaults; the own-fee rule covers
+  cancelling and deleting.
+- `.env.example`: commented `LOGIN_ACCOUNT_*` and `LOG_DAILY_DAYS` with their defaults.
+- `docs/SANDBOX-TEST.md`: Generate fees only offers this month and next, so the test member's three fees come from
+  **Payments → Add** (or Generate fees plus one added by hand).
+- `CLAUDE.MD`: Bootstrap and Chart.js are bundled by Vite (jsDelivr only as the fallback without a build, also in
+  the CSP; fonts are self-hosted); each rate limiter is described with its own limits and every route throttle is
+  listed; newer services, controllers and support classes in the layout; every scheduled job; the `club_admin` route
+  group sits with the other groups; migrations are additive only from v2.0.0.
+- `CREDITS.md`: package versions taken from the lock files (Laravel 13.43.0, Tinker 3.2.0, bacon-qr-code 3.1.1,
+  dompdf 3.1.6, Guzzle 8.5.5).
+- `README.md`: admins must set up 2FA, the password rules and the 15-minute per-account sign-in pause; the
+  "rate is RM 0" skip reason of Generate fees; the own-fee rule covers cancelling and deleting a payment.
+- `docs/USER-GUIDE.md`: a "Record a payment received by hand" section; contents links to it and to cancel a payment,
+  club profile, receipt numbers, portal settings and the privacy notice; member labels as the pages show them (result
+  pages, **Slip dihantar**, **Ambil gambar slip**, **Akaun saya**, **Hidupkan 2FA** / **Sahkan dan hidupkan**) and
+  the admin 2FA buttons; the grace period and WhatsApp help on Billing settings with the current labels; the ledger's
+  "(set manually)" mark; the Audit Log's **Payment Cancelled**.
+- `docs/option-a-report.md`: go-live checklist items that are done are ticked (pay-ahead cap, self-hosted fonts,
+  previous build's assets kept, cache-store check in `app:doctor`); the release build warns about stale licence
+  files rather than refusing.
+- This changelog: v2.0.0 ships service worker cache `v3`, and Bootstrap / Chart.js bundled by Vite (SRI applies to
+  the jsDelivr fallback only); a summary of design review rounds R2–R7.
+
 ## [v2.0.0] — 2026-11-23
 
 > **Upgrade note:** the March 2026 GitHub release `v1.0.0` (listed below as v0.0.1) is superseded. Do not upgrade it
@@ -132,7 +168,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   180, favicons 32 / 48) under hashed names, so a new logo or colour gives new URLs. The manifest is now served by the
   app at `/app.webmanifest` (portal name, brand colour, icons; no session; works before the install); the static
   `public/manifest.webmanifest` stays as a fallback. Without a logo or GD the built-in icons are used. Phones that
-  installed the app earlier may keep the old icon and name until it is reinstalled. Service worker cache `v2`.
+  installed the app earlier may keep the old icon and name until it is reinstalled. Service worker cache `v3` in this release.
 
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
@@ -197,8 +233,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     no longer reads "paid" after an admin reverts one of its fees.
   - Sign-in: the saved language only counts when it is `bm`/`en`; alert messages are guarded; a translated, styled
     429 "too many attempts" page.
-  - Classic pages: Subresource Integrity on the Bootstrap, Bootstrap Icons and Chart.js CDN tags (Chart.js now loads
-    the package's own `chart.umd.js`); the club name is no longer repeated under the brand; the theme button reads
+  - Classic pages: Bootstrap, Bootstrap Icons and Chart.js are bundled by Vite (R3d); the pinned jsDelivr copies,
+    with Subresource Integrity, are only a fallback when `public/build` is missing; the club name is no longer repeated under the brand; the theme button reads
     "Theme (System)"; on phones the payments table shows each status under the member's name, with a scroll hint.
   - The member page's club fallback for admins only uses clubs they still actively manage.
   - The review page's sticky pay bar keeps the same size pinned or not, so it can't flicker at the threshold; the
@@ -206,6 +242,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Docs: screenshots retaken (new `member-pay-all.png`); README and user guide cover "Bayar semua", the new ledger
     and billing pages, bank charges, the 08:00 Malaysia-time reminder, which figure to quote at the AGM, and that
     removing a member keeps their payment history.
+
+### Design review rounds (R2–R7)
+- **R2:** "Record payment…" dialog for money received outside the app; branded 419 / 500 / 503 error pages; an
+  untrusted Host header is refused; an optional club WhatsApp number for member help on Billing settings.
+- **R3a–R3c:** member **Keselamatan & 2FA** page with recovery codes to download; slip review on Verifications with
+  zoom; the classic Payments table shown as cards on small screens.
+- **R3d, performance:** fonts self-hosted (Fontsource, Google Fonts removed), Bootstrap, Bootstrap Icons and
+  Chart.js bundled by Vite (zero third-party requests in the normal path), and a smaller entry chunk for member pages.
+- **R4:** PHP 8.4 required; branded 404 / 405 pages for unknown URLs (`FallbackController`); recovery codes without
+  look-alike characters; `route:cache` works again. Scores: critique 30/40, audit 18/20, no axe WCAG A/AA violations.
+- **R5:** member Fund page and Home "Akan datang" grouping refined; sign-in help with the club's WhatsApp or email;
+  audit log with friendly record names (FU numbers) that stacks on small screens.
+- **R6:** layouts follow the browser text size (breakpoints in em); fund balance hints and Fund Usage dates
+  clarified. Scores: critique 32/40, audit 19/20, no P0 or P1.
+- **R7 (last design round):** a "no documents" filter and banner on Fund Usage. Design rounds stop at critique
+  32/40, audit 19/20; remaining polish waits for feedback after go-live.
 
 ### Documentation and licensing
 - New `docs/INSTALL.md`: one complete first-install guide (requirements and PHP extensions, local and cPanel paths,
@@ -471,5 +523,6 @@ First public release of Club Portal — a self-hosted club membership management
 
 ---
 
+[Unreleased]: https://github.com/amirsubhi/clubcollection/compare/v2.0.0...master
 [v2.0.0]: https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.0
 [v0.0.1]: https://github.com/amirsubhi/clubcollection/releases/tag/v1.0.0
