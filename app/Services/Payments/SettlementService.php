@@ -5,11 +5,13 @@ namespace App\Services\Payments;
 use App\Contracts\ConfirmsWebhookPayments;
 use App\Mail\PaymentConfirmation;
 use App\Models\AuditLog;
+use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentBill;
 use App\Services\AuditService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Payments\GatewayConfirmation;
+use App\Support\Payments\ReceiptNumbers;
 use App\Support\Payments\WebhookResult;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,13 @@ use Illuminate\Support\Facades\Mail;
  * requery. Amount checks, transaction dedupe, row locks, refund flags,
  * audit entries and receipt emails are therefore the same whichever way
  * the payment was learned of.
+ *
+ * Lock order (PR #25; CLAUDE.MD "Lock order"): payment_bill_items (shared,
+ * group only) → payments (by id) → payment_bills → receipt_counters. The
+ * receipt counter (settings phase 2) is taken when a fee is saved as paid,
+ * after the fee and bill locks; whatever is locked after it in the same
+ * transaction (this fee's own bill, open group bills covering this fee) is
+ * reached only through fee rows this transaction already holds.
  */
 class SettlementService
 {
@@ -140,7 +149,7 @@ class SettlementService
                 $this->auditReconciled($lead, $bill, $result, $source, $fees->pluck('id')->all());
             }
             try {
-                Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $bill));
+                Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $bill->fresh() ?? $bill));
             } catch (\Exception $e) {
                 Log::error('Payment confirmation email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
             }
@@ -387,11 +396,19 @@ class SettlementService
                 return null;
             }
 
+            // One bill, one receipt: one number for the whole set, taken after the fee and bill locks
+            // (CLAUDE.MD "Lock order"; later locks are only rows reached through these fees), kept on the bill
+            // and on every fee.
+            $receipt = ReceiptNumbers::allocate(Club::findOrFail($bill->club_id), $bill->id);
+
             // The bill first: once it is paid the Payment hook no longer supersedes it.
-            $bill->forceFill(['transaction_id' => $result->transactionId, 'paid_at' => now()])->save();
+            $bill->forceFill(['transaction_id' => $result->transactionId, 'paid_at' => now(), 'receipt_no' => $receipt['receipt_no']])->save();
             $absorbed = $bill->fee_payer === 'member' ? 0 : (int) ($bill->fee_sen ?? 0);
 
             foreach ($fees->values() as $i => $payment) {
+                // The shared number, set before the save so the Payment hook doesn't issue one of its own.
+                $payment->receipt_no = $receipt['receipt_no'];
+                $payment->receiptAllocationId = $receipt['id'];
                 $oldStatus = $payment->status;
                 $newAttrs = [
                     'status' => 'paid',

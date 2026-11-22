@@ -376,7 +376,11 @@ class PayAllTest extends TestCase
                 ->where('receiptUrl', route('member.payments.group-result', $bill))
                 ->where('receipt.amount', 6000)
                 ->has('receipt.lines', 3)
-                ->where('receipt.lines.0.receiptNo', 'RCP-'.str_pad((string) $this->fees[0]->id, 6, '0', STR_PAD_LEFT)));
+                // One bill, one receipt number, shared by its fees (settings phase 2).
+                ->where('receipt.receiptNo', $bill->receipt_no)
+                ->where('receipt.lines.0.receiptNo', $bill->receipt_no)
+                ->where('receipt.lines.0.invoiceNo', 'INV-'.str_pad((string) $this->fees[0]->id, 6, '0', STR_PAD_LEFT)));
+        $this->assertMatchesRegularExpression('/\ARCP-\d{4}-\d{4}\z/', (string) $bill->receipt_no);
         $this->getJson(route('member.payments.group-status', $bill))->assertJson(['status' => 'paid']);
     }
 

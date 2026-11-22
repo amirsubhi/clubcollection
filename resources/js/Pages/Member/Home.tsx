@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ChevronRight, Hourglass, KeyRound, LogOut, PieChart, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, FileText, Hourglass, KeyRound, LogOut, PieChart, RefreshCw, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import { ClubMark, MemberShell } from "@/components/app/MemberShell";
@@ -24,7 +24,7 @@ interface Props {
   payAll: PayAllOffer | null;
   clubs: HomeClub[];
   dashboardUrl: string;
-  account: { isAdmin: boolean; adminUrl: string | null; securityUrl: string; logoutUrl: string };
+  account: { isAdmin: boolean; adminUrl: string | null; securityUrl: string; privacyUrl: string; logoutUrl: string };
 }
 
 /** "1 menunggu pengesahan": fees whose slip the treasurer is still checking. */
@@ -365,6 +365,10 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
         </div>
         <a href={account.securityUrl} className="flex min-h-12 items-center gap-3 rounded-2xl px-1 text-base font-semibold hover:bg-muted">
           <KeyRound className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden /> <span className="flex-1">{t("security")}</span>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
+        </a>
+        <a href={account.privacyUrl} className="flex min-h-12 items-center gap-3 rounded-2xl px-1 text-base font-semibold hover:bg-muted" data-testid="member-privacy-link">
+          <FileText className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden /> <span className="flex-1">{t("privacyNotice")}</span>
           <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
         </a>
         {account.adminUrl && (

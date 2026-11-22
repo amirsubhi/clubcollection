@@ -70,6 +70,24 @@
                     <dd class="col-7 text-success">{{ $payment->paid_date->format('d M Y') }}</dd>
                     @endif
 
+                    @if($payment->status === 'paid')
+                    <dt class="col-5 text-muted">Receipt no.</dt>
+                    <dd class="col-7" data-testid="receipt-no">
+                        <span class="font-monospace">{{ $payment->receiptNumber() }}</span>
+                        @if($payment->receipt_no === null)
+                            <span class="text-muted small">(paid before receipt numbers per club)</span>
+                        @endif
+                    </dd>
+                    @endif
+                    @php $voidedReceipts = \App\Support\Payments\ReceiptNumbers::voidedFor($payment); @endphp
+                    @if($voidedReceipts !== [])
+                    <dt class="col-5 text-muted">Earlier receipt no.</dt>
+                    <dd class="col-7" data-testid="voided-receipt-no">
+                        <span class="font-monospace">{{ implode(', ', $voidedReceipts) }}</span>
+                        <span class="text-muted small">(void: the fee was taken back from paid; never reused)</span>
+                    </dd>
+                    @endif
+
                     @if($payment->status === 'paid' && $payment->paid_via)
                     <dt class="col-5 text-muted">Method</dt>
                     <dd class="col-7">

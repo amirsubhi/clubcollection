@@ -44,6 +44,8 @@ export interface ReceiptIssuer {
   address: string | null;
   email: string | null;
   logoUrl: string | null;
+  /** The club's receipt footer as issued (plain text, may hold line breaks); null when none. */
+  footer?: string | null;
 }
 
 /** Props every single-payment page receives (PaymentController::context()). */
@@ -147,7 +149,7 @@ export interface PaymentGroup {
 
 /** MemberPaymentPresenter::groupReceipt(): one receipt, one line per fee (each with its own receipt no.). */
 export interface GroupReceipt extends MemberReceipt {
-  lines: { id: number; receiptNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
+  lines: { id: number; receiptNo: string; invoiceNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
   /** Slip receipt only: fees of the slip paid online instead (not in the total). */
   paidOnline: { id: number; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
 }

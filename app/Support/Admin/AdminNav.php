@@ -45,11 +45,12 @@ final class AdminNav
         'statistics' => ['admin.statistics'],
         'audit-all' => ['admin.audit-logs.*'],
         'portal-settings' => ['admin.portal-settings.*'],
+        'privacy-notice' => ['admin.privacy-notice.*'],
         'security' => ['profile.*'],
     ];
 
     /** Super-admin pages about every club: the sidebar shows no club group there. */
-    private const CROSS_CLUB = ['admin.clubs.index', 'admin.clubs.create', 'admin.clubs.store', 'admin.admins.*', 'admin.statistics', 'admin.audit-logs.*', 'admin.portal-settings.*'];
+    private const CROSS_CLUB = ['admin.clubs.index', 'admin.clubs.create', 'admin.clubs.store', 'admin.admins.*', 'admin.statistics', 'admin.audit-logs.*', 'admin.portal-settings.*', 'admin.privacy-notice.*'];
 
     /**
      * Sidebar props for an Inertia admin page (AdminShell).
@@ -122,6 +123,7 @@ final class AdminNav
             $portal[] = $blade('statistics', 'Statistics', route('admin.statistics'), 'statistics');
             $portal[] = $blade('audit-all', 'Audit Log (all clubs)', route('admin.audit-logs.index'), 'audit');
             $portal[] = $blade('portal-settings', 'Portal settings', route('admin.portal-settings.edit'), 'settings');
+            $portal[] = $blade('privacy-notice', 'Privacy notice', route('admin.privacy-notice.edit'), 'audit');
         }
         $portal[] = $blade('security', 'Security & 2FA', route('profile.security'), 'security');
         $groups[] = ['title' => 'Portal', 'items' => $portal];

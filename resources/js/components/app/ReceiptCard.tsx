@@ -21,12 +21,12 @@ export interface ReceiptData {
   items: { id: number; description: string; descriptionBm?: string; note?: string; amount: Sen }[];
 }
 
-type IssuerLike = { name: string; registrationNo?: string | null; address?: string | null; logoUrl?: string | null };
+type IssuerLike = { name: string; registrationNo?: string | null; address?: string | null; logoUrl?: string | null; footer?: string | null };
 
 /** The club a receipt names: its issuer snapshot, else (older receipts) the club as it is now. */
 export function receiptClub(issuer: ReceiptIssuer | null | undefined, live: IssuerLike) {
   const c: IssuerLike = issuer ?? live;
-  return { name: c.name, regNo: c.registrationNo ?? null, address: c.address ?? null, logoUrl: c.logoUrl ?? null };
+  return { name: c.name, regNo: c.registrationNo ?? null, address: c.address ?? null, logoUrl: c.logoUrl ?? null, footer: c.footer ?? null };
 }
 
 export function ReceiptCard({
@@ -37,7 +37,7 @@ export function ReceiptCard({
   compact = false,
 }: {
   /** The issuing club (receipt.issuer: as it was when the fee was paid). */
-  club: { name: string; regNo?: string | null; address?: string | null; logoUrl?: string | null };
+  club: { name: string; regNo?: string | null; address?: string | null; logoUrl?: string | null; footer?: string | null };
   member: { name: string; memberNo?: string };
   receipt: ReceiptData;
   className?: string;
@@ -122,6 +122,12 @@ export function ReceiptCard({
         </table>
       )}
       <p className="mt-4 text-xs text-muted-foreground">{t("receiptFoot")}</p>
+      {/* The club's own footer (Club profile), as issued: plain text, React escapes it; line breaks kept. */}
+      {club.footer && (
+        <p className="mt-1 whitespace-pre-line break-words text-xs text-muted-foreground" data-testid="receipt-footer">
+          {club.footer}
+        </p>
+      )}
     </article>
   );
 }

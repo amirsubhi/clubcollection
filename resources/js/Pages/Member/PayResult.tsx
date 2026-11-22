@@ -230,9 +230,10 @@ export default function PayResult({ outcome, payment, group, receipt, verificati
             bank: viaTransfer ? undefined : (receipt.gateway ?? undefined),
             fpxTxn: receipt.transactionId ?? undefined,
             gatewayRef: receipt.reference ?? undefined,
-            // A group lists every fee with its own receipt number.
+            // A group lists every fee under its one receipt number.
             items: lines
-              ? lines.map((l) => ({ id: l.id, description: feeLabel(l), note: l.receiptNo, amount: l.amount }))
+              ? // A fee sharing the group's receipt number shows its invoice no.; an older group's fees their own RCP-{id}.
+                lines.map((l) => ({ id: l.id, description: feeLabel(l), note: l.receiptNo === receipt.receiptNo ? l.invoiceNo : l.receiptNo, amount: l.amount }))
               : payment
                 ? [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }]
                 : [],

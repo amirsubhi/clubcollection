@@ -38,9 +38,16 @@ final class MemberPaymentPresenter
         return 'INV-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT);
     }
 
+    /** The fee's receipt number (per club and financial year), or RCP-{id} for a fee paid before they existed. */
     public static function receiptNo(Payment $payment): string
     {
-        return 'RCP-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT);
+        return $payment->receiptNumber();
+    }
+
+    /** A group receipt's number: the one shared by its fees, or RCP-G{bill id} for a group paid before. */
+    public static function groupReceiptNo(PaymentBill $bill): string
+    {
+        return $bill->receipt_no ?? 'RCP-G'.str_pad((string) $bill->id, 6, '0', STR_PAD_LEFT);
     }
 
     public static function gatewayLabel(?string $gateway): ?string
@@ -90,9 +97,10 @@ final class MemberPaymentPresenter
 
     /**
      * The club as a receipt names it: the details the fee was issued with (payments.issuer_snapshot, written
-     * when it became paid), or, for a fee paid before snapshots existed, the club as it is now.
+     * when it became paid), or, for a fee paid before snapshots existed, the club as it is now. The footer comes
+     * from the snapshot only: a snapshot written before receipt footers existed has none and shows none.
      *
-     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string}
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string, footer: ?string}
      */
     public static function issuer(Payment $payment): array
     {
@@ -107,13 +115,14 @@ final class MemberPaymentPresenter
             'address' => ($snap['address'] ?? null) ?: null,
             'email' => ($snap['email'] ?? null) ?: null,
             'logoUrl' => LogoService::url($snap['logo'] ?? null),
+            'footer' => is_string($snap['footer'] ?? null) && $snap['footer'] !== '' ? $snap['footer'] : null,
         ];
     }
 
     /**
      * The club's details as they are now (invoices, and old receipts without a snapshot).
      *
-     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string}
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string, footer: ?string}
      */
     public static function issuerOf(Club $club): array
     {
@@ -123,6 +132,7 @@ final class MemberPaymentPresenter
             'address' => $club->address ?: null,
             'email' => $club->email ?: null,
             'logoUrl' => $club->logo_url,
+            'footer' => $club->receipt_footer ?: null,
         ];
     }
 
@@ -155,8 +165,8 @@ final class MemberPaymentPresenter
     }
 
     /**
-     * One receipt for a settled group ("Bayar semua"): the total, how it was
-     * paid, and one line per fee with that fee's own receipt number. Null
+     * One receipt for a settled group ("Bayar semua"): one receipt number for
+     * the set, the total, how it was paid, and one line per fee. Null
      * until the group is settled.
      *
      * @param  Collection<int, Payment>  $fees
@@ -182,7 +192,7 @@ final class MemberPaymentPresenter
         $amount = $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount));
 
         return [
-            'receiptNo' => 'RCP-G'.str_pad((string) $bill->id, 6, '0', STR_PAD_LEFT),
+            'receiptNo' => self::groupReceiptNo($bill),
             'amount' => $amount,
             'paidAt' => ($lead->paid_date ?? $bill->paid_at)->toDateString(),
             'gateway' => $transfer ? null : self::gatewayLabel($bill->gateway),
@@ -193,7 +203,9 @@ final class MemberPaymentPresenter
             'issuer' => self::issuer($lead),
             'lines' => $fees->map(fn (Payment $p) => [
                 'id' => $p->id,
+                // The group's own number for fees settled with it (older groups: each fee's RCP-{id}).
                 'receiptNo' => self::receiptNo($p),
+                'invoiceNo' => self::invoiceNo($p),
                 'periodStart' => $p->period_start->toDateString(),
                 'periodEnd' => $p->period_end->toDateString(),
                 'amount' => $amounts[$p->id] ?? self::sen($p->amount),

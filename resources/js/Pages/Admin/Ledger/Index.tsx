@@ -24,6 +24,8 @@ interface Txn {
   description: string;
   party: string;
   reference: string;
+  /** A fee's receipt number (null for other rows). */
+  receiptNo: string | null;
   amount: number;
   balance: number;
 }
@@ -426,7 +428,10 @@ function TransactionsSection({ transactions, summary, opening, from, to }: { tra
                         </span>
                       </div>
                     </td>
-                    <td className="px-2 py-2 font-mono text-xs text-muted-foreground">{t.reference || "—"}</td>
+                    <td className="px-2 py-2 font-mono text-xs text-muted-foreground">
+                      {t.receiptNo && <div>{t.receiptNo}</div>}
+                      {t.reference ? <div>{t.reference}</div> : !t.receiptNo && "—"}
+                    </td>
                     <td className="money px-2 py-2 text-right font-semibold">{t.direction === "in" ? `+${rm(t.amount)}` : ""}</td>
                     <td className="money px-2 py-2 text-right font-semibold">{t.direction === "out" ? `−${rm(t.amount)}` : ""}</td>
                     <td className="py-2 pl-2 text-right">
@@ -475,6 +480,7 @@ function TransactionsSection({ transactions, summary, opening, from, to }: { tra
                   <span>
                     {kindLabel[t.kind]} · {t.party}
                   </span>
+                  {t.receiptNo && <span className="font-mono">{t.receiptNo}</span>}
                   {t.reference && <span className="font-mono">{t.reference}</span>}
                 </div>
                 <div className="text-xs text-muted-foreground">
