@@ -27,7 +27,7 @@ class LedgerController extends Controller
         $today = Carbon::parse(now()->toDateString());
 
         $presets = [
-            FundFigures::yearToDate($today),
+            FundFigures::yearToDate($today, $club),
             FundFigures::lastMonths(12, $today),
         ];
         $preset = 'custom';
@@ -311,14 +311,14 @@ class LedgerController extends Controller
 
         $from = request('from')
             ? Carbon::createFromFormat('Y-m-d', request('from'))->startOfDay()
-            : Carbon::now()->startOfYear();
+            : FundFigures::financialYearStart(Carbon::now(), $club);
 
         $to = request('to')
             ? Carbon::createFromFormat('Y-m-d', request('to'))->endOfDay()
             : Carbon::now()->endOfDay();
 
         if ($from->gt($to)) {
-            $from = $to->copy()->startOfYear();
+            $from = FundFigures::financialYearStart($to, $club);
         }
 
         // Reject ranges that would force loading huge result sets into memory.

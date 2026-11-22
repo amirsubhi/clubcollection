@@ -137,7 +137,7 @@ function PeriodFilter({ filters, presets, maxMonths, today, url, opening }: Pick
   const openingError = openingInput.trim() === "" || !/^\d{1,9}(\.\d{1,2})?$/.test(openingInput.trim()) ? "Enter an amount in ringgit, e.g. 1250.00." : null;
 
   const tabs: { key: Preset; label: string; window?: FigureWindow }[] = [
-    ...presets.map((p) => ({ key: p.key as Preset, label: p.key === "year" ? "This year" : p.label, window: p })),
+    ...presets.map((p) => ({ key: p.key as Preset, label: p.key === "year" ? (p.short ?? "This year") : p.label, window: p })),
     { key: "custom", label: "Custom dates" },
   ];
   const selected: Preset = custom ? "custom" : filters.preset;

@@ -5,11 +5,12 @@ import { toSlices } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { CategoryBar } from "@/components/app/CategoryBar";
 import { fmtDate, rm } from "@/lib/format";
-import { fill, useLang, useT } from "@/lib/i18n";
+import { fill, monthName, useLang, useT } from "@/lib/i18n";
 import type { MemberFund } from "@/types/member";
 
 interface Props {
-  club: { id: number; name: string; paymentsUrl: string };
+  /** fyStartMonth: 1-12, the month the club's financial year starts (1 = the calendar year). */
+  club: { id: number; name: string; paymentsUrl: string; fyStartMonth?: number };
   fund: MemberFund;
   dashboardUrl: string;
 }
@@ -19,12 +20,18 @@ export default function Fund({ club, fund, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const slices = toSlices(fund.categories, { bm: "Lain-lain", en: "Others" });
+  const fy = (club.fyStartMonth ?? 1) > 1;
   return (
     <MemberShell tab="home" navHrefs={{ home: dashboardUrl, payments: club.paymentsUrl }} clubName={club.name} title={t("moneyGoes")} backHref={dashboardUrl}>
       <Head title={t("moneyGoes")} />
       <section aria-label={t("moneyGoes")} className="flex flex-col gap-3 rounded-[20px] border bg-card p-4" data-testid="fund-card">
         <p className="text-sm text-muted-foreground">
           {fill(t("moneyGoesWindow"), { from: fmtDate(fund.window.from, lang), to: fmtDate(fund.window.to, lang) })}
+          {fy && (
+            <span className="block" data-testid="fy-note">
+              {fill(t("fyStarts"), { m: monthName(club.fyStartMonth ?? 1, lang) })}
+            </span>
+          )}
         </p>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-2">
           <div className="rounded-2xl bg-accent px-3 py-2.5">
@@ -53,7 +60,7 @@ export default function Fund({ club, fund, dashboardUrl }: Props) {
         {slices.length > 0 ? (
           <CategoryBar slices={slices} lang={lang} interactive={false} />
         ) : (
-          <p className="text-base text-muted-foreground">{t("noSpending")}</p>
+          <p className="text-base text-muted-foreground">{t(fy ? "noSpendingFy" : "noSpending")}</p>
         )}
         <p className="text-sm text-muted-foreground">{t("aggregatesOnly")}</p>
       </section>

@@ -92,7 +92,7 @@ class FundUsageController extends Controller
 
         $stats = new FundFigures($club);
         $awaiting = $stats->awaiting($me);
-        $ytd = $stats->forWindow(FundFigures::yearToDate());
+        $ytd = $stats->forWindow(FundFigures::yearToDate(null, $club));
 
         return Inertia::render('Admin/FundUsage/Index', [
             'nav' => AdminNav::props($club, $request->user(), $awaiting['mine']),
@@ -112,6 +112,7 @@ class FundUsageController extends Controller
                 'awaitingSum' => $awaiting['sum'],
                 'awaitingMine' => $awaiting['mine'],
                 'year' => now()->year,
+                'yearLabel' => FundFigures::yearLabel(null, $club),
             ],
             // The whole club, whatever the filters: approved records with no documents attached.
             'noDocsCount' => $this->withoutDocuments(Expense::query()->where('expenses.club_id', $club->id))->count(),

@@ -34,6 +34,8 @@ interface Props {
   nav: AdminNavProps;
   greetingName: string;
   year: number;
+  /** "2026", or "FY 2026/27" when the club's financial year starts in another month (FundFigures::yearLabel). */
+  yearLabel?: string;
   kpis: {
     balance: number;
     balanceAsOf: string;
@@ -144,13 +146,13 @@ function BalanceHint({ ledger }: { ledger: string }) {
   );
 }
 
-export default function AdminDashboard({ nav, greetingName, year, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
+export default function AdminDashboard({ nav, greetingName, year, yearLabel, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
   const slices = toSlices(categories, { bm: "Lain-lain", en: "Others" });
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
   return (
     <AdminLayout nav={nav} active="dashboard" title="Dashboard">
       <PageHeader
-        eyebrow={`Dashboard · ${year}`}
+        eyebrow={`Dashboard · ${yearLabel ?? year}`}
         title={`${greeting()}, ${greetingName.split(" ")[0]}`}
         description="Where the club fund stands today, and what needs a second pair of eyes."
         actions={
@@ -273,7 +275,7 @@ export default function AdminDashboard({ nav, greetingName, year, kpis, monthly,
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No approved spending yet this year.</p>
+            <p className="text-sm text-muted-foreground">No approved spending yet {kpis.window.short === "This year" ? "this year" : `in ${kpis.window.short}`}.</p>
           )}
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
