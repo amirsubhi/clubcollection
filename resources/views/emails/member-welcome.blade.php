@@ -40,7 +40,7 @@
     </div>
 
     <div class="warning">
-      <strong>&#9888; Important:</strong> This is a temporary password. Please change it immediately after your first login.
+      <strong>&#9888; Important:</strong> This is a temporary password. When you first sign in you will be asked to choose your own password.
     </div>
 
     <div class="cta">

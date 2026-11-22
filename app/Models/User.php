@@ -27,6 +27,8 @@ class User extends Authenticatable
         return [
             'email_verified_at'        => 'datetime',
             'two_factor_confirmed_at'  => 'datetime',
+            // Not fillable: set with forceFill / forceCreate where an admin emails a temporary password.
+            'must_change_password'     => 'boolean',
             'password'                 => 'hashed',
         ];
     }

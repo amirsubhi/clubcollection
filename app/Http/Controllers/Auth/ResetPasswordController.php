@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Auth\NewPassword;
 use Illuminate\Foundation\Auth\ResetsPasswords;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -21,6 +22,15 @@ class ResetPasswordController extends Controller
      * @var string
      */
     protected $redirectTo = '/home';
+
+    /** A reset by email link proves the owner: a pending "choose your own password" is done too. */
+    protected function setUserPassword($user, $password)
+    {
+        $user->forceFill([
+            'password' => Hash::make($password),
+            'must_change_password' => false,
+        ]);
+    }
 
     protected function validationErrorMessages()
     {

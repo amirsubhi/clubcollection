@@ -73,6 +73,8 @@ class AppServiceProvider extends ServiceProvider
         // The 2FA challenge POST and the installer each have their own bucket (they used to share the
         // unnamed throttle:5,1 counter with sign-in). The challenge also locks per account after 5 wrong codes.
         RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by('2fa|'.$request->ip()));
+        // Change password checks the current one: 5 tries a minute per user.
+        RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by('password-change|'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('install', fn (Request $request) => Limit::perMinute(5)->by('install|'.$request->ip()));
 
         self::configureTrustedProxies();
