@@ -31,7 +31,7 @@ if [[ "${1:-}" == "--check-list" ]]; then
   exit 0
 fi
 
-usage() { echo "usage: $0 <version> [git-ref]   (e.g. $0 0.0.2 v0.0.2)" >&2; exit 2; }
+usage() { echo "usage: $0 <version> [git-ref]   (e.g. $0 2.0.0 v2.0.0)" >&2; exit 2; }
 [[ $# -ge 1 && $# -le 2 ]] || usage
 
 VERSION="${1#v}"

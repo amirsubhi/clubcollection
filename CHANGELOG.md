@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [v0.0.2] — Unreleased
+## [v2.0.0] — 2026-11-23
 
 > **Upgrade note:** the March 2026 GitHub release `v1.0.0` (listed below as v0.0.1) is superseded. Do not upgrade it
 > in place: install this release fresh. From the first real install onwards, all schema changes are new, additive
@@ -19,7 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added (user guides)
 - `docs/guides/`: an English **Member Guide** and **Treasurer & Club Admin Guide** as Word documents (guide version 1.0,
-  for v0.0.2) with screenshots, a version table and a contents page, ready to edit and share with clubs.
+  for v2.0.0) with screenshots, a version table and a contents page, ready to edit and share with clubs.
 
 ### Added (monthly fee generation)
 - **Generate fees for a month** (Payments → "Generate fees for a month", `GET|POST /admin/clubs/{club}/payments/generate`,
@@ -404,7 +404,7 @@ Security and accessibility hardening pass. No public API changes.
 ## [v0.0.1] — 2026-03-23
 
 (Published on GitHub as the `v1.0.0` release, which the version heading links to. Superseded: do not upgrade it in
-place; see the upgrade note under v0.0.2.)
+place; see the upgrade note under v2.0.0.)
 
 First public release of Club Portal — a self-hosted club membership management system built with Laravel 13.
 
@@ -471,5 +471,5 @@ First public release of Club Portal — a self-hosted club membership management
 
 ---
 
-[v0.0.2]: https://github.com/amirsubhi/clubcollection/compare/v1.0.0...master
+[v2.0.0]: https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.0
 [v0.0.1]: https://github.com/amirsubhi/clubcollection/releases/tag/v1.0.0

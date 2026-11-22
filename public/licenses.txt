@@ -551,7 +551,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-bacon/bacon-qr-code@3.0.4
+bacon/bacon-qr-code@3.1.1
 ==============================================================================
 
 Copyright (c) 2017-present, Ben Scholzen 'DASPRiD'
@@ -656,7 +656,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-brick/math@0.14.8
+brick/math@1.0.0
 ==============================================================================
 
 The MIT License (MIT)
@@ -713,7 +713,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-carbonphp/carbon-doctrine-types@3.2.0
+carbonphp/carbon-doctrine-types@3.2.1
 ==============================================================================
 
 MIT License
@@ -1216,7 +1216,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-doctrine/inflector@2.1.0
+doctrine/inflector@2.1.1
 ==============================================================================
 
 Copyright (c) 2006-2015 Doctrine Project
@@ -1240,7 +1240,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-doctrine/lexer@3.0.1
+doctrine/lexer@3.0.3
 ==============================================================================
 
 Copyright (c) 2006-2018 Doctrine Project
@@ -1290,7 +1290,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-dompdf/dompdf@3.1.5
+dompdf/dompdf@3.1.6
 ==============================================================================
 
 GNU LESSER GENERAL PUBLIC LICENSE
@@ -2382,7 +2382,7 @@ permanent authorization for you to choose that version for the
 Library.
 
 ==============================================================================
-dragonmantank/cron-expression@3.6.0
+dragonmantank/cron-expression@3.6.1
 ==============================================================================
 
 Copyright (c) 2011 Michael Dowling <mtdowling@gmail.com>, 2016 Chris Tankersley <chris@ctankersley.com>, and contributors
@@ -2735,12 +2735,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-graham-campbell/result-type@1.1.4
+graham-campbell/result-type@1.2.0
 ==============================================================================
 
 The MIT License (MIT)
 
-Copyright (c) 2020-2024 Graham Campbell <hello@gjcampbell.co.uk>
+Copyright (c) 2020-2026 Graham Campbell <hello@gjcampbell.co.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -2761,7 +2761,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-guzzlehttp/guzzle@7.10.0
+guzzlehttp/guzzle@8.5.5
 ==============================================================================
 
 The MIT License (MIT)
@@ -2793,7 +2793,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-guzzlehttp/promises@2.3.0
+guzzlehttp/promises@3.2.0
 ==============================================================================
 
 The MIT License (MIT)
@@ -2822,7 +2822,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-guzzlehttp/psr7@2.9.0
+guzzlehttp/psr7@3.6.0
 ==============================================================================
 
 The MIT License (MIT)
@@ -2853,7 +2853,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-guzzlehttp/uri-template@1.0.5
+guzzlehttp/uri-template@2.0.1
 ==============================================================================
 
 The MIT License (MIT)
@@ -3004,10 +3004,10 @@ THE SOFTWARE.
 
 ==============================================================================
 laravel-precognition@1.0.2
-laravel/framework@13.1.1
-laravel/prompts@0.3.15
-laravel/serializable-closure@2.0.10
-laravel/tinker@3.0.0
+laravel/framework@13.43.0
+laravel/prompts@0.3.27
+laravel/serializable-closure@2.2.0
+laravel/tinker@3.2.0
 laravel/ui@4.6.3
 ==============================================================================
 
@@ -3034,7 +3034,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-league/commonmark@2.8.2
+league/commonmark@2.10.7
 ==============================================================================
 
 BSD 3-Clause License
@@ -3100,8 +3100,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-league/flysystem-local@3.31.0
-league/flysystem@3.32.0
+league/flysystem-local@3.35.3
+league/flysystem@3.36.0
 ==============================================================================
 
 Copyright (c) 2013-2026 Frank de Jonge
@@ -3125,7 +3125,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-league/mime-type-detection@1.16.0
+league/mime-type-detection@1.17.0
 ==============================================================================
 
 Copyright (c) 2013-2023 Frank de Jonge
@@ -3149,8 +3149,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-league/uri-interfaces@7.8.1
-league/uri@7.8.1
+league/uri-interfaces@7.10.0
+league/uri@7.10.0
 ==============================================================================
 
 The MIT License (MIT)
@@ -3302,7 +3302,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-masterminds/html5@2.10.0
+masterminds/html5@2.12.0
 ==============================================================================
 
 ## HTML5-PHP License
@@ -3429,7 +3429,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-monolog/monolog@3.10.0
+monolog/monolog@3.13.0
 ==============================================================================
 
 Copyright (c) 2011-2020 Jordi Boggiano
@@ -3479,7 +3479,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-nesbot/carbon@3.11.3
+nesbot/carbon@3.15.1
 ==============================================================================
 
 Copyright (C) Brian Nesbitt
@@ -3503,8 +3503,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-nette/schema@1.3.5
-nette/utils@4.1.3
+nette/schema@1.4.0
+nette/utils@4.1.6
 ==============================================================================
 
 Licenses
@@ -3569,7 +3569,7 @@ you URLs with full text:
 - [GPL version 3](http://www.gnu.org/licenses/gpl-3.0.html)
 
 ==============================================================================
-nikic/php-parser@5.7.0
+nikic/php-parser@5.9.0
 ==============================================================================
 
 BSD 3-Clause License
@@ -3603,7 +3603,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-nunomaduro/termwind@2.4.0
+nunomaduro/termwind@2.4.1
 ==============================================================================
 
 The MIT License (MIT)
@@ -3681,7 +3681,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-paragonie/constant_time_encoding@3.1.3
+paragonie/constant_time_encoding@3.1.5
 ==============================================================================
 
 The MIT License (MIT)
@@ -3733,7 +3733,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-phpoption/phpoption@1.9.5
+phpoption/phpoption@1.10.0
 ==============================================================================
 
 Apache License
@@ -4177,7 +4177,7 @@ Copyright (c) 2016 PHP Framework Interoperability Group
 > THE SOFTWARE.
 
 ==============================================================================
-psy/psysh@0.12.22
+psy/psysh@0.12.24
 ==============================================================================
 
 The MIT License (MIT)
@@ -4237,32 +4237,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-ralouphie/getallheaders@3.0.3
-==============================================================================
-
-The MIT License (MIT)
-
-Copyright (c) 2014 Ralph Khattar
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-==============================================================================
 ramsey/collection@2.1.1
 ==============================================================================
 
@@ -4287,10 +4261,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-ramsey/uuid@4.9.2
+ramsey/uuid@4.10.0
 ==============================================================================
 
-Copyright (c) 2012-2025 Ben Ramsey <ben@benramsey.com>
+Copyright © 2012-2026 Ben Ramsey <ben@benramsey.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -4454,7 +4428,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-sabberworm/php-css-parser@9.3.0
+sabberworm/php-css-parser@9.5.0
 ==============================================================================
 
 MIT License
@@ -4507,7 +4481,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-symfony/clock@8.0.0
+symfony/clock@8.1.9
+symfony/polyfill-php82@1.43.0
 ==============================================================================
 
 Copyright (c) 2022-present Fabien Potencier
@@ -4531,15 +4506,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/console@8.0.7
-symfony/css-selector@8.0.6
-symfony/event-dispatcher@8.0.4
-symfony/finder@8.0.6
-symfony/http-foundation@8.0.7
-symfony/http-kernel@8.0.7
-symfony/process@8.0.5
-symfony/routing@8.0.6
-symfony/translation@8.0.6
+symfony/console@8.1.11
+symfony/css-selector@8.1.10
+symfony/event-dispatcher@8.1.5
+symfony/finder@8.1.11
+symfony/http-foundation@8.1.11
+symfony/http-kernel@8.1.11
+symfony/process@8.1.10
+symfony/routing@8.1.11
+symfony/translation@8.1.11
 ==============================================================================
 
 Copyright (c) 2004-present Fabien Potencier
@@ -4563,9 +4538,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/deprecation-contracts@3.6.0
-symfony/polyfill-php80@1.33.0
-symfony/uid@8.0.4
+symfony/deprecation-contracts@3.8.1
+symfony/polyfill-php80@1.43.0
+symfony/uid@8.1.9
 ==============================================================================
 
 Copyright (c) 2020-present Fabien Potencier
@@ -4589,9 +4564,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/error-handler@8.0.4
-symfony/mailer@8.0.6
-symfony/string@8.0.6
+symfony/error-handler@8.1.10
+symfony/mailer@8.1.10
+symfony/string@8.1.10
 ==============================================================================
 
 Copyright (c) 2019-present Fabien Potencier
@@ -4615,11 +4590,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/event-dispatcher-contracts@3.6.0
-symfony/polyfill-ctype@1.33.0
-symfony/polyfill-uuid@1.33.0
-symfony/service-contracts@3.6.1
-symfony/translation-contracts@3.6.1
+symfony/event-dispatcher-contracts@3.8.1
+symfony/polyfill-ctype@1.37.0
+symfony/polyfill-uuid@1.43.0
+symfony/service-contracts@3.8.1
+symfony/translation-contracts@3.8.1
 ==============================================================================
 
 Copyright (c) 2018-present Fabien Potencier
@@ -4643,7 +4618,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/mime@8.0.7
+symfony/mime@8.1.10
 ==============================================================================
 
 Copyright (c) 2010-present Fabien Potencier
@@ -4667,9 +4642,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/polyfill-intl-grapheme@1.33.0
-symfony/polyfill-intl-normalizer@1.33.0
-symfony/polyfill-mbstring@1.33.0
+symfony/polyfill-intl-grapheme@1.43.3
+symfony/polyfill-intl-normalizer@1.43.0
+symfony/polyfill-mbstring@1.43.3
 ==============================================================================
 
 Copyright (c) 2015-present Fabien Potencier
@@ -4693,7 +4668,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/polyfill-intl-idn@1.33.0
+symfony/polyfill-intl-idn@1.43.0
 ==============================================================================
 
 Copyright (c) 2018-present Fabien Potencier and Trevor Rowbotham <trevor.rowbotham@pm.me>
@@ -4717,7 +4692,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/polyfill-php84@1.33.0
+symfony/polyfill-php84@1.43.0
 ==============================================================================
 
 Copyright (c) 2024-present Fabien Potencier
@@ -4741,7 +4716,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/polyfill-php85@1.33.0
+symfony/polyfill-php85@1.44.0
+symfony/polyfill-php86@1.43.0
 ==============================================================================
 
 Copyright (c) 2025-present Fabien Potencier
@@ -4765,7 +4741,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/var-dumper@8.0.6
+symfony/polyfill-time@1.42.0
+==============================================================================
+
+Copyright (c) 2026-present Fabien Potencier
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+symfony/var-dumper@8.1.10
 ==============================================================================
 
 Copyright (c) 2014-present Fabien Potencier
@@ -4795,32 +4795,6 @@ tailwind-merge@3.7.0
 MIT License
 
 Copyright (c) 2021 Dany Castillo
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-==============================================================================
-thecodingmachine/safe@3.4.0
-==============================================================================
-
-MIT License
-
-Copyright (c) 2018 TheCodingMachine
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -4912,7 +4886,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 ==============================================================================
-vlucas/phpdotenv@5.6.3
+vlucas/phpdotenv@5.8.0
 ==============================================================================
 
 BSD 3-Clause License
@@ -4947,7 +4921,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-voku/portable-ascii@2.0.3
+voku/portable-ascii@2.1.1
 ==============================================================================
 
 Copyright (C) 2019 Lars Moelleken

@@ -46,7 +46,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ToyyibPay sandbox: confirm the callback `amount` unit and whether customer-borne charges are included (alongside the `status` vs `status_id` check).
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
-- `bill_amount` was added to the existing migration because there is no live data; from the first real install (next release tag) use additive migrations only.
+- `bill_amount` was added to the existing migration because there is no live data; from the first real install (`v2.0.0`) use additive migrations only.
 
 ## A3 — Fund Usage backend + Inertia pages (in review)
 
@@ -266,7 +266,7 @@ Full list by area:
 - [ ] Check cPanel **`memory_limit`** (a 10 MB file peaks at ~50–60 MB to encrypt/decrypt). `php artisan app:doctor` (G2) checks it (≥ 128M) with the upload limits, PHP 8.4, `APP_ENV`/`APP_DEBUG`/https/`SESSION_SECURE_COOKIE`, the cache store and the cron job: run it on the host.
 - [x] Serve real downscaled **thumbnails** (or audit the thumbnail route); today it returns the full original. Done in G2 (GD re-encoded copy, 480 px / 1600 px for the slip preview, EXIF dropped, 404 when it can't be decoded).
 - [x] **Block club deletion** when records exist (the cascade wipes approved records and leaves encrypted files on disk). Done in G2 (members, fees, bills, expenses or documents → "Deactivate it instead").
-- [ ] From the first real production install (the next release tag), use additive migrations only.
+- [ ] From the first real production install (`v2.0.0` onwards), use additive migrations only: no shipped migration is edited again.
 - [ ] Tell admins not to type personal data in description, return or void reasons.
 
 **Hosting**
@@ -649,8 +649,19 @@ RM 40 + 45 + 45 = RM 130 and charged that, future rates deleted and the old ones
 ## User guides (Word, English)
 
 `docs/guides/Club-Portal-Member-Guide.docx` and `docs/guides/Club-Portal-Treasurer-and-Club-Admin-Guide.docx`, guide
-version 1.0 for v0.0.2: screenshots from a throwaway demo club (seeded, renamed "Sunrise Staff Club"), every label
+version 1.0 for v2.0.0: screenshots from a throwaway demo club (seeded, renamed "Sunrise Staff Club"), every label
 checked against the code, reviewed by a copywriter pass (which corrected nine claims) and the advisor; both pass the
 Office XML validator. Not rendered to pages (no LibreOffice here): the contents page fills in when Word updates fields
 on opening. They are edited in Word from now on; the generator script and screenshots are kept outside the repo
 (~/Documents/Club Portal guides/) and would overwrite manual edits if rerun.
+
+## Release v2.0.0 (23 Nov 2026)
+
+First release since the superseded March `v1.0.0` (fresh install only). Prepared in PR #30: service-worker cache v3,
+licence files regenerated (the build refuses stale ones). Versioned `v2.0.0` (the `v1.0.0` tag is taken by the old
+release; a major version marks "install fresh"). Before tagging: the release zip was built with
+`scripts/build-release.sh` on the test VM (19 MB; no `.env`, app tests or dev packages; `public/build` and the guides
+inside), the LAN test bed was upgraded from it by `docs/RELEASE.md` §2 (app:doctor showed the new version), and a
+first install from it on an empty MariaDB database was walked end to end (installer, forced admin 2FA, club, fee rate,
+members, Generate fees twice, a member's first sign-in with the emailed temporary password and forced change).
+Still open for go-live: the real-host ToyyibPay / Billplz sandbox run (go-live checklist).

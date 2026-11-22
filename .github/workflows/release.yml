@@ -86,7 +86,7 @@ jobs:
       - name: Attach the zip to the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # A tag with a dash (v0.0.3-rc1) is published as a pre-release.
+          # A tag with a dash (v2.0.1-rc1) is published as a pre-release.
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/clubportal-*.zip

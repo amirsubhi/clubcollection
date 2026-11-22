@@ -9,22 +9,22 @@ the built front end (`public/build/`) already inside.
 
 ## 1. Get the release zip
 
-**Normally: download it.** Pushing a tag `v*` (e.g. `v0.0.2`) runs `.github/workflows/release.yml`: it runs the tests
+**Normally: download it.** Pushing a tag `v*` (e.g. `v2.0.0`) runs `.github/workflows/release.yml`: it runs the tests
 on PHP 8.4, builds the zip with `scripts/build-release.sh` and attaches `clubportal-<version>.zip` and
 `clubportal-<version>.zip.sha256` to the GitHub Release for that tag. Download both and check the zip:
 
 ```bash
-sha256sum -c clubportal-0.0.2.zip.sha256          # macOS: shasum -a 256 -c clubportal-0.0.2.zip.sha256
+sha256sum -c clubportal-2.0.0.zip.sha256          # macOS: shasum -a 256 -c clubportal-2.0.0.zip.sha256
 ```
 
-On Windows, `certutil -hashfile clubportal-0.0.2.zip SHA256` prints the hash to compare with the `.sha256` file.
+On Windows, `certutil -hashfile clubportal-2.0.0.zip SHA256` prints the hash to compare with the `.sha256` file.
 
 **Or build it yourself** on a machine with git, PHP 8.4 (`composer.lock` requires it) with Composer, Node 22, `zip` and
 `sha256sum`:
 
 ```bash
 git clone https://github.com/amirsubhi/clubcollection.git clubportal && cd clubportal
-scripts/build-release.sh 0.0.2 v0.0.2      # <version> [git ref, default HEAD]
+scripts/build-release.sh 2.0.0 v2.0.0      # <version> [git ref, default HEAD]
 ```
 
 The script exports the git ref with `git archive` into a temporary folder (never your working tree, so a local
@@ -59,7 +59,7 @@ warning: run `npm run licenses` (needs `vendor/` and `node_modules/` installed) 
 
 > **`v1.0.0` (the March 2026 GitHub release) is superseded and must not be upgraded in place.** Its migrations were
 > later edited (there was no live data yet), so `migrate` cannot bring a `v1.0.0` database, or one from any build
-> before the next release tag, up to date. Install the next release tag fresh (see [INSTALL.md](INSTALL.md)), or
+> before `v2.0.0`, up to date. Install `v2.0.0` (or later) fresh (see [INSTALL.md](INSTALL.md)), or
 > rebuild with `php artisan migrate:fresh --force` (this deletes all data), and re-enter the club's data. From the first
 > real install onwards, every schema change ships as a **new, additive migration**: never edit or delete a migration
 > that a release has already shipped, so `migrate --force` always upgrades in place.

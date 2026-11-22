@@ -7,6 +7,8 @@ free bank / DuitNow transfer with a slip, and get a receipt. Committee members r
 documents, and a second admin has to approve it before it counts. It runs on ordinary cPanel PHP hosting: no Node
 process on the server.
 
+**Current release:** [v2.0.0](https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.0) (23 November 2026), a fresh install (it does not upgrade the old `v1.0.0`).
+
 **Status:** in active development and not yet live with real payments. Before using it for real money, work through
 the [before-go-live checklist](docs/option-a-report.md#before-go-live-checklist), starting with a ToyyibPay or
 Billplz sandbox run on your own host.
@@ -160,7 +162,7 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
    receipts, the ledger and the dashboard follow the same time zone. No queue worker is needed.
 
 > **The March 2026 GitHub release `v1.0.0` is superseded.** Do not upgrade a `v1.0.0` site in place: some columns
-> were added by editing existing migrations, so its database will not match. Install the next release tag fresh
+> were added by editing existing migrations, so its database will not match. Install `v2.0.0` (or later) fresh
 > instead (an existing database from an earlier build needs `php artisan migrate:fresh --force`, which deletes all
 > data). **From the first real install onwards, every schema change is a new, additive migration**; existing
 > migrations are never edited again.
