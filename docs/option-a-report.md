@@ -236,7 +236,7 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
   empty unless a real proxy, HSTS left at this host only unless the whole domain is HTTPS, and the post-install
   `curl -I` checks in INSTALL.md §5 (`.env`, `vendor/`, logs, `.git` not reachable; headers once on pages and
   static files; `expose_php` off).
-- [x] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1). Done: `php artisan app:doctor` has a **Cache store** row that fails on `array` / `null`, so running it on the host (INSTALL.md step 13) confirms the driver.
+- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1). Done in code: `php artisan app:doctor` has a **Cache store** row that fails on `array` / `null`, so running it on the host (INSTALL.md step 13) confirms the driver. Left: on the real host, check that `php artisan app:doctor` shows the cache store row as PASS (not `array`).
 - [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
 
 Full list by area:
