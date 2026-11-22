@@ -68,7 +68,7 @@ Billplz sandbox run on your own host.
   for itself (a new club starts with one, "Ahli"; rename, reorder, add or deactivate them), fee rates per job level
   (a new rate can start on a later date), discounts, payments, expense categories (with an optional BM name for members).
 - **Generate fees for a month**: bill every member of the club at their level's rate in one step, after a preview
-  that shows who is billed and who is skipped and why (inactive, joined later, already billed, no rate).
+  that shows who is billed and who is skipped and why (inactive, joined later, already billed, no rate, rate is RM 0).
 - **Ledger** with period presets, an opening balance worked out from the records (or set by hand, clearly marked),
   money in / out tiles, month-by-month table or chart, running balance, monthly bank-charge rows and outstanding fees,
   exported as CSV (Excel-ready) or PDF (A4 landscape for the AGM). The user guide says
@@ -188,9 +188,14 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
 - **Maker-checker where money moves:** Fund Usage approval and voiding, and bank / DuitNow detail changes, need a
   second admin (the super admin can act as one). Any one club admin can verify a member's transfer slip, but not a
   slip for their own fee: that needs another admin.
-- **Own-fee rule:** a club admin can't approve their own slip, mark their own fee paid, or change its amount or
-  discount (the super admin is exempt).
-- **2FA** (TOTP with recovery codes) for any user; codes can't be reused and the challenge locks after 5 wrong codes.
+- **Own-fee rule:** a club admin can't approve their own slip, mark their own fee paid, change its amount or
+  discount, or cancel or delete a payment on their own fee (the super admin is exempt).
+- **2FA** (TOTP with recovery codes) for any user, and required for admins: the super admin and club admins must set
+  it up before the admin pages open (`REQUIRE_ADMIN_2FA`, on by default). Codes can't be reused and the challenge
+  locks after 5 wrong codes.
+- **Passwords and sign-in:** new passwords need 12+ characters and are checked against known breached passwords;
+  10 wrong passwords for one account pause its sign-in for 15 minutes (never permanent; a password reset still works)
+  and email the owner.
 - **Private, encrypted files:** documents and slips are encrypted at rest with `APP_KEY` on a private disk and served
   only to that club's admins (and a member's own slip); opening or downloading a document is audited. Welfare personal details are encrypted columns.
 - **Audit log** of every write, with old/new values, user, IP and user agent.

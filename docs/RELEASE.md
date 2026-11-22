@@ -32,8 +32,9 @@ The script exports the git ref with `git archive` into a temporary folder (never
 `composer install --no-dev --optimize-autoloader`, `npm ci && npm run build` and the licence generator
 (`npm run licenses`, see below). It then removes what the server doesn't need:
 
-- dropped: `node_modules/`, `tests/`, `mockup/`, `scripts/`, `.github/`, `phpunit.xml`, `public/hot`,
-  every `.env*` except `.env.example`, every `*.sqlite`, everything under `storage/` and `bootstrap/cache/` except
+- dropped: `node_modules/`, `tests/`, `mockup/`, `scripts/`, `.github/`, `phpunit.xml`, `.phpunit.result.cache`,
+  `CLAUDE.MD`, `public/hot`, `public/storage` (the server makes its own with `storage:link`), every `.env*` except
+  `.env.example`, every `*.sqlite`, `.git` folders under `vendor/`, everything under `storage/` and `bootstrap/cache/` except
   the empty folders and their `.gitignore` files;
 - kept: `app/`, `bootstrap/`, `config/`, `database/` (migrations and seeders), `lang/`, `public/` (with `build/` and
   `licenses.txt`), `resources/`, `routes/`, `vendor/`, `artisan`, `composer.json`/`composer.lock` (Laravel reads

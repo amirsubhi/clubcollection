@@ -21,8 +21,8 @@ because a few `php artisan` commands have to be run on the server.
 
 ### On the server
 
-- **PHP 8.4 or newer.** `composer.json` still says `^8.3`, but the locked dependencies (`composer.lock`, Laravel 13's
-  Symfony 8 components) need 8.4, and the installer refuses anything older. In cPanel choose it under
+- **PHP 8.4 or newer.** `composer.json` and the locked dependencies (`composer.lock`, Laravel 13's Symfony 8
+  components) need 8.4, and the installer refuses anything older. In cPanel choose it under
   **MultiPHP Manager** (or **Select PHP Version**).
 - **PHP extensions.** Most hosts enable these by default; check with `php -m` in the Terminal, or in cPanel under
   **Select PHP Version → Extensions**:
@@ -33,6 +33,9 @@ because a few `php artisan` commands have to be run on the server.
   | `pdo_sqlite` | Only if you use SQLite (local copies, very small clubs). |
   | `mbstring`, `openssl`, `ctype`, `filter`, `hash`, `session`, `tokenizer`, `pcre`, `json` | Laravel. |
   | `fileinfo` | Detecting the type of uploaded slips and documents. |
+  | `curl` | Talking to the payment gateways (ToyyibPay, Billplz) and the breached-password check. |
+  | `xml` | XML handling used by Laravel and its libraries (`app:doctor` checks for it). |
+  | `zip` | The daily backup (`backup:run` writes a zip file). |
   | `dom`, `libxml`, `iconv` | The ledger PDF (dompdf) and the 2FA QR code. |
   | `gd` (with PNG, JPEG and WebP support) | Club and portal logos: every upload is decoded and saved again as a PNG (no SVG, metadata stripped). Without GD, logos can't be uploaded (the pages say so) and dompdf can't draw the logo in the ledger PDF. |
 
@@ -274,9 +277,10 @@ The last step, and again after any change to the server or `.env`:
 php artisan app:doctor
 ```
 
-It changes nothing. It prints one row per check (PHP 8.4 and its extensions, `APP_ENV` / `APP_DEBUG` / `APP_URL` /
-`SESSION_SECURE_COOKIE` / `APP_TIMEZONE`, the cache store, upload and memory limits, the private files folder,
-`storage:link`, the front-end build, webhook secrets, ToyyibPay sandbox mode, email, the cron job and the latest
+It changes nothing. It prints one row per check (PHP 8.4 and its extensions, `APP_KEY`, `APP_ENV` / `APP_DEBUG` /
+`APP_URL` / `SESSION_SECURE_COOKIE` / `APP_TIMEZONE`, the cache store, upload and memory limits, the private files
+folder, `storage:link`, the front-end build, no Vite dev-server file (`public/hot`), the database connection, webhook
+secrets, ToyyibPay sandbox mode, email, the cron job and the latest
 backup) marked **PASS**, **WARN** or **FAIL**, with a one-line fix for each problem. It never prints a key or secret.
 
 - Fix every **FAIL** row, run `php artisan config:cache` if you changed `.env`, and run it again. It exits with code 1
@@ -313,7 +317,8 @@ small club. The test suite passes on MariaDB 10.11 and MySQL 8.0.
    the server has it; if not, it says so and backs up the files only, so back up the database with cPanel → **Backup**
    (or phpMyAdmin → Export).
 
-PostgreSQL also works through `DB_CONNECTION=pgsql` with the `pdo_pgsql` extension.
+PostgreSQL (`DB_CONNECTION=pgsql` with the `pdo_pgsql` extension) is untested: the test suite runs on SQLite,
+MariaDB and MySQL only, so use it at your own risk.
 
 ---
 
