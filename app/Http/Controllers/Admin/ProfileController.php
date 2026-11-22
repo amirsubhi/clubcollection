@@ -116,13 +116,6 @@ class ProfileController extends Controller
             'two_factor_last_used_step'  => null,
         ])->save();
 
-        // Generate QR code as inline SVG
-        $qrCodeUrl = $this->google2fa->getQRCodeUrl(
-            config('app.name'),
-            $user->email,
-            $secret
-        );
-
         if (! $user->isAdmin()) {
             // The member page shows the QR + key from this flag (kept until confirm or disable).
             session(['two_factor_setup_pending' => true]);
@@ -130,13 +123,39 @@ class ProfileController extends Controller
             return redirect()->route('profile.security');
         }
 
-        $qrSvg = $this->generateQrSvg($qrCodeUrl);
+        return $this->adminSetupPage($user, $secret);
+    }
 
-        return $this->noStore(response()->view('admin.profile.two-factor-setup', compact('user', 'qrSvg', 'secret')));
+    /**
+     * The admin setup page (QR + key + confirm form). It is the answer to a POST, so a mistake on the confirm
+     * form shows this page again with the same secret and the error: back() would land on the POST-only
+     * enable URL (404/405) in the middle of setup.
+     */
+    private function adminSetupPage($user, string $secret, ?\Illuminate\Support\MessageBag $errors = null)
+    {
+        $qrSvg = $this->generateQrSvg($this->google2fa->getQRCodeUrl(config('app.name'), $user->email, $secret));
+        $data = compact('user', 'qrSvg', 'secret');
+        if ($errors) {
+            $data['errors'] = (new \Illuminate\Support\ViewErrorBag)->put('default', $errors);
+        }
+
+        return $this->noStore(response()->view('admin.profile.two-factor-setup', $data, $errors ? 422 : 200));
     }
 
     public function confirmTwoFactor(Request $request)
     {
+        $user = auth()->user();
+        $pendingSecret = $user->hasEnabledTwoFactor() ? null : $user->getTwoFactorSecret();
+        if ($user->isAdmin() && $pendingSecret) {
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+                'code' => 'required|string|digits:6',
+                'current_password' => 'required|current_password',
+            ], [], ['current_password' => 'password']);
+            if ($validator->fails()) {
+                return $this->adminSetupPage($user, $pendingSecret, $validator->errors());
+            }
+        }
+
         $request->validate([
             'code' => 'required|string|digits:6',
             'current_password' => 'required|current_password',
@@ -148,18 +167,20 @@ class ProfileController extends Controller
             'current_password.current_password' => 'member.2fa_password_invalid',
         ]), ['current_password' => 'password']);
 
-        $user   = auth()->user();
         $secret = $user->getTwoFactorSecret();
 
         if ($user->hasEnabledTwoFactor()) {
             return redirect()->route('profile.security')->with('error', $this->flashText('2fa_already_on', '2FA is already on.'));
         }
         if (! $secret) {
-            return back()->with('error', $this->flashText('2fa_not_started', '2FA setup not started. Please click Enable first.'));
+            return redirect()->route('profile.security')->with('error', $this->flashText('2fa_not_started', '2FA setup not started. Please click Enable first.'));
         }
 
         $valid = $user->verifyTwoFactorCode($request->code, $secret);
 
+        if (! $valid && $user->isAdmin()) {
+            return $this->adminSetupPage($user, $secret, new \Illuminate\Support\MessageBag(['code' => 'Invalid code. Please try again.']));
+        }
         if (! $valid) {
             return back()->withErrors(['code' => $this->flashText('2fa_code_invalid', 'Invalid code. Please try again.')]);
         }

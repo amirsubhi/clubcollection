@@ -154,7 +154,7 @@ not worth the cost. Billplz has no confirm step like ToyyibPay's, so its `x_sign
 3. Installer: check the typed `app_url` host matches the request host, so a typo can't lock the site out.
 4. Map untrusted-host errors to 400 instead of 500.
 5. Password-reset limiter keyed by IP + email (staff share one office IP); set `TRUSTED_PROXIES` if the host uses a proxy.
-6. 2FA setup: on a wrong password/code redirect to the security page instead of `back()` to a POST-only URL (405).
+6. ✅ Done (go-live hardening): a wrong password or code on the admin 2FA setup shows the setup page again with the same key.
 7. Unmatched-webhook audit rows can still be added with any real paid bill code (no settlement possible); low priority.
 8. Docs: a bank change requested by the only super admin for a club with no admin can't be approved; cancel and let a club admin request it.
 
