@@ -24,24 +24,26 @@
         @vite(['resources/css/app.css'])
     @else
         {{-- public/build is missing (npm run build not uploaded): a bare-bones look so signing in still works. --}}
+        @php($brandHex = \App\Support\Portal\BrandPalette::hex(\App\Support\Portal\BrandPalette::current(), 'light'))
         <style nonce="{{ $cspNonce ?? '' }}">
             body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: #F6F5FB; color: #1E1B3A; }
             body > div { max-width: 420px; margin: 0 auto; padding: 16px; }
             header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
             header svg, .sr-only { display: none; }
             header img { width: 40px; height: 40px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
-            nav a { margin-left: 8px; color: #5B4FCF; font-weight: 700; }
+            nav a { margin-left: 8px; color: {{ $brandHex }}; font-weight: 700; }
             .auth-card { background: #fff; border: 1px solid #DEDCEC; border-radius: 16px; padding: 24px; margin: 32px 0; }
             label, input:not([type=checkbox]), .auth-btn { display: block; width: 100%; box-sizing: border-box; }
             input:not([type=checkbox]) { min-height: 48px; padding: 8px 12px; margin: 6px 0 16px; border: 1px solid #8A87A6; border-radius: 12px; font: inherit; }
-            .auth-btn { min-height: 48px; border: 0; border-radius: 999px; background: #5B4FCF; color: #fff; font: inherit; font-weight: 700; }
-            .auth-link { color: #5B4FCF; background: none; border: 0; font: inherit; }
+            .auth-btn { min-height: 48px; border: 0; border-radius: 999px; background: {{ $brandHex }}; color: #fff; font: inherit; font-weight: 700; }
+            .auth-link { color: {{ $brandHex }}; background: none; border: 0; font: inherit; }
             summary.auth-link { display: list-item; }
             .auth-alert { padding: 12px; border-radius: 12px; margin-bottom: 16px; background: #FDE4E8; color: #99243B; }
             .auth-alert svg { display: none; }
             [hidden] { display: none !important; }
         </style>
     @endif
+    @include('partials.brand-style')
 </head>
 <body class="auth-page">
     <div class="safe-x mx-auto flex min-h-[100dvh] w-full max-w-[452px] flex-col">

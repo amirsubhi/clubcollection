@@ -4,7 +4,8 @@
 
 @section('content')
 <p class="text-muted">
-    The portal's name and logo, shown on the sign-in pages, in the admin sidebar, in page titles and in emails.
+    The portal's name, logo and brand colour, shown on the sign-in pages, in the admin sidebar, in page titles and in emails,
+    and used for the installable app's name and icon.
     When exactly one club is active, the sign-in pages show that club's name and logo instead (set on its Club profile page).
 </p>
 
@@ -50,6 +51,56 @@
                                class="form-control @error('logo') is-invalid @enderror">
                         <div id="f-logo-help" class="form-text">PNG, JPEG or WebP, up to 2 MB and 4000 × 4000 pixels. It is resized to 512 pixels and saved as a PNG.</div>
                         @error('logo')<div id="f-logo-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <fieldset class="mb-4" aria-describedby="f-brand-help @error('brand') f-brand-error @enderror">
+                        <legend class="form-label fw-semibold fs-6 mb-1">Brand colour</legend>
+                        <div id="f-brand-help" class="form-text mt-0 mb-2">Buttons, links and highlights on every page, in light and dark mode. Status colours (paid, overdue) and charts don't change.</div>
+                        @php
+                            $chosenBrand = old('brand', $brand);
+                        @endphp
+                        <div class="d-flex flex-column gap-2" data-testid="brand-presets">
+                            @foreach($presets as $key)
+                                @php
+                                    $light = \App\Support\Portal\BrandPalette::tokens($key, 'light');
+                                    $dark = \App\Support\Portal\BrandPalette::tokens($key, 'dark');
+                                    $lightBg = \App\Support\Portal\BrandPalette::SURFACES['light']['card'];
+                                    $darkBg = \App\Support\Portal\BrandPalette::SURFACES['dark']['card'];
+                                @endphp
+                                <div class="form-check d-flex flex-wrap align-items-center gap-3 border rounded px-3 py-2 m-0">
+                                    <input class="form-check-input m-0 flex-shrink-0" type="radio" name="brand" value="{{ $key }}" id="f-brand-{{ $key }}" @checked($chosenBrand === $key)>
+                                    <label class="form-check-label d-flex flex-wrap align-items-center gap-3 flex-grow-1" for="f-brand-{{ $key }}">
+                                        <span class="fw-semibold" style="min-width:8.5rem">{{ \App\Support\Portal\BrandPalette::label($key) }}</span>
+                                        {{-- Static previews (no script): a button and a link, in light and in dark. --}}
+                                        <span class="d-inline-flex align-items-center gap-2 rounded border px-2 py-1" style="background:{{ $lightBg }}" aria-hidden="true" data-swatch="{{ $key }}-light">
+                                            <span class="rounded-pill px-2 small fw-bold" style="background:{{ $light['primary'] }};color:{{ $light['primary-foreground'] }}">Pay</span>
+                                            <span class="small fw-semibold text-decoration-underline" style="color:{{ $light['primary'] }}">Link</span>
+                                            <span class="rounded px-2 small" style="background:{{ $light['accent'] }};color:{{ $light['accent-foreground'] }}">Tag</span>
+                                        </span>
+                                        <span class="d-inline-flex align-items-center gap-2 rounded border px-2 py-1" style="background:{{ $darkBg }}" aria-hidden="true" data-swatch="{{ $key }}-dark">
+                                            <span class="rounded-pill px-2 small fw-bold" style="background:{{ $dark['primary'] }};color:{{ $dark['primary-foreground'] }}">Pay</span>
+                                            <span class="small fw-semibold text-decoration-underline" style="color:{{ $dark['primary'] }}">Link</span>
+                                            <span class="rounded px-2 small" style="background:{{ $dark['accent'] }};color:{{ $dark['accent-foreground'] }}">Tag</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        @error('brand')<div id="f-brand-error" role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </fieldset>
+
+                    <div class="mb-4" data-testid="app-icon-note">
+                        <span class="form-label fw-semibold d-block">App icon</span>
+                        <p class="form-text mt-0 mb-0">
+                            @if($appIcons)
+                                The installed app (Add to Home Screen) and the browser tab use icons made from the portal logo, on the brand colour.
+                            @elseif(! $gdAvailable)
+                                The built-in icon is used: this server can't make icons from the logo without the PHP GD extension.
+                            @else
+                                The built-in icon is used. Upload a portal logo to make the app icon from it.
+                            @endif
+                            Phones that already installed the app may keep the old icon and name until the app is removed and added again.
+                        </p>
                     </div>
 
                     <button type="submit" class="btn btn-primary">Save settings</button>

@@ -51,6 +51,19 @@ Route::post('/webhook/billplz', [WebhookController::class, 'billplz'])
     ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 
+// ── Web app manifest (portal name, brand colour, icons) — public, before install too ──
+// No session, cookies or CSRF: it sets no cookie and reads only the portal settings.
+Route::get('/app.webmanifest', \App\Http\Controllers\AppManifestController::class)
+    ->name('pwa.manifest')
+    ->withoutMiddleware([
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        \App\Http\Middleware\HandleInertiaRequests::class,
+    ]);
+
 // ── Dev-only UI kit (Inertia wiring check) — local & testing only ────────────
 if (app()->environment('local', 'testing')) {
     Route::get('/dev/ui-kit', fn () => \Inertia\Inertia::render('Dev/UiKit'))->name('dev.ui-kit');

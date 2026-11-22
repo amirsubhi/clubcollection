@@ -119,6 +119,7 @@
             .table-stack td.stack-actions > div { flex-wrap: wrap; justify-content: flex-end; }
         }
     </style>
+    @include('partials.brand-style')
     @stack('styles')
 </head>
 <body>
