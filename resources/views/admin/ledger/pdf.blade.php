@@ -326,7 +326,8 @@
             </td>
             <td>{{ $t['description'] }}</td>
             <td class="text-muted">{{ $t['party'] }}</td>
-            <td class="font-mono text-muted">{{ $t['reference'] ?: '' }}</td>
+            {{-- A fee's receipt number above its reference (one column keeps the A4 width). --}}
+            <td class="font-mono text-muted">@if(!empty($t['receipt'])){{ $t['receipt'] }}@if($t['reference'])<br>@endif @endif{{ $t['reference'] ?: '' }}</td>
             <td class="text-right text-green fw-bold">
                 {{ $t['amount_in'] !== null ? number_format($t['amount_in'], 2) : '' }}
             </td>

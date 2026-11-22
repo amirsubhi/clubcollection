@@ -104,7 +104,11 @@
                     </td>
                     <td role="cell" class="small text-nowrap" data-label="Period">{{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</td>
                     <td role="cell" data-label="Frequency"><span class="badge bg-light text-dark border">{{ ucfirst($payment->frequency) }}</span></td>
-                    <td role="cell" class="fw-semibold money text-nowrap" data-label="Amount">RM {{ number_format($payment->amount, 2) }}</td>
+                    <td role="cell" class="fw-semibold money text-nowrap" data-label="Amount">RM {{ number_format($payment->amount, 2) }}
+                        @if($payment->status === 'paid')
+                        <div class="small fw-normal text-muted font-monospace" data-testid="receipt-no">{{ $payment->receiptNumber() }}</div>
+                        @endif
+                    </td>
                     <td role="cell" class="small {{ $display === 'overdue' ? 'fw-semibold' : '' }}" data-label="Due date">
                         {{ $payment->due_date->format('d M Y') }}
                     </td>

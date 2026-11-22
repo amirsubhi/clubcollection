@@ -149,7 +149,7 @@ export interface PaymentGroup {
 
 /** MemberPaymentPresenter::groupReceipt(): one receipt, one line per fee (each with its own receipt no.). */
 export interface GroupReceipt extends MemberReceipt {
-  lines: { id: number; receiptNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
+  lines: { id: number; receiptNo: string; invoiceNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
   /** Slip receipt only: fees of the slip paid online instead (not in the total). */
   paidOnline: { id: number; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
 }
