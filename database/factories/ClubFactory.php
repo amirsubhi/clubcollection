@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Club;
+use App\Models\ClubJobLevel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -43,7 +44,7 @@ class ClubFactory extends Factory
     public function withJobLevels(array $levels): static
     {
         return $this->afterCreating(function (Club $club) use ($levels) {
-            \App\Models\ClubJobLevel::where('club_id', $club->id)->delete();
+            ClubJobLevel::where('club_id', $club->id)->delete();
             self::putJobLevels($club, $levels);
         });
     }
