@@ -23,18 +23,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   every member a monthly fee for this month or next month at the rate in force for their job level, with a due date
   from today (default the 15th) to the end of the following month. A preview lists every member as billed or
   skipped (inactive membership, joined after the month, already has a fee covering the month in any status or plan,
-  no rate / RM 0); the POST recomputes it and refuses when the count or total changed. Fees are created one by one
-  under the member's pay-ahead lock with the overlap checked again (a duplicate is reported as already billed). One
+  no rate, rate is RM 0); the POST recomputes it and refuses when the count, the total or a fingerprint of who is
+  billed what (HMAC of the billed member + amount pairs, month and due date) changed. The due date can't be before
+  the billed month's 1st. Fees are created one by one under the member's pay-ahead lock with active membership (in
+  an active club) and the overlap checked again (a duplicate is reported as already billed). One
   `payment.created` audit row per fee carrying the run key and one `payment.generated` summary row. No email is sent;
   an inactive club is refused. Known limit: a fee deleted on purpose is created again if the month is generated again.
 - `App\Support\Payments\FeeRates`: the one rule for a member's monthly fee (the rate in force in the month; the
-  latest start wins; none or RM 0 = nothing to bill), used by Generate fees and pay ahead.
+  latest start wins; a rate that ends before it starts never counts; no rate = null, RM 0 = 0, a waived month),
+  used by Generate fees and pay ahead.
+- Data migration `2026_11_26_000000_close_fee_rate_gaps`: extends a rate the old form closed on the day a
+  later-starting rate was entered to the day before that rate, so the months in between have a rate again
+  (`down()` is a no-op).
 
 ### Changed (monthly fee generation)
 - **Pay ahead** prices a period as the sum of each month's rate in force, so a future-dated rate applies from its
-  start month (with one rate, amounts are unchanged). A period with a month that has no rate (or RM 0) is refused.
-- **Fee rates**: saving a rate that starts later keeps the old rate in force until the day before (it used to end
-  today, leaving the months in between without a rate); the list labels such a rate "From …".
+  start month (with one rate, amounts are unchanged). A RM 0 month adds nothing; a period with a month that has no
+  rate, or that totals RM 0, is refused.
+- **Fee rates**: a new rate ends every rate of the level still in force on the day before it starts. A rate that
+  starts later keeps the old one until then (it used to end today, leaving the months in between without a rate;
+  the list labels it "From …"), and a backdated correction wins over a rate saved earlier that starts after it
+  (kept as history, "Replaced before it started"). Deleting a level's open rate reopens the rate that ended the
+  day before it started.
 - **Overdue reminders** only take fees of an active club whose member still has an active membership in it: fees of
   inactive or removed members and of inactive clubs are no longer flipped to overdue or emailed. A reactivated
   member's fees are reminded on the next run.

@@ -125,15 +125,21 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `MemberPaymentPresenter::groupReceiptNo()` (legacy `RCP-{id}` / `RCP-G{id}` when null). Not fillable.
 - **Fee amount**: only through `App\Support\Payments\FeeRates` (`monthlySen($club, $user, $month)`,
   `monthlySenByMonth()`, `inForce()`): the member's `club_user.job_level` → the rate with `effective_from` ≤ the
-  month's last day and `effective_to` NULL or ≥ its first day; the latest `effective_from` wins (then the highest id);
-  none or RM 0 = null (nothing to bill). Saving a rate closes the open one today, or the day before a future
-  `effective_from` (no gap). Pay ahead charges the sum of each covered month's rate; Generate fees one month's.
+  month's last day and `effective_to` NULL or ≥ its first day, ignoring rows with `effective_to` < `effective_from`
+  (`FeeRates::superseded()`: replaced by a backdated rate, kept as history); the latest `effective_from` wins (then
+  the highest id); no rate = null, RM 0 = 0 (a waived month). Saving a rate sets `effective_to` = its
+  `effective_from` − 1 day on every rate of the level that is open or ends on/after that day; deleting the open rate
+  reopens the predecessor that ended the day before it started (when no open rate remains). Migration
+  `close_fee_rate_gaps` extended legacy rates closed early. Pay ahead charges the sum of each covered month's rate
+  (refused on a month with no rate or a RM 0 total); Generate fees one month's (RM 0 = skipped "Rate is RM 0").
   Never read "the current rate" with `whereNull('effective_to')` for billing.
 - **Generate fees** (`App\Services\Payments\MonthlyFeeGenerator`, `Admin\FeeGenerationController`): this month or
-  next month only; due date today .. end of the following month. `preview()` gives every member one outcome (in this
-  order: inactive membership, joined after the month, already has any fee overlapping the month, no rate); the POST
-  recomputes it and refuses when count or total (sen) differ from the hidden fields the preview posted. Each fee: the
-  `pay-ahead:{club}:{user}` cache lock (outside the transaction), overlap re-check + insert + `payment.created`
+  next month only; due date max(today, the month's 1st) .. end of the following month. `preview()` gives every member
+  one outcome (in this order: inactive membership, joined after the month, already has any fee overlapping the
+  month, no rate, rate is RM 0); the POST recomputes it and refuses when count, total (sen) or
+  `MonthlyFeeGenerator::fingerprint()` (HMAC, app key, of sorted `user_id:sen` + month + due date) differ from the
+  hidden fields the preview posted. Each fee: the `pay-ahead:{club}:{user}` cache lock (outside the transaction),
+  active `club_user` + active club re-check (else skipped inactive), overlap re-check + insert + `payment.created`
   audit (with the run key) in a small transaction, `UniqueConstraintViolationException` = already billed; a held lock
   = skipped "busy". One `payment.generated` summary row. No mail. A deleted fee is re-created on a rerun (known).
 - **Overdue reminders** (`payments:send-overdue-reminders`): only fees of an active club whose member has an active

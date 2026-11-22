@@ -137,7 +137,8 @@ On **Bayaran**, open **Bayar lebih awal** at the bottom:
 3. A new invoice is created; pay it by FPX or transfer as above.
 
 The price is your rate for each month the plan covers, added up: if the club has already set a new rate starting in
-one of those months, those months are at the new rate.
+one of those months, those months are at the new rate. A month the club has waived (RM 0) adds nothing; a period of
+only waived months has nothing to pay, so it isn't offered.
 
 <br clear="right">
 
@@ -192,23 +193,28 @@ your own fee.
 Fees are not created on their own: once a month, bill the whole club in one go.
 
 1. **Fee Rates** first: every [job level](#set-up-job-levels-before-fee-rates) needs a monthly rate. A new rate can
-   start on a later date (for example 1 January); the old rate stays in force until the day before.
+   start on a later date (for example 1 January); the old rate stays in force until the day before. A rate can also
+   start on an earlier date to correct one ("RM 8 since October"): it replaces every rate of that level from its
+   start, including one saved before that starts later (kept in the list as **Replaced before it started**).
+   Deleting a level's current rate puts the rate before it back in force. A rate of **RM 0** waives the month.
 2. **Payments → Generate fees for a month.** Pick the month (this month or next month only) and the **due date**
    (by default the 15th, or today when that has passed; it can't be in the past, or the overdue reminder would
-   email everyone the next morning), then **Show the list**.
+   email everyone the next morning, nor before the month starts), then **Show the list**.
 3. The list shows every member and what will happen: **Will be billed** (amount, level and rate) or **Skipped** with
    the reason:
    - **Inactive membership**: set inactive on Members.
    - **Joined after the month**: their join date is after the month's last day.
-   - **No fee rate for their level**: their level has no rate for that month, or a rate of RM 0.
+   - **No fee rate for their level**: their level has no rate for that month.
+   - **Rate is RM 0**: their level's rate for that month is RM 0 (waived): no fee is created.
    - **Already has a fee covering the month**: any fee of theirs that covers part of the month, whatever its status
      (paid, unpaid, overdue, a cancelled payment, a quarterly or yearly plan paid ahead).
 4. Check the count and total, then **Create N fees**. Each fee is a monthly fee at the member's rate for that month,
    with no discount. Nobody is emailed: members see the new fee in the portal, and the
    [overdue reminder](#overdue-reminders) follows the due date. Admins' own fees are created too.
 
-If anything changed after you opened the list (a member, a rate, a fee), nothing is created and you are asked to look
-at the list again. Running the same month again is safe: only members not billed yet are added (with a new due date
+If anything changed after you opened the list (a member, a rate, a fee, even one member swapped for another at the
+same amount), nothing is created and you are asked to look at the list again. A member set inactive while the fees
+are being created is skipped. Running the same month again is safe: only members not billed yet are added (with a new due date
 if you pick one). One limit: a fee you **deleted** on purpose is created again when you generate that month again, so
 after deleting one, set the member inactive or check the list before confirming. Every fee created is in the
 **Audit Log** ("Payment Created", with the run's key) plus one **Fees Generated** row with the month, count, total and
