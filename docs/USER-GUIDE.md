@@ -107,7 +107,9 @@ When more than one fee is open (pending or overdue), **Utama** shows **Bayar sem
 
 Open any fee from **Utama** or **Bayaran**. An unpaid fee shows its invoice; a paid fee shows the **Resit rasmi**
 (official receipt) with the payment method (FPX with the transaction ID, or **Pindahan bank / DuitNow**). Both are
-headed with the club's logo, name, registration no. and address (when the club has set them). A receipt keeps the
+headed with the club's logo, name, registration no. and address (when the club has set them). The receipt number
+looks like **RCP-2026-0001**: the club's prefix, the year its financial year started, and a running number. A
+"Bayar semua" payment is one receipt with one number for all its fees. A receipt keeps the
 club details it was issued with, so it doesn't change if the club later renames itself or changes its logo. If the
 club has written a receipt footer, it is printed at the bottom of the receipt and the receipt email. Tap
 **Cetak** to print or save it as PDF.
@@ -256,6 +258,7 @@ Switching **Offer bank transfer / DuitNow to members** off takes effect at once 
 - **Financial year starts in**: the month your club's year begins. "This year" on the Dashboard, Fund Usage, the Ledger
   (its default period and the year preset) and the members' "where the money went" page then runs from the 1st of that
   month, labelled e.g. **FY 2026/27**. January (the default) is the calendar year.
+- **Receipt number prefix**: 2 to 6 capital letters or digits (default **RCP**). See [Receipt numbers](#receipt-numbers).
 - **Receipt footer** (optional): plain text of up to 300 characters, printed under "This is a computer-generated
   receipt" on the official receipt and the receipt email, e.g. a thank-you note or the treasurer's contact. Line
   breaks are kept; tabs and other control characters are refused; anything that looks like HTML is shown as typed.
@@ -264,6 +267,27 @@ Every change is in the Audit Log with the old and new values. **Receipts already
 issued with**: a fee paid before you change the name, logo or receipt footer still shows the old ones on its receipt. (Fees paid
 before this feature existed show the club as it is now.) Unpaid invoices always show the current details. Old logo
 files are kept on the server for that reason.
+
+### Receipt numbers
+
+Every receipt gets a number of its own club when the fee is marked paid (online, slip approved, or recorded by
+hand): **PREFIX-YEAR-NNNN**, e.g. **RCP-2026-0001**. YEAR is the year the club's financial year started (with a
+July start, a receipt issued on 30 June 2026 is RCP-2025-…, one issued on 1 July 2026 starts RCP-2026-0001). The
+running number starts again at 0001 each financial year and is counted per club; it is the date the receipt is
+issued that counts, not a backdated "date received".
+
+- **One payment, one number**: a "Bayar semua" FPX bill or transfer slip is one receipt, so all its fees share one
+  number; each fee is listed on it with its invoice number.
+- **Never reused**: a fee taken back from paid (status changed on the payment's Edit page) loses its receipt number,
+  which stays recorded as void (shown on the payment page as "Earlier receipt no."); when the fee is paid again it
+  gets a new number. The numbers are therefore never reused, but they are **not guaranteed gap-free**.
+- **Prefix**: set on **Club profile**. A new prefix is used only for receipts issued from then on; the year's running
+  number carries on (e.g. RCP-2026-0007, then KBS-2026-0008). The page shows the next number.
+- Fees paid before receipt numbers existed keep their old number (**RCP-** and the fee number, **RCP-G…** for an old
+  "Bayar semua").
+
+The number is on the member's receipt, the receipt email, the Payments list and payment page and the Ledger (screen, CSV column
+**Receipt No.** and PDF).
 
 ### Billing plans and gateway fee
 

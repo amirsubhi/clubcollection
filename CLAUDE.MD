@@ -110,6 +110,15 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `MemberPaymentPresenter::issuer()` (snapshot, else the live club for older fees); invoices use the live club. The
   club's receipt footer (`clubs.receipt_footer`, plain text, max 300) is in the snapshot; an older snapshot without a
   `footer` key shows none. Render it escaped (`whitespace-pre-line` in React, `nl2br(e())` in Blade).
+- **Receipt numbers**: `{PREFIX}-{FY start year}-{NNNN}` from `App\Support\Payments\ReceiptNumbers::allocate()`,
+  per club and financial year (the year it is issued in, `now()`), prefix `clubs.receipt_prefix` (read at issue time).
+  One fee: `Payment::booted()` saving hook, when it becomes paid and `receipt_no` is null (next to the snapshot). A
+  group bill / slip: `SettlementService::markGroupPaid()` and `TransferVerificationService::approveGroup()` allocate
+  once with the bill id and set `receipt_no` + `receiptAllocationId` on each fee **before** saving it (so the hook
+  skips it). `payments.receipt_no` is not unique (a group shares it); uniqueness is on `receipt_allocations`
+  (club + number, club + year + seq). A revert clears `receipt_no` and voids its `receipt_allocation_payments` row;
+  never reuse a number, never promise gap-free. Display with `Payment::receiptNumber()` /
+  `MemberPaymentPresenter::groupReceiptNo()` (legacy `RCP-{id}` / `RCP-G{id}` when null). Not fillable.
 - **Financial year**: "this year" for a club is `FundFigures::yearToDate($today, $club)` /
   `financialYearStart()` / `yearLabel()` (`clubs.financial_year_start_month`, 1 = calendar year, label "FY 2026/27"
   otherwise). Don't use `startOfYear()` for a club's year. The classic dashboard and the member payments list still
@@ -119,6 +128,18 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `PortalSettings::put()` clears the cache and re-applies.
 - **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and
   `users.two_factor_secret` / recovery codes (manual `encrypt`/`decrypt`; use `User::getTwoFactorSecret()`).
+
+## Lock order (MariaDB / MySQL)
+
+Every transaction that settles or decides fees takes row locks in this order, inside one `DB::transaction` (PR #25
+fixed deadlocks from mixing it up): `payment_bill_items` (shared, group settlement) → `payments` (`lockForUpdate`,
+by id) → `payment_bills` (the bill being settled) → `receipt_counters` (one row per club + financial year). Group slip
+approval locks its `payment_bills` row before its fees; that row is only reached through the slip. The receipt
+counter is always taken after the caller's own locks; rows locked after it (the fee's own bill, open group bills
+covering the fee, via the Payment `saved` hook) are reached only through fee rows the transaction already holds.
+Advance the counter with the upsert in `ReceiptNumbers::allocate()` (never "SELECT … FOR UPDATE, insert if
+missing": a locking read of a missing row takes a gap lock and two first receipts of a year deadlock). A deadlock
+(1213) rolls back the whole transaction: never catch it and carry on.
 
 ## Patterns
 

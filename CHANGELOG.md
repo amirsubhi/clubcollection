@@ -18,6 +18,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
 ### Added (settings phase 2: receipts and privacy)
+- **Receipt numbers per club**: `{PREFIX}-{FY start year}-{NNNN}` (e.g. `RCP-2026-0001`), a sequence per club and
+  financial year (`clubs.financial_year_start_month`; the year the number is issued in), issued when a fee becomes
+  paid. The prefix (default `RCP`, 2–6 of A–Z / 0–9) is set on the Club profile and applies to later receipts only.
+  A "Bayar semua" bill or slip is one receipt with one number shared by its fees (stored on the bill and on each fee).
+  Numbers are **never reused** (not gap-free): a fee taken back from paid keeps its number recorded as void and gets
+  a new one when paid again. Shown on the member receipt and group receipt, the receipt email, the admin payment page
+  and the ledger (screen, CSV `Receipt No.` column, PDF). Fees paid before keep `RCP-{id}` / `RCP-G{id}`. New
+  tables `receipt_counters`, `receipt_allocations`, `receipt_allocation_payments`; new columns
+  `clubs.receipt_prefix`, `payments.receipt_no`, `payment_bills.receipt_no`.
 - **Receipt footer**: an optional plain-text footer per club (Club profile, up to 300 characters, line breaks kept,
   control characters refused, audited; new `clubs.receipt_footer`), printed escaped under "computer-generated" on the
   official receipt and the receipt email. It is part of the issuer snapshot, so an issued receipt keeps the footer it

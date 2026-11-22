@@ -36,8 +36,9 @@ Billplz sandbox run on your own host.
     reference, the member uploads 1–3 slips (photo or PDF) and the fee shows "Menunggu pengesahan" until a
     treasurer approves it.
 - Invoice and official receipt ("Resit rasmi") for every fee, with a print button, headed with the club's logo,
-  name, registration no. and address, and the club's own receipt footer. A receipt keeps the club details it was
-  issued with.
+  name, registration no. and address, and the club's own receipt footer. Receipt numbers run per club and financial
+  year (`RCP-2026-0001`, prefix set by the club; one number for a "Bayar semua" payment; never reused). A receipt
+  keeps the club details it was issued with.
 - A public **privacy notice** page (`/privacy`, BM and English), linked from the sign-in page and the member app.
 - Payment history by year and **pay ahead** ("Bayar lebih awal") for 1, 3 or 12 months, using the plans the club allows.
 - Add to home screen (PWA) with a small install tip.
