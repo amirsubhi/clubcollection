@@ -12,53 +12,53 @@ The [full licence texts](#licence-texts) of these packages follow the lists. The
 `public/licenses.txt`, which is committed and uploaded with every release, so a deployed site serves them at
 `/licenses.txt`.
 
-## PHP (Composer): 88 packages
+## PHP (Composer): 89 packages
 
-Licences: MIT (75), BSD-3-Clause (5), BSD-2-Clause (2), BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only (2), Apache-2.0 (1), LGPL-2.1 (1), LGPL-2.1-or-later (1), LGPL-3.0-or-later (1).
+Licences: MIT (76), BSD-3-Clause (5), BSD-2-Clause (2), BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only (2), Apache-2.0 (1), LGPL-2.1 (1), LGPL-2.1-or-later (1), LGPL-3.0-or-later (1).
 
 | Package | Version | Licence | Source |
 |---|---|---|---|
-| `bacon/bacon-qr-code` | 3.0.4 | BSD-2-Clause | <https://github.com/Bacon/BaconQrCode> |
+| `bacon/bacon-qr-code` | 3.1.1 | BSD-2-Clause | <https://github.com/Bacon/BaconQrCode> |
 | `barryvdh/laravel-dompdf` | 3.1.2 | MIT | <https://github.com/barryvdh/laravel-dompdf> |
-| `brick/math` | 0.14.8 | MIT | <https://github.com/brick/math> |
-| `carbonphp/carbon-doctrine-types` | 3.2.0 | MIT | <https://github.com/CarbonPHP/carbon-doctrine-types> |
+| `brick/math` | 1.0.0 | MIT | <https://github.com/brick/math> |
+| `carbonphp/carbon-doctrine-types` | 3.2.1 | MIT | <https://github.com/CarbonPHP/carbon-doctrine-types> |
 | `dasprid/enum` | 1.0.7 | BSD-2-Clause | <https://github.com/DASPRiD/Enum> |
 | `dflydev/dot-access-data` | 3.0.3 | MIT | <https://github.com/dflydev/dflydev-dot-access-data> |
-| `doctrine/inflector` | 2.1.0 | MIT | <https://github.com/doctrine/inflector> |
-| `doctrine/lexer` | 3.0.1 | MIT | <https://github.com/doctrine/lexer> |
-| `dompdf/dompdf` | 3.1.5 | LGPL-2.1 | <https://github.com/dompdf/dompdf> |
+| `doctrine/inflector` | 2.1.1 | MIT | <https://github.com/doctrine/inflector> |
+| `doctrine/lexer` | 3.0.3 | MIT | <https://github.com/doctrine/lexer> |
+| `dompdf/dompdf` | 3.1.6 | LGPL-2.1 | <https://github.com/dompdf/dompdf> |
 | `dompdf/php-font-lib` | 1.0.2 | LGPL-2.1-or-later | <https://github.com/dompdf/php-font-lib> |
 | `dompdf/php-svg-lib` | 1.0.2 | LGPL-3.0-or-later | <https://github.com/dompdf/php-svg-lib> |
-| `dragonmantank/cron-expression` | 3.6.0 | MIT | <https://github.com/dragonmantank/cron-expression> |
+| `dragonmantank/cron-expression` | 3.6.1 | MIT | <https://github.com/dragonmantank/cron-expression> |
 | `egulias/email-validator` | 4.0.4 | MIT | <https://github.com/egulias/EmailValidator> |
 | `fruitcake/php-cors` | 1.4.0 | MIT | <https://github.com/fruitcake/php-cors> |
-| `graham-campbell/result-type` | 1.1.4 | MIT | <https://github.com/GrahamCampbell/Result-Type> |
-| `guzzlehttp/guzzle` | 7.10.0 | MIT | <https://github.com/guzzle/guzzle> |
-| `guzzlehttp/promises` | 2.3.0 | MIT | <https://github.com/guzzle/promises> |
-| `guzzlehttp/psr7` | 2.9.0 | MIT | <https://github.com/guzzle/psr7> |
-| `guzzlehttp/uri-template` | 1.0.5 | MIT | <https://github.com/guzzle/uri-template> |
+| `graham-campbell/result-type` | 1.2.0 | MIT | <https://github.com/GrahamCampbell/Result-Type> |
+| `guzzlehttp/guzzle` | 8.5.5 | MIT | <https://github.com/guzzle/guzzle> |
+| `guzzlehttp/promises` | 3.2.0 | MIT | <https://github.com/guzzle/promises> |
+| `guzzlehttp/psr7` | 3.6.0 | MIT | <https://github.com/guzzle/psr7> |
+| `guzzlehttp/uri-template` | 2.0.1 | MIT | <https://github.com/guzzle/uri-template> |
 | `inertiajs/inertia-laravel` | 2.0.28 | MIT | <https://github.com/inertiajs/inertia-laravel> |
-| `laravel/framework` | 13.1.1 | MIT | <https://github.com/laravel/framework> |
-| `laravel/prompts` | 0.3.15 | MIT | <https://github.com/laravel/prompts> |
-| `laravel/serializable-closure` | 2.0.10 | MIT | <https://github.com/laravel/serializable-closure> |
-| `laravel/tinker` | 3.0.0 | MIT | <https://github.com/laravel/tinker> |
+| `laravel/framework` | 13.43.0 | MIT | <https://github.com/laravel/framework> |
+| `laravel/prompts` | 0.3.27 | MIT | <https://github.com/laravel/prompts> |
+| `laravel/serializable-closure` | 2.2.0 | MIT | <https://github.com/laravel/serializable-closure> |
+| `laravel/tinker` | 3.2.0 | MIT | <https://github.com/laravel/tinker> |
 | `laravel/ui` | 4.6.3 | MIT | <https://github.com/laravel/ui> |
-| `league/commonmark` | 2.8.2 | BSD-3-Clause | <https://github.com/thephpleague/commonmark> |
+| `league/commonmark` | 2.10.7 | BSD-3-Clause | <https://github.com/thephpleague/commonmark> |
 | `league/config` | 1.2.0 | BSD-3-Clause | <https://github.com/thephpleague/config> |
-| `league/flysystem` | 3.32.0 | MIT | <https://github.com/thephpleague/flysystem> |
-| `league/flysystem-local` | 3.31.0 | MIT | <https://github.com/thephpleague/flysystem-local> |
-| `league/mime-type-detection` | 1.16.0 | MIT | <https://github.com/thephpleague/mime-type-detection> |
-| `league/uri` | 7.8.1 | MIT | <https://github.com/thephpleague/uri> |
-| `league/uri-interfaces` | 7.8.1 | MIT | <https://github.com/thephpleague/uri-interfaces> |
-| `masterminds/html5` | 2.10.0 | MIT | <https://github.com/Masterminds/html5-php> |
-| `monolog/monolog` | 3.10.0 | MIT | <https://github.com/Seldaek/monolog> |
-| `nesbot/carbon` | 3.11.3 | MIT | <https://github.com/CarbonPHP/carbon> |
-| `nette/schema` | 1.3.5 | BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only | <https://github.com/nette/schema> |
-| `nette/utils` | 4.1.3 | BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only | <https://github.com/nette/utils> |
-| `nikic/php-parser` | 5.7.0 | BSD-3-Clause | <https://github.com/nikic/PHP-Parser> |
-| `nunomaduro/termwind` | 2.4.0 | MIT | <https://github.com/nunomaduro/termwind> |
-| `paragonie/constant_time_encoding` | 3.1.3 | MIT | <https://github.com/paragonie/constant_time_encoding> |
-| `phpoption/phpoption` | 1.9.5 | Apache-2.0 | <https://github.com/schmittjoh/php-option> |
+| `league/flysystem` | 3.36.0 | MIT | <https://github.com/thephpleague/flysystem> |
+| `league/flysystem-local` | 3.35.3 | MIT | <https://github.com/thephpleague/flysystem-local> |
+| `league/mime-type-detection` | 1.17.0 | MIT | <https://github.com/thephpleague/mime-type-detection> |
+| `league/uri` | 7.10.0 | MIT | <https://github.com/thephpleague/uri> |
+| `league/uri-interfaces` | 7.10.0 | MIT | <https://github.com/thephpleague/uri-interfaces> |
+| `masterminds/html5` | 2.12.0 | MIT | <https://github.com/Masterminds/html5-php> |
+| `monolog/monolog` | 3.13.0 | MIT | <https://github.com/Seldaek/monolog> |
+| `nesbot/carbon` | 3.15.1 | MIT | <https://github.com/CarbonPHP/carbon> |
+| `nette/schema` | 1.4.0 | BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only | <https://github.com/nette/schema> |
+| `nette/utils` | 4.1.6 | BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only | <https://github.com/nette/utils> |
+| `nikic/php-parser` | 5.9.0 | BSD-3-Clause | <https://github.com/nikic/PHP-Parser> |
+| `nunomaduro/termwind` | 2.4.1 | MIT | <https://github.com/nunomaduro/termwind> |
+| `paragonie/constant_time_encoding` | 3.1.5 | MIT | <https://github.com/paragonie/constant_time_encoding> |
+| `phpoption/phpoption` | 1.10.0 | Apache-2.0 | <https://github.com/schmittjoh/php-option> |
 | `pragmarx/google2fa` | 8.0.3 | MIT | <https://github.com/antonioribeiro/google2fa> |
 | `psr/clock` | 1.0.0 | MIT | <https://github.com/php-fig/clock> |
 | `psr/container` | 2.0.2 | MIT | <https://github.com/php-fig/container> |
@@ -68,44 +68,45 @@ Licences: MIT (75), BSD-3-Clause (5), BSD-2-Clause (2), BSD-3-Clause OR GPL-2.0-
 | `psr/http-message` | 2.0 | MIT | <https://github.com/php-fig/http-message> |
 | `psr/log` | 3.0.2 | MIT | <https://github.com/php-fig/log> |
 | `psr/simple-cache` | 3.0.0 | MIT | <https://github.com/php-fig/simple-cache> |
-| `psy/psysh` | 0.12.22 | MIT | <https://github.com/bobthecow/psysh> |
-| `ralouphie/getallheaders` | 3.0.3 | MIT | <https://github.com/ralouphie/getallheaders> |
+| `psy/psysh` | 0.12.24 | MIT | <https://github.com/bobthecow/psysh> |
 | `ramsey/collection` | 2.1.1 | MIT | <https://github.com/ramsey/collection> |
-| `ramsey/uuid` | 4.9.2 | MIT | <https://github.com/ramsey/uuid> |
-| `sabberworm/php-css-parser` | 9.3.0 | MIT | <https://github.com/MyIntervals/PHP-CSS-Parser> |
-| `symfony/clock` | 8.0.0 | MIT | <https://github.com/symfony/clock> |
-| `symfony/console` | 8.0.7 | MIT | <https://github.com/symfony/console> |
-| `symfony/css-selector` | 8.0.6 | MIT | <https://github.com/symfony/css-selector> |
-| `symfony/deprecation-contracts` | 3.6.0 | MIT | <https://github.com/symfony/deprecation-contracts> |
-| `symfony/error-handler` | 8.0.4 | MIT | <https://github.com/symfony/error-handler> |
-| `symfony/event-dispatcher` | 8.0.4 | MIT | <https://github.com/symfony/event-dispatcher> |
-| `symfony/event-dispatcher-contracts` | 3.6.0 | MIT | <https://github.com/symfony/event-dispatcher-contracts> |
-| `symfony/finder` | 8.0.6 | MIT | <https://github.com/symfony/finder> |
-| `symfony/http-foundation` | 8.0.7 | MIT | <https://github.com/symfony/http-foundation> |
-| `symfony/http-kernel` | 8.0.7 | MIT | <https://github.com/symfony/http-kernel> |
-| `symfony/mailer` | 8.0.6 | MIT | <https://github.com/symfony/mailer> |
-| `symfony/mime` | 8.0.7 | MIT | <https://github.com/symfony/mime> |
-| `symfony/polyfill-ctype` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-ctype> |
-| `symfony/polyfill-intl-grapheme` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-intl-grapheme> |
-| `symfony/polyfill-intl-idn` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-intl-idn> |
-| `symfony/polyfill-intl-normalizer` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-intl-normalizer> |
-| `symfony/polyfill-mbstring` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-mbstring> |
-| `symfony/polyfill-php80` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-php80> |
-| `symfony/polyfill-php84` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-php84> |
-| `symfony/polyfill-php85` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-php85> |
-| `symfony/polyfill-uuid` | 1.33.0 | MIT | <https://github.com/symfony/polyfill-uuid> |
-| `symfony/process` | 8.0.5 | MIT | <https://github.com/symfony/process> |
-| `symfony/routing` | 8.0.6 | MIT | <https://github.com/symfony/routing> |
-| `symfony/service-contracts` | 3.6.1 | MIT | <https://github.com/symfony/service-contracts> |
-| `symfony/string` | 8.0.6 | MIT | <https://github.com/symfony/string> |
-| `symfony/translation` | 8.0.6 | MIT | <https://github.com/symfony/translation> |
-| `symfony/translation-contracts` | 3.6.1 | MIT | <https://github.com/symfony/translation-contracts> |
-| `symfony/uid` | 8.0.4 | MIT | <https://github.com/symfony/uid> |
-| `symfony/var-dumper` | 8.0.6 | MIT | <https://github.com/symfony/var-dumper> |
-| `thecodingmachine/safe` | 3.4.0 | MIT | <https://github.com/thecodingmachine/safe> |
+| `ramsey/uuid` | 4.10.0 | MIT | <https://github.com/ramsey/uuid> |
+| `sabberworm/php-css-parser` | 9.5.0 | MIT | <https://github.com/MyIntervals/PHP-CSS-Parser> |
+| `symfony/clock` | 8.1.9 | MIT | <https://github.com/symfony/clock> |
+| `symfony/console` | 8.1.11 | MIT | <https://github.com/symfony/console> |
+| `symfony/css-selector` | 8.1.10 | MIT | <https://github.com/symfony/css-selector> |
+| `symfony/deprecation-contracts` | 3.8.1 | MIT | <https://github.com/symfony/deprecation-contracts> |
+| `symfony/error-handler` | 8.1.10 | MIT | <https://github.com/symfony/error-handler> |
+| `symfony/event-dispatcher` | 8.1.5 | MIT | <https://github.com/symfony/event-dispatcher> |
+| `symfony/event-dispatcher-contracts` | 3.8.1 | MIT | <https://github.com/symfony/event-dispatcher-contracts> |
+| `symfony/finder` | 8.1.11 | MIT | <https://github.com/symfony/finder> |
+| `symfony/http-foundation` | 8.1.11 | MIT | <https://github.com/symfony/http-foundation> |
+| `symfony/http-kernel` | 8.1.11 | MIT | <https://github.com/symfony/http-kernel> |
+| `symfony/mailer` | 8.1.10 | MIT | <https://github.com/symfony/mailer> |
+| `symfony/mime` | 8.1.10 | MIT | <https://github.com/symfony/mime> |
+| `symfony/polyfill-ctype` | 1.37.0 | MIT | <https://github.com/symfony/polyfill-ctype> |
+| `symfony/polyfill-intl-grapheme` | 1.43.3 | MIT | <https://github.com/symfony/polyfill-intl-grapheme> |
+| `symfony/polyfill-intl-idn` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-intl-idn> |
+| `symfony/polyfill-intl-normalizer` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-intl-normalizer> |
+| `symfony/polyfill-mbstring` | 1.43.3 | MIT | <https://github.com/symfony/polyfill-mbstring> |
+| `symfony/polyfill-php80` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-php80> |
+| `symfony/polyfill-php82` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-php82> |
+| `symfony/polyfill-php84` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-php84> |
+| `symfony/polyfill-php85` | 1.44.0 | MIT | <https://github.com/symfony/polyfill-php85> |
+| `symfony/polyfill-php86` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-php86> |
+| `symfony/polyfill-time` | 1.42.0 | MIT | <https://github.com/symfony/polyfill-time> |
+| `symfony/polyfill-uuid` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-uuid> |
+| `symfony/process` | 8.1.10 | MIT | <https://github.com/symfony/process> |
+| `symfony/routing` | 8.1.11 | MIT | <https://github.com/symfony/routing> |
+| `symfony/service-contracts` | 3.8.1 | MIT | <https://github.com/symfony/service-contracts> |
+| `symfony/string` | 8.1.10 | MIT | <https://github.com/symfony/string> |
+| `symfony/translation` | 8.1.11 | MIT | <https://github.com/symfony/translation> |
+| `symfony/translation-contracts` | 3.8.1 | MIT | <https://github.com/symfony/translation-contracts> |
+| `symfony/uid` | 8.1.9 | MIT | <https://github.com/symfony/uid> |
+| `symfony/var-dumper` | 8.1.10 | MIT | <https://github.com/symfony/var-dumper> |
 | `tijsverkoyen/css-to-inline-styles` | 2.4.0 | BSD-3-Clause | <https://github.com/tijsverkoyen/CssToInlineStyles> |
-| `vlucas/phpdotenv` | 5.6.3 | BSD-3-Clause | <https://github.com/vlucas/phpdotenv> |
-| `voku/portable-ascii` | 2.0.3 | MIT | <https://github.com/voku/portable-ascii> |
+| `vlucas/phpdotenv` | 5.8.0 | BSD-3-Clause | <https://github.com/phpdotenv/phpdotenv> |
+| `voku/portable-ascii` | 2.1.1 | MIT | <https://github.com/voku/portable-ascii> |
 
 ## JavaScript (npm, bundled into `public/build`): 130 packages
 
@@ -773,9 +774,9 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ~~~~
 
-### bacon/bacon-qr-code@3.0.4
+### bacon/bacon-qr-code@3.1.1
 
-Used by: `bacon/bacon-qr-code@3.0.4`
+Used by: `bacon/bacon-qr-code@3.1.1`
 
 ~~~~text
 Copyright (c) 2017-present, Ben Scholzen 'DASPRiD'
@@ -886,9 +887,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### brick/math@0.14.8
+### brick/math@1.0.0
 
-Used by: `brick/math@0.14.8`
+Used by: `brick/math@1.0.0`
 
 ~~~~text
 The MIT License (MIT)
@@ -941,9 +942,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### carbonphp/carbon-doctrine-types@3.2.0
+### carbonphp/carbon-doctrine-types@3.2.1
 
-Used by: `carbonphp/carbon-doctrine-types@3.2.0`
+Used by: `carbonphp/carbon-doctrine-types@3.2.1`
 
 ~~~~text
 MIT License
@@ -1463,9 +1464,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### doctrine/inflector@2.1.0
+### doctrine/inflector@2.1.1
 
-Used by: `doctrine/inflector@2.1.0`
+Used by: `doctrine/inflector@2.1.1`
 
 ~~~~text
 Copyright (c) 2006-2015 Doctrine Project
@@ -1489,9 +1490,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### doctrine/lexer@3.0.1
+### doctrine/lexer@3.0.3
 
-Used by: `doctrine/lexer@3.0.1`
+Used by: `doctrine/lexer@3.0.3`
 
 ~~~~text
 Copyright (c) 2006-2018 Doctrine Project
@@ -1543,9 +1544,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### dompdf/dompdf@3.1.5
+### dompdf/dompdf@3.1.6
 
-Used by: `dompdf/dompdf@3.1.5`
+Used by: `dompdf/dompdf@3.1.6`
 
 ~~~~text
 GNU LESSER GENERAL PUBLIC LICENSE
@@ -2641,9 +2642,9 @@ permanent authorization for you to choose that version for the
 Library.
 ~~~~
 
-### dragonmantank/cron-expression@3.6.0
+### dragonmantank/cron-expression@3.6.1
 
-Used by: `dragonmantank/cron-expression@3.6.0`
+Used by: `dragonmantank/cron-expression@3.6.1`
 
 ~~~~text
 Copyright (c) 2011 Michael Dowling <mtdowling@gmail.com>, 2016 Chris Tankersley <chris@ctankersley.com>, and contributors
@@ -3021,14 +3022,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### graham-campbell/result-type@1.1.4
+### graham-campbell/result-type@1.2.0
 
-Used by: `graham-campbell/result-type@1.1.4`
+Used by: `graham-campbell/result-type@1.2.0`
 
 ~~~~text
 The MIT License (MIT)
 
-Copyright (c) 2020-2024 Graham Campbell <hello@gjcampbell.co.uk>
+Copyright (c) 2020-2026 Graham Campbell <hello@gjcampbell.co.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -3049,9 +3050,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### guzzlehttp/guzzle@7.10.0
+### guzzlehttp/guzzle@8.5.5
 
-Used by: `guzzlehttp/guzzle@7.10.0`
+Used by: `guzzlehttp/guzzle@8.5.5`
 
 ~~~~text
 The MIT License (MIT)
@@ -3083,9 +3084,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### guzzlehttp/promises@2.3.0
+### guzzlehttp/promises@3.2.0
 
-Used by: `guzzlehttp/promises@2.3.0`
+Used by: `guzzlehttp/promises@3.2.0`
 
 ~~~~text
 The MIT License (MIT)
@@ -3114,9 +3115,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### guzzlehttp/psr7@2.9.0
+### guzzlehttp/psr7@3.6.0
 
-Used by: `guzzlehttp/psr7@2.9.0`
+Used by: `guzzlehttp/psr7@3.6.0`
 
 ~~~~text
 The MIT License (MIT)
@@ -3147,9 +3148,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### guzzlehttp/uri-template@1.0.5
+### guzzlehttp/uri-template@2.0.1
 
-Used by: `guzzlehttp/uri-template@1.0.5`
+Used by: `guzzlehttp/uri-template@2.0.1`
 
 ~~~~text
 The MIT License (MIT)
@@ -3311,7 +3312,7 @@ THE SOFTWARE.
 
 ### laravel-precognition@1.0.2 and 5 more
 
-Used by: `laravel-precognition@1.0.2`, `laravel/framework@13.1.1`, `laravel/prompts@0.3.15`, `laravel/serializable-closure@2.0.10`, `laravel/tinker@3.0.0`, `laravel/ui@4.6.3`
+Used by: `laravel-precognition@1.0.2`, `laravel/framework@13.43.0`, `laravel/prompts@0.3.27`, `laravel/serializable-closure@2.2.0`, `laravel/tinker@3.2.0`, `laravel/ui@4.6.3`
 
 ~~~~text
 The MIT License (MIT)
@@ -3337,9 +3338,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### league/commonmark@2.8.2
+### league/commonmark@2.10.7
 
-Used by: `league/commonmark@2.8.2`
+Used by: `league/commonmark@2.10.7`
 
 ~~~~text
 BSD 3-Clause License
@@ -3407,9 +3408,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### league/flysystem-local@3.31.0 and 1 more
+### league/flysystem-local@3.35.3 and 1 more
 
-Used by: `league/flysystem-local@3.31.0`, `league/flysystem@3.32.0`
+Used by: `league/flysystem-local@3.35.3`, `league/flysystem@3.36.0`
 
 ~~~~text
 Copyright (c) 2013-2026 Frank de Jonge
@@ -3433,9 +3434,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### league/mime-type-detection@1.16.0
+### league/mime-type-detection@1.17.0
 
-Used by: `league/mime-type-detection@1.16.0`
+Used by: `league/mime-type-detection@1.17.0`
 
 ~~~~text
 Copyright (c) 2013-2023 Frank de Jonge
@@ -3459,9 +3460,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### league/uri-interfaces@7.8.1 and 1 more
+### league/uri-interfaces@7.10.0 and 1 more
 
-Used by: `league/uri-interfaces@7.8.1`, `league/uri@7.8.1`
+Used by: `league/uri-interfaces@7.10.0`, `league/uri@7.10.0`
 
 ~~~~text
 The MIT License (MIT)
@@ -3618,9 +3619,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### masterminds/html5@2.10.0
+### masterminds/html5@2.12.0
 
-Used by: `masterminds/html5@2.10.0`
+Used by: `masterminds/html5@2.12.0`
 
 ~~~~text
 ## HTML5-PHP License
@@ -3751,9 +3752,9 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ~~~~
 
-### monolog/monolog@3.10.0
+### monolog/monolog@3.13.0
 
-Used by: `monolog/monolog@3.10.0`
+Used by: `monolog/monolog@3.13.0`
 
 ~~~~text
 Copyright (c) 2011-2020 Jordi Boggiano
@@ -3805,9 +3806,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### nesbot/carbon@3.11.3
+### nesbot/carbon@3.15.1
 
-Used by: `nesbot/carbon@3.11.3`
+Used by: `nesbot/carbon@3.15.1`
 
 ~~~~text
 Copyright (C) Brian Nesbitt
@@ -3831,9 +3832,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### nette/schema@1.3.5 and 1 more
+### nette/schema@1.4.0 and 1 more
 
-Used by: `nette/schema@1.3.5`, `nette/utils@4.1.3`
+Used by: `nette/schema@1.4.0`, `nette/utils@4.1.6`
 
 ~~~~text
 Licenses
@@ -3898,9 +3899,9 @@ you URLs with full text:
 - [GPL version 3](http://www.gnu.org/licenses/gpl-3.0.html)
 ~~~~
 
-### nikic/php-parser@5.7.0
+### nikic/php-parser@5.9.0
 
-Used by: `nikic/php-parser@5.7.0`
+Used by: `nikic/php-parser@5.9.0`
 
 ~~~~text
 BSD 3-Clause License
@@ -3934,9 +3935,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### nunomaduro/termwind@2.4.0
+### nunomaduro/termwind@2.4.1
 
-Used by: `nunomaduro/termwind@2.4.0`
+Used by: `nunomaduro/termwind@2.4.1`
 
 ~~~~text
 The MIT License (MIT)
@@ -4018,9 +4019,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### paragonie/constant_time_encoding@3.1.3
+### paragonie/constant_time_encoding@3.1.5
 
-Used by: `paragonie/constant_time_encoding@3.1.3`
+Used by: `paragonie/constant_time_encoding@3.1.5`
 
 ~~~~text
 The MIT License (MIT)
@@ -4072,9 +4073,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### phpoption/phpoption@1.9.5
+### phpoption/phpoption@1.10.0
 
-Used by: `phpoption/phpoption@1.9.5`
+Used by: `phpoption/phpoption@1.10.0`
 
 ~~~~text
 Apache License
@@ -4537,9 +4538,9 @@ Copyright (c) 2016 PHP Framework Interoperability Group
 > THE SOFTWARE.
 ~~~~
 
-### psy/psysh@0.12.22
+### psy/psysh@0.12.24
 
-Used by: `psy/psysh@0.12.22`
+Used by: `psy/psysh@0.12.24`
 
 ~~~~text
 The MIT License (MIT)
@@ -4601,34 +4602,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### ralouphie/getallheaders@3.0.3
-
-Used by: `ralouphie/getallheaders@3.0.3`
-
-~~~~text
-The MIT License (MIT)
-
-Copyright (c) 2014 Ralph Khattar
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-~~~~
-
 ### ramsey/collection@2.1.1
 
 Used by: `ramsey/collection@2.1.1`
@@ -4655,12 +4628,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### ramsey/uuid@4.9.2
+### ramsey/uuid@4.10.0
 
-Used by: `ramsey/uuid@4.9.2`
+Used by: `ramsey/uuid@4.10.0`
 
 ~~~~text
-Copyright (c) 2012-2025 Ben Ramsey <ben@benramsey.com>
+Copyright © 2012-2026 Ben Ramsey <ben@benramsey.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -4830,9 +4803,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### sabberworm/php-css-parser@9.3.0
+### sabberworm/php-css-parser@9.5.0
 
-Used by: `sabberworm/php-css-parser@9.3.0`
+Used by: `sabberworm/php-css-parser@9.5.0`
 
 ~~~~text
 MIT License
@@ -4886,9 +4859,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### symfony/clock@8.0.0
+### symfony/clock@8.1.9 and 1 more
 
-Used by: `symfony/clock@8.0.0`
+Used by: `symfony/clock@8.1.9`, `symfony/polyfill-php82@1.43.0`
 
 ~~~~text
 Copyright (c) 2022-present Fabien Potencier
@@ -4912,9 +4885,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/console@8.0.7 and 8 more
+### symfony/console@8.1.11 and 8 more
 
-Used by: `symfony/console@8.0.7`, `symfony/css-selector@8.0.6`, `symfony/event-dispatcher@8.0.4`, `symfony/finder@8.0.6`, `symfony/http-foundation@8.0.7`, `symfony/http-kernel@8.0.7`, `symfony/process@8.0.5`, `symfony/routing@8.0.6`, `symfony/translation@8.0.6`
+Used by: `symfony/console@8.1.11`, `symfony/css-selector@8.1.10`, `symfony/event-dispatcher@8.1.5`, `symfony/finder@8.1.11`, `symfony/http-foundation@8.1.11`, `symfony/http-kernel@8.1.11`, `symfony/process@8.1.10`, `symfony/routing@8.1.11`, `symfony/translation@8.1.11`
 
 ~~~~text
 Copyright (c) 2004-present Fabien Potencier
@@ -4938,9 +4911,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/deprecation-contracts@3.6.0 and 2 more
+### symfony/deprecation-contracts@3.8.1 and 2 more
 
-Used by: `symfony/deprecation-contracts@3.6.0`, `symfony/polyfill-php80@1.33.0`, `symfony/uid@8.0.4`
+Used by: `symfony/deprecation-contracts@3.8.1`, `symfony/polyfill-php80@1.43.0`, `symfony/uid@8.1.9`
 
 ~~~~text
 Copyright (c) 2020-present Fabien Potencier
@@ -4964,9 +4937,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/error-handler@8.0.4 and 2 more
+### symfony/error-handler@8.1.10 and 2 more
 
-Used by: `symfony/error-handler@8.0.4`, `symfony/mailer@8.0.6`, `symfony/string@8.0.6`
+Used by: `symfony/error-handler@8.1.10`, `symfony/mailer@8.1.10`, `symfony/string@8.1.10`
 
 ~~~~text
 Copyright (c) 2019-present Fabien Potencier
@@ -4990,9 +4963,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/event-dispatcher-contracts@3.6.0 and 4 more
+### symfony/event-dispatcher-contracts@3.8.1 and 4 more
 
-Used by: `symfony/event-dispatcher-contracts@3.6.0`, `symfony/polyfill-ctype@1.33.0`, `symfony/polyfill-uuid@1.33.0`, `symfony/service-contracts@3.6.1`, `symfony/translation-contracts@3.6.1`
+Used by: `symfony/event-dispatcher-contracts@3.8.1`, `symfony/polyfill-ctype@1.37.0`, `symfony/polyfill-uuid@1.43.0`, `symfony/service-contracts@3.8.1`, `symfony/translation-contracts@3.8.1`
 
 ~~~~text
 Copyright (c) 2018-present Fabien Potencier
@@ -5016,9 +4989,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/mime@8.0.7
+### symfony/mime@8.1.10
 
-Used by: `symfony/mime@8.0.7`
+Used by: `symfony/mime@8.1.10`
 
 ~~~~text
 Copyright (c) 2010-present Fabien Potencier
@@ -5042,9 +5015,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/polyfill-intl-grapheme@1.33.0 and 2 more
+### symfony/polyfill-intl-grapheme@1.43.3 and 2 more
 
-Used by: `symfony/polyfill-intl-grapheme@1.33.0`, `symfony/polyfill-intl-normalizer@1.33.0`, `symfony/polyfill-mbstring@1.33.0`
+Used by: `symfony/polyfill-intl-grapheme@1.43.3`, `symfony/polyfill-intl-normalizer@1.43.0`, `symfony/polyfill-mbstring@1.43.3`
 
 ~~~~text
 Copyright (c) 2015-present Fabien Potencier
@@ -5068,9 +5041,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/polyfill-intl-idn@1.33.0
+### symfony/polyfill-intl-idn@1.43.0
 
-Used by: `symfony/polyfill-intl-idn@1.33.0`
+Used by: `symfony/polyfill-intl-idn@1.43.0`
 
 ~~~~text
 Copyright (c) 2018-present Fabien Potencier and Trevor Rowbotham <trevor.rowbotham@pm.me>
@@ -5094,9 +5067,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/polyfill-php84@1.33.0
+### symfony/polyfill-php84@1.43.0
 
-Used by: `symfony/polyfill-php84@1.33.0`
+Used by: `symfony/polyfill-php84@1.43.0`
 
 ~~~~text
 Copyright (c) 2024-present Fabien Potencier
@@ -5120,9 +5093,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/polyfill-php85@1.33.0
+### symfony/polyfill-php85@1.44.0 and 1 more
 
-Used by: `symfony/polyfill-php85@1.33.0`
+Used by: `symfony/polyfill-php85@1.44.0`, `symfony/polyfill-php86@1.43.0`
 
 ~~~~text
 Copyright (c) 2025-present Fabien Potencier
@@ -5146,9 +5119,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/var-dumper@8.0.6
+### symfony/polyfill-time@1.42.0
 
-Used by: `symfony/var-dumper@8.0.6`
+Used by: `symfony/polyfill-time@1.42.0`
+
+~~~~text
+Copyright (c) 2026-present Fabien Potencier
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+~~~~
+
+### symfony/var-dumper@8.1.10
+
+Used by: `symfony/var-dumper@8.1.10`
 
 ~~~~text
 Copyright (c) 2014-present Fabien Potencier
@@ -5180,34 +5179,6 @@ Used by: `tailwind-merge@3.7.0`
 MIT License
 
 Copyright (c) 2021 Dany Castillo
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-~~~~
-
-### thecodingmachine/safe@3.4.0
-
-Used by: `thecodingmachine/safe@3.4.0`
-
-~~~~text
-MIT License
-
-Copyright (c) 2018 TheCodingMachine
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -5305,9 +5276,9 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ~~~~
 
-### vlucas/phpdotenv@5.6.3
+### vlucas/phpdotenv@5.8.0
 
-Used by: `vlucas/phpdotenv@5.6.3`
+Used by: `vlucas/phpdotenv@5.8.0`
 
 ~~~~text
 BSD 3-Clause License
@@ -5342,9 +5313,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### voku/portable-ascii@2.0.3
+### voku/portable-ascii@2.1.1
 
-Used by: `voku/portable-ascii@2.0.3`
+Used by: `voku/portable-ascii@2.1.1`
 
 ~~~~text
 Copyright (C) 2019 Lars Moelleken
