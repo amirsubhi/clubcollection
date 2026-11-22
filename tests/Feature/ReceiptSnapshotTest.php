@@ -164,6 +164,39 @@ class ReceiptSnapshotTest extends TestCase
         $this->assertOldSnapshot($fee);
     }
 
+    public function test_a_group_transfer_slip_approval_writes_it_on_every_fee(): void
+    {
+        $fees = [
+            $this->fee(['period_start' => '2026-08-01', 'period_end' => '2026-08-31', 'due_date' => '2026-08-01', 'amount' => 10.00]),
+            $this->fee(['period_start' => '2026-09-01', 'period_end' => '2026-09-30', 'due_date' => '2026-09-01', 'amount' => 20.00]),
+        ];
+        $admin = $this->join(User::factory()->create(['role' => 'admin']), 'admin');
+
+        $this->actingAs($this->member)->post(route('member.payments.transfer-all', $this->club), [
+            'payment_ids' => [$fees[0]->id, $fees[1]->id],
+            'total_sen' => 3000,
+            'files' => [UploadedFile::fake()->image('slip.png', 600, 800)],
+            'transfer_date' => now()->subDay()->toDateString(),
+            'transfer_ref' => 'MBB 2',
+        ])->assertSessionHasNoErrors();
+        $group = PaymentBill::where('method', 'transfer')->sole();
+
+        $this->actingAs($admin)->post(route('admin.verifications.approve', $fees[1]), ['paid_date' => now()->toDateString()])
+            ->assertSessionHasNoErrors();
+
+        foreach ($fees as $fee) {
+            $this->assertSame('paid', $fee->fresh()->status);
+            $this->assertOldSnapshot($fee);
+        }
+
+        $this->renameClub();
+        $this->actingAs($this->member)->get(route('member.payments.group-result', $group))
+            ->assertInertia(fn (Assert $page) => $page->where('outcome', 'paid')
+                ->where('receipt.method', 'transfer')
+                ->where('receipt.issuer.name', 'Kelab Lama')
+                ->where('receipt.issuer.address', "Alamat Lama\nKuala Lumpur"));
+    }
+
     public function test_an_admin_recording_it_writes_it(): void
     {
         $fee = $this->fee();

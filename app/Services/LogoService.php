@@ -136,12 +136,17 @@ class LogoService
 
         // The type-specific decoder: a file whose header says PNG is read as a PNG, never sniffed again (so a GIF
         // can't slip through imagecreatefromstring). Through a temporary file: data:// URLs need allow_url_fopen.
-        $tmp = tempnam(sys_get_temp_dir(), 'logo');
-        try {
-            file_put_contents($tmp, $contents);
-            $src = @$decoder($tmp);
-        } finally {
-            @unlink($tmp);
+        // Where no temporary file can be written (e.g. open_basedir), GD reads the bytes directly: the header
+        // check above has already pinned the type to PNG / JPEG / WebP.
+        $tmp = @tempnam(sys_get_temp_dir(), 'logo');
+        if ($tmp !== false && @file_put_contents($tmp, $contents) !== false) {
+            try {
+                $src = @$decoder($tmp);
+            } finally {
+                @unlink($tmp);
+            }
+        } else {
+            $src = @imagecreatefromstring($contents);
         }
         if (! $src instanceof \GdImage) {
             $fail('The logo could not be read as an image. Save it again as a PNG and upload that.');
