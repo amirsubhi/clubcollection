@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 
 /**
  * "Generate fees for a month": preview who will be billed (GET), then create the fees (POST). The POST works the
- * list out again and refuses when it no longer matches what the admin saw (count or total).
+ * list out again and refuses when it no longer matches what the admin saw (count, total, or who is billed what:
+ * MonthlyFeeGenerator::fingerprint()).
  */
 class FeeGenerationController extends Controller
 {
@@ -54,6 +55,7 @@ class FeeGenerationController extends Controller
             'dueInput' => $dueError ? (string) $request->query('due_date') : $due->toDateString(),
             'latestDue' => MonthlyFeeGenerator::latestDueDate($month),
             'preview' => $preview,
+            'fingerprint' => MonthlyFeeGenerator::fingerprint($preview, $month, $due),
             'labels' => MonthlyFeeGenerator::SKIP_LABELS,
         ]);
     }
@@ -70,6 +72,7 @@ class FeeGenerationController extends Controller
             'due_date' => ['required', 'string'],
             'expected_count' => ['required', 'integer', 'min:1'],
             'expected_total_sen' => ['required', 'integer', 'min:1'],
+            'fingerprint' => ['required', 'string'],
         ]);
         $month = MonthlyFeeGenerator::parseMonth($data['month']);
         if ($month === null) {
@@ -84,7 +87,8 @@ class FeeGenerationController extends Controller
 
         // Work the list out again: members, rates or fees may have changed since the preview.
         $preview = $this->generator->preview($club, $month);
-        if ($preview['count'] !== (int) $data['expected_count'] || $preview['totalSen'] !== (int) $data['expected_total_sen']) {
+        if ($preview['count'] !== (int) $data['expected_count'] || $preview['totalSen'] !== (int) $data['expected_total_sen']
+            || ! hash_equals(MonthlyFeeGenerator::fingerprint($preview, $month, $due), $data['fingerprint'])) {
             return redirect($back)->with('error', 'The list changed since you previewed it (it now bills '.$preview['count']
                 .' '.($preview['count'] === 1 ? 'member' : 'members').', RM '.number_format($preview['totalSen'] / 100, 2)
                 .'). Nothing was created: review it again and confirm.');

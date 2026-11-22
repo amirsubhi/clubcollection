@@ -86,10 +86,20 @@ class GenerateFeesTest extends TestCase
         return collect($preview['rows'])->mapWithKeys(fn ($r) => [$r['user']->id => $r['outcome']])->all();
     }
 
-    private function generate(string $month, string $due, int $count, int $totalSen)
+    /** The fingerprint the preview page would post for $month and $due, from the list as it is now. */
+    private function fingerprint(string $month, string $due): string
+    {
+        $m = Carbon::parse($month.'-01');
+
+        return MonthlyFeeGenerator::fingerprint(app(MonthlyFeeGenerator::class)->preview($this->club, $m), $m, Carbon::parse($due));
+    }
+
+    /** POST the confirmation; the fingerprint defaults to one of a preview taken just before. */
+    private function generate(string $month, string $due, int $count, int $totalSen, ?string $fingerprint = null)
     {
         return $this->post(route('admin.clubs.payments.generate.store', $this->club), [
             'month' => $month, 'due_date' => $due, 'expected_count' => $count, 'expected_total_sen' => $totalSen,
+            'fingerprint' => $fingerprint ?? $this->fingerprint($month, $due),
         ]);
     }
 
@@ -173,7 +183,8 @@ class GenerateFeesTest extends TestCase
 
     public function test_running_the_month_again_creates_nothing(): void
     {
-        $this->generate('2026-11', '2026-11-30', 2, 3000)->assertSessionHas('success');
+        $fingerprint = $this->fingerprint('2026-11', '2026-11-30');
+        $this->generate('2026-11', '2026-11-30', 2, 3000, $fingerprint)->assertSessionHas('success');
         $before = Payment::count();
 
         $preview = $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11']))
@@ -183,9 +194,80 @@ class GenerateFeesTest extends TestCase
         $this->assertSame(0, $preview['count']);
 
         // A replay of the first confirmation is refused: the list no longer matches.
-        $this->generate('2026-11', '2026-11-30', 2, 3000)->assertSessionHas('error', fn ($m) => str_contains($m, 'The list changed'));
+        $this->generate('2026-11', '2026-11-30', 2, 3000, $fingerprint)->assertSessionHas('error', fn ($m) => str_contains($m, 'The list changed'));
         $this->assertSame($before, Payment::count());
         $this->assertSame(1, AuditLog::where('action', 'payment.generated')->count());
+    }
+
+    public function test_the_preview_posts_the_fingerprint_of_who_is_billed_what(): void
+    {
+        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11', 'due_date' => '2026-11-30', 'due_for' => '2026-11']))
+            ->assertSee('<input type="hidden" name="fingerprint" value="'.$this->fingerprint('2026-11', '2026-11-30').'">', false);
+
+        // It is bound to the due date and the month too.
+        $this->assertNotSame($this->fingerprint('2026-11', '2026-11-30'), $this->fingerprint('2026-11', '2026-11-29'));
+        $this->generate('2026-11', '2026-11-30', 2, 3000, $this->fingerprint('2026-11', '2026-11-29'))
+            ->assertSessionHas('error', fn ($m) => str_contains($m, 'review it again'));
+        $this->generate('2026-11', '2026-11-30', 2, 3000, '')->assertSessionHasErrors('fingerprint');
+        $this->assertSame(3, Payment::count());
+    }
+
+    public function test_a_member_swapped_for_another_with_the_same_amount_is_refused(): void
+    {
+        $previewed = $this->fingerprint('2026-11', '2026-11-30');
+
+        // Ali (executive, RM 10) is deactivated and Badrul (executive, RM 10) reactivated: same count and total.
+        $this->club->members()->updateExistingPivot($this->m['ali']->id, ['is_active' => false]);
+        $this->club->members()->updateExistingPivot($this->m['badrul']->id, ['is_active' => true]);
+        $now = app(MonthlyFeeGenerator::class)->preview($this->club, Carbon::parse('2026-11-01'));
+        $this->assertSame([2, 3000], [$now['count'], $now['totalSen']]);
+
+        $this->generate('2026-11', '2026-11-30', 2, 3000, $previewed)
+            ->assertSessionHas('error', fn ($m) => str_contains($m, 'The list changed') && str_contains($m, 'review it again'));
+        $this->assertSame(3, Payment::count());
+        $this->assertSame(0, AuditLog::where('action', 'payment.generated')->count());
+    }
+
+    public function test_a_member_deactivated_during_the_run_is_not_billed(): void
+    {
+        // When the first fee is created, the other billed member is deactivated (as if an admin did it meanwhile).
+        $billed = [$this->m['ali']->id, $this->admin->id];
+        $deactivated = null;
+        Payment::created(function (Payment $p) use ($billed, &$deactivated) {
+            if ($deactivated === null) {
+                $deactivated = collect($billed)->first(fn ($id) => $id !== $p->user_id);
+                $this->club->members()->updateExistingPivot($deactivated, ['is_active' => false]);
+            }
+        });
+
+        $this->generate('2026-11', '2026-11-30', 2, 3000)
+            ->assertSessionHas('success', fn ($m) => str_contains($m, 'Created 1 fee for Nov 2026') && str_contains($m, 'inactive membership (2)'));
+
+        $this->assertNotNull($deactivated);
+        $this->assertSame(0, Payment::where('user_id', $deactivated)->count());
+        $this->assertSame(1, Payment::whereIn('user_id', $billed)->count());
+    }
+
+    public function test_a_member_deactivated_or_a_club_deactivated_after_the_preview_is_not_billed(): void
+    {
+        $generator = app(MonthlyFeeGenerator::class);
+        $month = Carbon::parse('2026-11-01');
+        $preview = $generator->preview($this->club, $month);
+
+        $this->club->members()->updateExistingPivot($this->m['ali']->id, ['is_active' => false]);
+        $result = $generator->generate($this->club, $month, Carbon::parse('2026-11-30'), $this->admin, $preview);
+        $this->assertSame(1, $result['created']);
+        $this->assertSame(2, $result['skipped'][MonthlyFeeGenerator::SKIP_INACTIVE]);
+        $this->assertSame(0, Payment::where('user_id', $this->m['ali']->id)->count());
+
+        // The club itself deactivated after the preview (the bound model still says active).
+        $december = Carbon::parse('2026-12-01');
+        $preview = $generator->preview($this->club, $december);
+        $this->assertGreaterThan(0, $preview['count']);
+        Club::whereKey($this->club->id)->update(['is_active' => false]);
+        $result = $generator->generate($this->club, $december, Carbon::parse('2026-12-15'), $this->admin, $preview);
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(0, Payment::whereDate('period_start', '2026-12-01')->count());
     }
 
     public function test_a_post_that_does_not_match_the_list_is_refused(): void

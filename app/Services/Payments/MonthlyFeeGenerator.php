@@ -126,8 +126,9 @@ class MonthlyFeeGenerator
     }
 
     /**
-     * Create the fees previewed for $month. Each member is billed on their own (lock, overlap re-check, insert
-     * and its audit row in one small transaction), so one member's clash never undoes the others.
+     * Create the fees previewed for $month. Each member is billed on their own (lock, then in one small
+     * transaction: still an active member of an active club, overlap re-check, insert and its audit row), so one
+     * member's clash never undoes the others.
      *
      * @param  array{rows: list<array<string, mixed>>}  $preview  a fresh preview() of the same club and month
      * @return array{runKey: string, created: int, totalSen: int, skipped: array<string, int>}
@@ -160,12 +161,23 @@ class MonthlyFeeGenerator
             }
             try {
                 $made = DB::transaction(function () use ($club, $user, $start, $end, $due, $admin, $sen, $runKey) {
+                    // Still an active member of an active club (deactivated since the list was worked out)?
+                    $active = DB::table('club_user')
+                        ->join('clubs', 'clubs.id', '=', 'club_user.club_id')
+                        ->where('club_user.club_id', $club->id)
+                        ->where('club_user.user_id', $user->id)
+                        ->where('club_user.is_active', true)
+                        ->where('clubs.is_active', true)
+                        ->exists();
+                    if (! $active) {
+                        return self::SKIP_INACTIVE;
+                    }
                     $overlaps = $club->payments()->where('user_id', $user->id)
                         ->whereDate('period_start', '<=', $end->toDateString())
                         ->whereDate('period_end', '>=', $start->toDateString())
                         ->exists();
                     if ($overlaps) {
-                        return false;
+                        return self::SKIP_ALREADY_BILLED;
                     }
                     $amount = number_format($sen / 100, 2, '.', '');
                     $payment = Payment::create([
@@ -190,20 +202,20 @@ class MonthlyFeeGenerator
                         ['run' => $runKey, 'amount' => $amount, 'period_start' => $start->toDateString(), 'due_date' => $due->toDateString()]
                     );
 
-                    return true;
+                    return self::BILL;
                 });
             } catch (UniqueConstraintViolationException) {
                 // payments_club_user_period_unique: a fee for this start month arrived in between.
-                $made = false;
+                $made = self::SKIP_ALREADY_BILLED;
             } finally {
                 $lock->release();
             }
 
-            if ($made) {
+            if ($made === self::BILL) {
                 $created++;
                 $totalSen += $sen;
             } else {
-                $skipped[self::SKIP_ALREADY_BILLED]++;
+                $skipped[$made]++;
             }
         }
 
@@ -228,6 +240,30 @@ class MonthlyFeeGenerator
         );
 
         return ['runKey' => $runKey, 'created' => $created, 'totalSen' => $totalSen, 'skipped' => $skipped];
+    }
+
+    /**
+     * Who is billed what, for which month and due date: an HMAC (app key) of the sorted "user_id:sen" pairs of
+     * the billed rows. The preview posts it and the POST refuses when its own list gives another one (a member
+     * swapped for another with the same amount keeps the count and total but not this).
+     *
+     * @param  array{rows: list<array<string, mixed>>}  $preview
+     */
+    public static function fingerprint(array $preview, CarbonInterface $month, CarbonInterface $due): string
+    {
+        $pairs = [];
+        foreach ($preview['rows'] as $row) {
+            if ($row['outcome'] === self::BILL) {
+                $pairs[$row['user']->id] = $row['user']->id.':'.(int) $row['sen'];
+            }
+        }
+        ksort($pairs);
+
+        return hash_hmac('sha256', implode('|', [
+            Carbon::parse($month)->format('Y-m'),
+            Carbon::parse($due)->toDateString(),
+            implode(',', $pairs),
+        ]), (string) config('app.key'));
     }
 
     /** @param  list<array<string, mixed>>  $rows */

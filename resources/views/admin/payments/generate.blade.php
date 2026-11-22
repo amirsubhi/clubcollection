@@ -117,6 +117,7 @@
         <input type="hidden" name="due_date" value="{{ $due->toDateString() }}">
         <input type="hidden" name="expected_count" value="{{ $count }}">
         <input type="hidden" name="expected_total_sen" value="{{ $totalSen }}">
+        <input type="hidden" name="fingerprint" value="{{ $fingerprint }}">
         <button type="submit" class="btn btn-success" data-testid="generate-confirm">
             <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Create {{ $count }} {{ $count === 1 ? 'fee' : 'fees' }}, RM {{ number_format($totalSen / 100, 2) }}
         </button>
