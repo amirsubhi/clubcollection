@@ -600,6 +600,12 @@ class PaymentController extends Controller
         if ($payment->status !== 'paid' && (empty($payment->bill_code) || $payment->isVerifying())) {
             return redirect()->route('member.payments.review', $payment);
         }
+        // The payment this page was opened for was cancelled since (its bill already settled once): the fee page
+        // shows the cancelled receipt and what to do, rather than "still processing".
+        if ($payment->status !== 'paid' && $payment->bills()->where('bill_code', $payment->bill_code)->whereNotNull('paid_at')->exists()
+            && $payment->cancellations()->exists()) {
+            return redirect()->route('member.payments.invoice', $payment);
+        }
 
         $payment->load(['club', 'user']);
 

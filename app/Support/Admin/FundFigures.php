@@ -201,7 +201,7 @@ final class FundFigures
      * Paid fees carrying a gateway charge the club absorbed (fee_absorbed_sen, already sen).
      * Not filtered on paid_via: an admin who reverts an online-paid fee and then
      * marks it paid by hand clears paid_via, but the gateway still took its charge,
-     * so the charge counts again (the edit form warns about this before reverting).
+     * so the charge counts again (the Cancel payment form warns about this).
      * A transfer-slip approval resets fee_absorbed_sen to 0, and a new online
      * payment overwrites it.
      */

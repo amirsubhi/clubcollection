@@ -250,7 +250,20 @@ class PaymentCancellationService
                 $receiptBefore = $fee->receipt_no;
                 // As a rejected slip leaves it: owed again. transaction_id stays (replays are refused); the
                 // Payment hook voids the receipt number and clears the issuer snapshot.
-                $fee->forceFill([
+                // Paid online while the member's slip for a set was still being checked (the webhook settled it
+                // and flagged the slip share for a refund): cancelling the online payment puts the fee back
+                // into that slip set, still awaiting verification, so the slip can be approved or rejected.
+                $slipStillOpen = $fee->paid_via !== 'transfer' && $fee->transfer_group_id !== null
+                    && ($group = PaymentBill::find($fee->transfer_group_id)) !== null
+                    && $group->isTransfer() && $group->isOpen();
+                $fee->forceFill($slipStillOpen ? [
+                    'status' => 'pending_verification',
+                    'paid_date' => null,
+                    'paid_via' => null,
+                    'gateway' => null,
+                    'verified_by' => null,
+                    'verified_at' => null,
+                ] : [
                     'status' => 'pending',
                     'paid_date' => null,
                     'paid_via' => null,

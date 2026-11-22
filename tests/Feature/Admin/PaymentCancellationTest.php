@@ -598,6 +598,44 @@ class PaymentCancellationTest extends TestCase
 
     // ── Twice, and the edit form ────────────────────────────────────────
 
+    public function test_cancelling_an_online_payment_made_while_a_slip_was_checked_puts_the_fee_back_in_that_slip(): void
+    {
+        $a = $this->fee();
+        $b = $this->fee();
+        // An FPX bill for A is opened first, then the member sends one slip for A and B.
+        $this->actingAs($this->member)->post(route('member.payments.pay', $a));
+        $bill = PaymentBill::where('payment_id', $a->id)->latest('id')->firstOrFail();
+        $total = $a->fresh()->amountSen() + $b->fresh()->amountSen();
+        $this->actingAs($this->member)->post(route('member.payments.transfer-all', $this->club), [
+            'payment_ids' => [$a->id, $b->id], 'total_sen' => $total,
+            'files' => $this->slip(), 'transfer_date' => today()->toDateString(),
+        ])->assertSessionHasNoErrors();
+        $group = PaymentBill::where('method', 'transfer')->latest('id')->firstOrFail();
+        // The FPX payment for A still arrives while the slip is checked.
+        $this->webhook($bill->bill_code, $bill->reference, 'TXN-'.(++$this->txnSeq));
+        $this->assertSame('paid', $a->fresh()->status);
+
+        $this->cancel($a->fresh(), 'refunded')->assertSessionHasNoErrors();
+
+        $this->assertSame('pending_verification', $a->fresh()->status, 'back in the slip that is still being checked');
+        $this->assertSame($group->id, (int) $a->fresh()->transfer_group_id);
+        $this->actingAs($this->admin)->post(route('admin.verifications.approve', $b), ['paid_date' => today()->toDateString()])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('paid', $a->fresh()->status);
+        $this->assertSame('paid', $b->fresh()->status);
+        $this->assertSame($a->fresh()->receipt_no, $b->fresh()->receipt_no, 'one slip, one receipt');
+    }
+
+    public function test_the_old_online_return_page_of_a_cancelled_payment_leads_to_the_fee_page(): void
+    {
+        $fee = $this->fee();
+        $this->payFpx($fee);
+        $this->cancel($fee->fresh(), 'refunded')->assertSessionHasNoErrors();
+
+        $this->actingAs($this->member)->get(route('member.payments.thankyou', $fee))
+            ->assertRedirect(route('member.payments.invoice', $fee));
+    }
+
     public function test_a_payment_cannot_be_cancelled_twice(): void
     {
         $fee = $this->fee();
