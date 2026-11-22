@@ -1,14 +1,14 @@
 import { Hourglass, Lock, Printer, RefreshCw } from "lucide-react";
 import { Head, Link } from "@inertiajs/react";
-import { MemberShell } from "@/components/app/MemberShell";
+import { ClubMark, MemberShell } from "@/components/app/MemberShell";
 import { DueNote, FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { ReceiptActions } from "@/components/app/ReceiptActions";
-import { ReceiptCard } from "@/components/app/ReceiptCard";
+import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
 import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate, rm } from "@/lib/format";
-import { useLang, useT } from "@/lib/i18n";
+import { fill, useLang, useT } from "@/lib/i18n";
 import type { MemberPaymentRow, MemberReceipt, PaymentContext } from "@/types/member";
 
 interface Props extends PaymentContext {
@@ -38,8 +38,16 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
       <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("receipt")} backHref={paymentsUrl}>
         <Head title={t("receipt")} />
         <FlashBanner />
+        {receipt.partOf && (
+          <p className="mb-3 rounded-2xl border bg-card px-4 py-3 text-base" data-testid="receipt-part-of">
+            {fill(t("receiptPartOf"), { no: receipt.partOf.receiptNo, n: receipt.partOf.count, total: rm(receipt.partOf.amount) })}{" "}
+            <Link href={receipt.partOf.url} className="font-semibold text-primary underline-offset-4 hover:underline">
+              {t("receiptPartOfLink")}
+            </Link>
+          </p>
+        )}
         <ReceiptCard
-          club={{ name: payClub.name }}
+          club={receiptClub(receipt.issuer, payClub)}
           member={{ name: member.name }}
           receipt={{
             receiptNo: receipt.receiptNo,
@@ -52,7 +60,14 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             items: [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }],
           }}
         />
-        <ReceiptActions receiptNo={receipt.receiptNo} amount={receipt.amount} paidAt={receipt.paidAt} clubName={payClub.name} url={payment.urls.invoice} />
+        {/* A fee paid in a set: sharing sends the set's receipt (its total and link), never this fee's amount under the shared number. */}
+        <ReceiptActions
+          receiptNo={receipt.receiptNo}
+          amount={receipt.partOf?.amount ?? receipt.amount}
+          paidAt={receipt.paidAt}
+          clubName={payClub.name}
+          url={receipt.partOf?.url ?? payment.urls.invoice}
+        />
         <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
     );
@@ -63,9 +78,22 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
       <Head title={t("invoice")} />
       <FlashBanner />
       <section aria-label={t("invoice")} className="flex flex-col gap-5 rounded-[20px] border bg-card p-5">
+        {/* The club as it is now (Club profile): an invoice is not issued yet, so it is never a snapshot. */}
+        <div className="flex flex-wrap items-start gap-3 border-b pb-4" data-testid="invoice-issuer">
+          {payClub.logoUrl && <ClubMark src={payClub.logoUrl} alt={payClub.name} className="h-12 w-12" />}
+          <div className="min-w-0 flex-[1_1_10rem]">
+            <div className="break-words font-display text-base font-bold leading-snug">{payClub.name}</div>
+            {payClub.registrationNo && (
+              <div className="break-words text-xs text-muted-foreground">
+                {t("regNo")} {payClub.registrationNo}
+              </div>
+            )}
+            {payClub.address && <div className="whitespace-pre-line break-words text-xs text-muted-foreground">{payClub.address}</div>}
+          </div>
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <div className="break-words text-sm text-muted-foreground">{payClub.name}</div>
+            <div className="text-sm text-muted-foreground">{t("invoice")}</div>
             <h2 className="break-all font-mono text-lg font-normal">{payment.invoiceNo}</h2>
           </div>
           <PaymentStatusBadge status={payment.status} label={t(payment.status === "verifying" ? "verifying" : statusLabelKey(payment.status))}

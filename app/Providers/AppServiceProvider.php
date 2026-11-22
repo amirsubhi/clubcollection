@@ -6,6 +6,7 @@ use App\Models\Club;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Auth\AccountLoginBlock;
 use App\Support\Contact\WhatsAppNumber;
+use App\Support\Portal\PortalSettings;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
@@ -98,18 +99,26 @@ class AppServiceProvider extends ServiceProvider
         // auth.login too: its "how to join" section is rendered before the layout, so the layout's data is not there yet.
         View::composer(['layouts.auth', 'auth.login'], function ($view) {
             // Error pages use this layout too, and must render without a database: no contact then.
-            $clubs = rescue(fn () => Club::query()->where('is_active', true)->limit(2)->get(['id', 'name', 'email', 'whatsapp_number']), collect(), false);
+            $clubs = rescue(fn () => Club::query()->where('is_active', true)->limit(2)->get(['id', 'name', 'email', 'whatsapp_number', 'logo']), collect(), false);
             $club = $clubs->count() === 1 ? $clubs->first() : null;
             $wa = $club ? WhatsAppNumber::waDigits($club->whatsapp_number) : null;
             $view->with('authHelpClub', $club && ($wa || $club->email)
                 ? ['name' => $club->name, 'whatsapp' => $wa, 'email' => $wa ? null : $club->email]
                 : null);
+            // The header: the one active club's name and logo (as for the contact above: a guest's club is
+            // unknown, so with several clubs only the portal is shown), else the portal name and logo.
+            $view->with('authBrand', $club
+                ? ['kind' => 'club', 'name' => $club->name, 'logoUrl' => $club->logo_url, 'portal' => PortalSettings::name()]
+                : ['kind' => 'portal', 'name' => PortalSettings::name(), 'logoUrl' => PortalSettings::logoUrl(), 'portal' => PortalSettings::name()]);
         });
 
         // A fresh install still says APP_NAME=Laravel: members should see the product name instead.
         if (in_array(config('app.name'), [null, '', 'Laravel'], true)) {
             config(['app.name' => 'Club Portal']);
         }
+        // The portal name the super admin set (Portal settings), app-wide. Cached; falls back to APP_NAME when the
+        // table is empty or the database can't be reached (installer, error pages).
+        PortalSettings::apply();
 
         if ($this->app->isProduction()) {
             self::pinRootUrl();

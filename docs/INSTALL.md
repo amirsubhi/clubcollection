@@ -34,7 +34,7 @@ because a few `php artisan` commands have to be run on the server.
   | `mbstring`, `openssl`, `ctype`, `filter`, `hash`, `session`, `tokenizer`, `pcre`, `json` | Laravel. |
   | `fileinfo` | Detecting the type of uploaded slips and documents. |
   | `dom`, `libxml`, `iconv` | The ledger PDF (dompdf) and the 2FA QR code. |
-  | `gd` (recommended) | dompdf uses it to draw the club logo in the ledger PDF. |
+  | `gd` (with PNG, JPEG and WebP support) | Club and portal logos: every upload is decoded and saved again as a PNG (no SVG, metadata stripped). Without GD, logos can't be uploaded (the pages say so) and dompdf can't draw the logo in the ledger PDF. |
 
 - A database: **MariaDB / MySQL** for a live site (see [section 4](#4-mariadb--mysql)), or **SQLite** (a single file, nothing to set up; the default in `.env.example`, fine for a local copy).
   Supported: **MariaDB 10.11** (tested; 10.6+ should work) and **MySQL 8.0+** (8.0 tested), including MySQL builds such as Percona Server

@@ -127,6 +127,14 @@ class BackupRunTest extends TestCase
         $this->assertFileExists("{$dir}/keep-me.txt", 'only backup zips are pruned');
     }
 
+    public function test_renaming_the_portal_keeps_the_backup_names_so_old_ones_are_still_pruned(): void
+    {
+        $before = \App\Console\Commands\BackupRun::prefix();
+        config([\App\Support\Portal\PortalSettings::DEFAULT_NAME_CONFIG => config('app.name'), 'app.name' => 'Portal Kelab Baharu']);
+
+        $this->assertSame($before, \App\Console\Commands\BackupRun::prefix());
+    }
+
     public function test_backup_is_scheduled_daily(): void
     {
         $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events());

@@ -30,7 +30,7 @@ class DashboardController extends Controller
         $me = (int) $request->user()->id;
         $figures = new Figures($club);
         // Every figure on the page comes from FundFigures with its window.
-        $ytd = Figures::yearToDate();
+        $ytd = Figures::yearToDate(null, $club);
         $earlier = Figures::yearEarlier($ytd);
         $now = $figures->forWindow($ytd);
         $before = $figures->forWindow($earlier);
@@ -67,6 +67,8 @@ class DashboardController extends Controller
             'nav' => AdminNav::props($club, $request->user(), $awaiting['mine']),
             'greetingName' => $request->user()->name,
             'year' => now()->year,
+            // "2026", or "FY 2026/27" when the club's financial year starts in another month.
+            'yearLabel' => Figures::yearLabel(null, $club),
             'kpis' => [
                 // Today's baki dana: all collected minus all approved spending to date.
                 'balance' => $figures->balance(),

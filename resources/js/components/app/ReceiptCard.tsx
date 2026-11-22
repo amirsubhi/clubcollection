@@ -2,6 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 import { ClubMark } from "./MemberShell";
 import { Money } from "./Money";
 import type { Sen } from "@/types/domain";
+import type { ReceiptIssuer } from "@/types/member";
 import { fmtDateTime } from "@/lib/format";
 import { useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,14 @@ export interface ReceiptData {
   items: { id: number; description: string; descriptionBm?: string; note?: string; amount: Sen }[];
 }
 
+type IssuerLike = { name: string; registrationNo?: string | null; address?: string | null; logoUrl?: string | null; footer?: string | null };
+
+/** The club a receipt names: its issuer snapshot, else (older receipts) the club as it is now. */
+export function receiptClub(issuer: ReceiptIssuer | null | undefined, live: IssuerLike) {
+  const c: IssuerLike = issuer ?? live;
+  return { name: c.name, regNo: c.registrationNo ?? null, address: c.address ?? null, logoUrl: c.logoUrl ?? null, footer: c.footer ?? null };
+}
+
 export function ReceiptCard({
   club,
   member,
@@ -27,7 +36,8 @@ export function ReceiptCard({
   className,
   compact = false,
 }: {
-  club: { name: string; regNo?: string };
+  /** The issuing club (receipt.issuer: as it was when the fee was paid). */
+  club: { name: string; regNo?: string | null; address?: string | null; logoUrl?: string | null; footer?: string | null };
   member: { name: string; memberNo?: string };
   receipt: ReceiptData;
   className?: string;
@@ -38,10 +48,19 @@ export function ReceiptCard({
   return (
     <article aria-label={t("receipt")} className={cn("paper perforated-b rounded-t-[20px] px-5 pb-8 pt-5 shadow-[0_10px_30px_-18px_rgb(var(--shadow-color)/0.5)]", className)}>
       <header className="flex flex-wrap items-center gap-3 border-b border-dashed pb-4">
-        <ClubMark className="h-10 w-10" />
+        <ClubMark className="h-12 w-12" src={club.logoUrl} alt={club.name} />
         <div className="min-w-0 flex-[1_1_8rem]">
           <h2 className="break-words font-display text-base font-bold leading-snug">{club.name}</h2>
-          {club.regNo && <div className="text-xs text-muted-foreground">No. pendaftaran {club.regNo}</div>}
+          {club.regNo && (
+            <div className="break-words text-xs text-muted-foreground" data-testid="receipt-reg-no">
+              {t("regNo")} {club.regNo}
+            </div>
+          )}
+          {club.address && (
+            <div className="whitespace-pre-line break-words text-xs text-muted-foreground" data-testid="receipt-address">
+              {club.address}
+            </div>
+          )}
         </div>
         <span className="inline-flex min-h-7 items-center gap-1 rounded-full border border-success/30 bg-success-soft px-2.5 text-sm font-semibold text-success-foreground">
           <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden /> {t("paid")}
@@ -103,6 +122,12 @@ export function ReceiptCard({
         </table>
       )}
       <p className="mt-4 text-xs text-muted-foreground">{t("receiptFoot")}</p>
+      {/* The club's own footer (Club profile), as issued: plain text, React escapes it; line breaks kept. */}
+      {club.footer && (
+        <p className="mt-1 whitespace-pre-line break-words text-xs text-muted-foreground" data-testid="receipt-footer">
+          {club.footer}
+        </p>
+      )}
     </article>
   );
 }

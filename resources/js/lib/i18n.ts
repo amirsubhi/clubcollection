@@ -14,6 +14,11 @@ const dict = {
   viewAll: { bm: "Lihat semua", en: "View all" },
   moneyGoes: { bm: "Ke mana wang anda pergi", en: "Where your money goes" },
   moneyGoesLink: { bm: "Kutipan dan perbelanjaan kelab tahun ini", en: "What the club collected and spent this year" },
+  moneyGoesLinkFy: { bm: "Kutipan dan perbelanjaan kelab tahun kewangan ini", en: "What the club collected and spent this financial year" },
+  noSpendingFy: { bm: "Belum ada perbelanjaan direkodkan tahun kewangan ini.", en: "No spending recorded this financial year yet." },
+  /** {m}: a month name (monthName()). */
+  fyStarts: { bm: "Tahun kewangan kelab bermula {m}.", en: "The club's financial year starts in {m}." },
+  regNo: { bm: "No. pendaftaran", en: "Registration no." },
   collected: { bm: "Dikutip", en: "Collected" },
   spent: { bm: "Dibelanjakan", en: "Spent" },
   balance: { bm: "Baki", en: "Balance" },
@@ -143,6 +148,7 @@ const dict = {
   signOut: { bm: "Log keluar", en: "Sign out" },
   security: { bm: "Keselamatan & 2FA", en: "Security & 2FA" },
   adminPortal: { bm: "Portal pentadbir", en: "Admin portal" },
+  privacyNotice: { bm: "Notis privasi", en: "Privacy notice" },
   year: { bm: "Tahun", en: "Year" },
   paidGroup: { bm: "Sudah dibayar", en: "Paid" },
   noPaymentsYear: { bm: "Tiada bayaran untuk {y}.", en: "No payments for {y}." },
@@ -414,6 +420,11 @@ const dict = {
     bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi pengesah, atau salah satu kod pemulihan anda.",
     en: "That code isn't right. Type the 6 digits from the authenticator app, or one of your recovery codes.",
   },
+  receiptPartOf: {
+    bm: "Yuran ini sebahagian daripada resit {no}: {n} yuran, jumlah {total}.",
+    en: "This fee is part of receipt {no}: {n} fees, {total} in total.",
+  },
+  receiptPartOfLink: { bm: "Lihat resit penuh", en: "See the full receipt" },
   flash_2fa_disable_locked: {
     bm: "Terlalu banyak kod salah. Cuba lagi dalam 15 minit.",
     en: "Too many wrong codes. Try again in 15 minutes.",
@@ -438,6 +449,16 @@ export function useT() {
 /** A dictionary entry in a given language, whatever the page shows (e.g. the BM WhatsApp help message). */
 export function textIn(key: DictKey, lang: Lang): string {
   return dict[key][lang];
+}
+
+const MONTHS: Record<Lang, string[]> = {
+  bm: ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
+
+/** A month's name (1 = January) in the member's language. */
+export function monthName(month: number, lang: Lang): string {
+  return MONTHS[lang][month - 1] ?? MONTHS[lang][0];
 }
 
 /** Replace "{name}" placeholders in a translated string. */

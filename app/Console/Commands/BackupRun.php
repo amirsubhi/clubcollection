@@ -42,7 +42,11 @@ class BackupRun extends Command
 
     public static function prefix(): string
     {
-        return Str::slug((string) config('app.name')) ?: 'clubportal';
+        // From APP_NAME, not the portal name an admin can change in Portal settings: a rename must not start a
+        // new set of zips that prune() never matches (old backups hold the whole database).
+        $name = config(\App\Support\Portal\PortalSettings::DEFAULT_NAME_CONFIG) ?? config('app.name');
+
+        return Str::slug((string) $name) ?: 'clubportal';
     }
 
     public static function directory(): string

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasAttachments;
+use App\Support\Payments\ReceiptNumbers;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,15 @@ class Payment extends Model
     use HasAttachments, HasFactory;
 
     public const STATUSES = ['pending', 'paid', 'overdue', 'pending_verification'];
+
+    /**
+     * The receipt_allocations row this save issued to the fee (by the hook, or a group settlement that set the
+     * shared number before saving): linked to the fee once the row is saved. Not an attribute.
+     */
+    public ?int $receiptAllocationId = null;
+
+    /** This save took the fee back from paid: its number is marked voided once saved. Not an attribute. */
+    public bool $receiptNumberVoided = false;
 
     /** transfer_* and verified_* are not fillable: only TransferVerificationService sets them. */
     protected $fillable = [
@@ -38,11 +48,63 @@ class Payment extends Model
             'transfer_group_id' => 'integer',
             'transfer_submitted_at' => 'datetime',
             'verified_at' => 'datetime',
+            'issuer_snapshot' => 'array',
         ];
     }
 
     protected static function booted(): void
     {
+        // Receipt snapshot (settings phase 1): the club details a receipt is issued with, written once when the
+        // fee becomes paid, whatever the path (gateway settlement, transfer approval, an admin recording it, a
+        // group bill, a fee created as paid). Never overwritten, so later edits to the club profile don't change
+        // an issued receipt. Not fillable: only this hook writes it.
+        //
+        // Receipt number (settings phase 2), same moment: the next number of the club's financial year
+        // (ReceiptNumbers), unless the caller already gave the fee its group's shared number. Not fillable.
+        // A fee taken back from paid loses its number (kept in the log as voided, never reused) and gets a new
+        // one when paid again.
+        static::saving(function (Payment $payment) {
+            // A fee taken back from paid is no longer a receipt: a later settlement is a new receipt with the
+            // club's details at that time.
+            if ($payment->exists && $payment->isDirty('status') && $payment->getOriginal('status') === 'paid' && $payment->status !== 'paid') {
+                $payment->issuer_snapshot = null;
+                if ($payment->receipt_no !== null) {
+                    $payment->receiptNumberVoided = true;
+                }
+                $payment->receipt_no = null;
+                $payment->receiptAllocationId = null;
+            }
+            $becamePaid = $payment->status === 'paid' && (! $payment->exists || $payment->isDirty('status'));
+            $club = null;
+            if ($becamePaid && $payment->issuer_snapshot === null) {
+                $club = Club::find($payment->club_id);
+                if ($club !== null) {
+                    $payment->issuer_snapshot = $club->issuerSnapshot();
+                }
+            }
+            if ($becamePaid && $payment->receipt_no === null) {
+                $club ??= Club::find($payment->club_id);
+                if ($club !== null) {
+                    // Inside the caller's transaction, after its own row locks (CLAUDE.MD "Lock order").
+                    $receipt = ReceiptNumbers::allocate($club, null, $payment->paid_date);
+                    $payment->receipt_no = $receipt['receipt_no'];
+                    $payment->receiptAllocationId = $receipt['id'];
+                }
+            }
+        });
+
+        // The receipt log needs the fee's id, which a fee created as paid only has now.
+        static::saved(function (Payment $payment) {
+            if ($payment->receiptNumberVoided) {
+                ReceiptNumbers::void($payment->id);
+                $payment->receiptNumberVoided = false;
+            }
+            if ($payment->receiptAllocationId !== null) {
+                ReceiptNumbers::link($payment->receiptAllocationId, $payment->id);
+                $payment->receiptAllocationId = null;
+            }
+        });
+
         // An open gateway bill is for a fixed amount. When the fee amount
         // changes (admin edit or anywhere else), drop the bill so the member
         // gets a fresh one instead of paying the stale amount.
@@ -81,7 +143,25 @@ class Payment extends Model
                 throw new \LogicException('Cannot delete a fee that is part of a group transfer slip.');
             }
             PaymentBill::supersedeOpenGroupsContaining($payment->id);
+            // A deleted fee's receipt number is no longer a valid receipt (it is still never reused).
+            if ($payment->receipt_no !== null) {
+                \App\Support\Payments\ReceiptNumbers::void($payment->id);
+            }
         });
+    }
+
+    /**
+     * The number the fee's receipt shows: its receipt_no (per club and financial year; shared by the fees of one
+     * group receipt), or RCP-{id} for a fee paid before receipt numbers existed.
+     */
+    public function receiptNumber(): string
+    {
+        return $this->receipt_no ?? self::legacyReceiptNumber((int) $this->id);
+    }
+
+    public static function legacyReceiptNumber(int $paymentId): string
+    {
+        return 'RCP-'.str_pad((string) $paymentId, 6, '0', STR_PAD_LEFT);
     }
 
     /** Fee amount in sen. */

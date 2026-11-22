@@ -33,13 +33,37 @@ export interface MemberReceipt {
   method: "gateway" | "transfer" | "manual";
   transactionId: string | null;
   reference: string | null;
+  /** The club as the receipt was issued (payments.issuer_snapshot; the live club for older fees). */
+  issuer?: ReceiptIssuer;
+  /** Paid in a set ("Bayar semua"): the number is the set's receipt; this page shows one fee of it. */
+  partOf?: { receiptNo: string; amount: Sen; count: number; url: string } | null;
+}
+
+/** MemberPaymentPresenter::issuer(): who issued a receipt. logoUrl is a same-origin /storage URL. */
+export interface ReceiptIssuer {
+  name: string;
+  registrationNo: string | null;
+  address: string | null;
+  email: string | null;
+  logoUrl: string | null;
+  /** The club's receipt footer as issued (plain text, may hold line breaks); null when none. */
+  footer?: string | null;
 }
 
 /** Props every single-payment page receives (PaymentController::context()). */
 export interface PaymentContext {
   member: { name: string; email: string };
   /** whatsapp: digits for wa.me when the club set a help number (PaymentController::payClubProps). */
-  payClub: { id: number; name: string; email: string | null; whatsapp: string | null };
+  payClub: {
+    id: number;
+    name: string;
+    email: string | null;
+    whatsapp: string | null;
+    /** Club profile as it is now (invoice header). */
+    logoUrl?: string | null;
+    registrationNo?: string | null;
+    address?: string | null;
+  };
   paymentsUrl: string;
   dashboardUrl: string;
 }
@@ -56,6 +80,10 @@ export interface FundCategory {
 export interface HomeClub {
   id: number;
   name: string;
+  /** Club profile logo (same-origin /storage URL), or null. */
+  logoUrl: string | null;
+  /** Month (1-12) the club's financial year starts; 1 = the calendar year. */
+  fyStartMonth: number;
   jobLevel: string;
   role: string;
   paymentsUrl: string;
@@ -123,7 +151,7 @@ export interface PaymentGroup {
 
 /** MemberPaymentPresenter::groupReceipt(): one receipt, one line per fee (each with its own receipt no.). */
 export interface GroupReceipt extends MemberReceipt {
-  lines: { id: number; receiptNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
+  lines: { id: number; receiptNo: string; invoiceNo: string; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
   /** Slip receipt only: fees of the slip paid online instead (not in the total). */
   paidOnline: { id: number; periodStart: string; periodEnd: string; amount: Sen; invoiceUrl: string }[];
 }

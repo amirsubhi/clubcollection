@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use Tests\TestCase;
 
-/** Option A, step A4: installable PWA (manifest, static-only service worker, CSP). */
+/** Option A, step A4: installable PWA (static fallback manifest, static-only service worker, CSP). The routed manifest: AppManifestTest. */
 class PwaTest extends TestCase
 {
     public function test_manifest_is_valid_and_points_members_home(): void
@@ -41,6 +41,11 @@ class PwaTest extends TestCase
         $this->assertMatchesRegularExpression('/const CACHE_VERSION = "[^"]+";/', $sw);
         $this->assertStringContainsString('"/build/assets/"', $sw);
         $this->assertStringContainsString('"/icons/"', $sw);
+        // App icons made from the portal logo have hashed names, so cache-first is safe; the manifest is not cached.
+        $this->assertStringContainsString('"/storage/portal/icons/"', $sw);
+        $this->assertMatchesRegularExpression('/function isStaticAsset\(url\) \{([\s\S]*?)\n\}/', $sw);
+        preg_match('/function isStaticAsset\(url\) \{([\s\S]*?)\n\}/', $sw, $m);
+        $this->assertStringNotContainsString('manifest', $m[1]);
         $this->assertStringContainsString('/offline.html', $sw);
         // Exactly one place writes to a runtime cache: the static-asset cache-first branch.
         $this->assertSame(1, substr_count($sw, 'cache.put('));
@@ -72,9 +77,21 @@ class PwaTest extends TestCase
 
         $this->get('/dev/ui-kit')
             ->assertOk()
-            ->assertSee('<link rel="manifest" href="/manifest.webmanifest">', false)
+            ->assertSee('<link rel="manifest" href="/app.webmanifest">', false)
             ->assertSee('<meta name="theme-color" content="#1E1F23" media="(prefers-color-scheme: dark)">', false)
             ->assertSee('<meta name="apple-mobile-web-app-capable" content="yes">', false)
+            ->assertSee('<meta name="apple-mobile-web-app-title" content="Club Portal">', false)
             ->assertSee('<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">', false);
+    }
+
+    public function test_every_layout_links_the_routed_manifest(): void
+    {
+        $this->withoutVite();
+        $club = \App\Models\Club::factory()->create();
+
+        $this->get('/login')->assertSee('<link rel="manifest" href="/app.webmanifest">', false);
+        $this->get('/no-such-page')->assertNotFound()->assertSee('<link rel="manifest" href="/app.webmanifest">', false);
+        $this->actingAsClubAdmin($club);
+        $this->get(route('admin.clubs.members.index', $club))->assertSee('<link rel="manifest" href="/app.webmanifest">', false);
     }
 }

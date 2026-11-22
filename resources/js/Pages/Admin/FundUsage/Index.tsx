@@ -52,6 +52,8 @@ interface Props {
     awaitingSum: number;
     awaitingMine: number;
     year: number;
+    /** "2026", or "FY 2026/27" for a financial year starting in another month. */
+    yearLabel?: string;
   };
   tabCounts: Record<TabId, number>;
   /** Approved records in the whole club with no documents attached (ignores the filters). */
@@ -239,7 +241,7 @@ export default function FundUsageIndex({ nav, kpis, tabCounts, noDocsCount, filt
     <AdminLayout nav={nav} active="fund-usage" title="Fund Usage">
       <PageHeader
         title="Fund Usage"
-        eyebrow={`Year ${kpis.year}`}
+        eyebrow={kpis.yearLabel?.startsWith("FY") ? kpis.yearLabel : `Year ${kpis.year}`}
         description="Every ringgit spent, with documents and a second-admin approval."
         actions={
           <>

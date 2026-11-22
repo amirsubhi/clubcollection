@@ -12,6 +12,7 @@
     @include('partials.font-preload')
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+    @include('partials.brand-style')
     @inertiaHead
 </head>
 <body>

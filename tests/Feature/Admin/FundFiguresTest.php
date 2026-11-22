@@ -346,7 +346,7 @@ class FundFiguresTest extends TestCase
 
         $this->get(route('admin.clubs.dashboard', $this->club))
             ->assertInertia(fn (Assert $page) => $page
-                ->has('kpis.window', fn (Assert $w) => $w->hasAll(['key', 'label', 'range', 'from', 'to']))
+                ->has('kpis.window', fn (Assert $w) => $w->hasAll(['key', 'label', 'short', 'range', 'from', 'to']))
                 // The submitted record was made by someone else, so it waits for this admin.
                 ->where('kpis.awaiting.count', 1)
                 ->where('kpis.awaiting.mine', 1)

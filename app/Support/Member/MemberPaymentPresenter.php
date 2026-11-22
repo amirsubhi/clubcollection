@@ -2,8 +2,10 @@
 
 namespace App\Support\Member;
 
+use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentBill;
+use App\Services\LogoService;
 use App\Support\Payments\DisplayStatus;
 use Illuminate\Support\Collection;
 
@@ -36,9 +38,16 @@ final class MemberPaymentPresenter
         return 'INV-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT);
     }
 
+    /** The fee's receipt number (per club and financial year), or RCP-{id} for a fee paid before they existed. */
     public static function receiptNo(Payment $payment): string
     {
-        return 'RCP-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT);
+        return $payment->receiptNumber();
+    }
+
+    /** A group receipt's number: the one shared by its fees, or RCP-G{bill id} for a group paid before. */
+    public static function groupReceiptNo(PaymentBill $bill): string
+    {
+        return $bill->receipt_no ?? 'RCP-G'.str_pad((string) $bill->id, 6, '0', STR_PAD_LEFT);
     }
 
     public static function gatewayLabel(?string $gateway): ?string
@@ -87,6 +96,47 @@ final class MemberPaymentPresenter
     }
 
     /**
+     * The club as a receipt names it: the details the fee was issued with (payments.issuer_snapshot, written
+     * when it became paid), or, for a fee paid before snapshots existed, the club as it is now. The footer comes
+     * from the snapshot only: a snapshot written before receipt footers existed has none and shows none.
+     *
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string, footer: ?string}
+     */
+    public static function issuer(Payment $payment): array
+    {
+        $snap = is_array($payment->issuer_snapshot) ? $payment->issuer_snapshot : null;
+        if ($snap === null || ! filled($snap['name'] ?? null)) {
+            return self::issuerOf($payment->club);
+        }
+
+        return [
+            'name' => (string) $snap['name'],
+            'registrationNo' => ($snap['registration_no'] ?? null) ?: null,
+            'address' => ($snap['address'] ?? null) ?: null,
+            'email' => ($snap['email'] ?? null) ?: null,
+            'logoUrl' => LogoService::url($snap['logo'] ?? null),
+            'footer' => is_string($snap['footer'] ?? null) && $snap['footer'] !== '' ? $snap['footer'] : null,
+        ];
+    }
+
+    /**
+     * The club's details as they are now (invoices, and old receipts without a snapshot).
+     *
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string, footer: ?string}
+     */
+    public static function issuerOf(Club $club): array
+    {
+        return [
+            'name' => (string) $club->name,
+            'registrationNo' => $club->registration_no ?: null,
+            'address' => $club->address ?: null,
+            'email' => $club->email ?: null,
+            'logoUrl' => $club->logo_url,
+            'footer' => $club->receipt_footer ?: null,
+        ];
+    }
+
+    /**
      * Receipt fields for a paid fee (null otherwise).
      *
      * @return array<string, mixed>|null
@@ -109,12 +159,47 @@ final class MemberPaymentPresenter
             'reference' => $payment->paid_via === 'transfer'
                 ? ($payment->transfer_bank_ref ?? $payment->transfer_ref ?? $payment->transferReference())
                 : $payment->reference,
+            // Who issued it, as it was when the fee was paid (issuer_snapshot; the live club for older fees).
+            'issuer' => self::issuer($payment),
+            'partOf' => self::partOfGroupReceipt($payment),
         ];
     }
 
     /**
-     * One receipt for a settled group ("Bayar semua"): the total, how it was
-     * paid, and one line per fee with that fee's own receipt number. Null
+     * When the fee was paid in a set ("Bayar semua": one FPX bill or one slip), its receipt number belongs to the
+     * set's receipt: this fee's page must say it is part of that receipt (total and count) and link to it, so one
+     * number never reads as two different documents.
+     *
+     * @return array{receiptNo: string, amount: int, count: int, url: string}|null
+     */
+    public static function partOfGroupReceipt(Payment $payment): ?array
+    {
+        if ($payment->receipt_no === null) {
+            return null;
+        }
+        $bill = PaymentBill::query()->whereNull('payment_id')->where('club_id', $payment->club_id)
+            ->where('receipt_no', $payment->receipt_no)->first();
+        if ($bill === null) {
+            return null;
+        }
+        $fees = Payment::query()->where('club_id', $payment->club_id)->where('receipt_no', $payment->receipt_no)
+            ->where('status', 'paid')->get(['id', 'amount']);
+        if ($fees->count() < 2) {
+            return null;
+        }
+        $amounts = $bill->itemAmounts();
+
+        return [
+            'receiptNo' => (string) $payment->receipt_no,
+            'amount' => (int) $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount)),
+            'count' => $fees->count(),
+            'url' => route('member.payments.group-result', $bill),
+        ];
+    }
+
+    /**
+     * One receipt for a settled group ("Bayar semua"): one receipt number for
+     * the set, the total, how it was paid, and one line per fee. Null
      * until the group is settled.
      *
      * @param  Collection<int, Payment>  $fees
@@ -135,21 +220,32 @@ final class MemberPaymentPresenter
             if ($fees->isEmpty()) {
                 return null;
             }
+        } elseif ($bill->receipt_no !== null) {
+            // An online "Bayar semua" receipt covers the fees that still carry its number: a fee taken back
+            // and paid again since has a receipt of its own and must not appear on this one too.
+            $fees = $all->filter(fn (Payment $p) => $p->receipt_no === $bill->receipt_no)->values();
+            if ($fees->isEmpty()) {
+                return null;
+            }
         }
         $lead = $fees->first();
         $amount = $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount));
 
         return [
-            'receiptNo' => 'RCP-G'.str_pad((string) $bill->id, 6, '0', STR_PAD_LEFT),
+            'receiptNo' => self::groupReceiptNo($bill),
             'amount' => $amount,
             'paidAt' => ($lead->paid_date ?? $bill->paid_at)->toDateString(),
             'gateway' => $transfer ? null : self::gatewayLabel($bill->gateway),
             'method' => $transfer ? 'transfer' : 'gateway',
             'transactionId' => $transfer ? null : $bill->transaction_id,
             'reference' => $transfer ? ($lead->transfer_bank_ref ?? $lead->transfer_ref ?? $bill->reference) : $bill->reference,
+            // Every fee of the set was paid at once, so the first fee's snapshot names the issuer.
+            'issuer' => self::issuer($lead),
             'lines' => $fees->map(fn (Payment $p) => [
                 'id' => $p->id,
+                // The group's own number for fees settled with it (older groups: each fee's RCP-{id}).
                 'receiptNo' => self::receiptNo($p),
+                'invoiceNo' => self::invoiceNo($p),
                 'periodStart' => $p->period_start->toDateString(),
                 'periodEnd' => $p->period_end->toDateString(),
                 'amount' => $amounts[$p->id] ?? self::sen($p->amount),

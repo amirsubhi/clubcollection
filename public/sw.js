@@ -2,14 +2,16 @@
  * Club Portal service worker (Option A, step A4).
  *
  * Deliberately minimal:
- *  - cache-first ONLY for immutable static assets: /build/assets/* (Vite, content-hashed) and /icons/*;
+ *  - cache-first ONLY for immutable static assets: /build/assets/* (Vite, content-hashed), /icons/* and the
+ *    app icons made from the portal logo, /storage/portal/icons/* (hashed names: a new logo or colour = new URL);
+ *  - the manifest (/app.webmanifest, portal name and colour) is never cached here: the browser fetches it;
  *  - everything else (HTML, Inertia JSON, attachments, payments, webhooks, cross-origin) goes to the
  *    network and is never stored — no money data is ever kept offline;
  *  - a failed top-level navigation shows /offline.html (BM + EN), cached at install.
  *
  * Bump CACHE_VERSION on every release (docs/RELEASE.md); activate deletes the old caches.
  */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `cp-static-${CACHE_VERSION}`;
 const OFFLINE_CACHE = `cp-offline-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -38,7 +40,10 @@ self.addEventListener("activate", (event) => {
 });
 
 function isStaticAsset(url) {
-  return url.origin === self.location.origin && (url.pathname.startsWith("/build/assets/") || url.pathname.startsWith("/icons/"));
+  return (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/build/assets/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/storage/portal/icons/"))
+  );
 }
 
 async function cacheFirst(event, request) {

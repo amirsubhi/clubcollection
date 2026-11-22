@@ -123,6 +123,13 @@
                 <td>
                     <div class="report-title">Financial Ledger Report</div>
                     <div class="report-club">{{ $club->name }}</div>
+                    {{-- Club profile, when set (escaped; the address keeps its line breaks). --}}
+                    @if($club->registration_no)
+                    <div class="report-meta">Registration no.: {{ $club->registration_no }}</div>
+                    @endif
+                    @if($club->address)
+                    <div class="report-meta">{!! nl2br(e($club->address)) !!}</div>
+                    @endif
                     <div class="report-meta">
                         Period: {{ $filters['from']->format('d M Y') }} — {{ $filters['to']->format('d M Y') }}
                         &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -133,8 +140,9 @@
                     </div>
                 </td>
                 <td class="report-logo-cell">
-                    @if($club->logo)
-                    <img src="{{ storage_path('app/public/' . $club->logo) }}" alt="{{ $club->name }} logo" style="max-height:40px;max-width:120px">
+                    @php($logoFile = \App\Services\LogoService::localPath($club->logo))
+                    @if($logoFile)
+                    <img src="{{ $logoFile }}" alt="{{ $club->name }} logo" style="max-height:40px;max-width:120px">
                     @endif
                 </td>
             </tr>
@@ -318,7 +326,8 @@
             </td>
             <td>{{ $t['description'] }}</td>
             <td class="text-muted">{{ $t['party'] }}</td>
-            <td class="font-mono text-muted">{{ $t['reference'] ?: '' }}</td>
+            {{-- A fee's receipt number above its reference (one column keeps the A4 width). --}}
+            <td class="font-mono text-muted">@if(!empty($t['receipt'])){{ $t['receipt'] }}@if($t['reference'])<br>@endif @endif{{ $t['reference'] ?: '' }}</td>
             <td class="text-right text-green fw-bold">
                 {{ $t['amount_in'] !== null ? number_format($t['amount_in'], 2) : '' }}
             </td>

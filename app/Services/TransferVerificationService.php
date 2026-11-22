@@ -10,6 +10,7 @@ use App\Models\PaymentBill;
 use App\Models\User;
 use App\Support\Payments\OpenFeeSet;
 use App\Support\Payments\OwnFeeRule;
+use App\Support\Payments\ReceiptNumbers;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -220,7 +221,7 @@ class TransferVerificationService
 
             AuditService::log(
                 'payment.transfer_approved',
-                "Payment #{$payment->id}: transfer slip approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}).",
+                "Payment #{$payment->id}: transfer slip approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}). Receipt ".($payment->receipt_no ?? 'n/a').'.',
                 $payment,
                 $payment->club_id,
                 $old,
@@ -309,7 +310,14 @@ class TransferVerificationService
                 // Some fees were paid online while the slip was checked: their share is flagged for a refund.
                 $total .= ', '.$skipped.' fee(s) already paid online, approved RM '.number_format($fees->sum(fn (Payment $p) => $p->amountSen()) / 100, 2);
             }
+            // One slip, one receipt: one number for the fees approved, taken after the group and fee locks
+            // (CLAUDE.MD "Lock order"; later locks are only rows reached through these fees), kept on the group
+            // and on every fee.
+            $receipt = ReceiptNumbers::allocate(Club::findOrFail($group->club_id), $group->id, $date);
             foreach ($fees as $payment) {
+                // The shared number, set before the save so the Payment hook doesn't issue one of its own.
+                $payment->receipt_no = $receipt['receipt_no'];
+                $payment->receiptAllocationId = $receipt['id'];
                 $old = $this->snapshot($payment);
                 $payment->forceFill([
                     'status' => 'paid',
@@ -325,14 +333,14 @@ class TransferVerificationService
 
                 AuditService::log(
                     'payment.transfer_approved',
-                    "Payment #{$payment->id}: transfer slip {$group->reference} ({$fees->count()} fees, {$total}) approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}).",
+                    "Payment #{$payment->id}: transfer slip {$group->reference} ({$fees->count()} fees, {$total}) approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}). Receipt {$receipt['receipt_no']} (shared by the set).",
                     $payment,
                     $payment->club_id,
                     $old,
                     $this->snapshot($payment) + ['group' => $group->reference, 'slips' => $slips]
                 );
             }
-            $group->forceFill(['paid_at' => now()])->save();
+            $group->forceFill(['paid_at' => now(), 'receipt_no' => $receipt['receipt_no']])->save();
 
             return $fees;
         });
@@ -340,7 +348,7 @@ class TransferVerificationService
         $fees->load(['user', 'club']);
         $lead = $fees->first();
         try {
-            Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $group));
+            Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $group->fresh() ?? $group));
         } catch (\Throwable $e) {
             Log::error('Payment confirmation email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
         }

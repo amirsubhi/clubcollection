@@ -27,7 +27,7 @@ class LedgerController extends Controller
         $today = Carbon::parse(now()->toDateString());
 
         $presets = [
-            FundFigures::yearToDate($today),
+            FundFigures::yearToDate($today, $club),
             FundFigures::lastMonths(12, $today),
         ];
         $preset = 'custom';
@@ -103,6 +103,7 @@ class LedgerController extends Controller
                 'description' => $t['description'],
                 'party' => $t['party'],
                 'reference' => $t['reference'],
+                'receiptNo' => ($t['receipt'] ?? '') ?: null,
                 'amount' => $t['in_sen'] ?: $t['out_sen'],
                 'balance' => $t['balance_sen'],
             ])->all(),
@@ -185,7 +186,7 @@ class LedgerController extends Controller
 
             // ── Transactions ──────────────────────────────────────────────
             CsvSafe::put($h, ['TRANSACTIONS']);
-            CsvSafe::put($h, ['#', 'Date', 'Type', 'Description', 'Member / Category', 'Reference', 'Amount In (RM)', 'Amount Out (RM)', 'Running Balance (RM)']);
+            CsvSafe::put($h, ['#', 'Date', 'Type', 'Description', 'Member / Category', 'Reference', 'Receipt No.', 'Amount In (RM)', 'Amount Out (RM)', 'Running Balance (RM)']);
             foreach ($data['transactions'] as $i => $t) {
                 CsvSafe::put($h, [
                     $i + 1,
@@ -194,6 +195,7 @@ class LedgerController extends Controller
                     $t['description'],
                     $t['party'],
                     $t['reference'],
+                    $t['receipt'] ?? '',
                     $t['amount_in']  !== null ? number_format($t['amount_in'],  2) : '',
                     $t['amount_out'] !== null ? number_format($t['amount_out'], 2) : '',
                     number_format($t['balance'], 2),
@@ -311,14 +313,14 @@ class LedgerController extends Controller
 
         $from = request('from')
             ? Carbon::createFromFormat('Y-m-d', request('from'))->startOfDay()
-            : Carbon::now()->startOfYear();
+            : FundFigures::financialYearStart(Carbon::now(), $club);
 
         $to = request('to')
             ? Carbon::createFromFormat('Y-m-d', request('to'))->endOfDay()
             : Carbon::now()->endOfDay();
 
         if ($from->gt($to)) {
-            $from = $to->copy()->startOfYear();
+            $from = FundFigures::financialYearStart($to, $club);
         }
 
         // Reject ranges that would force loading huge result sets into memory.
@@ -378,6 +380,8 @@ class LedgerController extends Controller
                 'description'=> 'Fee payment (' . $p->frequency . ') — ' . $p->period_start->format('M Y'),
                 'party'      => $p->user?->name ?? 'Former member',
                 'reference'  => $p->reference ?? '',
+                // The fee's receipt number (per club and financial year; RCP-{id} for fees paid before).
+                'receipt'    => $p->receiptNumber(),
                 'amount_in'  => (float) $p->amount,
                 'amount_out' => null,
                 'in_sen'     => self::sen($p->amount),
@@ -396,6 +400,7 @@ class LedgerController extends Controller
                 'description'=> ($e->isWelfare() ? 'Welfare: ' : '') . $e->description,
                 'party'      => $e->category->name,
                 'reference'  => $e->reference(),
+                'receipt'    => '',
                 'amount_in'  => null,
                 'amount_out' => (float) $e->amount,
                 'in_sen'     => 0,
@@ -421,6 +426,7 @@ class LedgerController extends Controller
                     'description'=> 'Bank / gateway charges — ' . Carbon::createFromFormat('Y-m-d', $month.'-01')->format('M Y'),
                     'party'      => $group->count() . ' online payment' . ($group->count() === 1 ? '' : 's'),
                     'reference'  => '',
+                    'receipt'    => '',
                     'amount_in'  => null,
                     'amount_out' => self::rm($sen),
                     'in_sen'     => 0,

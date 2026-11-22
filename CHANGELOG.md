@@ -17,6 +17,58 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
+### Added (settings phase 2: receipts and privacy)
+- **Receipt numbers per club**: `{PREFIX}-{FY start year}-{NNNN}` (e.g. `RCP-2026-0001`), a sequence per club and
+  financial year (`clubs.financial_year_start_month`; the year the money was paid in, fixed at issue), issued when a fee becomes
+  paid. The prefix (default `RCP`, 2–6 of A–Z / 0–9) is set on the Club profile and applies to later receipts only.
+  A "Bayar semua" bill or slip is one receipt with one number shared by its fees (stored on the bill and on each fee).
+  Numbers are **never reused** (not gap-free): a fee taken back from paid keeps its number recorded as void and gets
+  a new one when paid again. Shown on the member receipt and group receipt, the receipt email, the admin payment page
+  and the ledger (screen, CSV `Receipt No.` column, PDF). Fees paid before keep `RCP-{id}` / `RCP-G{id}`. New
+  tables `receipt_counters`, `receipt_allocations`, `receipt_allocation_payments`; new columns
+  `clubs.receipt_prefix`, `payments.receipt_no`, `payment_bills.receipt_no`.
+- **Receipt footer**: an optional plain-text footer per club (Club profile, up to 300 characters, line breaks kept,
+  control characters refused, audited; new `clubs.receipt_footer`), printed escaped under "computer-generated" on the
+  official receipt and the receipt email. It is part of the issuer snapshot, so an issued receipt keeps the footer it
+  was issued with; receipts issued before have none.
+- **Privacy notice**: a public `/privacy` page (no sign-in, sign-in layout, BM by default with the EN switch) showing
+  the portal's privacy notice and an optional data-protection contact, linked from the sign-in footer and the member
+  app's account section. The super admin writes it on a new page, **Privacy notice** (`/admin/portal-settings/privacy`,
+  stored in `portal_settings`, audited): BM and English plain text (escaped, paragraphs from blank lines), a contact
+  name and email. No legal text ships as a default: until one is saved the page shows a neutral placeholder.
+
+### Added (settings phase 1: club profile, portal settings, financial year)
+- **Club profile** page for club admins (and the super admin), `/admin/clubs/{club}/profile`: name, logo, contact
+  email, registration no. (ROS/PPM), address and the month the financial year starts. Audited with old / new values.
+  New `clubs` columns `registration_no`, `address`, `financial_year_start_month` (default 1).
+- **Safe logo handling** (`LogoService`, used by the club profile, the super admin's club forms and portal settings):
+  PNG / JPEG / WebP only (SVG and GIF refused), up to 2 MB and 4000 × 4000 px, decoded and re-encoded with GD as a PNG
+  of at most 512 px under a random name on the public disk. Old logo files are kept (issued receipts may show them).
+  The PHP `gd` extension is now needed for logo uploads.
+- **Receipt snapshot**: new `payments.issuer_snapshot` (JSON) holds the club's name, registration no., address, logo
+  path and email, written once when a fee becomes paid (gateway, transfer approval, an admin recording it, group
+  bills) and never overwritten. Receipts render from it; fees paid before this release show the club as it is now.
+- Members see the club's logo and name on Home, and logo, registration no. and address on invoices and receipts
+  (including "Bayar semua"). The ledger PDF header adds the registration no. and address.
+- **Sign-in pages** show the club's name and logo when exactly one club is active; otherwise the portal brand.
+- **Portal settings** (super admin, `/admin/portal-settings`, new `portal_settings` table): portal name (applied as
+  `app.name` at runtime, cached; falls back to `APP_NAME` when unset or when the database can't be read) and portal
+  logo (sign-in header and admin sidebar).
+- **Financial year**: a club's start month drives "this year" on the Dashboard, Fund Usage, the Ledger default and
+  presets and the members' fund page (labelled e.g. "FY 2026/27"). Start month 1 keeps the calendar year exactly.
+
+### Added (settings phase 2: brand colour and app icon)
+- **Brand colour** (Portal settings): six presets (Lavender, the default, Teal, Blue, Green, Maroon,
+  Slate) with light / dark swatches; only the preset key is stored (no free colour or CSS). Applied at runtime, without
+  a rebuild, by one nonced `<style>` in the member app, the sign-in and error pages and the admin pages, and to the
+  browser bar (`theme-color`); nothing is added for the default, so it renders as before. A unit test checks WCAG
+  contrast for every preset in both themes. Status colours, charts, receipts and emails keep their colours.
+- **App icon and manifest**: with a portal logo, GD makes the app icons (192 / 512 "any" and maskable, apple-touch-icon
+  180, favicons 32 / 48) under hashed names, so a new logo or colour gives new URLs. The manifest is now served by the
+  app at `/app.webmanifest` (portal name, brand colour, icons; no session; works before the install); the static
+  `public/manifest.webmanifest` stays as a fallback. Without a logo or GD the built-in icons are used. Phones that
+  installed the app earlier may keep the old icon and name until it is reinstalled. Service worker cache `v2`.
+
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.

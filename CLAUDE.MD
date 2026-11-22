@@ -25,28 +25,28 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
     2FA challenge and password pages.
   - **Blade + Bootstrap 5 from jsDelivr** for the installer and the remaining admin pages
-    (members, payments, fee rates, job levels, discounts, categories, billing settings, ledger, audit logs, clubs, admins,
-    statistics, classic dashboard). Use Bootstrap classes there, Tailwind only in the React pages.
+    (members, payments, fee rates, job levels, discounts, categories, club profile, ledger, audit logs, clubs, admins,
+    portal settings, statistics, classic dashboard; billing settings is Inertia). Use Bootstrap classes there, Tailwind only in the React pages.
 - `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade, CDN).
 
 ## Layout
 
 ```
 app/Contracts/                 PaymentGateway, ConfirmsWebhookPayments
-app/Http/Controllers/Admin/    Club, ClubBilling, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
+app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, PrivacyNotice, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
                                TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
 app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
-app/Http/Controllers/          InstallController, WebhookController, HomeController, Auth/*
+app/Http/Controllers/          InstallController, WebhookController, HomeController, PrivacyController, Auth/*
 app/Models/                    User, Club, Payment, PaymentBill, Expense, WelfareCase, Attachment, FeeRate,
-                               Discount, ExpenseCategory, AuditLog, ClubJobLevel
-app/Services/                  AuditService, AttachmentService, FundUsageService, TransferVerificationService,
+                               Discount, ExpenseCategory, AuditLog, ClubJobLevel, PortalSetting
+app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
-app/Support/                   presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
+app/Support/                   Portal/{PortalSettings (portal name, logo, brand key), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                WebhookSecret, BillplzSignature, ...), Export/CsvSafe
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
 routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC)
 database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSeeder (e2e fixtures)
-public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release)
+public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release); the live manifest is the routed /app.webmanifest, the static file a fallback
 scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)
 mockup/                        standalone design mockup (sample data only; see mockup/README.md)
 tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.mjs (Playwright)
@@ -68,9 +68,17 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
     `profile.2fa.enable|confirm`, `password.change*` and `logout`. `Tests\TestCase` sets it false; turn it on in a
     test that needs it. Both redirect with `Inertia::location` (409 for Inertia visits).
   - `member` group, prefix `/my`: member pages. `MemberOnly` only checks auth (admins can use it too).
-  - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log.
+  - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log, portal settings
+    (`admin.portal-settings.edit|update`), privacy notice (`/admin/portal-settings/privacy`,
+    `admin.privacy-notice.edit|update`; named apart so `admin.portal-settings.*` doesn't match it).
+- `GET /privacy` (`privacy`): public privacy notice, inside `check_installed` + `auth_locale`, no `auth`/`guest`
+  (members open it too). Text from `App\Support\Portal\PrivacyNotice` (portal_settings keys `privacy_notice_ms|en`,
+  `privacy_contact_name|email`, kept out of `PortalSettings::KEYS`); plain text only, escaped, paragraphs from blank
+  lines; a neutral placeholder when unset. Never ship default legal wording.
   - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
-    attachments, billing, ledger.
+    attachments, club profile (`admin.clubs.profile.edit|update`), billing, ledger.
+- `GET /app.webmanifest` (`pwa.manifest`, `AppManifestController`): outside `check_installed`, no auth, and the
+  session / cookie / CSRF / Inertia middleware removed (no Set-Cookie). It only reads settings: never generate icons there.
 - `/two-factor-challenge` deliberately has **no `auth`**: login logs the user out and stores `two_factor_user_id`;
   the controller gates on that session key. Don't add `auth` there.
 - Put literal child routes (e.g. `members/import`) **before** `Route::resource(...)->shallow()`.
@@ -95,8 +103,54 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   clubs get `executive` and `manager` (`ClubFactory::withJobLevels()` to change). Never hard-code a level list.
 - **Attachments**: encrypted with `Crypt` on the private `local` disk (`serve => false`), served only via
   `admin.attachments.show` (audited) / `thumb` (not audited) or the member's own slip route. Locked once submitted.
+- **Logos** (club and portal) only through `LogoService`: PNG / JPEG / WebP (by header, extension and detected MIME;
+  never SVG or GIF), 2 MB, 4000 px; re-encoded with GD to a PNG of max 512 px at `club-logos/{uuid}.png` or
+  `portal/{uuid}.png` on the `public` disk. Never delete an old logo file (receipt snapshots point at it). Build URLs
+  with `LogoService::url()` / `Club::logo_url` (null when the file is gone).
+- **Receipt snapshot**: `payments.issuer_snapshot` (not fillable) is written once by `Payment::booted()` (saving)
+  when a fee becomes paid, from `Club::issuerSnapshot()`; never overwritten while paid (a revert clears it). Receipts use
+  `MemberPaymentPresenter::issuer()` (snapshot, else the live club for older fees); invoices use the live club. The
+  club's receipt footer (`clubs.receipt_footer`, plain text, max 300) is in the snapshot; an older snapshot without a
+  `footer` key shows none. Render it escaped (`whitespace-pre-line` in React, `nl2br(e())` in Blade).
+- **Receipt numbers**: `{PREFIX}-{FY start year}-{NNNN}` from `App\Support\Payments\ReceiptNumbers::allocate()`,
+  per club and financial year (the year of the paid date, fixed at issue; `ReceiptNumbers::allocate(..., $paidOn)`), prefix `clubs.receipt_prefix` (read at issue time).
+  One fee: `Payment::booted()` saving hook, when it becomes paid and `receipt_no` is null (next to the snapshot). A
+  group bill / slip: `SettlementService::markGroupPaid()` and `TransferVerificationService::approveGroup()` allocate
+  once with the bill id and set `receipt_no` + `receiptAllocationId` on each fee **before** saving it (so the hook
+  skips it). `payments.receipt_no` is not unique (a group shares it); uniqueness is on `receipt_allocations`
+  (club + number, club + year + seq). A revert clears `receipt_no` and voids its `receipt_allocation_payments` row;
+  never reuse a number, never promise gap-free. Display with `Payment::receiptNumber()` /
+  `MemberPaymentPresenter::groupReceiptNo()` (legacy `RCP-{id}` / `RCP-G{id}` when null). Not fillable.
+- **Financial year**: "this year" for a club is `FundFigures::yearToDate($today, $club)` /
+  `financialYearStart()` / `yearLabel()` (`clubs.financial_year_start_month`, 1 = calendar year, label "FY 2026/27"
+  otherwise). Don't use `startOfYear()` for a club's year. The classic dashboard and the member payments list still
+  browse fees by calendar year (deliberately).
+- **Portal name**: `PortalSettings::apply()` sets `config('app.name')` at boot (cached, `rescue()`d, skipped before
+  install; `app.default_name` keeps APP_NAME). Pages must render with the table empty or the database down.
+  `PortalSettings::put()` clears the cache and re-applies.
+- **Brand colour**: only a `BrandPalette::PRESETS` key is stored (`portal_settings.brand`; lavender = no row); never
+  accept a hex or CSS. `partials/brand-style` (in `app.blade.php`, `layouts.auth`, `layouts.app`) emits one nonced
+  `<style>` built from the constants that re-points the brand tokens (primary, ring, deep, accent, info + foregrounds)
+  and the four Bootstrap triplets; nothing for lavender, so tokens.css renders as built. Neutrals, status colours,
+  charts and `.paper` receipts stay fixed. A new preset or token must pass `tests/Unit/BrandPaletteTest.php` (WCAG
+  contrast); lavender must equal tokens.css. Browser-bar colours come from `pwa-head` (`window.cpThemeColor`).
+- **App icons** (`AppIcons`): GD-made from the portal logo at `portal/icons/{hash}-*.png` (hash = logo path + preset +
+  `VERSION`), made only on Portal settings save / open; pages and the manifest fall back to `public/icons` when the
+  set is missing. Old icon files are kept.
 - **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and
   `users.two_factor_secret` / recovery codes (manual `encrypt`/`decrypt`; use `User::getTwoFactorSecret()`).
+
+## Lock order (MariaDB / MySQL)
+
+Every transaction that settles or decides fees takes row locks in this order, inside one `DB::transaction` (PR #25
+fixed deadlocks from mixing it up): `payment_bill_items` (shared, group settlement) → `payments` (`lockForUpdate`,
+by id) → `payment_bills` (the bill being settled) → `receipt_counters` (one row per club + financial year). Group slip
+approval locks its `payment_bills` row before its fees; that row is only reached through the slip. The receipt
+counter is always taken after the caller's own locks; rows locked after it (the fee's own bill, open group bills
+covering the fee, via the Payment `saved` hook) are reached only through fee rows the transaction already holds.
+Advance the counter with the upsert in `ReceiptNumbers::allocate()` (never "SELECT … FOR UPDATE, insert if
+missing": a locking read of a missing row takes a gap lock and two first receipts of a year deadlock). A deadlock
+(1213) rolls back the whole transaction: never catch it and carry on.
 
 ## Patterns
 
@@ -104,7 +158,10 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `$this->authorizeClubAdmin($model->club)`.
 - **Audit every write**: `AuditService::log($action, $description, $model, $clubId, $old = [], $new = [])` (positional).
 - **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Allowed hosts: jsDelivr, Google Fonts;
-  form-action allows the ToyyibPay and Billplz hosts.
+  form-action allows the ToyyibPay and Billplz hosts. Images: `'self' data:` (+ ASSET_URL host) only, so logos are
+  served same-origin from `/storage` via `asset()`.
+- **Sign-in header** (`layouts/auth.blade.php`, `authBrand` from the AppServiceProvider composer): the one active
+  club's name + logo, else the portal name + logo. New Tailwind classes there must be in a file Tailwind scans.
 - **Rate limits**: named limiters in `AppServiceProvider`: `login` (5/min per account + IP, 30/min per IP; a hit is a
   `Lockout` event), `two-factor`, `install`, `password-email`, `password-reset`, `password-confirm` (each 5/min per account + IP,
   30/min per IP), `password-change`, `two-factor-setup`, `webhooks`; CSV

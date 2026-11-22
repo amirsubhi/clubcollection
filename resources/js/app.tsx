@@ -69,9 +69,12 @@ function Providers({ locale, component, children }: { locale: unknown; component
   );
 }
 
+/** The portal name (Portal settings, shared as props.portal); read once from the first page. */
+let portalName = "Club Portal";
+
 createInertiaApp({
   id: "root",
-  title: (title) => (title ? `${title} · Club Portal` : "Club Portal"),
+  title: (title) => (title ? `${title} · ${portalName}` : portalName),
   resolve: (name) => {
     const pages = import.meta.glob("./Pages/**/*.tsx");
     const page = pages[`./Pages/${name}.tsx`];
@@ -79,6 +82,7 @@ createInertiaApp({
     return page();
   },
   setup({ el, App, props }) {
+    portalName = props.initialPage.props.portal?.name || portalName;
     createRoot(el).render(
       <StrictMode>
         <Providers locale={props.initialPage.props.locale} component={props.initialPage.component}>

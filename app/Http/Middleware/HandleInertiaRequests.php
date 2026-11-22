@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Club;
+use App\Support\Portal\PortalSettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,6 +38,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'locale' => fn () => $this->locale($request),
             'club' => fn () => $this->currentClub($request),
+            // Portal settings: the name for page titles (app.tsx) and fallbacks.
+            'portal' => fn () => ['name' => PortalSettings::name()],
         ];
     }
 

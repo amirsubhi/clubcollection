@@ -51,6 +51,9 @@ class DashboardController extends Controller
             return [
                 'id' => $club->id,
                 'name' => $club->name,
+                // Club profile: the logo (same-origin /storage URL; null without one) and the financial year start.
+                'logoUrl' => $club->logo_url,
+                'fyStartMonth' => $club->financialYearStartMonth(),
                 // The club's own name for the member's level (the code if the level is gone).
                 'jobLevel' => $club->jobLevelName($club->pivot->job_level),
                 'role' => $club->pivot->role,
@@ -128,6 +131,8 @@ class DashboardController extends Controller
                 'isAdmin' => $user->isAdmin(),
                 'adminUrl' => $user->isAdmin() ? route('home') : null,
                 'securityUrl' => route('profile.security'),
+                // The portal's privacy notice (public page; a placeholder until the super admin writes one).
+                'privacyUrl' => route('privacy'),
                 'logoutUrl' => route('logout'),
             ],
         ]);

@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Services\AuditService;
+use App\Services\LogoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ClubController extends Controller
 {
+    public function __construct(private LogoService $logos) {}
+
     public function index()
     {
         $clubs = Club::withCount('members')->latest()->paginate(15);
@@ -25,19 +28,20 @@ class ClubController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'email' => 'nullable|email|max:255',
-            'logo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'logo' => LogoService::rules(),
             'payment_gateway' => 'nullable|in:toyyibpay,billplz',
             'toyyibpay_secret_key' => 'nullable|string|max:255',
             'toyyibpay_category_code' => 'nullable|string|max:100',
             'billplz_api_key' => 'nullable|string|max:255',
             'billplz_collection_id' => 'nullable|string|max:100',
             'billplz_x_signature_key' => 'nullable|string|max:255',
-        ]);
+        ], LogoService::messages());
 
+        unset($data['logo']);
         if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+            $data['logo'] = $this->logos->store($request->file('logo'), 'club-logos');
         }
 
         $data['payment_gateway'] = $data['payment_gateway'] ?? 'toyyibpay';
@@ -77,9 +81,9 @@ class ClubController extends Controller
     public function update(Request $request, Club $club)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'email' => 'nullable|email|max:255',
-            'logo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'logo' => LogoService::rules(),
             'is_active' => 'boolean',
             // Nullable so partial updates that omit the gateway selector
             // (e.g. legacy callers, tests) don't fail validation.
@@ -89,18 +93,18 @@ class ClubController extends Controller
             'billplz_api_key' => 'nullable|string|max:255',
             'billplz_collection_id' => 'nullable|string|max:100',
             'billplz_x_signature_key' => 'nullable|string|max:255',
-        ]);
+        ], LogoService::messages());
 
         // If the form omitted the gateway, leave the existing value alone.
         if (empty($data['payment_gateway'])) {
             unset($data['payment_gateway']);
         }
 
+        // Same handling as the club profile page (LogoService). The old file is kept: receipts issued with it
+        // still show it (payments.issuer_snapshot).
+        unset($data['logo']);
         if ($request->hasFile('logo')) {
-            if ($club->logo) {
-                Storage::disk('public')->delete($club->logo);
-            }
-            $data['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+            $data['logo'] = $this->logos->store($request->file('logo'), 'club-logos');
         }
 
         $data['is_active'] = $request->boolean('is_active');
@@ -116,7 +120,7 @@ class ClubController extends Controller
         $data['toyyibpay_category_code'] = ($data['toyyibpay_category_code'] ?? null) ?: null;
         $data['billplz_collection_id'] = ($data['billplz_collection_id'] ?? null) ?: null;
 
-        $old = $club->only(['name', 'email', 'is_active', 'payment_gateway']);
+        $old = $club->only(['name', 'email', 'is_active', 'payment_gateway', 'logo']);
         $club->update($data);
 
         AuditService::log(
@@ -125,7 +129,7 @@ class ClubController extends Controller
             $club,
             $club->id,
             $old,
-            $club->fresh()->only(['name', 'email', 'is_active', 'payment_gateway'])
+            $club->fresh()->only(['name', 'email', 'is_active', 'payment_gateway', 'logo'])
         );
 
         return redirect()->route('admin.clubs.index')->with('success', 'Club updated successfully.');

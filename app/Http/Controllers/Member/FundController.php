@@ -22,7 +22,7 @@ class FundController extends Controller
         abort_unless($club->is_active
             && $club->members()->where('users.id', $user->id)->where('club_user.is_active', true)->exists(), 403);
 
-        $ytd = FundFigures::yearToDate();
+        $ytd = FundFigures::yearToDate(null, $club);
         $figures = new FundFigures($club);
         $w = $figures->forWindow($ytd);
 
@@ -31,6 +31,8 @@ class FundController extends Controller
                 'id' => $club->id,
                 'name' => $club->name,
                 'paymentsUrl' => route('member.payments.index', $club),
+                // 1 = calendar year; otherwise the page says when the club's financial year starts.
+                'fyStartMonth' => $club->financialYearStartMonth(),
             ],
             'fund' => [
                 'window' => $w['window'],

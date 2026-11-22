@@ -35,9 +35,13 @@ Billplz sandbox run on your own host.
   - **bank / DuitNow transfer** ("Pindahan bank / DuitNow"): the page shows the club's account and a `YURAN-{id}`
     reference, the member uploads 1–3 slips (photo or PDF) and the fee shows "Menunggu pengesahan" until a
     treasurer approves it.
-- Invoice and official receipt ("Resit rasmi") for every fee, with a print button.
+- Invoice and official receipt ("Resit rasmi") for every fee, with a print button, headed with the club's logo,
+  name, registration no. and address, and the club's own receipt footer. Receipt numbers run per club and financial
+  year (`RCP-2026-0001`, prefix set by the club; one number for a "Bayar semua" payment; never reused). A receipt
+  keeps the club details it was issued with.
+- A public **privacy notice** page (`/privacy`, BM and English), linked from the sign-in page and the member app.
 - Payment history by year and **pay ahead** ("Bayar lebih awal") for 1, 3 or 12 months, using the plans the club allows.
-- Add to home screen (PWA) with a small install tip.
+- Add to home screen (PWA) with a small install tip; the app's name, colour and icon follow the portal settings.
 
 **For club admins (treasurer, secretary)**
 - **Dashboard**: fund balance, collected and spent this year (expenses + welfare + bank charges), records awaiting
@@ -50,6 +54,9 @@ Billplz sandbox run on your own host.
 - **Payment verifications**: check members' transfer slips against the bank statement, approve (the member gets the
   receipt by email) or reject with a reason (the member is emailed and can send a new slip). A "Bayar semua" slip is
   approved or rejected as one set.
+- **Club profile**: the club's name, logo, contact email, registration no. (ROS/PPM), address and the month its
+  financial year starts ("this year" on the dashboard, Fund Usage, ledger and member pages then runs from that
+  month), and an optional receipt footer. Logos are PNG / JPEG / WebP only, re-encoded on the server.
 - **Billing settings**: which plans members may choose, the default plan, who pays the gateway fee, and the club's
   bank / DuitNow details. A change to the bank details waits for a second admin to approve it.
 - Members (add one by one or import CSV, welcome email with a temporary password), **job levels** each club defines
@@ -64,6 +71,10 @@ Billplz sandbox run on your own host.
 **For the super admin**
 - Clubs (including each club's gateway and credentials), administrators, platform statistics and the platform-wide
   audit log. Only the super admin can make someone a club admin.
+- Portal settings: the portal's name, logo and brand colour (six presets checked for WCAG AA contrast in light and
+  dark); the installable app's name and icon follow them.
+- **Privacy notice**: the portal's privacy notice in BM and English and a data-protection contact, shown on the
+  public `/privacy` page (plain text; a neutral placeholder until one is written).
 
 ## Screenshots
 

@@ -16,7 +16,7 @@
     </select>
     </div>
     <div>
-    <label for="dash-year" class="form-label small mb-1">Year</label>
+    <label for="dash-year" class="form-label small mb-1">Calendar year</label>
     <select name="year" id="dash-year" class="form-select form-select-sm" style="width:auto">
         @foreach($availableYears as $y)
             <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
@@ -60,7 +60,7 @@
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
-                <div class="text-muted small mb-1">Income This Year</div>
+                <div class="text-muted small mb-1">Income in calendar year {{ $year }}</div>
                 <div class="fs-4 fw-bold">RM {{ number_format($incomeThisYear, 2) }}</div>
             </div>
         </div>

@@ -106,8 +106,15 @@ When more than one fee is open (pending or overdue), **Utama** shows **Bayar sem
 <img src="screenshots/member-receipt.png" width="260" align="right" alt="Official receipt">
 
 Open any fee from **Utama** or **Bayaran**. An unpaid fee shows its invoice; a paid fee shows the **Resit rasmi**
-(official receipt) with the payment method (FPX with the transaction ID, or **Pindahan bank / DuitNow**). Tap
+(official receipt) with the payment method (FPX with the transaction ID, or **Pindahan bank / DuitNow**). Both are
+headed with the club's logo, name, registration no. and address (when the club has set them). The receipt number
+looks like **RCP-2026-0001**: the club's prefix, the year its financial year started, and a running number. A
+"Bayar semua" payment is one receipt with one number for all its fees. A receipt keeps the
+club details it was issued with, so it doesn't change if the club later renames itself or changes its logo. If the
+club has written a receipt footer, it is printed at the bottom of the receipt and the receipt email. Tap
 **Cetak** to print or save it as PDF.
+
+**Notis privasi** (privacy notice) is linked from **Utama** → Akaun and from the sign-in page.
 
 <br clear="right">
 
@@ -133,6 +140,9 @@ Club Portal can sit on your phone's home screen like an app (it is still the sam
 - **iPhone / Safari:** tap the Share button, then **Tambah ke Skrin Utama** ("Add to Home Screen"). In-app browsers
   (WhatsApp, Facebook) can't do this: open the link in Safari first.
 
+The app's name, colour and icon follow the portal's settings. A phone that installed the app earlier may keep the
+old name or icon until the app is removed from the home screen and added again.
+
 ### Turn on two-factor authentication
 
 **Akaun saya → Keselamatan & 2FA** (admins: **Security & 2FA** in the sidebar). Confirm your password, tap
@@ -150,7 +160,7 @@ app (or one recovery code). An admin who turns it off is asked to set it up agai
 
 Admins log in at the same address. A new admin first chooses their own password (as members do), then turns on
 2FA ([see above](#turn-on-two-factor-authentication)): the admin pages open once 2FA is on. After that they land on a page listing their clubs; open a club's **Dashboard**. The sidebar has **Dashboard**, **Fund Usage**,
-**Verifications**, **Payments**, **Members**, **Fee Rates**, **Job levels**, **Billing settings**, **Discounts**, **Expense
+**Verifications**, **Payments**, **Members**, **Fee Rates**, **Job levels**, **Club profile**, **Billing settings**, **Discounts**, **Expense
 categories**, **Ledger**, **Audit Log**, **Portal home** (back to the list of your clubs) and **Security & 2FA**, the
 same on every admin page. To see your own member view (admins pay fees too), use **Member view** in the account menu
 (your initials, top right). The screen icon next to it switches the theme (light, dark or system).
@@ -239,6 +249,54 @@ Members pay into whatever these say, so a change needs a second admin.
    request**; other admins can also **Cancel this change**.
 
 Switching **Offer bank transfer / DuitNow to members** off takes effect at once (no approval needed).
+
+### Club profile and financial year
+
+**Club profile** (sidebar) holds what members see at the top of their invoices and receipts, and on the ledger PDF:
+
+- **Club name** and **Logo**: PNG, JPEG or WebP up to 2 MB and 4000 × 4000 pixels (no SVG or GIF). The server resizes
+  it to 512 pixels and saves it as a PNG. Tick **Remove the logo** to go back to the plain mark. Members see it on their
+  home page and receipts; with only one active club in the portal, the sign-in page shows it too.
+- **Contact email**, **Registration no. (ROS/PPM), optional** and **Address** (several lines): shown as you type them.
+- **Financial year starts in**: the month your club's year begins. "This year" on the Dashboard, Fund Usage, the Ledger
+  (its default period and the year preset) and the members' "where the money went" page then runs from the 1st of that
+  month, labelled e.g. **FY 2026/27**. January (the default) is the calendar year.
+- **Receipt number prefix**: 2 to 6 capital letters or digits (default **RCP**). See [Receipt numbers](#receipt-numbers).
+- **Receipt footer** (optional): plain text of up to 300 characters, printed under "This is a computer-generated
+  receipt" on the official receipt and the receipt email, e.g. a thank-you note or the treasurer's contact. Line
+  breaks are kept; tabs and other control characters are refused; anything that looks like HTML is shown as typed.
+
+Every change is in the Audit Log with the old and new values. **Receipts already issued keep the details they were
+issued with**: a fee paid before you change the name, logo or receipt footer still shows the old ones on its receipt. (Fees paid
+before this feature existed show the club as it is now.) Unpaid invoices always show the current details. Old logo
+files are kept on the server for that reason.
+
+### Receipt numbers
+
+Every receipt gets a number of its own club when the fee is marked paid (online, slip approved, or recorded by
+hand): **PREFIX-YEAR-NNNN**, e.g. **RCP-2026-0001**. YEAR is the year the club's financial year started (with a
+July start, money paid on 30 June 2026 is RCP-2025-…, money paid on 1 July 2026 starts RCP-2026-0001). The
+running number starts again at 0001 each financial year and is counted per club. The year is the one the money was
+**paid** in (the "date received" on the receipt and in the Ledger), not the day it was approved: a slip sent on
+28 June and approved on 2 July is numbered in the year that ended on 30 June. So a late approval or a backdated
+"Record payment…" can still add a number to the previous year. The number is fixed once issued: correcting the
+date received later does not renumber it.
+
+- **One payment, one number**: a "Bayar semua" FPX bill or transfer slip is one receipt, so all its fees share one
+  number; each fee is listed on it with its invoice number. Each fee's own receipt page says it is part of that
+  receipt (how many fees, the total) and links to it; sharing from there sends the whole receipt.
+- **Audit Log**: every fee marked paid names its receipt number, and setting a paid fee back or deleting it names the
+  number that became void, so every gap in the sequence can be explained.
+- **Never reused**: a fee taken back from paid (status changed on the payment's Edit page) loses its receipt number,
+  which stays recorded as void (shown on the payment page as "Earlier receipt no."); when the fee is paid again it
+  gets a new number. The numbers are therefore never reused, but they are **not guaranteed gap-free**.
+- **Prefix**: set on **Club profile**. A new prefix is used only for receipts issued from then on; the year's running
+  number carries on (e.g. RCP-2026-0007, then KBS-2026-0008). The page shows the next number.
+- Fees paid before receipt numbers existed keep their old number (**RCP-** and the fee number, **RCP-G…** for an old
+  "Bayar semua").
+
+The number is on the member's receipt, the receipt email, the Payments list and payment page and the Ledger (screen, CSV column
+**Receipt No.** and PDF).
 
 ### Billing plans and gateway fee
 
@@ -390,3 +448,35 @@ person to approve. **Administrators** lists all admin accounts and lets you add 
 admin can't be demoted or removed.
 
 **Statistics** and **Audit Log** (super admin section of the sidebar) cover all clubs.
+
+### Portal settings
+
+**Portal settings** (super admin section of the sidebar) sets the **portal name** (page titles, the sign-in pages,
+emails and the admin sidebar; left empty it is the `APP_NAME` from `.env`) and the **portal logo** (same rules as a
+club logo), shown in the admin sidebar and on the sign-in pages. When exactly one club is active, the sign-in pages
+show that club's name and logo instead, with the portal name under it. Changes are audited.
+
+- **Brand colour:** pick one of six colours (Lavender, the default, Teal, Blue, Green, Maroon, Slate). Each row shows
+  a sample button, link and tag in light and dark mode. It colours buttons, links, highlights and focus outlines on
+  every page (member app, sign-in and error pages, admin pages) and the browser bar on phones. Status colours (paid,
+  overdue, pending) and the charts keep their own colours, and receipts and emails are not affected. There is no
+  free colour field: every preset is checked to stay readable (WCAG AA contrast) in light and dark mode.
+- **App icon:** with a portal logo, the installable app (Add to Home Screen), the iPhone home-screen icon and the
+  browser tab use icons made from it: the logo on white, and for Android's shaped icons the logo on a white circle
+  over the brand colour. Without a logo, or when the server lacks the PHP GD extension, the built-in icon is used.
+  A logo saved before this release gets its icons the next time Portal settings is opened. The app's name is the
+  portal name. **Phones that already installed the app may keep the old icon and name** until the app is removed
+  from the home screen and added again (browsers refresh them on their own schedule, sometimes days later).
+
+### Privacy notice
+
+**Privacy notice** (super admin section of the sidebar, under Portal settings) holds the portal's privacy notice in
+**Bahasa Melayu** and **English** (up to 10,000 characters each) and an optional **data protection contact** (a name
+or role and an email). Anyone can read it at `/privacy`, without signing in: it is linked from the sign-in pages and
+from the member app (**Utama** → Akaun). The page is in BM by default with the BM/EN switch; when only one language
+is filled in, both switches show that one and say so.
+
+The text is plain text: leave a blank line between paragraphs; HTML or Markdown is shown as typed, never run. No
+wording is supplied for you: until a notice is saved, `/privacy` says "The club has not published its privacy notice
+yet. Ask your club administrator." Write the notice with whoever is responsible for your club's personal data (in
+Malaysia, the PDPA 2010 applies). Every change is in the platform Audit Log.

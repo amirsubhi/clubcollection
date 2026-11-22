@@ -41,11 +41,20 @@
           <td>Club</td>
           <td>{{ $payment->club->name }}</td>
         </tr>
+        {{-- One receipt number for the email: the group's shared one, else the fee's (RCP-{id} for older fees). --}}
+        @php($receiptNo = $group?->receipt_no ?? ($fees ? null : $payment->receiptNumber()))
+        @if($receiptNo)
+        <tr>
+          <td>Receipt no.</td>
+          <td data-testid="receipt-no">{{ $receiptNo }}</td>
+        </tr>
+        @endif
         @if($fees)
         @foreach($fees as $fee)
         <tr>
           <td>{{ $fee->period_start->format('d M Y') }} – {{ $fee->period_end->format('d M Y') }}</td>
-          <td>RM {{ number_format($fee->amount, 2) }} &middot; RCP-{{ str_pad((string) $fee->id, 6, '0', STR_PAD_LEFT) }}</td>
+          {{-- A fee under the group's number shows its invoice no.; otherwise its own receipt number. --}}
+          <td>RM {{ number_format($fee->amount, 2) }} &middot; {{ $receiptNo !== null && $fee->receipt_no === $receiptNo ? \App\Support\Member\MemberPaymentPresenter::invoiceNo($fee) : $fee->receiptNumber() }}</td>
         </tr>
         @endforeach
         @else
@@ -96,6 +105,11 @@
     <p style="font-size:13px;color:#6c757d">
       Please keep this email as your payment receipt. If you have any questions, contact your club administrator.
     </p>
+    {{-- The club's receipt footer as issued (issuer snapshot): plain text, escaped, line breaks kept. --}}
+    @php($receiptFooter = \App\Support\Member\MemberPaymentPresenter::issuer($payment)['footer'])
+    @if($receiptFooter)
+    <p style="font-size:13px;color:#6c757d" data-testid="receipt-footer">{!! nl2br(e($receiptFooter)) !!}</p>
+    @endif
   </div>
   <div class="footer">
     &copy; {{ date('Y') }} {{ config('app.name') }} &middot; This is an automated email, please do not reply.

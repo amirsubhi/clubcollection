@@ -6,6 +6,8 @@ use App\Http\Controllers\InstallController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\Admin\ClubController;
 use App\Http\Controllers\Admin\ClubBillingController;
+use App\Http\Controllers\Admin\ClubProfileController;
+use App\Http\Controllers\Admin\PortalSettingsController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\FeeRateController;
 use App\Http\Controllers\Admin\JobLevelController;
@@ -49,6 +51,19 @@ Route::post('/webhook/billplz', [WebhookController::class, 'billplz'])
     ->middleware('throttle:webhooks')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
 
+// ── Web app manifest (portal name, brand colour, icons) — public, before install too ──
+// No session, cookies or CSRF: it sets no cookie and reads only the portal settings.
+Route::get('/app.webmanifest', \App\Http\Controllers\AppManifestController::class)
+    ->name('pwa.manifest')
+    ->withoutMiddleware([
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        \App\Http\Middleware\HandleInertiaRequests::class,
+    ]);
+
 // ── Dev-only UI kit (Inertia wiring check) — local & testing only ────────────
 if (app()->environment('local', 'testing')) {
     Route::get('/dev/ui-kit', fn () => \Inertia\Inertia::render('Dev/UiKit'))->name('dev.ui-kit');
@@ -62,6 +77,9 @@ Route::middleware('check_installed')->group(function () {
         // The front page is the sign-in page itself (no extra step before the form). LoginController's
         // `guest` middleware sends a signed-in user on to /home.
         Route::get('/', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('front');
+
+        // The portal's privacy notice: public (no sign-in, no `guest`, so members can open it too).
+        Route::get('/privacy', [\App\Http\Controllers\PrivacyController::class, 'show'])->name('privacy');
 
         // Register disabled.
         Auth::routes(['register' => false]);
@@ -148,8 +166,14 @@ Route::middleware('check_installed')->group(function () {
         Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
             Route::resource('clubs', ClubController::class);
             Route::resource('admins', AdminUserController::class)->except('show');
+            // Privacy notice and data-protection contact (App\Support\Portal\PrivacyNotice), shown on /privacy.
+            Route::get('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'edit'])->name('privacy-notice.edit');
+            Route::put('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'update'])->middleware('throttle:20,1')->name('privacy-notice.update');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+            // Portal name and logo (App\Support\Portal\PortalSettings).
+            Route::get('portal-settings', [PortalSettingsController::class, 'edit'])->name('portal-settings.edit');
+            Route::put('portal-settings', [PortalSettingsController::class, 'update'])->middleware('throttle:20,1')->name('portal-settings.update');
         });
 
         // ── Club Admin + Super Admin ─────────────────────────────────
@@ -166,6 +190,10 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('clubs.job-levels', JobLevelController::class)->shallow()->only(['index', 'store', 'update', 'destroy']);
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
+
+            // Club profile: name, logo, contact, registration no., address, financial year (club admins of this club + super admin).
+            Route::get('clubs/{club}/profile', [ClubProfileController::class, 'edit'])->name('clubs.profile.edit');
+            Route::put('clubs/{club}/profile', [ClubProfileController::class, 'update'])->middleware('throttle:20,1')->name('clubs.profile.update');
 
             // Billing plans and gateway-fee settings (club admins of this club + super admin).
             Route::get('clubs/{club}/billing', [ClubBillingController::class, 'edit'])->name('clubs.billing.edit');

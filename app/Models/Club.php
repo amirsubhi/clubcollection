@@ -13,6 +13,7 @@ class Club extends Model
 
     protected $fillable = [
         'name', 'logo', 'email', 'whatsapp_number', 'is_active',
+        'registration_no', 'address', 'financial_year_start_month',
         'payment_gateway',
         'toyyibpay_secret_key', 'toyyibpay_category_code',
         'billplz_api_key', 'billplz_collection_id', 'billplz_x_signature_key',
@@ -39,6 +40,7 @@ class Club extends Model
             'allow_yearly'             => 'boolean',
             'gateway_fee_sen'          => 'integer',
             'overdue_grace_days'       => 'integer',
+            'financial_year_start_month' => 'integer',
             'transfer_enabled'         => 'boolean',
             'pending_bank_change'      => 'array',
             'bank_change_requested_at' => 'datetime',
@@ -291,6 +293,34 @@ class Club extends Model
 
     public function getLogoUrlAttribute(): ?string
     {
-        return $this->logo ? asset('storage/'.$this->logo) : null;
+        return \App\Services\LogoService::url($this->logo);
+    }
+
+    /** Month (1-12) the club's financial year starts; 1 (January, the calendar year) when unset. */
+    public function financialYearStartMonth(): int
+    {
+        $month = (int) ($this->financial_year_start_month ?? 1);
+
+        return $month >= 1 && $month <= 12 ? $month : 1;
+    }
+
+    /**
+     * The club details a receipt is issued with (payments.issuer_snapshot): written once when a fee becomes
+     * paid, so later profile edits never change an issued receipt. The logo is kept as a path (its URL is built
+     * when shown); old logo files are never deleted (LogoService). The receipt footer (settings phase 2) is part
+     * of it, so a receipt keeps the footer it was issued with.
+     *
+     * @return array{name: string, registration_no: ?string, address: ?string, logo: ?string, email: ?string, footer: ?string}
+     */
+    public function issuerSnapshot(): array
+    {
+        return [
+            'name' => (string) $this->name,
+            'registration_no' => $this->registration_no ?: null,
+            'address' => $this->address ?: null,
+            'logo' => $this->logo ?: null,
+            'email' => $this->email ?: null,
+            'footer' => $this->receipt_footer ?: null,
+        ];
     }
 }

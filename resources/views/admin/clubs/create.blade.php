@@ -24,8 +24,8 @@
                     <div class="mb-4">
                         <label for="f-logo" class="form-label fw-semibold">Club Logo</label>
                         <input id="f-logo" aria-describedby="f-logo-help @error('logo') f-logo-error @enderror" @error('logo') aria-invalid="true" @enderror type="file" name="logo" class="form-control @error('logo') is-invalid @enderror"
-                               accept="image/*">
-                        <div id="f-logo-help" class="form-text">JPG, PNG or GIF. Max 2MB.</div>
+                               accept="image/png,image/jpeg,image/webp">
+                        <div id="f-logo-help" class="form-text">PNG, JPEG or WebP, up to 2 MB and 4000 × 4000 pixels (saved as a 512-pixel PNG).</div>
                         @error('logo')<div id="f-logo-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 

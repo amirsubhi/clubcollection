@@ -62,15 +62,56 @@ final class FundFigures
     // ── Windows ──────────────────────────────────────────────────────────
 
     /**
-     * 1 January to today: "this year so far".
+     * The year so far, up to today: from 1 January, or from the first day of the club's financial year when it
+     * starts in another month (Club::financialYearStartMonth(); with 1, the calendar year, the label and dates
+     * are exactly what they always were). Pass the Club for its own start month.
      *
-     * @return array{from: Carbon, to: Carbon, key: string, label: string, range: string}
+     * @return array{from: Carbon, to: Carbon, key: string, label: string, range: string, short: string}
      */
-    public static function yearToDate(?CarbonInterface $today = null): array
+    public static function yearToDate(?CarbonInterface $today = null, Club|int $startMonth = 1): array
     {
+        $month = self::startMonth($startMonth);
         $to = Carbon::parse(($today ?? now())->toDateString());
+        if ($month === 1) {
+            return self::makeWindow($to->copy()->startOfYear(), $to, 'year', 'This year so far', 'This year');
+        }
+        $label = self::yearLabel($to, $month);
 
-        return self::makeWindow($to->copy()->startOfYear(), $to, 'year', 'This year so far');
+        return self::makeWindow(self::financialYearStart($to, $month), $to, 'year', "This financial year so far ({$label})", $label);
+    }
+
+    /** The first day of the financial year (starting in $startMonth) that $date falls in. */
+    public static function financialYearStart(CarbonInterface $date, Club|int $startMonth = 1): Carbon
+    {
+        $month = self::startMonth($startMonth);
+        $d = Carbon::parse($date->toDateString());
+        // Built from day 1, never by setting the month on e.g. the 31st (which would overflow).
+        $year = $d->month >= $month ? $d->year : $d->year - 1;
+
+        return Carbon::create($year, $month, 1)->startOfDay();
+    }
+
+    /**
+     * The year a date falls in, as people say it: "2026" for a calendar year, "FY 2026/27" for a financial year
+     * starting in another month (the year it starts in / the year it ends in).
+     */
+    public static function yearLabel(?CarbonInterface $date = null, Club|int $startMonth = 1): string
+    {
+        $month = self::startMonth($startMonth);
+        $date ??= now();
+        if ($month === 1) {
+            return (string) $date->year;
+        }
+        $start = self::financialYearStart($date, $month)->year;
+
+        return 'FY '.$start.'/'.substr((string) ($start + 1), -2);
+    }
+
+    private static function startMonth(Club|int $startMonth): int
+    {
+        $month = $startMonth instanceof Club ? $startMonth->financialYearStartMonth() : $startMonth;
+
+        return $month >= 1 && $month <= 12 ? $month : 1;
     }
 
     /**
@@ -97,14 +138,16 @@ final class FundFigures
     }
 
     /**
-     * @return array{from: Carbon, to: Carbon, key: string, label: string, range: string}
+     * $short: a short name for a period tab (e.g. "This year", "FY 2026/27"); the label when not given.
+     *
+     * @return array{from: Carbon, to: Carbon, key: string, label: string, range: string, short: string}
      */
-    public static function makeWindow(CarbonInterface $from, CarbonInterface $to, string $key, string $label): array
+    public static function makeWindow(CarbonInterface $from, CarbonInterface $to, string $key, string $label, ?string $short = null): array
     {
         $from = Carbon::parse($from->toDateString());
         $to = Carbon::parse($to->toDateString());
 
-        return ['from' => $from, 'to' => $to, 'key' => $key, 'label' => $label, 'range' => self::rangeText($from, $to)];
+        return ['from' => $from, 'to' => $to, 'key' => $key, 'label' => $label, 'range' => self::rangeText($from, $to), 'short' => $short ?? $label];
     }
 
     /** "1 Jan – 15 Nov 2026", or "1 Dec 2025 – 15 Nov 2026" across years. */
@@ -118,13 +161,14 @@ final class FundFigures
     /**
      * A window as page props: ISO dates plus its label and range text.
      *
-     * @return array{key: string, label: string, range: string, from: string, to: string}
+     * @return array{key: string, label: string, short: string, range: string, from: string, to: string}
      */
     public static function windowProps(array $window): array
     {
         return [
             'key' => $window['key'],
             'label' => $window['label'],
+            'short' => $window['short'] ?? $window['label'],
             'range' => $window['range'],
             'from' => $window['from']->toDateString(),
             'to' => $window['to']->toDateString(),

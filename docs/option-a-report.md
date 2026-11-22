@@ -564,3 +564,40 @@ no sideways scrolling. Slip approval, a 300-character Fund Usage entry and the C
 - On SQLite `LOWER()` folds ASCII only, so a CSV email differing only in a non-ASCII capital isn't caught there
   (MariaDB's collation catches it). The `LOWER(email)` lookup can't use the index; fine at club size.
 - Screenshot open menus and dialogs ("More", record payment, approvals) in the next browser sweep.
+
+## Go-live hardening (PR #26, merged 22 Nov)
+
+Front page (`/` is the sign-in page with "how to join"), dependency update (54 advisories → 0, audited in CI), login
+and password hardening (per-account pause, separate limiters, no account enumeration, 500 ms sign-in floor, forced
+change of emailed temporary passwords, admin 2FA required, 12+ characters and breach check, audit + owner emails) and
+per-club job levels. 826 tests on SQLite, MariaDB and MySQL; settlement race unchanged (PR #25 merged first).
+
+## Settings (branches `settings-phase1` → `settings-phase2`, not merged yet)
+
+**Phase 1:** club profile page for club admins (name, logo, contact, optional ROS no., address, financial-year start
+month); logos re-encoded to PNG (no SVG/GIF); club identity on member home, invoices, receipts, ledger PDF and the
+single-club sign-in page; receipts keep the issuer details they were issued with (`payments.issuer_snapshot`); portal
+name and logo (super admin), also the mail sender name; "this year" follows the club's financial year (the classic
+dashboard is labelled "calendar year").
+
+**Phase 2:** six brand colour presets (WCAG AA checked in light and dark by a unit test) on every page, app icons
+generated from the portal logo and a routed `/app.webmanifest`; per-club receipt numbers `{PREFIX}-{FY}-{NNNN}`
+(locked counter, never reused, not gap-free; a set paid together shares one number and each fee's page says so);
+receipt footer in the snapshot; BM/EN privacy notice at `/privacy`.
+
+**Verified:** 965 tests on SQLite, MariaDB 10.11 and MySQL 8.0 (a 67-character index name that only MySQL/MariaDB
+refuse was caught here and is now guarded by `IndexNameLengthTest`); upgrade, rollback and re-upgrade with data on both;
+settlement race with receipt numbers (24 processes, 2,400 settle calls): 0 errors, every paid fee numbered, no number
+twice, no fee on two live receipts. Two security reviews (phase 1: 4 low, phase 2: 2 integrity + 2 low), all fixed.
+Browser run on the test bed: profile, logos (SVG refused), FY labels, 320 px and dark mode, receipt snapshot after a
+rename, portal name, teal preset, icons (200 image/png), receipt `KSU-2026-0001` with footer, a two-fee slip as
+`KSU-2026-0002` with the "part of receipt" note, `/privacy` in BM and EN.
+
+### Settings follow-ups
+- The race harness drives gateway settlement only: slip approval and a revert racing a settlement were not run
+  concurrently on MariaDB / MySQL.
+- Still lavender: charts, emails, the ledger PDF, `offline.html`; the manifest `background_color` is shared.
+- ✅ Receipt year follows the paid date (owner's call, 22 Nov); the audit log names issued and voided numbers.
+- One club admin alone can change what receipts print (name, registration no., prefix, footer): audited, no second
+  approval. Deleting a paid fee voids its number; refusing the delete would be stricter.
+- A receipt-number sequence starts at 0001 when this ships; fees paid before keep `RCP-{id}` / `RCP-G{id}`.

@@ -671,7 +671,9 @@ class PaymentController extends Controller
      * The club as the payment pages show it, with where "Perlu bantuan?" goes:
      * WhatsApp (digits for wa.me) when the club set a number, else its email.
      *
-     * @return array{id: int, name: string, email: ?string, whatsapp: ?string}
+     * With the club profile as it is now (logo, registration no., address) for invoice headers.
+     *
+     * @return array{id: int, name: string, email: ?string, whatsapp: ?string, logoUrl: ?string, registrationNo: ?string, address: ?string}
      */
     public static function payClubProps(Club $club): array
     {
@@ -680,6 +682,9 @@ class PaymentController extends Controller
             'name' => $club->name,
             'email' => $club->email,
             'whatsapp' => \App\Support\Contact\WhatsAppNumber::waDigits($club->whatsapp_number),
+            'logoUrl' => $club->logo_url,
+            'registrationNo' => $club->registration_no ?: null,
+            'address' => $club->address ?: null,
         ];
     }
 

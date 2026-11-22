@@ -4,6 +4,7 @@ namespace App\Support\Admin;
 
 use App\Models\Club;
 use App\Models\User;
+use App\Support\Portal\PortalSettings;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,7 @@ final class AdminNav
         'fee-rates' => ['admin.clubs.fee-rates.*', 'admin.fee-rates.*'],
         'job-levels' => ['admin.clubs.job-levels.*', 'admin.job-levels.*'],
         'billing' => ['admin.clubs.billing.*'],
+        'profile' => ['admin.clubs.profile.*'],
         'discounts' => ['admin.clubs.discounts.*', 'admin.discounts.*'],
         'categories' => ['admin.clubs.expense-categories.*', 'admin.expense-categories.*'],
         'ledger' => ['admin.clubs.ledger', 'admin.clubs.ledger.*'],
@@ -42,11 +44,13 @@ final class AdminNav
         'admins' => ['admin.admins.*'],
         'statistics' => ['admin.statistics'],
         'audit-all' => ['admin.audit-logs.*'],
+        'portal-settings' => ['admin.portal-settings.*'],
+        'privacy-notice' => ['admin.privacy-notice.*'],
         'security' => ['profile.*'],
     ];
 
     /** Super-admin pages about every club: the sidebar shows no club group there. */
-    private const CROSS_CLUB = ['admin.clubs.index', 'admin.clubs.create', 'admin.clubs.store', 'admin.admins.*', 'admin.statistics', 'admin.audit-logs.*'];
+    private const CROSS_CLUB = ['admin.clubs.index', 'admin.clubs.create', 'admin.clubs.store', 'admin.admins.*', 'admin.statistics', 'admin.audit-logs.*', 'admin.portal-settings.*', 'admin.privacy-notice.*'];
 
     /**
      * Sidebar props for an Inertia admin page (AdminShell).
@@ -60,9 +64,23 @@ final class AdminNav
             'homeHref' => route('admin.clubs.dashboard', $club),
             // The club name already heads the nav group and the page; a third copy under the brand is noise.
             'brandSubtitle' => null,
+            ...self::brand(),
             'user' => self::userProps($user),
             'memberHref' => route('member.dashboard'),
             'logoutUrl' => route('logout'),
+        ];
+    }
+
+    /**
+     * The sidebar brand: the portal name (PortalSettings, else APP_NAME) and the portal logo, if one is set.
+     *
+     * @return array{brandName: string, brandLogoUrl: ?string}
+     */
+    public static function brand(): array
+    {
+        return [
+            'brandName' => PortalSettings::name(),
+            'brandLogoUrl' => PortalSettings::logoUrl(),
         ];
     }
 
@@ -89,6 +107,7 @@ final class AdminNav
                 $blade('members', 'Members', route('admin.clubs.members.index', $club), 'members'),
                 $blade('fee-rates', 'Fee Rates', route('admin.clubs.fee-rates.index', $club), 'rates'),
                 $blade('job-levels', 'Job levels', route('admin.clubs.job-levels.index', $club), 'levels'),
+                $blade('profile', 'Club profile', route('admin.clubs.profile.edit', $club), 'profile'),
                 ['key' => 'billing', 'label' => 'Billing settings', 'href' => route('admin.clubs.billing.edit', $club), 'icon' => 'billing', 'external' => false],
                 $blade('discounts', 'Discounts', route('admin.clubs.discounts.index', $club), 'discounts'),
                 $blade('categories', 'Expense categories', route('admin.clubs.expense-categories.index', $club), 'categories'),
@@ -103,6 +122,8 @@ final class AdminNav
             $portal[] = $blade('admins', 'Administrators', route('admin.admins.index'), 'admins');
             $portal[] = $blade('statistics', 'Statistics', route('admin.statistics'), 'statistics');
             $portal[] = $blade('audit-all', 'Audit Log (all clubs)', route('admin.audit-logs.index'), 'audit');
+            $portal[] = $blade('portal-settings', 'Portal settings', route('admin.portal-settings.edit'), 'settings');
+            $portal[] = $blade('privacy-notice', 'Privacy notice', route('admin.privacy-notice.edit'), 'audit');
         }
         $portal[] = $blade('security', 'Security & 2FA', route('profile.security'), 'security');
         $groups[] = ['title' => 'Portal', 'items' => $portal];
@@ -114,7 +135,7 @@ final class AdminNav
      * Everything the Blade layout needs: the same groups as the Inertia pages
      * for the club in context, the active item and the user block.
      *
-     * @return array{groups: list<array>, active: ?string, club: ?Club, homeHref: string, brandSubtitle: null, user: array, memberHref: string, logoutUrl: string}
+     * @return array{groups: list<array>, active: ?string, club: ?Club, homeHref: string, brandSubtitle: null, brandName: string, brandLogoUrl: ?string, user: array, memberHref: string, logoutUrl: string}
      */
     public static function forRequest(Request $request): array
     {
@@ -132,6 +153,7 @@ final class AdminNav
             'club' => $club,
             'homeHref' => $club ? route('admin.clubs.dashboard', $club) : route('home'),
             'brandSubtitle' => null,
+            ...self::brand(),
             'user' => self::userProps($user),
             'memberHref' => route('member.dashboard'),
             'logoutUrl' => route('logout'),

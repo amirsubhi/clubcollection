@@ -214,9 +214,12 @@ already refuses files over 10 MB on the device.
 
 ## PWA service worker (`public/sw.js`)
 
-The site is installable ("Add to Home Screen") through `public/manifest.webmanifest` and `public/sw.js`.
-The service worker caches only `/build/assets/*` and `/icons/*` (cache-first); pages, Inertia JSON,
-attachments, payments and webhooks always go to the network, and a failed page load shows `public/offline.html`.
+The site is installable ("Add to Home Screen") through the routed manifest `/app.webmanifest` (portal name,
+brand colour and icons from Portal settings; `AppManifestController`, sent with `Cache-Control: public, max-age=300`)
+and `public/sw.js`. The static `public/manifest.webmanifest` stays as a fallback with the defaults. The service
+worker caches only `/build/assets/*`, `/icons/*` and the hashed app icons in `/storage/portal/icons/*` (cache-first;
+a new logo or colour gives new file names); the manifest, pages, Inertia JSON, attachments, payments and webhooks
+always go to the network, and a failed page load shows `public/offline.html`.
 
 - **Every release:** bump `CACHE_VERSION` in `public/sw.js` (e.g. `"v1"` → `"v2"`). The changed file makes
   browsers install the new worker, and its `activate` step deletes the old `cp-*` caches. Vite file names are
