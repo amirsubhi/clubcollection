@@ -135,6 +135,9 @@ Club Portal can sit on your phone's home screen like an app (it is still the sam
 - **iPhone / Safari:** tap the Share button, then **Tambah ke Skrin Utama** ("Add to Home Screen"). In-app browsers
   (WhatsApp, Facebook) can't do this: open the link in Safari first.
 
+The app's name, colour and icon follow the portal's settings. A phone that installed the app earlier may keep the
+old name or icon until the app is removed from the home screen and added again.
+
 ### Turn on two-factor authentication
 
 **Akaun saya → Keselamatan & 2FA** (admins: **Security & 2FA** in the sidebar). Confirm your password, tap
@@ -416,3 +419,15 @@ admin can't be demoted or removed.
 emails and the admin sidebar; left empty it is the `APP_NAME` from `.env`) and the **portal logo** (same rules as a
 club logo), shown in the admin sidebar and on the sign-in pages. When exactly one club is active, the sign-in pages
 show that club's name and logo instead, with the portal name under it. Changes are audited.
+
+- **Brand colour:** pick one of six colours (Lavender, the default, Teal, Blue, Green, Maroon, Slate). Each row shows
+  a sample button, link and tag in light and dark mode. It colours buttons, links, highlights and focus outlines on
+  every page (member app, sign-in and error pages, admin pages) and the browser bar on phones. Status colours (paid,
+  overdue, pending) and the charts keep their own colours, and receipts and emails are not affected. There is no
+  free colour field: every preset is checked to stay readable (WCAG AA contrast) in light and dark mode.
+- **App icon:** with a portal logo, the installable app (Add to Home Screen), the iPhone home-screen icon and the
+  browser tab use icons made from it: the logo on white, and for Android's shaped icons the logo on a white circle
+  over the brand colour. Without a logo, or when the server lacks the PHP GD extension, the built-in icon is used.
+  A logo saved before this release gets its icons the next time Portal settings is opened. The app's name is the
+  portal name. **Phones that already installed the app may keep the old icon and name** until the app is removed
+  from the home screen and added again (browsers refresh them on their own schedule, sometimes days later).

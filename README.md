@@ -38,7 +38,7 @@ Billplz sandbox run on your own host.
 - Invoice and official receipt ("Resit rasmi") for every fee, with a print button, headed with the club's logo,
   name, registration no. and address. A receipt keeps the club details it was issued with.
 - Payment history by year and **pay ahead** ("Bayar lebih awal") for 1, 3 or 12 months, using the plans the club allows.
-- Add to home screen (PWA) with a small install tip.
+- Add to home screen (PWA) with a small install tip; the app's name, colour and icon follow the portal settings.
 
 **For club admins (treasurer, secretary)**
 - **Dashboard**: fund balance, collected and spent this year (expenses + welfare + bank charges), records awaiting
@@ -68,6 +68,8 @@ Billplz sandbox run on your own host.
 **For the super admin**
 - Clubs (including each club's gateway and credentials), administrators, platform statistics and the platform-wide
   audit log. Only the super admin can make someone a club admin.
+- Portal settings: the portal's name, logo and brand colour (six presets checked for WCAG AA contrast in light and
+  dark); the installable app's name and icon follow them.
 
 ## Screenshots
 

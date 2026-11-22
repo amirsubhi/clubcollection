@@ -37,6 +37,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Financial year**: a club's start month drives "this year" on the Dashboard, Fund Usage, the Ledger default and
   presets and the members' fund page (labelled e.g. "FY 2026/27"). Start month 1 keeps the calendar year exactly.
 
+### Added (settings phase 2: brand colour and app icon)
+- **Brand colour** (Portal settings): six presets (Lavender, the default, Teal, Blue, Green, Maroon,
+  Slate) with light / dark swatches; only the preset key is stored (no free colour or CSS). Applied at runtime, without
+  a rebuild, by one nonced `<style>` in the member app, the sign-in and error pages and the admin pages, and to the
+  browser bar (`theme-color`); nothing is added for the default, so it renders as before. A unit test checks WCAG
+  contrast for every preset in both themes. Status colours, charts, receipts and emails keep their colours.
+- **App icon and manifest**: with a portal logo, GD makes the app icons (192 / 512 "any" and maskable, apple-touch-icon
+  180, favicons 32 / 48) under hashed names, so a new logo or colour gives new URLs. The manifest is now served by the
+  app at `/app.webmanifest` (portal name, brand colour, icons; no session; works before the install); the static
+  `public/manifest.webmanifest` stays as a fallback. Without a logo or GD the built-in icons are used. Phones that
+  installed the app earlier may keep the old icon and name until it is reinstalled. Service worker cache `v2`.
+
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
