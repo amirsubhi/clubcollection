@@ -81,7 +81,7 @@ class ReceiptFooterTest extends TestCase
     {
         $this->actingAsClubAdmin($this->club);
 
-        foreach (["Tab\there", "Bell\x07", "Esc\x1b[31m", "Nu\x00ll", "Del\x7f", "Telefon \u{202E}9876-543 210", "Zero\u{200B}width", "C1\u{0085}"] as $bad) {
+        foreach (["Tab\there", "Bell\x07", "Esc\x1b[31m", "Nu\x00ll", "Del\x7f", "Telefon \u{202E}9876-543 210", "Zero\u{200B}width", "C1\u{0085}control"] as $bad) {
             $this->put(route('admin.clubs.profile.update', $this->club), $this->payload(['receipt_footer' => $bad]))
                 ->assertSessionHasErrors('receipt_footer');
         }
