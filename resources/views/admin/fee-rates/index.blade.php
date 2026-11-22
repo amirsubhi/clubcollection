@@ -27,7 +27,10 @@
 <div class="card shadow-sm mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h6 mb-0 fw-semibold">{{ $label }}@if(in_array($key, $inactive, true)) <span class="badge bg-secondary fw-normal ms-1">Inactive level</span>@endif</h2>
-        @if(isset($rates[$key]) && $rates[$key]->first()?->effective_to === null)
+        @if(isset($rates[$key]) && $rates[$key]->first()?->effective_to === null && $rates[$key]->first()->effective_from->gt(today()))
+            {{-- A future-dated rate: the one before it stays in force until the day before. --}}
+            <span class="badge bg-info text-dark">From {{ $rates[$key]->first()->effective_from->format('d M Y') }}: RM {{ number_format($rates[$key]->first()->monthly_amount, 2) }}/month</span>
+        @elseif(isset($rates[$key]) && $rates[$key]->first()?->effective_to === null)
             <span class="badge bg-success">Current Rate: RM {{ number_format($rates[$key]->first()->monthly_amount, 2) }}/month</span>
         @else
             <span class="badge bg-secondary">No active rate</span>

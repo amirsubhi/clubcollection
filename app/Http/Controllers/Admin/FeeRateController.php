@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\FeeRate;
 use App\Services\AuditService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -50,11 +51,15 @@ class FeeRateController extends Controller
         $newRates = [];
         DB::transaction(function () use ($request, $club, $names, &$newRates) {
             foreach ($request->rates as $rate) {
-                // Close previous active rate for this level
+                // Close the previous open rate for this level. A new rate that starts later (a future
+                // effective date) leaves the old one in force until the day before, so the months in
+                // between still have a rate (FeeRates::inForce); otherwise it ends today.
+                $from = Carbon::parse($rate['effective_from'])->startOfDay();
+                $closeOn = $from->gt(today()) ? $from->copy()->subDay() : today();
                 $club->feeRates()
                     ->where('job_level', $rate['job_level'])
                     ->whereNull('effective_to')
-                    ->update(['effective_to' => now()->toDateString()]);
+                    ->update(['effective_to' => $closeOn->toDateString()]);
 
                 $club->feeRates()->create([
                     'job_level'      => $rate['job_level'],
