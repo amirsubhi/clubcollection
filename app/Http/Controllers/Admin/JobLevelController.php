@@ -166,7 +166,9 @@ class JobLevelController extends Controller
             ->first(fn (ClubJobLevel $l) => mb_strtolower($l->name) === $wanted || mb_strtolower($l->code) === $wanted);
 
         if ($clash) {
-            throw ValidationException::withMessages(['name' => "The club already has a job level called '{$clash->name}'."]);
+            throw ValidationException::withMessages(['name' => mb_strtolower($clash->name) === $wanted
+                ? "The club already has a job level called '{$clash->name}'."
+                : "'{$name}' is the code of the job level '{$clash->name}' (used by the CSV import). Choose another name, or rename '{$clash->name}' instead."]);
         }
     }
 }

@@ -310,8 +310,8 @@ levels of one club can't share a name (capitals don't count).
 
 **Retire a level** with **Deactivate**: it is no longer offered for new members or new fee rates, but members already on
 it keep it (and keep paying its rate) until you move them, and it still shows by name. **Reactivate** brings it back.
-**Delete** (the bin) is offered only for a level no member or fee rate has ever used; a club always keeps at least one
-active level. Every add, rename, reorder, deactivation and deletion is in the club's **Audit Log**.
+**Delete** (the bin) is offered only for a level that no member and no fee rate (current or past) is on; a club always
+keeps at least one active level. Every add, rename, reorder, deactivation and deletion is in the club's **Audit Log**.
 
 ### Other admin tasks
 

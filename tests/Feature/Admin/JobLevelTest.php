@@ -143,8 +143,11 @@ class JobLevelTest extends TestCase
         $this->post(route('admin.clubs.job-levels.store', $club), ['name' => 'EXECUTIVE'])->assertSessionHasErrors('name');
         $this->post(route('admin.clubs.job-levels.store', $club), ['name' => 'manager'])->assertSessionHasErrors('name');
 
-        // Rename Manager; a new "Manager" then needs a fresh code.
+        // Rename Manager: its code stays 'manager', so a new level can't be called that (CSV lookups would clash)...
         $this->put(route('admin.job-levels.update', $this->level($club, 'manager')), ['name' => 'Pengurus', 'sort_order' => 2]);
+        $this->post(route('admin.clubs.job-levels.store', $club), ['name' => 'Manager'])
+            ->assertSessionHasErrors(['name' => "'Manager' is the code of the job level 'Pengurus' (used by the CSV import). Choose another name, or rename 'Pengurus' instead."]);
+        // ...but a similar name is fine, with a suffixed code.
         $this->post(route('admin.clubs.job-levels.store', $club), ['name' => 'Manager!'])->assertSessionHasNoErrors();
         $this->assertSame('Manager!', $this->level($club, 'manager_2')->name);
 
