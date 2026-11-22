@@ -105,6 +105,13 @@ final class PortalSettings
         if (config(self::DEFAULT_NAME_CONFIG) === null) {
             config([self::DEFAULT_NAME_CONFIG => (string) config('app.name')]);
         }
-        config(['app.name' => self::name()]);
+        $default = (string) config(self::DEFAULT_NAME_CONFIG);
+        $previous = (string) config('app.name');
+        $name = self::name();
+        config(['app.name' => $name]);
+        // Emails are sent "from" the portal name too, unless MAIL_FROM_NAME was set to something else on purpose.
+        if (in_array((string) config('mail.from.name'), [$default, $previous, '${APP_NAME}'], true)) {
+            config(['mail.from.name' => $name]);
+        }
     }
 }

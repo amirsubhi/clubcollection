@@ -80,6 +80,18 @@ class PortalSettingsTest extends TestCase
         $this->assertSame('Portal Kelab <Staf>', PortalSettings::name());
     }
 
+    public function test_emails_are_sent_from_the_portal_name_unless_mail_from_name_was_set_on_purpose(): void
+    {
+        $default = (string) config('app.name');
+        config(['mail.from.name' => $default]);
+        \App\Support\Portal\PortalSettings::put(['name' => 'Portal Kelab Ujian']);
+        $this->assertSame('Portal Kelab Ujian', config('mail.from.name'));
+
+        config(['mail.from.name' => 'Bendahari Kelab']);
+        \App\Support\Portal\PortalSettings::put(['name' => 'Nama Lain']);
+        $this->assertSame('Bendahari Kelab', config('mail.from.name'));
+    }
+
     public function test_clearing_the_name_goes_back_to_app_name(): void
     {
         $this->actingAsSuperAdmin();
