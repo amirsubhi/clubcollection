@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * Rule: the member's job level in the club (club_user.job_level) → the club's rate for that level in force in
  * the month: effective_from on or before the month's last day, and effective_to empty or on/after the month's
  * first day. When several match (a rate changed during the month), the latest effective_from wins (then the
- * newest row). No rate, or a rate of RM 0, gives null: there is nothing to bill.
+ * newest row). A row whose effective_to is before its effective_from (superseded by a backdated rate) never counts.
  */
 final class FeeRates
 {
@@ -66,6 +66,15 @@ final class FeeRates
         return $sen > 0 ? $sen : null;
     }
 
+    /**
+     * A rate that ends before it starts: a backdated rate saved later took over before it began. Kept for the
+     * history, never in force.
+     */
+    public static function superseded(FeeRate $rate): bool
+    {
+        return $rate->effective_to !== null && $rate->effective_to->toDateString() < $rate->effective_from->toDateString();
+    }
+
     /** The member's job level code in the club (club_user.job_level), null when not a member. */
     private static function levelOf(Club $club, User|int $user): ?string
     {
@@ -98,7 +107,8 @@ final class FeeRates
         $end = $month->copy()->endOfMonth()->toDateString();
 
         return $rows
-            ->filter(fn (FeeRate $r) => $r->effective_from->toDateString() <= $end
+            ->filter(fn (FeeRate $r) => ! self::superseded($r)
+                && $r->effective_from->toDateString() <= $end
                 && ($r->effective_to === null || $r->effective_to->toDateString() >= $start))
             ->sort(fn (FeeRate $a, FeeRate $b) => [$b->effective_from->toDateString(), $b->id] <=> [$a->effective_from->toDateString(), $a->id])
             ->unique('job_level')

@@ -51,15 +51,16 @@ class FeeRateController extends Controller
         $newRates = [];
         DB::transaction(function () use ($request, $club, $names, &$newRates) {
             foreach ($request->rates as $rate) {
-                // Close the previous open rate for this level. A new rate that starts later (a future
-                // effective date) leaves the old one in force until the day before, so the months in
-                // between still have a rate (FeeRates::inForce); otherwise it ends today.
-                $from = Carbon::parse($rate['effective_from'])->startOfDay();
-                $closeOn = $from->gt(today()) ? $from->copy()->subDay() : today();
+                // The new rate takes over from its start date: every rate of the level still in force then (open,
+                // or ending on/after the day before) now ends the day before. That keeps the old rate until a
+                // future-dated one starts (no gap), and a backdated correction ("RM 8 since October") wins over a
+                // rate saved earlier that starts after it: such a row ends before it starts and is kept only as
+                // history (FeeRates ignores it).
+                $closeOn = Carbon::parse($rate['effective_from'])->startOfDay()->subDay()->toDateString();
                 $club->feeRates()
                     ->where('job_level', $rate['job_level'])
-                    ->whereNull('effective_to')
-                    ->update(['effective_to' => $closeOn->toDateString()]);
+                    ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $closeOn))
+                    ->update(['effective_to' => $closeOn]);
 
                 $club->feeRates()->create([
                     'job_level'      => $rate['job_level'],

@@ -106,7 +106,7 @@ class FeeRatesTest extends TestCase
         $this->get(route('admin.clubs.fee-rates.index', $this->club))->assertOk()->assertSee('From 01 Jan 2027: RM 12.00/month');
     }
 
-    public function test_saving_a_rate_from_today_or_earlier_closes_the_old_one_today(): void
+    public function test_saving_a_rate_from_this_month_closes_the_old_one_the_day_before(): void
     {
         $old = $this->rate(10, '2026-01-01');
         $this->actingAsClubAdmin($this->club);
@@ -115,9 +115,55 @@ class FeeRatesTest extends TestCase
             ['job_level' => 'executive', 'monthly_amount' => '12.00', 'effective_from' => '2026-11-01'],
         ]])->assertRedirect();
 
-        $this->assertSame('2026-11-16', $old->fresh()->effective_to->toDateString());
+        $this->assertSame('2026-10-31', $old->fresh()->effective_to->toDateString());
         $this->assertSame(1200, $this->sen('2026-11'));
         $this->assertSame(1000, $this->sen('2026-10'));
+    }
+
+    public function test_a_backdated_correction_wins_over_a_rate_saved_earlier_that_starts_after_it(): void
+    {
+        // RM 10 from 1 Nov was saved earlier (closing the RM 9 rate on 31 Oct); on 22 Nov the admin means
+        // "RM 8 since October".
+        $this->travelTo(Carbon::create(2026, 11, 22, 10));
+        $first = $this->rate(9, '2026-01-01', '2026-10-31');
+        $a = $this->rate(10, '2026-11-01');
+        $this->actingAsClubAdmin($this->club);
+
+        $this->post(route('admin.clubs.fee-rates.store', $this->club), ['rates' => [
+            ['job_level' => 'executive', 'monthly_amount' => '8.00', 'effective_from' => '2026-10-01'],
+        ]])->assertRedirect();
+
+        $this->assertSame('2026-09-30', $first->fresh()->effective_to->toDateString());
+        $this->assertSame('2026-09-30', $a->fresh()->effective_to->toDateString(), 'kept as history, ending before it starts');
+        $this->assertTrue(FeeRates::superseded($a->fresh()));
+        $this->assertSame(900, $this->sen('2026-09'));
+        $this->assertSame(800, $this->sen('2026-10'));
+        $this->assertSame(800, $this->sen('2026-11'), 'the correction, not the RM 10 rate saved earlier');
+        $this->assertSame(800, $this->sen('2027-03'));
+
+        $this->get(route('admin.clubs.fee-rates.index', $this->club))->assertOk()
+            ->assertSee('Current Rate: RM 8.00/month')
+            ->assertSeeText('Replaced before it started');
+    }
+
+    public function test_a_future_dated_rate_after_a_backdated_one_keeps_every_month_covered(): void
+    {
+        $this->travelTo(Carbon::create(2026, 11, 22, 10));
+        $this->rate(10, '2026-01-01');
+        $this->actingAsClubAdmin($this->club);
+
+        $this->post(route('admin.clubs.fee-rates.store', $this->club), ['rates' => [
+            ['job_level' => 'executive', 'monthly_amount' => '8.00', 'effective_from' => '2026-10-01'],
+        ]])->assertRedirect();
+        $this->post(route('admin.clubs.fee-rates.store', $this->club), ['rates' => [
+            ['job_level' => 'executive', 'monthly_amount' => '12.00', 'effective_from' => '2027-02-01'],
+        ]])->assertRedirect();
+
+        $this->assertSame(
+            ['2026-09-01' => 1000, '2026-10-01' => 800, '2026-12-01' => 800, '2027-01-01' => 800, '2027-02-01' => 1200],
+            FeeRates::monthlySenByMonth($this->club, $this->member, array_map(fn ($m) => Carbon::parse($m), ['2026-09-01', '2026-10-01', '2026-12-01', '2027-01-01', '2027-02-01']))
+        );
+        $this->assertSame('2027-01-31', FeeRate::where('monthly_amount', 8)->sole()->effective_to->toDateString());
     }
 
     public function test_the_add_payment_hint_uses_the_rate_in_force_this_month(): void
