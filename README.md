@@ -52,7 +52,8 @@ Billplz sandbox run on your own host.
   approved or rejected as one set.
 - **Billing settings**: which plans members may choose, the default plan, who pays the gateway fee, and the club's
   bank / DuitNow details. A change to the bank details waits for a second admin to approve it.
-- Members (add one by one or import CSV, welcome email with a temporary password), fee rates by job level,
+- Members (add one by one or import CSV, welcome email with a temporary password), **job levels** each club defines
+  for itself (a new club starts with one, "Ahli"; rename, reorder, add or deactivate them), fee rates per job level,
   discounts, payments, expense categories (with an optional BM name for members).
 - **Ledger** with period presets, an opening balance worked out from the records (or set by hand, clearly marked),
   money in / out tiles, month-by-month table or chart, running balance, monthly bank-charge rows and outstanding fees,

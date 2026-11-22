@@ -328,7 +328,8 @@ Log in as the super admin, then:
 3. **Grant club admins:** only the super admin can. **Members → Add member** for the club with **Club Role** set to
    **Admin** (or edit an existing member). Give each club **at least two admins** so there is always a second person
    to approve spending and bank changes.
-4. **Set the fees:** **Fee Rates** (monthly fee per job level), **Discounts** if any, and **Expense categories**.
+4. **Set the fees:** **Job levels** (the club starts with one, "Ahli"; add the club's own grades if fees differ by
+   grade), then **Fee Rates** (monthly fee per job level), **Discounts** if any, and **Expense categories**.
 5. **Billing settings:** which plans members may choose (monthly, quarterly, yearly), the default plan, and who pays
    the gateway fee.
 6. **Bank / DuitNow details** (Billing settings), for the free transfer option. Every change, the first one included,

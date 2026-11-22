@@ -32,7 +32,10 @@
                                 <option value="{{ $key }}" {{ old('job_level') == $key ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
-                        <div id="f-job-level-help" class="form-text">Determines the applicable monthly fee rate for this member.</div>
+                        <div id="f-job-level-help" class="form-text">Determines the applicable monthly fee rate for this member.
+                            @if(empty($jobLevels))<span class="text-danger">This club has no active job levels yet: <a href="{{ route('admin.clubs.job-levels.index', $club) }}">add one first</a>.</span>
+                            @else The levels are this club's own (<a href="{{ route('admin.clubs.job-levels.index', $club) }}">Job Levels</a>).@endif
+                        </div>
                         @error('job_level')<div id="f-job-level-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     {{-- Only the super admin grants the club-admin role (S1). --}}

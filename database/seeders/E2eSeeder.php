@@ -64,6 +64,11 @@ class E2eSeeder extends Seeder
             'bank_account_no' => '1234 5678 9012',
         ]);
 
+        // The default "Ahli" level plus a sample one for the admins (same codes the e2e users are attached with).
+        $club->createDefaultJobLevel();
+        $club->jobLevels()->create(['code' => 'executive', 'name' => 'Eksekutif', 'sort_order' => 2]);
+        $club->jobLevels()->create(['code' => 'manager', 'name' => 'Pengurus', 'sort_order' => 3]);
+
         FeeRate::create([
             'club_id' => $club->id,
             'job_level' => 'executive',

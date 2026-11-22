@@ -27,14 +27,5 @@ class FeeRate extends Model
         return $this->belongsTo(Club::class);
     }
 
-    public static function jobLevelLabels(): array
-    {
-        return [
-            'gm' => 'GM',
-            'agm' => 'AGM',
-            'manager' => 'Manager',
-            'executive' => 'Executive',
-            'non_exec' => 'Non-Executive',
-        ];
-    }
+    // job_level is a code of the club's own levels (ClubJobLevel); its label is $club->jobLevelName($code).
 }

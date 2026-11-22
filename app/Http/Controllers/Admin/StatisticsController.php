@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Club;
-use App\Models\FeeRate;
 use App\Models\Payment;
 use App\Support\Admin\FundFigures;
 use App\Support\Payments\DisplayStatus;
@@ -81,15 +80,22 @@ class StatisticsController extends Controller
         $asOf = $today->format('j M Y');
 
         // ── Job Level Distribution ────────────────────────────────────────────
-        $jobLevelLabels  = FeeRate::jobLevelLabels();
-        $rawJobLevels    = DB::table('club_user')
-            ->select('job_level', DB::raw('COUNT(*) as count'))
-            ->groupBy('job_level')
-            ->pluck('count', 'job_level');
-
-        // One count per job level, in jobLevelLabels order (the bar list's order).
-        $jobLevelDistribution = collect($jobLevelLabels)
-            ->mapWithKeys(fn($label, $key) => [$key => (int) ($rawJobLevels[$key] ?? 0)]);
+        // Levels are per club, so memberships are counted per (club, level) and then merged by the level's name
+        // without regard to case: "Manager" in two clubs is one bar. Merged in PHP, not GROUP BY name, so SQLite
+        // (case-sensitive) and MariaDB / MySQL (case-insensitive) agree. A code with no level row shows as itself.
+        $levelNames = DB::table('club_job_levels')->get(['club_id', 'code', 'name'])
+            ->mapWithKeys(fn ($l) => [$l->club_id.'|'.$l->code => $l->name]);
+        $jobLevelDistribution = [];
+        $jobLevelLabels = [];
+        foreach (DB::table('club_user')->select('club_id', 'job_level', DB::raw('COUNT(*) as count'))->groupBy('club_id', 'job_level')->get() as $row) {
+            $label = $levelNames[$row->club_id.'|'.$row->job_level] ?? (string) $row->job_level;
+            $key = mb_strtolower($label);
+            $jobLevelLabels[$key] ??= $label;
+            $jobLevelDistribution[$key] = ($jobLevelDistribution[$key] ?? 0) + (int) $row->count;
+        }
+        // Largest first, then by name.
+        uksort($jobLevelDistribution, fn ($a, $b) => [$jobLevelDistribution[$b], $a] <=> [$jobLevelDistribution[$a], $b]);
+        $jobLevelLabels = array_replace($jobLevelDistribution, $jobLevelLabels);
 
         // ── Recent Transactions ───────────────────────────────────────────────
         $recentTransactions = Payment::with(['user', 'club'])

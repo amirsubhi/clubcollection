@@ -8,7 +8,8 @@ their labels are quoted in BM as they appear. Admin pages are in English. Everyo
 - [Treasurer / club admin](#treasurer--club-admin): [verify slips](#verify-transfer-slips) ·
   [record an expense or welfare case](#record-an-expense-or-welfare-case) · [approve a record](#approve-someone-elses-record) ·
   [bank details](#change-the-clubs-bank-details) · [plans and gateway fee](#billing-plans-and-gateway-fee) ·
-  [bank charges](#bank-and-gateway-charges) · [ledger and the AGM](#the-ledger-and-the-agm) · [reminders](#overdue-reminders)
+  [bank charges](#bank-and-gateway-charges) · [ledger and the AGM](#the-ledger-and-the-agm) · [reminders](#overdue-reminders) ·
+  [job levels](#set-up-job-levels-before-fee-rates)
 - [Super admin](#super-admin): [install](#install-the-app) · [create a club](#create-a-club) · [grant club admin](#make-someone-a-club-admin)
 
 ---
@@ -149,7 +150,7 @@ app (or one recovery code). An admin who turns it off is asked to set it up agai
 
 Admins log in at the same address. A new admin first chooses their own password (as members do), then turns on
 2FA ([see above](#turn-on-two-factor-authentication)): the admin pages open once 2FA is on. After that they land on a page listing their clubs; open a club's **Dashboard**. The sidebar has **Dashboard**, **Fund Usage**,
-**Verifications**, **Payments**, **Members**, **Fee Rates**, **Billing settings**, **Discounts**, **Expense
+**Verifications**, **Payments**, **Members**, **Fee Rates**, **Job levels**, **Billing settings**, **Discounts**, **Expense
 categories**, **Ledger**, **Audit Log**, **Portal home** (back to the list of your clubs) and **Security & 2FA**, the
 same on every admin page. To see your own member view (admins pay fees too), use **Member view** in the account menu
 (your initials, top right). The screen icon next to it switches the theme (light, dark or system).
@@ -304,17 +305,41 @@ Every day at **08:00 Malaysia time** the portal marks fees past their due date a
 reminder. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` (set by the installer; see
 [INSTALL.md](INSTALL.md)). Without the time zone it runs at 08:00 UTC, which is 4 pm in Malaysia.
 
+### Set up job levels before fee rates
+
+Each club has its own **job levels** (tahap jawatan): every member is on one, and the monthly fee is set per level. A
+new club starts with one level, **Ahli**, so a club where everyone pays the same needs nothing more. To charge
+different amounts (for example by grade), set the levels up first, then the fee rates, then add members:
+
+1. **Job levels** (sidebar, next to Fee Rates; also linked from the Fee Rates page). **Add Job Level** with a name
+   such as "Pegawai" or "Staf Sokongan". It goes last in lists unless you give an **Order** number (lower comes
+   first). Rename **Ahli** too if you like.
+2. **Fee Rates → Set New Rates**: one monthly amount for each active level.
+3. **Members**: pick the level for each member (or import a CSV; see below).
+
+Each level gets a short **code** made from its first name (`pegawai`, `staf_sokongan`), shown on the Job levels page.
+The code never changes, so a renamed level shows its new name everywhere (members, fee rates, dashboards). Two
+levels of one club can't share a name (capitals don't count).
+
+**Retire a level** with **Deactivate**: it is no longer offered for new members or new fee rates, but members already on
+it keep it (and keep paying its rate) until you move them, and it still shows by name. **Reactivate** brings it back.
+**Delete** (the bin) is offered only for a level that no member and no fee rate (current or past) is on; a club always
+keeps at least one active level. Every add, rename, reorder, deactivation and deletion is in the club's **Audit Log**.
+
 ### Other admin tasks
 
 - **Members**: add a member (they get a welcome email with a temporary password, which they replace at their first
   sign-in) or **Import** a CSV (template on the
   import page; up to 1,000 rows). Emails are matched without regard to capitals, so `Ali@club.my` is refused when
   `ali@club.my` already has an account; a CSV saved by Excel on Windows (accented names such as "José") is read
-  correctly. Club admins can't add or change club admins; only the super admin can.
+  correctly. The `job_level` column takes one of the club's active [job levels](#set-up-job-levels-before-fee-rates)
+  by name or by code, in any case (`Pegawai`, `pegawai`); the import page lists them and the template uses one.
+  Club admins can't add or change club admins; only the super admin can.
   **Removing** a member only takes them out of the club: their fees and payments stay (shown as theirs, or "Former
   member" if the account is deleted later), so the fund figures, ledger and AGM history don't change. To stop
   someone being billed while keeping them listed, set them inactive instead.
-- **Fee Rates**: monthly fee per job level. **Discounts**: fixed or percentage discounts.
+- **Fee Rates**: monthly fee per active [job level](#set-up-job-levels-before-fee-rates). **Discounts**: fixed or
+  percentage discounts.
 - **Payments**: all fees, generate fee records, mark a fee paid by hand (not your own). On a phone the status shows
   under the member's name and the table scrolls sideways for the rest.
 - **Audit Log**: every change in the club, who made it and when.
@@ -346,8 +371,12 @@ key goes in `.env` or per club (club settings).
 ![Clubs list](screenshots/super-clubs.png)
 
 **Clubs → New Club**: name, email, logo, and the payment gateway (ToyyibPay or Billplz) with that club's credentials
-(stored encrypted; leave empty to use the global ones in `.env`). Then, from the club's pages, set **Fee Rates**,
-**Expense categories** and **Billing settings**, and add members.
+(stored encrypted; leave empty to use the global ones in `.env`). The club starts with one job level, **Ahli**. Then,
+from the club's pages, set up its [**Job levels**](#set-up-job-levels-before-fee-rates), **Fee Rates**, **Expense
+categories** and **Billing settings**, and add members.
+
+On **Statistics**, "Members by job level" adds up levels with the same name across clubs ("Manager" in two clubs is
+one bar), since each club names its own levels.
 
 ### Make someone a club admin
 

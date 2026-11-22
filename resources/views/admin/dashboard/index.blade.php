@@ -167,7 +167,7 @@
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
                     <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
                     <span>{{ $m->name }}</span>
-                    <span class="text-muted small ms-auto">{{ $jobLevels[$m->pivot->job_level] ?? '' }}</span>
+                    <span class="text-muted small ms-auto">{{ $jobLevels[$m->pivot->job_level] ?? $m->pivot->job_level }}</span>
                 </div>
                 @empty
                 <div class="list-group-item text-muted text-center py-3">No payments recorded this month.</div>
@@ -187,7 +187,7 @@
                 <div class="list-group-item py-2 d-flex align-items-center gap-2">
                     <i class="bi bi-circle text-muted" aria-hidden="true"></i>
                     <span>{{ $m->name }}</span>
-                    <span class="text-muted small ms-auto">{{ $jobLevels[$m->pivot->job_level] ?? '' }}</span>
+                    <span class="text-muted small ms-auto">{{ $jobLevels[$m->pivot->job_level] ?? $m->pivot->job_level }}</span>
                 </div>
                 @empty
                 <div class="list-group-item text-success text-center py-3"><i class="bi bi-check-all me-1"></i>All members have paid!</div>

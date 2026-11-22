@@ -44,7 +44,7 @@
                             <td>{{ $member->name }}</td>
                             <td class="text-muted small">{{ $member->email }}</td>
                             <td><span class="badge bg-info-subtle text-info border border-info-subtle">{{ ucfirst($member->pivot->role) }}</span></td>
-                            <td>{{ \App\Models\FeeRate::jobLevelLabels()[$member->pivot->job_level] ?? $member->pivot->job_level }}</td>
+                            <td>{{ $club->jobLevelName($member->pivot->job_level) }}</td>
                         </tr>
                         @empty
                         <tr><td colspan="4" class="text-center text-muted py-3">No members yet.</td></tr>
@@ -69,7 +69,7 @@
                     <tbody>
                         @forelse($club->feeRates->sortByDesc('effective_from')->take(10) as $rate)
                         <tr>
-                            <td>{{ \App\Models\FeeRate::jobLevelLabels()[$rate->job_level] ?? $rate->job_level }}</td>
+                            <td>{{ $club->jobLevelName($rate->job_level) }}</td>
                             <td>RM {{ number_format($rate->monthly_amount, 2) }}</td>
                             <td>{{ $rate->effective_from->format('d M Y') }}</td>
                         </tr>

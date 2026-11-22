@@ -46,7 +46,7 @@ class MemberCsvImportTest extends TestCase
         $csv = $this->makeCsv([
             ['Alice Tan', 'alice@example.com', 'manager', 'member', '2025-01-01'],
             ['Bob Lim',   'bob@example.com',   'executive', 'member', '2025-02-01'],
-            ['Carla Ng',  'carla@example.com', 'gm', 'member', '2025-03-01'],
+            ['Carla Ng',  'carla@example.com', 'Executive', 'member', '2025-03-01'],
         ]);
 
         $this->uploadCsv($club, $csv)
