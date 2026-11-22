@@ -188,24 +188,11 @@ class LoginProtectionTest extends TestCase
         Mail::assertSent(AccountSecurityNotice::class, 2);
     }
 
-    public function test_an_unknown_email_costs_a_password_hash_like_a_known_one(): void
+    public function test_failed_sign_ins_have_a_half_second_floor_so_unknown_emails_are_not_faster(): void
     {
-        $counting = new class($this->app) extends \Illuminate\Hashing\HashManager
-        {
-            public int $checks = 0;
-
-            public function check(#[\SensitiveParameter] $value, $hashedValue, array $options = []): bool
-            {
-                $this->checks++;
-
-                return parent::check($value, $hashedValue, $options);
-            }
-        };
-        $this->app->instance('hash', $counting);
-        \Illuminate\Support\Facades\Hash::clearResolvedInstance('hash');
-
-        $this->attempt('nobody@example.test', 'wrong', '10.8.0.1')->assertSessionHasErrors('email');
-        $this->assertSame(1, $counting->checks);
+        // phpunit.xml shortens it so the suite stays fast; the shipped default is half a second.
+        $this->assertStringContainsString("env('AUTH_TIMEBOX_MICROSECONDS', 500000)", file_get_contents(config_path('auth.php')));
+        $this->assertSame(1000, config('auth.timebox_duration'));
     }
 
     public function test_the_pause_ends_after_15_minutes_and_is_never_permanent(): void

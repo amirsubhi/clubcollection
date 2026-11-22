@@ -112,7 +112,15 @@ class User extends Authenticatable
             return $this->verifyTwoFactorCode($input);
         }
 
-        // Read, match and remove under a row lock, so one recovery code cannot be spent by two requests at once.
+        return $this->useRecoveryCode($input);
+    }
+
+    /**
+     * Spend a recovery code: read, match and remove it under a row lock, so one code cannot be used by two
+     * requests at once. False when it does not match.
+     */
+    public function useRecoveryCode(string $input): bool
+    {
         return \Illuminate\Support\Facades\DB::transaction(function () use ($input) {
             $fresh = static::query()->whereKey($this->getKey())->lockForUpdate()->first();
             if (! $fresh) {

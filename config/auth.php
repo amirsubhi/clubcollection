@@ -116,6 +116,14 @@ return [
     |
     */
 
+    /*
+    | Every failed sign-in takes at least this long (microseconds), whether or not the email has an account:
+    | an unknown email skips the password hash, so without the floor it would answer faster. Keep it above
+    | the slowest bcrypt check on the host (cost 12 can pass 200 ms on shared hosting). A correct password
+    | returns at once.
+    */
+    'timebox_duration' => (int) env('AUTH_TIMEBOX_MICROSECONDS', 500000),
+
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
 ];

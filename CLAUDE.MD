@@ -106,9 +106,11 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 - **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Allowed hosts: jsDelivr, Google Fonts;
   form-action allows the ToyyibPay and Billplz hosts.
 - **Rate limits**: named limiters in `AppServiceProvider`: `login` (5/min per account + IP, 30/min per IP; a hit is a
-  `Lockout` event), `two-factor`, `install`, `password-reset`, `password-change`, `two-factor-setup`, `webhooks`; CSV
+  `Lockout` event), `two-factor`, `install`, `password-email`, `password-reset`, `password-confirm` (each 5/min per account + IP,
+  30/min per IP), `password-change`, `two-factor-setup`, `webhooks`; CSV
   import `throttle:5,1`. Per-account sign-in pause: `App\Support\Auth\AccountLoginBlock` (keyed on the user id, 10
-  failures / 15 min; config `security.account_login`). Sign-in audit rows and owner emails:
+  failures / 15 min; config `security.account_login`; the "paused" email at most once an hour). Every failed
+  sign-in takes at least `auth.timebox_duration` (500 ms, `AUTH_TIMEBOX_MICROSECONDS`) so unknown emails are not faster. Sign-in audit rows and owner emails:
   `App\Listeners\AuthSecurityListener` (auto-discovered: don't register it by hand). Mail that must not slow the
   answer: `App\Support\AfterResponse` (no queue worker on cPanel);
   Fund Usage / verification / billing writes `throttle:20,1`; slip upload and pay-ahead `throttle:10,1`.
