@@ -18,22 +18,22 @@ Installed into `vendor/` by `composer install --no-dev`. Versions are the ones i
 
 | Package | Version | Licence | Copyright | Source |
 |---|---|---|---|---|
-| `laravel/framework` | 13.1.1 | MIT | Taylor Otwell | https://github.com/laravel/framework |
-| `laravel/tinker` | 3.0.0 | MIT | Taylor Otwell | https://github.com/laravel/tinker |
+| `laravel/framework` | 13.43.0 | MIT | Taylor Otwell | https://github.com/laravel/framework |
+| `laravel/tinker` | 3.2.0 | MIT | Taylor Otwell | https://github.com/laravel/tinker |
 | `laravel/ui` | 4.6.3 | MIT | Taylor Otwell | https://github.com/laravel/ui |
 | `inertiajs/inertia-laravel` | 2.0.28 | MIT | Jonathan Reinink | https://github.com/inertiajs/inertia-laravel |
 | `barryvdh/laravel-dompdf` | 3.1.2 | MIT | 2021 barryvdh (Barry vd. Heuvel) | https://github.com/barryvdh/laravel-dompdf |
 | `pragmarx/google2fa` | 8.0.3 | MIT | 2014-2018 Phil, Antonio Carlos Ribeiro and all contributors | https://github.com/antonioribeiro/google2fa |
-| `bacon/bacon-qr-code` | 3.0.4 | BSD-2-Clause | 2017-present Ben Scholzen 'DASPRiD' | https://github.com/Bacon/BaconQrCode |
+| `bacon/bacon-qr-code` | 3.1.1 | BSD-2-Clause | 2017-present Ben Scholzen 'DASPRiD' | https://github.com/Bacon/BaconQrCode |
 
 Notable indirect PHP packages:
 
 | Package | Version | Licence | Why it is here | Source |
 |---|---|---|---|---|
-| `dompdf/dompdf` | 3.1.5 | LGPL-2.1 | PDF engine behind `barryvdh/laravel-dompdf` (ledger PDF) | https://github.com/dompdf/dompdf |
+| `dompdf/dompdf` | 3.1.6 | LGPL-2.1 | PDF engine behind `barryvdh/laravel-dompdf` (ledger PDF) | https://github.com/dompdf/dompdf |
 | `dompdf/php-font-lib` | 1.0.2 | LGPL-2.1-or-later | used by dompdf | https://github.com/dompdf/php-font-lib |
 | `dompdf/php-svg-lib` | 1.0.2 | LGPL-3.0-or-later | used by dompdf | https://github.com/dompdf/php-svg-lib |
-| `guzzlehttp/guzzle` | 7.10.0 | MIT (2011 Michael Dowling and other contributors) | Laravel's HTTP client, used to call ToyyibPay and Billplz | https://github.com/guzzle/guzzle |
+| `guzzlehttp/guzzle` | 8.5.5 | MIT (2011 Michael Dowling and other contributors) | Laravel's HTTP client, used to call ToyyibPay and Billplz | https://github.com/guzzle/guzzle |
 
 The ledger PDF uses the **DejaVu Sans** and **DejaVu Sans Mono** fonts that ship inside dompdf
 (`vendor/dompdf/dompdf/lib/fonts/`). They are free fonts under the DejaVu fonts licence (based on the Bitstream Vera

@@ -24,27 +24,34 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
   - **Blade + Tailwind** (same tokens, `resources/css/app.css` `.auth-*`, layout `layouts/auth.blade.php`) for the
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
     2FA challenge and password pages.
-  - **Blade + Bootstrap 5 from jsDelivr** for the installer and the remaining admin pages
+  - **Blade + Bootstrap 5** (bundled by Vite: `resources/css/classic.css`, `resources/js/classic.ts`; the pinned
+    jsDelivr copies with SRI only as a fallback when `public/build` is missing, see `App\Support\FrontendAssets`) for the installer and the remaining admin pages
     (members, payments, fee rates, job levels, discounts, categories, club profile, ledger, audit logs, clubs, admins,
     portal settings, statistics, classic dashboard; billing settings is Inertia). Use Bootstrap classes there, Tailwind only in the React pages.
-- `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade, CDN).
+- `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade; bundled by Vite, jsDelivr only
+  as the fallback without a build).
 
 ## Layout
 
 ```
 app/Contracts/                 PaymentGateway, ConfirmsWebhookPayments
-app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, PrivacyNotice, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
-                               TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
-app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
-app/Http/Controllers/          InstallController, WebhookController, HomeController, PrivacyController, Auth/*
+app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, PrivacyNotice, Member, FeeRate, JobLevel, Payment, FeeGeneration,
+                               FundUsage, Attachment, TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
+app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture), Fund, PayAll
+app/Http/Controllers/          InstallController, WebhookController, HomeController, PrivacyController, AppManifestController,
+                               FallbackController, Auth/*
 app/Models/                    User, Club, Payment, PaymentBill, PaymentCancellation, Expense, WelfareCase, Attachment, FeeRate,
                                Discount, ExpenseCategory, AuditLog, ClubJobLevel, PortalSetting
-app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService, Payments/MonthlyFeeGenerator,
+app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
+                               Payments/{SettlementService, FeeBillService, PaymentCancellationService, MonthlyFeeGenerator},
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
 app/Support/                   Portal/{PortalSettings (portal name, logo, brand key), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
-                               FeeRates, WebhookSecret, BillplzSignature, ...), Export/CsvSafe
+                               FeeRates, WebhookSecret, BillplzSignature, ...), Export/CsvSafe, Auth/AccountLoginBlock,
+                               Doctor/HostProbe (app:doctor), ReleaseInfo, SchedulerHeartbeat, FrontendAssets
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
-routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC)
+routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC),
+                               payments:reconcile-open-bills every 15 min, the scheduler heartbeat every minute
+                               (SchedulerHeartbeat, read by app:doctor) and backup:run daily 02:15 Asia/Kuala_Lumpur
 database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSeeder (e2e fixtures)
 public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release); the live manifest is the routed /app.webmanifest, the static file a fallback
 scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)
@@ -71,14 +78,14 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log, portal settings
     (`admin.portal-settings.edit|update`), privacy notice (`/admin/portal-settings/privacy`,
     `admin.privacy-notice.edit|update`; named apart so `admin.portal-settings.*` doesn't match it).
-- `GET /privacy` (`privacy`): public privacy notice, inside `check_installed` + `auth_locale`, no `auth`/`guest`
-  (members open it too). Text from `App\Support\Portal\PrivacyNotice` (portal_settings keys `privacy_notice_ms|en`,
-  `privacy_contact_name|email`, kept out of `PortalSettings::KEYS`); plain text only, escaped, paragraphs from blank
-  lines; a neutral placeholder when unset. Never ship default legal wording.
   - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
     attachments, club profile (`admin.clubs.profile.edit|update`), billing, ledger, Cancel payment
     (`GET|POST /admin/payments/{payment}/cancel`, `admin.payments.cancel-form|cancel`), Generate fees
     (`GET|POST /admin/clubs/{club}/payments/generate`, `admin.clubs.payments.generate[.store]`, before the payments resource).
+- `GET /privacy` (`privacy`): public privacy notice, inside `check_installed` + `auth_locale`, no `auth`/`guest`
+  (members open it too). Text from `App\Support\Portal\PrivacyNotice` (portal_settings keys `privacy_notice_ms|en`,
+  `privacy_contact_name|email`, kept out of `PortalSettings::KEYS`); plain text only, escaped, paragraphs from blank
+  lines; a neutral placeholder when unset. Never ship default legal wording.
 - `GET /app.webmanifest` (`pwa.manifest`, `AppManifestController`): outside `check_installed`, no auth, and the
   session / cookie / CSRF / Inertia middleware removed (no Set-Cookie). It only reads settings: never generate icons there.
 - `/two-factor-challenge` deliberately has **no `auth`**: login logs the user out and stores `two_factor_user_id`;
@@ -95,7 +102,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   X-Signature. Webhooks fail closed (secret < 32 chars or placeholder = refuse) and are idempotent.
 - **Maker-checker**: Fund Usage approve (different admin, not the welfare beneficiary, CoI declaration), void
   (request + confirm by another admin), bank/DuitNow detail changes (`BankDetailsChangeService`), and `OwnFeeRule`
-  (a club admin can't settle, verify or edit their own fee; super admin exempt). Only the super admin grants the club-admin role.
+  (a club admin can't settle, verify, edit, cancel or delete their own fee; super admin exempt). Only the super admin grants the club-admin role.
 - **Counted totals**: only `approved` expenses count (`Expense::scopeCounted`); money is summed in sen.
 - **Job levels are per club** (`club_job_levels`, `ClubJobLevel`, `Club::jobLevels()`): `club_user.job_level` and
   `fee_rates.job_level` hold the level's stable `code` (slugged once from the first name, never changed); show the
@@ -198,21 +205,23 @@ missing": a locking read of a missing row takes a gap lock and two first receipt
 - **Shallow-route auth**: controllers for shallow resources use `Concerns\AuthorizesClubResource` and call
   `$this->authorizeClubAdmin($model->club)`.
 - **Audit every write**: `AuditService::log($action, $description, $model, $clubId, $old = [], $new = [])` (positional).
-- **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Allowed hosts: jsDelivr, Google Fonts;
-  form-action allows the ToyyibPay and Billplz hosts. Images: `'self' data:` (+ ASSET_URL host) only, so logos are
+- **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Fonts, Bootstrap and
+  Chart.js are self-hosted from `public/build` (no Google Fonts); `cdn.jsdelivr.net` is allowed only when the build is
+  missing (`FrontendAssets::classicBundled()` false, see `SecurityHeaders`); form-action allows the ToyyibPay and Billplz hosts. Images: `'self' data:` (+ ASSET_URL host) only, so logos are
   served same-origin from `/storage` via `asset()`.
 - **Sign-in header** (`layouts/auth.blade.php`, `authBrand` from the AppServiceProvider composer): the one active
   club's name + logo, else the portal name + logo. New Tailwind classes there must be in a file Tailwind scans.
 - **Rate limits**: named limiters in `AppServiceProvider`: `login` (5/min per account + IP, 30/min per IP; a hit is a
-  `Lockout` event), `two-factor`, `install`, `password-email`, `password-reset`, `password-confirm` (each 5/min per account + IP,
-  30/min per IP), `password-change`, `two-factor-setup`, `webhooks`; CSV
-  import `throttle:5,1`. Per-account sign-in pause: `App\Support\Auth\AccountLoginBlock` (keyed on the user id, 10
+  `Lockout` event); `two-factor` (5/min per pending user + IP, 30/min per IP); `password-email`, `password-reset`,
+  `password-confirm` (each 5/min per account + IP, 30/min per IP); `password-change` and `two-factor-setup` (5/min per
+  user); `install` (5/min per IP); `webhooks` (300/min per IP); CSV import `throttle:5,1`. Per-account sign-in pause: `App\Support\Auth\AccountLoginBlock` (keyed on the user id, 10
   failures / 15 min; config `security.account_login`; the "paused" email at most once an hour). Every failed
   sign-in takes at least `auth.timebox_duration` (500 ms, `AUTH_TIMEBOX_MICROSECONDS`) so unknown emails are not faster. Sign-in audit rows and owner emails:
   `App\Listeners\AuthSecurityListener` (auto-discovered: don't register it by hand). Mail that must not slow the
   answer: `App\Support\AfterResponse` (no queue worker on cPanel);
-  Fund Usage / verification / billing writes `throttle:20,1`; slip upload, pay-ahead and Cancel payment `throttle:10,1`;
-  Generate fees POST `throttle:6,1`.
+  Fund Usage / verification / billing writes, portal settings, privacy notice and club profile updates `throttle:20,1`;
+  pay, pay-all, slip upload, pay-ahead and Cancel payment `throttle:10,1`; Generate fees POST `throttle:6,1`; opening
+  a slip or attachment (member slip, `admin.attachments.show`) `throttle:60,1`, attachment thumbnails `throttle:300,1`.
 - **Exports**: `Cache-Control: no-store`, attachment disposition, `CsvSafe` for formula cells.
 - **Gateway access** goes through `PaymentGatewayManager::for($club)`, never a concrete gateway.
 
@@ -246,7 +255,8 @@ Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 
 ## Pitfalls
 
-- Until the first real production install (the next release tag) migrations are edited in place (no live data); an old database needs `migrate:fresh`. After that, additive only.
+- From v2.0.0 (the first production release) migrations are additive only: never edit a released migration, add a new
+  one. A database from before v2.0.0 needs `migrate:fresh`.
 - MariaDB / MySQL (strict mode) refuse what SQLite accepts: a value longer than its VARCHAR (1406), invalid UTF-8
   (1366; cut strings with `mb_strcut`, not `substr`), and a duplicate that differs only in case or accents under
   `utf8mb4_unicode_ci` (1062; compare emails lowercased). MySQL 8 stores JSON with its keys sorted: never compare or

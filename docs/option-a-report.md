@@ -42,7 +42,7 @@ Inertia v2 was chosen over v3 because the v3 React client requires React 19.
 - ✅ Done in G1: webhooks fail closed when neither a paid amount nor `bill_amount` is available (409, audited once as `payment.webhook_amount_unknown`, shown on the fee's admin page).
 - ✅ Done in G1 (flag only, by design): when a bill code isn't found but the reference (with that reference's own callback token) names a fee, it is **never settled** (the bill isn't ours, and `getBillTransactions` is not tied to our merchant account or reference, so anyone could pay a bill of their own and send its code). It is flagged on that fee and club instead (`payment.unmatched_webhook`, a warning on the admin payment page: check ToyyibPay before marking the fee paid).
 - Audit a second successful webhook with a different transaction id on an already-paid fee (double payment → refund).
-- Throttle `pay` and `generateFuture` (✅ both done; `pay` and `pay-all` got `throttle:10,1` in G1); cap how far ahead `period_start` can go; unique index on (club, user, period_start).
+- Throttle `pay` and `generateFuture` (✅ both done; `pay` and `pay-all` got `throttle:10,1` in G1); cap how far ahead `period_start` can go (✅ done: `latestFutureEnd()`, 12 months); unique index on (club, user, period_start).
 - ToyyibPay sandbox: confirm the callback `amount` unit and whether customer-borne charges are included (alongside the `status` vs `status_id` check).
 - Billplz callback for a replaced bill on a per-club-key club fails signature and is retried.
 - Confirm with the committee that members should see club-wide fund totals.
@@ -236,7 +236,7 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
   empty unless a real proxy, HSTS left at this host only unless the whole domain is HTTPS, and the post-install
   `curl -I` checks in INSTALL.md §5 (`.env`, `vendor/`, logs, `.git` not reachable; headers once on pages and
   static files; `expose_php` off).
-- [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
+- [x] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1). Done: `php artisan app:doctor` has a **Cache store** row that fails on `array` / `null`, so running it on the host (INSTALL.md step 13) confirms the driver.
 - [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
 
 Full list by area:
@@ -250,7 +250,7 @@ Full list by area:
 - [x] Webhooks **fail closed** when neither a paid amount nor `bill_amount` is available. Done in G1 (409 + `payment.webhook_amount_unknown`).
 - [x] **Reference fallback** when a bill code isn't found (only with a paid amount present). Done in G1 as flag-only: filed under the fee and club the reference names, never settled automatically (the unrecorded bill can't be proven ours).
 - [x] Audit a second successful webhook with a different transaction id on an already-paid fee (double payment). Done in S1 (`payment.gateway_paid_twice`, flagged for a refund).
-- [ ] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Partly done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` and `pay-all` are throttled 10/min since G1. Left: cap `period_start`.
+- [x] Throttle `pay`/`generateFuture`, cap `period_start`, unique index (club, user, period_start). Done: the unique index (P1) and the `generateFuture` throttle (10/min) exist; `pay` and `pay-all` are throttled 10/min since G1; pay ahead refuses a period ending after `Member\PaymentController::latestFutureEnd()` (12 months ahead).
 - [ ] ToyyibPay sandbox (G1): check that the callback `refno` equals `billpaymentInvoiceNo` from `getBillTransactions` (the reconcile records that id; if they differ, the confirm-step count still stops a false "paid twice"), and run SANDBOX-TEST.md test 8 (lost callback settled by the 15-minute check).
 - [ ] G1 follow-ups: (a) the reconcile and the status check only look at **unsuperseded** bills, so a superseded bill (single or group) paid with a lost callback is never surfaced, and needs a manual check in the gateway; (b) the status JSON routes (`payments.status`, `payments.group-status`) have no route throttle of their own: gateway calls are capped at one per bill per 30 s, but the routes themselves are not rate-limited.
 - [ ] G3 follow-up: `tests/Feature/InstallationTest.php` writes the real `.env` (and `storage/app/.installed`) and
@@ -274,7 +274,7 @@ Full list by area:
 - [ ] **PHP 8.4 on the host** (`composer.lock` requires it; this machine's PHP 8.3 is why `LedgerTest` fails).
 - [ ] Apache `mod_headers` (and `mod_deflate` for compression, the biggest Lighthouse win) enabled.
 - [ ] Send **`no-store` on authenticated pages** (bfcache shows the old page on Back after logout).
-- [ ] Keep the previous build's assets for one release.
+- [x] Keep the previous build's assets for one release. Done: the upgrade copies the new release over the site with `cp -a` (RELEASE.md §2), which never deletes, so the previous build's `public/build/assets` stay in place.
 - [ ] Install at the domain root, or fix absolute paths and set `ASSET_URL` for a subfolder.
 - [ ] Add a production test that `/dev/ui-kit` returns 404.
 - [x] Add a CI workflow (`npm ci && npm run typecheck && npm run build`, `php artisan test`), with the tests on a MariaDB service as well as SQLite (D1). Done: `.github/workflows/tests.yml` runs on SQLite, MariaDB 10.11 and MySQL 8.0 and rolls the migrations back and forward. Left (optional): the e2e smoke as a nightly job.
@@ -282,7 +282,7 @@ Full list by area:
 **Product and decisions**
 - [ ] Confirm with the committee that members may see club-wide fund totals.
 - [ ] Check inline PDF preview under the sandbox CSP in Chrome and Safari; decide how to handle HEIC photos.
-- [ ] Optional: self-host fonts, which removes Google hosts from the CSP and helps offline/PWA.
+- [x] Optional: self-host fonts, which removes Google hosts from the CSP and helps offline/PWA. Done in R3d (Fontsource, bundled by Vite).
 - [ ] Optional: split the 464 KB main chunk.
 
 ### Option A vs Option B — what the evidence says
@@ -658,7 +658,8 @@ on opening. They are edited in Word from now on; the generator script and screen
 ## Release v2.0.0 (23 Nov 2026)
 
 First release since the superseded March `v1.0.0` (fresh install only). Prepared in PR #30: service-worker cache v3,
-licence files regenerated (the build refuses stale ones). Versioned `v2.0.0` (the `v1.0.0` tag is taken by the old
+licence files regenerated (the build only warns when the committed ones are stale; the zip carries the regenerated
+files). Versioned `v2.0.0` (the `v1.0.0` tag is taken by the old
 release; a major version marks "install fresh"). Before tagging: the release zip was built with
 `scripts/build-release.sh` on the test VM (19 MB; no `.env`, app tests or dev packages; `public/build` and the guides
 inside), the LAN test bed was upgraded from it by `docs/RELEASE.md` §2 (app:doctor showed the new version), and a
