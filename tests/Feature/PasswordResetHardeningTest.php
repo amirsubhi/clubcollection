@@ -27,14 +27,32 @@ class PasswordResetHardeningTest extends TestCase
         }
     }
 
-    public function test_reset_routes_are_throttled(): void
+    public function test_reset_routes_are_throttled_each_on_its_own_limiter(): void
     {
         $routes = Route::getRoutes();
-        $this->assertContains('throttle:password-reset', $routes->getByName('password.email')->gatherMiddleware());
+        $this->assertContains('throttle:password-email', $routes->getByName('password.email')->gatherMiddleware());
         $this->assertContains('throttle:password-reset', $routes->getByName('password.update')->gatherMiddleware());
         $confirmPost = collect($routes->getRoutes())->first(fn ($r) => $r->uri() === 'password/confirm' && in_array('POST', $r->methods(), true));
-        $this->assertContains('throttle:password-reset', $confirmPost->gatherMiddleware());
-        $this->assertSame(5, \Illuminate\Support\Facades\RateLimiter::limiter('password-reset')(request())->maxAttempts);
+        $this->assertContains('throttle:password-confirm', $confirmPost->gatherMiddleware());
+        foreach (['password-email', 'password-reset', 'password-confirm'] as $name) {
+            $limits = \Illuminate\Support\Facades\RateLimiter::limiter($name)(request());
+            $this->assertSame([30, 5], array_map(fn ($l) => $l->maxAttempts, $limits), $name);
+        }
+    }
+
+    public function test_using_up_reset_requests_from_one_ip_does_not_block_finishing_a_reset(): void
+    {
+        for ($i = 0; $i < 30; $i++) {
+            $this->post(route('password.email'), ['email' => "someone{$i}@example.test"]);
+        }
+        $this->post(route('password.email'), ['email' => 'another@example.test'])->assertStatus(429);
+
+        $user = User::factory()->create();
+        $token = \Illuminate\Support\Facades\Password::createToken($user);
+        $this->post(route('password.update'), [
+            'token' => $token, 'email' => $user->email,
+            'password' => 'tiga perkataan mudah', 'password_confirmation' => 'tiga perkataan mudah',
+        ])->assertStatus(302)->assertSessionHasNoErrors();
     }
 
     public function test_a_password_reset_ends_other_sessions(): void

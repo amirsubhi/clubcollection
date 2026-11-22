@@ -414,6 +414,10 @@ const dict = {
     bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi pengesah, atau salah satu kod pemulihan anda.",
     en: "That code isn't right. Type the 6 digits from the authenticator app, or one of your recovery codes.",
   },
+  flash_2fa_disable_locked: {
+    bm: "Terlalu banyak kod salah. Cuba lagi dalam 15 minit.",
+    en: "Too many wrong codes. Try again in 15 minutes.",
+  },
   flash_2fa_disabled: { bm: "2FA telah dimatikan.", en: "2FA has been turned off." },
   flash_2fa_already_on: { bm: "2FA sudah dihidupkan.", en: "2FA is already on." },
   flash_2fa_not_started: { bm: "Mula semula dengan menekan Hidupkan 2FA.", en: "Start again by tapping Turn on 2FA." },

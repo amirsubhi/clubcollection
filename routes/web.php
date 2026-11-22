@@ -72,14 +72,13 @@ Route::middleware('check_installed')->group(function () {
         Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
             ->middleware('throttle:login');
 
-        // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
-        // on their own named limiter (AppServiceProvider).
+        // Password reset and confirm POSTs: each form its own limiter, per email + IP and per IP (AppServiceProvider).
         Route::post('password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
-            ->middleware('throttle:password-reset')->name('password.email');
+            ->middleware('throttle:password-email')->name('password.email');
         Route::post('password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
             ->middleware('throttle:password-reset')->name('password.update');
         Route::post('password/confirm', [\App\Http\Controllers\Auth\ConfirmPasswordController::class, 'confirm'])
-            ->middleware(['auth', 'throttle:password-reset']);
+            ->middleware(['auth', 'throttle:password-confirm']);
 
         // ── Two-factor challenge — no `auth` middleware ───────────────────────────
         // LoginController::authenticated() calls auth()->logout() and pins the

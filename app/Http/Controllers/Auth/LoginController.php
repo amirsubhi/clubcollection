@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Support\Auth\AccountLoginBlock;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -43,7 +44,22 @@ class LoginController extends Controller
             $this->throwPaused($email);
         }
 
+        // An unknown email skips the password hash inside the guard, so it would answer faster than a known
+        // email with a wrong password (the guard's 200 ms timebox is shorter than bcrypt on a slow host).
+        // Hash once against a dummy so both take the same work.
+        if (AccountLoginBlock::resolveUser($email) === null) {
+            Hash::check((string) $request->input('password'), self::dummyHash());
+        }
+
         return $this->attemptSignIn($request);
+    }
+
+    /** A hash made with the app's current driver and cost, kept for the request (same work as a real check). */
+    private static function dummyHash(): string
+    {
+        static $hash = null;
+
+        return $hash ??= Hash::make('club-portal-timing-equaliser');
     }
 
     /** A wrong password (or unknown email): count it for the account; the failure that starts a pause says so. */

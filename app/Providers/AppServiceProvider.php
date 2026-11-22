@@ -57,7 +57,15 @@ class AppServiceProvider extends ServiceProvider
         // a few IPs, and a busy collection day (or retries after an outage)
         // must never be cut off; the limit only stops a flood from one source.
         RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(300)->by('webhook|'.$request->ip()));
-        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by('password|'.$request->ip()));
+        // Password reset: its three forms each have their own buckets, so filling one (e.g. requests for many
+        // emails from an office IP) never stops a colleague finishing their own reset. Per email + IP 5 a
+        // minute, per IP 30 a minute (an office shares one IP).
+        foreach (['password-email' => 'pw-email', 'password-reset' => 'pw-reset', 'password-confirm' => 'pw-confirm'] as $name => $prefix) {
+            RateLimiter::for($name, fn (Request $request) => [
+                Limit::perMinute(30)->by($prefix.'-ip|'.$request->ip()),
+                Limit::perMinute(5)->by($prefix.'|'.($request->user()?->id ?? AccountLoginBlock::accountKey(is_string($e = $request->input('email')) ? $e : '')).'|'.$request->ip()),
+            ]);
+        }
         // Turning 2FA on checks the password (and a TOTP code): 5 tries a minute per user, its own bucket.
         RateLimiter::for('two-factor-setup', fn (Request $request) => Limit::perMinute(5)->by('2fa-setup|'.($request->user()?->id ?? $request->ip())));
 

@@ -50,7 +50,9 @@ class AuthSecurityListener
             ? "Sign-in for '{$user->name}' paused for {$event->minutes} minutes after too many wrong passwords."
             : "Sign-in for an email with no account paused for {$event->minutes} minutes after too many wrong passwords.");
 
-        if ($user) {
+        // At most one email an hour per account: a stranger repeating the pause every 15 minutes must not
+        // turn it into a mail flood.
+        if ($user && \Illuminate\Support\Facades\Cache::add('sign-in-paused-mail:'.$user->id, true, now()->addHour())) {
             AfterResponse::run(
                 fn () => Mail::to($user->email)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_SIGN_IN_PAUSED, $event->minutes)),
                 'sign-in paused email',

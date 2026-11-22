@@ -139,6 +139,40 @@ class AdminTwoFactorRequirementTest extends TestCase
         $this->assertSame(2, AuditLog::where('action', '2fa.disable_failed')->count());
     }
 
+    public function test_five_wrong_codes_lock_turning_2fa_off_even_for_the_right_code(): void
+    {
+        $admin = $this->adminWith2fa();
+        for ($i = 0; $i < 5; $i++) {
+            $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => '00000'.$i])->assertSessionHasErrors('code');
+            \Illuminate\Support\Facades\RateLimiter::clear('2fa-setup|'.$admin->id); // the per-minute form limit is not what is tested here
+        }
+        $code = (new Google2FA())->getCurrentOtp('JBSWY3DPEHPK3PXP');
+        $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => $code])->assertSessionHasErrors('code');
+        $this->assertTrue($admin->fresh()->hasEnabledTwoFactor());
+
+        $this->travel(16)->minutes();
+        $code = (new Google2FA())->getCurrentOtp('JBSWY3DPEHPK3PXP');
+        $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => $code])->assertSessionHasNoErrors();
+        $this->assertFalse($admin->fresh()->hasEnabledTwoFactor());
+    }
+
+    public function test_one_code_or_recovery_code_cannot_be_used_twice_by_racing_requests(): void
+    {
+        $admin = $this->adminWith2fa();
+        // Two copies loaded before either request saves: what two parallel requests would each hold.
+        $first = User::find($admin->id);
+        $second = User::find($admin->id);
+        $code = (new Google2FA())->getCurrentOtp('JBSWY3DPEHPK3PXP');
+        $this->assertTrue($first->verifyTwoFactorCode($code));
+        $this->assertFalse($second->verifyTwoFactorCode($code));
+
+        $first = User::find($admin->id);
+        $second = User::find($admin->id);
+        $this->assertTrue($first->verifyTwoFactorCodeOrRecoveryCode('ABCD-EFGH'));
+        $this->assertFalse($second->verifyTwoFactorCodeOrRecoveryCode('ABCD-EFGH'));
+        $this->assertSame(['JKLM-NPQR'], $admin->fresh()->getTwoFactorRecoveryCodes());
+    }
+
     public function test_a_current_code_turns_2fa_off(): void
     {
         $admin = $this->adminWith2fa();

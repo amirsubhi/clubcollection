@@ -69,7 +69,14 @@ class User extends Authenticatable
             return false;
         }
 
-        $this->forceFill(['two_factor_last_used_step' => (int) $step])->save();
+        // Claim the step atomically: two requests racing with the same code cannot both win.
+        $claimed = static::query()->whereKey($this->getKey())
+            ->where(fn ($q) => $q->whereNull('two_factor_last_used_step')->orWhere('two_factor_last_used_step', '<', (int) $step))
+            ->update(['two_factor_last_used_step' => (int) $step]);
+        if ($claimed !== 1) {
+            return false;
+        }
+        $this->forceFill(['two_factor_last_used_step' => (int) $step])->syncOriginalAttribute('two_factor_last_used_step');
 
         return true;
     }
@@ -105,16 +112,25 @@ class User extends Authenticatable
             return $this->verifyTwoFactorCode($input);
         }
 
-        $index = $this->findRecoveryCode($input);
-        if ($index === false) {
-            return false;
-        }
+        // Read, match and remove under a row lock, so one recovery code cannot be spent by two requests at once.
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($input) {
+            $fresh = static::query()->whereKey($this->getKey())->lockForUpdate()->first();
+            if (! $fresh) {
+                return false;
+            }
+            $index = $fresh->findRecoveryCode($input);
+            if ($index === false) {
+                return false;
+            }
 
-        $codes = $this->getTwoFactorRecoveryCodes();
-        unset($codes[$index]);
-        $this->forceFill(['two_factor_recovery_codes' => encrypt(json_encode(array_values($codes)))])->save();
+            $codes = $fresh->getTwoFactorRecoveryCodes();
+            unset($codes[$index]);
+            $stored = encrypt(json_encode(array_values($codes)));
+            $fresh->forceFill(['two_factor_recovery_codes' => $stored])->save();
+            $this->forceFill(['two_factor_recovery_codes' => $stored])->syncOriginalAttribute('two_factor_recovery_codes');
 
-        return true;
+            return true;
+        });
     }
 
     // ── Role helpers ───────────────────────────────────────────────────────

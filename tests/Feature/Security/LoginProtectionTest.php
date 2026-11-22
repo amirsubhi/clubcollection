@@ -168,6 +168,33 @@ class LoginProtectionTest extends TestCase
         $this->assertSame(10, AuditLog::where('action', 'auth.failed')->where('user_id', $user->id)->count());
     }
 
+    public function test_the_pause_email_is_sent_at_most_once_an_hour(): void
+    {
+        Mail::fake();
+        User::factory()->create(['role' => 'member', 'email' => 'ahli@example.test']);
+        $pause = function (int $round) {
+            for ($i = 1; $i <= 10; $i++) {
+                $this->attempt('ahli@example.test', 'wrong', "10.9.{$round}.{$i}");
+            }
+        };
+
+        $pause(1);
+        $this->travel(16)->minutes();
+        $pause(2);
+        Mail::assertSent(AccountSecurityNotice::class, 1);
+
+        $this->travel(61)->minutes();
+        $pause(3);
+        Mail::assertSent(AccountSecurityNotice::class, 2);
+    }
+
+    public function test_an_unknown_email_costs_a_password_hash_like_a_known_one(): void
+    {
+        \Illuminate\Support\Facades\Hash::partialMock()->shouldReceive('check')->atLeast()->once()->passthru();
+
+        $this->attempt('nobody@example.test', 'wrong', '10.8.0.1')->assertSessionHasErrors('email');
+    }
+
     public function test_the_pause_ends_after_15_minutes_and_is_never_permanent(): void
     {
         $user = User::factory()->create(['role' => 'member', 'email' => 'ahli@example.test']);

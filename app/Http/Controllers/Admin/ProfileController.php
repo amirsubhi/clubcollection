@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Controller;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -201,7 +203,15 @@ class ProfileController extends Controller
         ]));
 
         $user = auth()->user();
+        // Same lock as the sign-in challenge: 5 wrong codes lock the account's 2FA checks for 15 minutes.
+        $lockKey = TwoFactorChallengeController::lockKey($user);
+        if ($user->hasEnabledTwoFactor() && RateLimiter::tooManyAttempts($lockKey, TwoFactorChallengeController::MAX_FAILURES)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($lockKey) / 60);
+
+            return back()->withErrors(['code' => $this->flashText('2fa_disable_locked', "Too many wrong codes. Try again in {$minutes} minutes.")]);
+        }
         if ($user->hasEnabledTwoFactor() && ! $user->verifyTwoFactorCodeOrRecoveryCode((string) $request->input('code'))) {
+            RateLimiter::hit($lockKey, TwoFactorChallengeController::LOCK_SECONDS);
             AuditService::log('2fa.disable_failed', '2FA not disabled: wrong authenticator or recovery code.');
 
             return back()->withErrors(['code' => $this->flashText('2fa_disable_code_invalid', 'That code is not right. Enter the 6-digit code from your authenticator app, or one of your recovery codes.')]);
