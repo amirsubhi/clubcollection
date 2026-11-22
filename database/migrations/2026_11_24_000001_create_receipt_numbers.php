@@ -50,7 +50,7 @@ return new class extends Migration
             $table->unsignedBigInteger('payment_id')->index();
             $table->timestamp('voided_at')->nullable();
             $table->timestamp('created_at')->nullable();
-            $table->unique(['receipt_allocation_id', 'payment_id']);
+            $table->unique(['receipt_allocation_id', 'payment_id'], 'receipt_alloc_payments_alloc_payment_unique'); // MySQL/MariaDB cap index names at 64 characters
         });
 
         Schema::table('payments', function (Blueprint $table) {
