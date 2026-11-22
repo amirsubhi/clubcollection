@@ -17,6 +17,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
+### Added (settings phase 1: club profile, portal settings, financial year)
+- **Club profile** page for club admins (and the super admin), `/admin/clubs/{club}/profile`: name, logo, contact
+  email, registration no. (ROS/PPM), address and the month the financial year starts. Audited with old / new values.
+  New `clubs` columns `registration_no`, `address`, `financial_year_start_month` (default 1).
+- **Safe logo handling** (`LogoService`, used by the club profile, the super admin's club forms and portal settings):
+  PNG / JPEG / WebP only (SVG and GIF refused), up to 2 MB and 4000 × 4000 px, decoded and re-encoded with GD as a PNG
+  of at most 512 px under a random name on the public disk. Old logo files are kept (issued receipts may show them).
+  The PHP `gd` extension is now needed for logo uploads.
+- **Receipt snapshot**: new `payments.issuer_snapshot` (JSON) holds the club's name, registration no., address, logo
+  path and email, written once when a fee becomes paid (gateway, transfer approval, an admin recording it, group
+  bills) and never overwritten. Receipts render from it; fees paid before this release show the club as it is now.
+- Members see the club's logo and name on Home, and logo, registration no. and address on invoices and receipts
+  (including "Bayar semua"). The ledger PDF header adds the registration no. and address.
+- **Sign-in pages** show the club's name and logo when exactly one club is active; otherwise the portal brand.
+- **Portal settings** (super admin, `/admin/portal-settings`, new `portal_settings` table): portal name (applied as
+  `app.name` at runtime, cached; falls back to `APP_NAME` when unset or when the database can't be read) and portal
+  logo (sign-in header and admin sidebar).
+- **Financial year**: a club's start month drives "this year" on the Dashboard, Fund Usage, the Ledger default and
+  presets and the members' fund page (labelled e.g. "FY 2026/27"). Start month 1 keeps the calendar year exactly.
+
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.

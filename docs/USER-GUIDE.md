@@ -106,7 +106,9 @@ When more than one fee is open (pending or overdue), **Utama** shows **Bayar sem
 <img src="screenshots/member-receipt.png" width="260" align="right" alt="Official receipt">
 
 Open any fee from **Utama** or **Bayaran**. An unpaid fee shows its invoice; a paid fee shows the **Resit rasmi**
-(official receipt) with the payment method (FPX with the transaction ID, or **Pindahan bank / DuitNow**). Tap
+(official receipt) with the payment method (FPX with the transaction ID, or **Pindahan bank / DuitNow**). Both are
+headed with the club's logo, name, registration no. and address (when the club has set them). A receipt keeps the
+club details it was issued with, so it doesn't change if the club later renames itself or changes its logo. Tap
 **Cetak** to print or save it as PDF.
 
 <br clear="right">
@@ -150,7 +152,7 @@ app (or one recovery code). An admin who turns it off is asked to set it up agai
 
 Admins log in at the same address. A new admin first chooses their own password (as members do), then turns on
 2FA ([see above](#turn-on-two-factor-authentication)): the admin pages open once 2FA is on. After that they land on a page listing their clubs; open a club's **Dashboard**. The sidebar has **Dashboard**, **Fund Usage**,
-**Verifications**, **Payments**, **Members**, **Fee Rates**, **Job levels**, **Billing settings**, **Discounts**, **Expense
+**Verifications**, **Payments**, **Members**, **Fee Rates**, **Job levels**, **Club profile**, **Billing settings**, **Discounts**, **Expense
 categories**, **Ledger**, **Audit Log**, **Portal home** (back to the list of your clubs) and **Security & 2FA**, the
 same on every admin page. To see your own member view (admins pay fees too), use **Member view** in the account menu
 (your initials, top right). The screen icon next to it switches the theme (light, dark or system).
@@ -239,6 +241,23 @@ Members pay into whatever these say, so a change needs a second admin.
    request**; other admins can also **Cancel this change**.
 
 Switching **Offer bank transfer / DuitNow to members** off takes effect at once (no approval needed).
+
+### Club profile and financial year
+
+**Club profile** (sidebar) holds what members see at the top of their invoices and receipts, and on the ledger PDF:
+
+- **Club name** and **Logo**: PNG, JPEG or WebP up to 2 MB and 4000 × 4000 pixels (no SVG or GIF). The server resizes
+  it to 512 pixels and saves it as a PNG. Tick **Remove the logo** to go back to the plain mark. Members see it on their
+  home page and receipts; with only one active club in the portal, the sign-in page shows it too.
+- **Contact email**, **Registration no. (ROS/PPM), optional** and **Address** (several lines): shown as you type them.
+- **Financial year starts in**: the month your club's year begins. "This year" on the Dashboard, Fund Usage, the Ledger
+  (its default period and the year preset) and the members' "where the money went" page then runs from the 1st of that
+  month, labelled e.g. **FY 2026/27**. January (the default) is the calendar year.
+
+Every change is in the Audit Log with the old and new values. **Receipts already issued keep the details they were
+issued with**: a fee paid before you change the name or logo still shows the old ones on its receipt. (Fees paid
+before this feature existed show the club as it is now.) Unpaid invoices always show the current details. Old logo
+files are kept on the server for that reason.
 
 ### Billing plans and gateway fee
 
@@ -390,3 +409,10 @@ person to approve. **Administrators** lists all admin accounts and lets you add 
 admin can't be demoted or removed.
 
 **Statistics** and **Audit Log** (super admin section of the sidebar) cover all clubs.
+
+### Portal settings
+
+**Portal settings** (super admin section of the sidebar) sets the **portal name** (page titles, the sign-in pages,
+emails and the admin sidebar; left empty it is the `APP_NAME` from `.env`) and the **portal logo** (same rules as a
+club logo), shown in the admin sidebar and on the sign-in pages. When exactly one club is active, the sign-in pages
+show that club's name and logo instead, with the portal name under it. Changes are audited.

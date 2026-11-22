@@ -25,23 +25,23 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
     2FA challenge and password pages.
   - **Blade + Bootstrap 5 from jsDelivr** for the installer and the remaining admin pages
-    (members, payments, fee rates, job levels, discounts, categories, billing settings, ledger, audit logs, clubs, admins,
-    statistics, classic dashboard). Use Bootstrap classes there, Tailwind only in the React pages.
+    (members, payments, fee rates, job levels, discounts, categories, club profile, ledger, audit logs, clubs, admins,
+    portal settings, statistics, classic dashboard; billing settings is Inertia). Use Bootstrap classes there, Tailwind only in the React pages.
 - `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade, CDN).
 
 ## Layout
 
 ```
 app/Contracts/                 PaymentGateway, ConfirmsWebhookPayments
-app/Http/Controllers/Admin/    Club, ClubBilling, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
+app/Http/Controllers/Admin/    Club, ClubProfile, ClubBilling, PortalSettings, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
                                TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
 app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
 app/Http/Controllers/          InstallController, WebhookController, HomeController, Auth/*
 app/Models/                    User, Club, Payment, PaymentBill, Expense, WelfareCase, Attachment, FeeRate,
-                               Discount, ExpenseCategory, AuditLog, ClubJobLevel
-app/Services/                  AuditService, AttachmentService, FundUsageService, TransferVerificationService,
+                               Discount, ExpenseCategory, AuditLog, ClubJobLevel, PortalSetting
+app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
-app/Support/                   presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
+app/Support/                   Portal/PortalSettings (portal name + logo), presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                WebhookSecret, BillplzSignature, ...), Export/CsvSafe
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
 routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC)
@@ -68,9 +68,10 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
     `profile.2fa.enable|confirm`, `password.change*` and `logout`. `Tests\TestCase` sets it false; turn it on in a
     test that needs it. Both redirect with `Inertia::location` (409 for Inertia visits).
   - `member` group, prefix `/my`: member pages. `MemberOnly` only checks auth (admins can use it too).
-  - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log.
+  - `super_admin` group, prefix `/admin`: clubs, admins, statistics, platform audit log, portal settings
+    (`admin.portal-settings.edit|update`).
   - `club_admin` group, prefix `/admin`: shallow resources under `/admin/clubs/{club}/...`, Fund Usage, verifications,
-    attachments, billing, ledger.
+    attachments, club profile (`admin.clubs.profile.edit|update`), billing, ledger.
 - `/two-factor-challenge` deliberately has **no `auth`**: login logs the user out and stores `two_factor_user_id`;
   the controller gates on that session key. Don't add `auth` there.
 - Put literal child routes (e.g. `members/import`) **before** `Route::resource(...)->shallow()`.
@@ -95,6 +96,20 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   clubs get `executive` and `manager` (`ClubFactory::withJobLevels()` to change). Never hard-code a level list.
 - **Attachments**: encrypted with `Crypt` on the private `local` disk (`serve => false`), served only via
   `admin.attachments.show` (audited) / `thumb` (not audited) or the member's own slip route. Locked once submitted.
+- **Logos** (club and portal) only through `LogoService`: PNG / JPEG / WebP (by header, extension and detected MIME;
+  never SVG or GIF), 2 MB, 4000 px; re-encoded with GD to a PNG of max 512 px at `club-logos/{uuid}.png` or
+  `portal/{uuid}.png` on the `public` disk. Never delete an old logo file (receipt snapshots point at it). Build URLs
+  with `LogoService::url()` / `Club::logo_url` (null when the file is gone).
+- **Receipt snapshot**: `payments.issuer_snapshot` (not fillable) is written once by `Payment::booted()` (saving)
+  when a fee becomes paid, from `Club::issuerSnapshot()`; never overwritten (also not on a revert). Receipts use
+  `MemberPaymentPresenter::issuer()` (snapshot, else the live club for older fees); invoices use the live club.
+- **Financial year**: "this year" for a club is `FundFigures::yearToDate($today, $club)` /
+  `financialYearStart()` / `yearLabel()` (`clubs.financial_year_start_month`, 1 = calendar year, label "FY 2026/27"
+  otherwise). Don't use `startOfYear()` for a club's year. The classic dashboard and the member payments list still
+  browse fees by calendar year (deliberately).
+- **Portal name**: `PortalSettings::apply()` sets `config('app.name')` at boot (cached, `rescue()`d, skipped before
+  install; `app.default_name` keeps APP_NAME). Pages must render with the table empty or the database down.
+  `PortalSettings::put()` clears the cache and re-applies.
 - **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and
   `users.two_factor_secret` / recovery codes (manual `encrypt`/`decrypt`; use `User::getTwoFactorSecret()`).
 
@@ -104,7 +119,10 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `$this->authorizeClubAdmin($model->club)`.
 - **Audit every write**: `AuditService::log($action, $description, $model, $clubId, $old = [], $new = [])` (positional).
 - **CSP nonce**: inline `<script>`/`<style>` in Blade needs `nonce="{{ $cspNonce }}"`. Allowed hosts: jsDelivr, Google Fonts;
-  form-action allows the ToyyibPay and Billplz hosts.
+  form-action allows the ToyyibPay and Billplz hosts. Images: `'self' data:` (+ ASSET_URL host) only, so logos are
+  served same-origin from `/storage` via `asset()`.
+- **Sign-in header** (`layouts/auth.blade.php`, `authBrand` from the AppServiceProvider composer): the one active
+  club's name + logo, else the portal name + logo. New Tailwind classes there must be in a file Tailwind scans.
 - **Rate limits**: named limiters in `AppServiceProvider`: `login` (5/min per account + IP, 30/min per IP; a hit is a
   `Lockout` event), `two-factor`, `install`, `password-email`, `password-reset`, `password-confirm` (each 5/min per account + IP,
   30/min per IP), `password-change`, `two-factor-setup`, `webhooks`; CSV
