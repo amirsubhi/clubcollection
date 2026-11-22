@@ -92,7 +92,7 @@ Billplz sandbox run on your own host.
 | <img src="docs/screenshots/admin-ledger.png" alt="Financial ledger"> | <img src="docs/screenshots/admin-dashboard-dark.png" alt="Admin dashboard in dark mode"> |
 | Ledger with CSV / PDF export | Dark theme |
 
-More, with step-by-step instructions, in the [user guide](docs/USER-GUIDE.md). All names, emails, bank details and
+More, with step-by-step instructions, in the [user guide](docs/USER-GUIDE.md). Printable, editable Word guides with screenshots (English): [Member Guide](docs/guides/Club-Portal-Member-Guide.docx) and [Treasurer & Club Admin Guide](docs/guides/Club-Portal-Treasurer-and-Club-Admin-Guide.docx). All names, emails, bank details and
 amounts in the screenshots are made up.
 
 ## Tech stack

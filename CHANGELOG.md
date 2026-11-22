@@ -17,6 +17,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
+### Added (user guides)
+- `docs/guides/`: an English **Member Guide** and **Treasurer & Club Admin Guide** as Word documents (guide version 1.0,
+  for v0.0.2) with screenshots, a version table and a contents page, ready to edit and share with clubs.
+
 ### Added (monthly fee generation)
 - **Generate fees for a month** (Payments → "Generate fees for a month", `GET|POST /admin/clubs/{club}/payments/generate`,
   `admin.clubs.payments.generate[.store]`, club admins of the club and the super admin, POST `throttle:6,1`): bills

@@ -645,3 +645,12 @@ RM 40 + 45 + 45 = RM 130 and charged that, future rates deleted and the old ones
 - A fee an admin deleted on purpose comes back if the month is generated again.
 - Generated fees carry no discount; only this month and next can be generated.
 - The overdue reminder job ran only inside the test suite.
+
+## User guides (Word, English)
+
+`docs/guides/Club-Portal-Member-Guide.docx` and `docs/guides/Club-Portal-Treasurer-and-Club-Admin-Guide.docx`, guide
+version 1.0 for v0.0.2: screenshots from a throwaway demo club (seeded, renamed "Sunrise Staff Club"), every label
+checked against the code, reviewed by a copywriter pass (which corrected nine claims) and the advisor; both pass the
+Office XML validator. Not rendered to pages (no LibreOffice here): the contents page fills in when Word updates fields
+on opening. They are edited in Word from now on; the generator script and screenshots are kept outside the repo
+(~/Documents/Club Portal guides/) and would overwrite manual edits if rerun.
