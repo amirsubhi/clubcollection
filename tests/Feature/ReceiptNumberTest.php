@@ -269,6 +269,20 @@ class ReceiptNumberTest extends TestCase
 
         $this->actingAs($this->member)->get(route('member.payments.group-result', $group))
             ->assertInertia(fn (Assert $page) => $page->where('receipt.receiptNo', 'RCP-2026-0001'));
+
+        // Each fee's own receipt page says it is part of that receipt (count and total) and links to it, so the
+        // one number never reads as a RM 20 receipt and a RM 30 receipt at once.
+        $this->actingAs($this->member)->get(route('member.payments.invoice', $fees[1]))
+            ->assertInertia(fn (Assert $page) => $page->where('receipt.receiptNo', 'RCP-2026-0001')
+                ->where('receipt.partOf.receiptNo', 'RCP-2026-0001')
+                ->where('receipt.partOf.count', 2)
+                ->where('receipt.partOf.amount', 3000)
+                ->where('receipt.partOf.url', route('member.payments.group-result', $group)));
+
+        // A fee paid on its own has no such note.
+        $single = $this->pay($this->fee());
+        $this->actingAs($this->member)->get(route('member.payments.invoice', $single))
+            ->assertInertia(fn (Assert $page) => $page->where('receipt.partOf', null));
     }
 
     // ── Never reused ────────────────────────────────────────────────────

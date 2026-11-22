@@ -161,6 +161,39 @@ final class MemberPaymentPresenter
                 : $payment->reference,
             // Who issued it, as it was when the fee was paid (issuer_snapshot; the live club for older fees).
             'issuer' => self::issuer($payment),
+            'partOf' => self::partOfGroupReceipt($payment),
+        ];
+    }
+
+    /**
+     * When the fee was paid in a set ("Bayar semua": one FPX bill or one slip), its receipt number belongs to the
+     * set's receipt: this fee's page must say it is part of that receipt (total and count) and link to it, so one
+     * number never reads as two different documents.
+     *
+     * @return array{receiptNo: string, amount: int, count: int, url: string}|null
+     */
+    public static function partOfGroupReceipt(Payment $payment): ?array
+    {
+        if ($payment->receipt_no === null) {
+            return null;
+        }
+        $bill = PaymentBill::query()->whereNull('payment_id')->where('club_id', $payment->club_id)
+            ->where('receipt_no', $payment->receipt_no)->first();
+        if ($bill === null) {
+            return null;
+        }
+        $fees = Payment::query()->where('club_id', $payment->club_id)->where('receipt_no', $payment->receipt_no)
+            ->where('status', 'paid')->get(['id', 'amount']);
+        if ($fees->count() < 2) {
+            return null;
+        }
+        $amounts = $bill->itemAmounts();
+
+        return [
+            'receiptNo' => (string) $payment->receipt_no,
+            'amount' => (int) $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount)),
+            'count' => $fees->count(),
+            'url' => route('member.payments.group-result', $bill),
         ];
     }
 

@@ -420,6 +420,11 @@ const dict = {
     bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi pengesah, atau salah satu kod pemulihan anda.",
     en: "That code isn't right. Type the 6 digits from the authenticator app, or one of your recovery codes.",
   },
+  receiptPartOf: {
+    bm: "Yuran ini sebahagian daripada resit {no}: {n} yuran, jumlah {total}.",
+    en: "This fee is part of receipt {no}: {n} fees, {total} in total.",
+  },
+  receiptPartOfLink: { bm: "Lihat resit penuh", en: "See the full receipt" },
   flash_2fa_disable_locked: {
     bm: "Terlalu banyak kod salah. Cuba lagi dalam 15 minit.",
     en: "Too many wrong codes. Try again in 15 minutes.",

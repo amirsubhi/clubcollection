@@ -35,6 +35,8 @@ export interface MemberReceipt {
   reference: string | null;
   /** The club as the receipt was issued (payments.issuer_snapshot; the live club for older fees). */
   issuer?: ReceiptIssuer;
+  /** Paid in a set ("Bayar semua"): the number is the set's receipt; this page shows one fee of it. */
+  partOf?: { receiptNo: string; amount: Sen; count: number; url: string } | null;
 }
 
 /** MemberPaymentPresenter::issuer(): who issued a receipt. logoUrl is a same-origin /storage URL. */

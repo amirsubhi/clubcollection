@@ -8,7 +8,7 @@ import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
 import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate, rm } from "@/lib/format";
-import { useLang, useT } from "@/lib/i18n";
+import { fill, useLang, useT } from "@/lib/i18n";
 import type { MemberPaymentRow, MemberReceipt, PaymentContext } from "@/types/member";
 
 interface Props extends PaymentContext {
@@ -38,6 +38,14 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
       <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("receipt")} backHref={paymentsUrl}>
         <Head title={t("receipt")} />
         <FlashBanner />
+        {receipt.partOf && (
+          <p className="mb-3 rounded-2xl border bg-card px-4 py-3 text-base" data-testid="receipt-part-of">
+            {fill(t("receiptPartOf"), { no: receipt.partOf.receiptNo, n: receipt.partOf.count, total: rm(receipt.partOf.amount) })}{" "}
+            <Link href={receipt.partOf.url} className="font-semibold text-primary underline-offset-4 hover:underline">
+              {t("receiptPartOfLink")}
+            </Link>
+          </p>
+        )}
         <ReceiptCard
           club={receiptClub(receipt.issuer, payClub)}
           member={{ name: member.name }}
