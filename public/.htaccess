@@ -1,5 +1,13 @@
-# PWA: browsers must always revalidate the service worker and manifest so a new release is picked up.
 <IfModule mod_headers.c>
+    # Static files (build assets, icons, sw.js, logos under /storage) never reach PHP, so
+    # App\Http\Middleware\SecurityHeaders can't add these. setifempty leaves a header PHP already
+    # sent alone, so app pages don't get it twice. Keep them in step with SecurityHeaders
+    # (SAMEORIGIN matches the CSP's frame-ancestors 'self').
+    Header setifempty X-Content-Type-Options "nosniff"
+    Header setifempty X-Frame-Options "SAMEORIGIN"
+    Header setifempty Referrer-Policy "strict-origin-when-cross-origin"
+
+    # PWA: browsers must always revalidate the service worker and manifest so a new release is picked up.
     <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
         Header set Cache-Control "no-cache"
     </FilesMatch>
