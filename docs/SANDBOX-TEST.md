@@ -111,8 +111,9 @@ or `testing`. Create a small test club instead, logged in as the super admin you
 4. **Members → Add member**: a test member at that job level, with an email you can read (or, with `MAIL_MAILER=log`,
    find the welcome email with the temporary password in `storage/logs/laravel.log`). Use a made-up name such as
    "Ahli Ujian".
-5. **Payments**: generate fee records for that member for **three months**, so the member has three open fees (needed
-   for test 4).
+5. **Payments**: give that member **three monthly fees**, so the member has three open fees (needed for test 4).
+   Either add one per month with **Payments → Add**, or use **Generate fees** for this month and for next month (it
+   only offers those two) and add the third with **Payments → Add**.
 6. Open a private browser window, log in as the test member and change the temporary password when asked.
 
 Keep the super admin logged in in a normal window: you will watch **Audit Log** there. Callbacks that match no fee
@@ -200,7 +201,8 @@ Only on staging:
 
 1. In `.env` set `TOYYIBPAY_CHARGE_VERIFIED=true`, then `php artisan config:cache`.
 2. As a club admin: **Billing settings → Gateway fee: Member pays it**, gateway fee per bill RM 1.00, save.
-3. Generate one more fee for the member if none is open. As the member open it: the review page should show
+3. Add one more fee for the member with **Payments → Add** if none is open (or **Generate fees**, if that month isn't
+   billed yet). As the member open it: the review page should show
    **Yuran + caj = Jumlah** (e.g. RM 1.00 + RM 1.00).
 4. Tap **Bayar**. On the ToyyibPay page **write down the total the payer is asked to pay** (take a screenshot).
 5. Pay with success. Then write down:

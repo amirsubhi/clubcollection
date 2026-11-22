@@ -19,13 +19,15 @@ Please don't test against a club's live site or real member data. Use a local in
 
 ## Supported versions
 
-Only the default branch, `master`, is supported: security fixes go there and into the next release tag built from
-it. Older builds, including the March 2026 `v1.0.0` GitHub release (`v0.0.1` in the changelog), are not patched.
+`v2.0.0` is the current supported release. Security fixes go to the default branch, `master`, and ship in the next
+release tag built from it. Older builds, including the March 2026 `v1.0.0` GitHub release (`v0.0.1` in the
+changelog), are not patched.
 Upgrade with the steps in [docs/RELEASE.md](docs/RELEASE.md).
 
 | Version | Supported |
 |---|---|
-| `master` | Yes |
+| `v2.0.0` (current release) | Yes |
+| `master` (fixes land here first) | Yes |
 | `v1.0.0` (March 2026) and any other older build | No |
 
 ## Security model (summary)
@@ -39,10 +41,13 @@ Upgrade with the steps in [docs/RELEASE.md](docs/RELEASE.md).
   default on) and optional for members; codes can't be reused, the challenge locks after 5 wrong codes, and turning
   2FA off needs a code as well as the password. Sign-in is limited per account + IP (5 a minute) and per IP (30 a
   minute, enough for one office network); 10 wrong passwords for one account from any IP pause its sign-in for 15
-  minutes (never permanent, a password reset still works) and email the owner. The 2FA challenge, password reset,
+  minutes (never permanent, a password reset still works) and email the owner; tune it with
+  `LOGIN_ACCOUNT_MAX_FAILURES` (default 10), `LOGIN_ACCOUNT_DECAY_MINUTES` (15) and `LOGIN_ACCOUNT_BLOCK_MINUTES` (15). The 2FA challenge, password reset,
   the installer and uploads have their own limits.
-- **Passwords:** 12+ characters and not in a known breach (Have I Been Pwned range API, only the first 5 characters
-  of the SHA-1 leave the server; passes if the API is unreachable). Temporary passwords emailed by an admin must be
+- **Passwords:** a new password (password reset or change) needs 12+ characters and must not be in a known breach
+  (Have I Been Pwned range API, only the first 5 characters of the SHA-1 leave the server; passes if the API is
+  unreachable). The installer's first super-admin password has its own rule: 12+ characters with upper- and
+  lower-case letters, numbers and symbols (no breach check). Temporary passwords emailed by an admin must be
   replaced at first sign-in. The reset form never says whether an email has an account, and the reset email is sent
   after the answer. A password change or reset ends the user's other sessions and emails the owner. "Keep me signed
   in" lasts 30 days.
