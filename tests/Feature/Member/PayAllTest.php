@@ -712,40 +712,28 @@ class PayAllTest extends TestCase
                 ->where('receipt.paidOnline.0.id', $this->fees[1]->id));
     }
 
-    public function test_a_fee_reverted_and_sent_on_its_own_slip_is_never_decided_with_the_group(): void
+    public function test_a_fee_whose_online_payment_is_cancelled_mid_check_goes_back_into_the_group_slip(): void
     {
         $group = $this->sendGroupSlip();
         $admin = $this->join(User::factory()->create(['role' => 'admin']), $this->club, 'admin');
-        // Fee A paid online mid-check, then the admin cancels that payment and the member sends a slip for A alone.
+        // Fee A paid online mid-check, then the admin cancels that payment (refunded).
         $this->fees[0]->forceFill(['status' => 'paid', 'paid_via' => 'toyyibpay', 'paid_date' => now()->toDateString()])->save();
         $a = $this->fees[0]->fresh();
         $this->actingAs($admin)->post(route('admin.payments.cancel', $a), ['reason' => 'refunded', 'confirm' => '1'])->assertSessionHasNoErrors();
         $this->assertSame(1, \App\Models\PaymentCancellation::count(), 'only A: the slip set is not paid');
-        $this->travel(1)->minutes();
+
+        // A is awaiting the group slip again, so it is not sent on a slip of its own...
+        $this->assertSame(['pending_verification', 'pending_verification', 'pending_verification'], $this->statuses());
+        $this->assertSame($group->id, (int) $this->fees[0]->fresh()->transfer_group_id);
         $this->actingAs($this->member)->post(route('member.payments.transfer', $a), [
             'files' => [UploadedFile::fake()->image('a.png')],
             'transfer_date' => now()->toDateString(),
-        ])->assertSessionHasNoErrors();
-        $this->assertNull($this->fees[0]->fresh()->transfer_group_id);
+        ])->assertSessionHasErrors();
 
-        // Two cards: A's own slip, and the group.
-        $this->actingAs($admin)->get(route('admin.clubs.verifications.index', $this->club))
-            ->assertInertia(fn (Assert $page) => $page->has('pending', 2));
-
-        // The group can't be approved past A, and rejecting it leaves A's own slip alone.
+        // ...and the group slip is decided as a whole: one approval pays all three on one receipt.
         $this->actingAs($admin)->post(route('admin.verifications.approve', $this->fees[1]), ['paid_date' => now()->toDateString()])
-            ->assertSessionHasErrors('status');
-        $this->assertSame(['pending_verification', 'pending_verification', 'pending_verification'], $this->statuses());
-        $this->actingAs($admin)->post(route('admin.verifications.reject', $this->fees[1]), ['reason' => 'Set lama, hantar semula'])
             ->assertSessionHasNoErrors();
-        $this->assertSame(['pending_verification', 'pending', 'pending'], $this->statuses());
-        $this->assertNull($this->fees[0]->fresh()->rejection_reason);
-        $this->assertTrue($group->fresh()->isSuperseded());
-
-        // A's own slip is still decided on its own.
-        $this->actingAs($admin)->post(route('admin.verifications.approve', $this->fees[0]), ['paid_date' => now()->toDateString()])
-            ->assertSessionHasNoErrors();
-        $this->assertSame(['paid', 'pending', 'pending'], $this->statuses());
+        $this->assertSame(['paid', 'paid', 'paid'], $this->statuses());
     }
 
     public function test_a_group_bill_paid_late_while_the_same_fees_are_under_a_group_slip_is_flagged_not_applied(): void
