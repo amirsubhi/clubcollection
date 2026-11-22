@@ -190,9 +190,22 @@ class LoginProtectionTest extends TestCase
 
     public function test_an_unknown_email_costs_a_password_hash_like_a_known_one(): void
     {
-        \Illuminate\Support\Facades\Hash::partialMock()->shouldReceive('check')->atLeast()->once()->passthru();
+        $counting = new class($this->app) extends \Illuminate\Hashing\HashManager
+        {
+            public int $checks = 0;
+
+            public function check(#[\SensitiveParameter] $value, $hashedValue, array $options = []): bool
+            {
+                $this->checks++;
+
+                return parent::check($value, $hashedValue, $options);
+            }
+        };
+        $this->app->instance('hash', $counting);
+        \Illuminate\Support\Facades\Hash::clearResolvedInstance('hash');
 
         $this->attempt('nobody@example.test', 'wrong', '10.8.0.1')->assertSessionHasErrors('email');
+        $this->assertSame(1, $counting->checks);
     }
 
     public function test_the_pause_ends_after_15_minutes_and_is_never_permanent(): void

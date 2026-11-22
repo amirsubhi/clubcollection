@@ -144,8 +144,9 @@ class AdminTwoFactorRequirementTest extends TestCase
         $admin = $this->adminWith2fa();
         for ($i = 0; $i < 5; $i++) {
             $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => '00000'.$i])->assertSessionHasErrors('code');
-            \Illuminate\Support\Facades\RateLimiter::clear('2fa-setup|'.$admin->id); // the per-minute form limit is not what is tested here
         }
+        // Past the form's 5-a-minute limit (not what is tested here), still inside the 15-minute lock.
+        $this->travel(2)->minutes();
         $code = (new Google2FA())->getCurrentOtp('JBSWY3DPEHPK3PXP');
         $this->delete(route('profile.2fa.disable'), ['password' => 'password', 'code' => $code])->assertSessionHasErrors('code');
         $this->assertTrue($admin->fresh()->hasEnabledTwoFactor());
