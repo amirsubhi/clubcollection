@@ -39,6 +39,13 @@ export interface MemberReceipt {
   partOf?: { receiptNo: string; amount: Sen; count: number; url: string } | null;
 }
 
+/** MemberPaymentPresenter::cancellation(): an admin cancelled a payment ("Cancel payment"); reason is a code worded by the page. */
+export interface PaymentCancellationInfo {
+  receiptNo: string;
+  cancelledOn: string;
+  reason: "slip_not_genuine" | "money_not_received" | "recorded_by_mistake" | "refunded" | "other" | string;
+}
+
 /** MemberPaymentPresenter::issuer(): who issued a receipt. logoUrl is a same-origin /storage URL. */
 export interface ReceiptIssuer {
   name: string;

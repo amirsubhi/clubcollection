@@ -1,7 +1,7 @@
 import { Hourglass, Lock, Printer, RefreshCw } from "lucide-react";
 import { Head, Link } from "@inertiajs/react";
 import { ClubMark, MemberShell } from "@/components/app/MemberShell";
-import { DueNote, FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
+import { CancelledBanner, DueNote, FlashBanner, HelpLine, statusLabelKey, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { ReceiptActions } from "@/components/app/ReceiptActions";
 import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
@@ -9,11 +9,13 @@ import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate, rm } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
-import type { MemberPaymentRow, MemberReceipt, PaymentContext } from "@/types/member";
+import type { MemberPaymentRow, MemberReceipt, PaymentCancellationInfo, PaymentContext } from "@/types/member";
 
 interface Props extends PaymentContext {
   payment: MemberPaymentRow;
   receipt: MemberReceipt | null;
+  /** The latest cancelled payment of this fee ("Cancel payment"): a banner while unpaid, a note once paid again. */
+  cancellation?: PaymentCancellationInfo | null;
   issuedOn: string | null;
   discount: { name: string; type: "fixed" | "percentage" | string; value: number } | null;
 }
@@ -27,7 +29,7 @@ function PrintButton() {
   );
 }
 
-export default function Invoice({ payment, receipt, issuedOn, discount, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function Invoice({ payment, receipt, cancellation, issuedOn, discount, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
@@ -68,6 +70,12 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
           clubName={payClub.name}
           url={receipt.partOf?.url ?? payment.urls.invoice}
         />
+        {/* Paid again after a cancelled payment: the earlier number stays on record. */}
+        {cancellation && cancellation.receiptNo !== receipt.receiptNo && (
+          <p className="text-center text-sm text-muted-foreground" data-testid="cancelled-earlier">
+            {fill(t("cancelledEarlier"), { no: cancellation.receiptNo })}
+          </p>
+        )}
         <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
     );
@@ -77,6 +85,7 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
     <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("invoice")} backHref={paymentsUrl}>
       <Head title={t("invoice")} />
       <FlashBanner />
+      {cancellation && payment.status !== "paid" && <CancelledBanner c={cancellation} />}
       <section aria-label={t("invoice")} className="flex flex-col gap-5 rounded-[20px] border bg-card p-5">
         {/* The club as it is now (Club profile): an invoice is not issued yet, so it is never a snapshot. */}
         <div className="flex flex-wrap items-start gap-3 border-b pb-4" data-testid="invoice-issuer">

@@ -110,6 +110,8 @@ class PaymentController extends Controller
         return Inertia::render('Member/Invoice', [
             'payment' => P::summary($payment),
             'receipt' => P::receipt($payment),
+            // The latest cancelled payment of this fee: a banner while unpaid, a small note once paid again.
+            'cancellation' => P::cancellation($payment),
             'issuedOn' => $payment->created_at?->toDateString(),
             'discount' => $payment->discount ? [
                 'name' => $payment->discount->name,
