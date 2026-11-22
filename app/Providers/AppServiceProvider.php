@@ -6,6 +6,8 @@ use App\Models\Club;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Contact\WhatsAppNumber;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\NotPwnedVerifier;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PaymentGatewayManager::class);
+
+        // The breached-password check (Password::uncompromised(), Have I Been Pwned's k-anonymity range API: only
+        // the first 5 characters of the SHA-1 leave the server) passes when the API can't be reached, so an
+        // offline host never blocks a password reset. 5 s instead of the framework's 30 s keeps that wait short.
+        // extend(), not singleton(): ValidationServiceProvider is deferred and would replace a binding when it loads.
+        $this->app->extend(UncompromisedVerifier::class, fn ($verifier, $app) => new NotPwnedVerifier($app[HttpFactory::class], 5));
     }
 
     /**
@@ -31,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // Views use Bootstrap 5; the default Tailwind pagination renders unstyled.
         Paginator::useBootstrapFive();
+
+        // New passwords (reset, change): 12+ characters and not in a known breach. No "mixed case / symbol"
+        // rules (NIST SP 800-63B): a few ordinary words together is long, strong and easy to remember.
+        Password::defaults(fn () => Password::min(12)->uncompromised());
 
         // Named limiters get their own counters. A plain throttle:N,M on guest
         // routes shares one per-IP counter across every such route, so gateway

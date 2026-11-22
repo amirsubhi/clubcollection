@@ -6,6 +6,7 @@ use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentBill;
 use App\Models\User;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
@@ -15,9 +16,25 @@ abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Password::uncompromised() asks the Have I Been Pwned API: tests never go to the network, so every
+     * password counts as not breached. A test of the real check sets this to false and fakes the HTTP call.
+     */
+    protected bool $fakeBreachedPasswordCheck = true;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        if ($this->fakeBreachedPasswordCheck) {
+            $this->app->extend(UncompromisedVerifier::class, fn () => new class implements UncompromisedVerifier
+            {
+                public function verify($data)
+                {
+                    return true;
+                }
+            });
+        }
         // Ensure the app appears installed so requests are not redirected to /install
         if (! file_exists(storage_path('app'))) {
             mkdir(storage_path('app'), 0755, true);
