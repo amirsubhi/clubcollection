@@ -12,6 +12,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 > in place: install this release fresh. From the first real install onwards, all schema changes are new, additive
 > migrations.
 
+### Security: dependency update
+- `composer update`: Laravel 13.1.1 → 13.43.0 and Symfony, Guzzle and dompdf updates, clearing 54 known advisories
+  (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
+  CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
+
 ### Added (Option A: new member app and admin pages)
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
