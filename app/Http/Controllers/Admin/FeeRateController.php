@@ -96,11 +96,30 @@ class FeeRateController extends Controller
         $this->authorizeClubAdmin($club);
 
         $old = $feeRate->only(['job_level', 'monthly_amount', 'effective_from', 'effective_to']);
-        $feeRate->delete();
+        $reopened = null;
+        DB::transaction(function () use ($club, $feeRate, &$reopened) {
+            $wasOpen = $feeRate->effective_to === null;
+            $from = $feeRate->effective_from->copy();
+            $feeRate->delete();
+
+            // Deleting the open rate of a level would leave the rate before it closed: a silent gap from the
+            // deleted rate's start onwards. The rate that ended the day before it started is in force again. A row
+            // replaced before it started (it starts on/after the deleted one) is history and stays as it is.
+            if ($wasOpen && ! $club->feeRates()->where('job_level', $feeRate->job_level)->whereNull('effective_to')->exists()) {
+                $reopened = $club->feeRates()
+                    ->where('job_level', $feeRate->job_level)
+                    ->whereDate('effective_to', $from->copy()->subDay()->toDateString())
+                    ->whereDate('effective_from', '<', $from->toDateString())
+                    ->orderByDesc('effective_from')->orderByDesc('id')
+                    ->first();
+                $reopened?->update(['effective_to' => null]);
+            }
+        });
 
         AuditService::log(
             'fee_rate.deleted',
-            "Fee rate for '{$club->jobLevelName($old['job_level'])}' (RM {$old['monthly_amount']}, from {$old['effective_from']}) deleted.",
+            "Fee rate for '{$club->jobLevelName($old['job_level'])}' (RM {$old['monthly_amount']}, from {$old['effective_from']}) deleted."
+                .($reopened ? " The rate before it (RM {$reopened->monthly_amount}, from {$reopened->effective_from->toDateString()}) is in force again." : ''),
             null,
             $club->id,
             $old

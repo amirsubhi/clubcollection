@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\Club;
 use App\Models\FeeRate;
 use App\Models\Payment;
@@ -164,6 +165,48 @@ class FeeRatesTest extends TestCase
             FeeRates::monthlySenByMonth($this->club, $this->member, array_map(fn ($m) => Carbon::parse($m), ['2026-09-01', '2026-10-01', '2026-12-01', '2027-01-01', '2027-02-01']))
         );
         $this->assertSame('2027-01-31', FeeRate::where('monthly_amount', 8)->sole()->effective_to->toDateString());
+    }
+
+    public function test_deleting_the_open_rate_puts_the_one_before_it_back_in_force(): void
+    {
+        $old = $this->rate(10, '2026-01-01', '2026-12-31');
+        $new = $this->rate(12, '2027-01-01');
+        $other = $this->rate(20, '2026-01-01', '2026-12-31', 'manager');
+        $this->actingAsClubAdmin($this->club);
+
+        $this->delete(route('admin.fee-rates.destroy', $new))->assertRedirect();
+
+        $this->assertNull($old->fresh()->effective_to, 'reopened: no gap from January');
+        $this->assertSame(1000, $this->sen('2027-01'));
+        $this->assertSame('2026-12-31', $other->fresh()->effective_to->toDateString(), 'another level is untouched');
+        $this->assertStringContainsString('is in force again', AuditLog::where('action', 'fee_rate.deleted')->sole()->description);
+    }
+
+    public function test_deleting_a_backdated_correction_reopens_its_predecessor_not_the_rate_it_replaced(): void
+    {
+        $this->travelTo(Carbon::create(2026, 11, 22, 10));
+        $first = $this->rate(9, '2026-01-01', '2026-09-30');
+        $replaced = $this->rate(10, '2026-11-01', '2026-09-30');
+        $correction = $this->rate(8, '2026-10-01');
+        $this->actingAsClubAdmin($this->club);
+
+        $this->delete(route('admin.fee-rates.destroy', $correction))->assertRedirect();
+
+        $this->assertNull($first->fresh()->effective_to);
+        $this->assertSame('2026-09-30', $replaced->fresh()->effective_to->toDateString());
+        $this->assertSame(900, $this->sen('2026-11'));
+    }
+
+    public function test_deleting_a_closed_rate_or_one_with_another_open_rate_reopens_nothing(): void
+    {
+        $first = $this->rate(9, '2025-01-01', '2025-12-31');
+        $closed = $this->rate(10, '2026-01-01', '2026-12-31');
+        $open = $this->rate(12, '2027-01-01');
+        $this->actingAsClubAdmin($this->club);
+
+        $this->delete(route('admin.fee-rates.destroy', $closed))->assertRedirect();
+        $this->assertSame('2025-12-31', $first->fresh()->effective_to->toDateString());
+        $this->assertNull($open->fresh()->effective_to);
     }
 
     public function test_the_add_payment_hint_uses_the_rate_in_force_this_month(): void
