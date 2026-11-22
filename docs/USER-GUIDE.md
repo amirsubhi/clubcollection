@@ -17,7 +17,15 @@ their labels are quoted in BM as they appear. Admin pages are in English. Everyo
 
 <img src="screenshots/member-home.png" width="260" align="right" alt="Member home">
 
-Log in with the email and temporary password from your welcome email. **Utama** (home) shows:
+Log in with the email and temporary password from your welcome email. The first time, the app asks you to **choose
+your own password** (**Pilih kata laluan anda sendiri**): type the temporary password, then your new one twice. It
+needs at least 12 characters; a few ordinary words together is easiest to remember. You can change it again later
+at `/password/change`.
+
+If you type a wrong password many times (10 in a row), signing in to your account pauses for 15 minutes and you get
+an email about it. Wait and try again, or use **Lupa kata laluan?** to reset your password straight away.
+
+**Utama** (home) shows:
 
 - your membership card with **Jumlah perlu dibayar**: what you owe now, with a **Bayar RM …** button for the oldest
   fee and **Invois** (or **Bayar semua RM …** when more than one fee is open, see below);
@@ -131,11 +139,16 @@ Club Portal can sit on your phone's home screen like an app (it is still the sam
 enter the 6-digit code. **Save the recovery codes** shown once: each one logs you in once if you lose your phone.
 After 5 wrong codes the challenge locks for 15 minutes.
 
+2FA is optional for members. **Admins (club admins and the super admin) must turn it on:** until they do, every admin
+page opens the Security page instead, with a notice. To turn 2FA off you need your password **and** a code from the
+app (or one recovery code). An admin who turns it off is asked to set it up again straight away.
+
 ---
 
 ## Treasurer / club admin
 
-Admins log in at the same address and land on a page listing their clubs; open a club's **Dashboard**. The sidebar has **Dashboard**, **Fund Usage**,
+Admins log in at the same address. A new admin first chooses their own password (as members do), then turns on
+2FA ([see above](#turn-on-two-factor-authentication)): the admin pages open once 2FA is on. After that they land on a page listing their clubs; open a club's **Dashboard**. The sidebar has **Dashboard**, **Fund Usage**,
 **Verifications**, **Payments**, **Members**, **Fee Rates**, **Billing settings**, **Discounts**, **Expense
 categories**, **Ledger**, **Audit Log**, **Portal home** (back to the list of your clubs) and **Security & 2FA**, the
 same on every admin page. To see your own member view (admins pay fees too), use **Member view** in the account menu
@@ -293,7 +306,8 @@ reminder. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` 
 
 ### Other admin tasks
 
-- **Members**: add a member (they get a welcome email with a temporary password) or **Import** a CSV (template on the
+- **Members**: add a member (they get a welcome email with a temporary password, which they replace at their first
+  sign-in) or **Import** a CSV (template on the
   import page; up to 1,000 rows). Emails are matched without regard to capitals, so `Ali@club.my` is refused when
   `ali@club.my` already has an account; a CSV saved by Excel on Windows (accented names such as "José") is read
   correctly. Club admins can't add or change club admins; only the super admin can.

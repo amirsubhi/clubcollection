@@ -160,7 +160,12 @@ CACHE_STORE=database                   # pay lock and rate limits; never "array"
 
 INSTALL_TOKEN=<random, 16+ characters> # first install only; the installer blanks it
 
-TRUSTED_PROXIES=                       # proxy IPs if the host puts one in front of PHP
+TRUSTED_PROXIES=                       # empty unless a proxy / Cloudflare really sits in front of PHP
+
+REQUIRE_ADMIN_2FA=true                 # admins must turn on 2FA (never false on a live site)
+HSTS_MAX_AGE=31536000                  # 1 year
+HSTS_INCLUDE_SUBDOMAINS=false          # true only if every subdomain is HTTPS
+HSTS_PRELOAD=false                     # true only if you own the domain and submit it to the preload list
 
 TOYYIBPAY_SANDBOX=false
 TOYYIBPAY_SECRET_KEY=...               # or per club in the admin panel

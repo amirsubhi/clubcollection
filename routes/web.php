@@ -29,7 +29,7 @@ use App\Http\Controllers\Member\PayAllController as MemberPayAll;
 // ── Installation wizard (only accessible when NOT installed) ────────────────
 Route::middleware('redirect_if_installed')->group(function () {
     Route::get('/install', [InstallController::class, 'index'])->name('install');
-    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:5,1')->name('install.process');
+    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:install')->name('install.process');
 });
 
 // ── Payment gateway webhooks — external, no install check, no CSRF ────────
@@ -62,12 +62,14 @@ Route::middleware('check_installed')->group(function () {
         // `guest` middleware sends a signed-in user on to /home.
         Route::get('/', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('front');
 
-        // Register disabled; login throttled to 5 attempts / minute per IP+email
+        // Register disabled.
         Auth::routes(['register' => false]);
 
-        // Override login POST with explicit rate limiting
+        // Replaces Auth::routes()' POST /login (no name, so it doesn't clash with GET 'login' under route:cache).
+        // throttle:login (AppServiceProvider): 5 a minute per email + IP and 30 a minute per IP (an office network
+        // shares one IP); LoginController also pauses one account for 15 minutes after 10 wrong passwords.
         Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
-            ->middleware('throttle:5,1');  // replaces Auth::routes()' POST /login; no name, so it doesn't clash with GET 'login' (route:cache)
+            ->middleware('throttle:login');
 
         // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
         // on their own named limiter (AppServiceProvider).
@@ -88,14 +90,25 @@ Route::middleware('check_installed')->group(function () {
         // Throttle the verify POST to defend against brute-forcing TOTP codes
         // (10**6 search space) and recovery codes (8 codes, alphanumeric).
         Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:two-factor')
             ->name('two-factor.verify');
     }); // auth_locale
 
     // auth.session (AuthenticateSession) ends every other session of a user
     // whose password changed, e.g. after a password reset (S1).
-    Route::middleware(['auth', 'auth.session', 'two_factor'])->group(function () {
+    // password_changed: an account with an emailed temporary password must choose its own first
+    // (EnsurePasswordChanged); it allows only the change-password page and logout.
+    // admin_two_factor: with REQUIRE_ADMIN_2FA (default on) a super admin / club admin without 2FA is sent to
+    // the Security page to set it up (RequireAdminTwoFactor). Members are never forced.
+    Route::middleware(['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+        // ── Change password (sign-in page style, BM by default) ─────────────
+        Route::middleware('auth_locale')->group(function () {
+            Route::get('/password/change', [\App\Http\Controllers\Auth\ChangePasswordController::class, 'show'])->name('password.change');
+            Route::post('/password/change', [\App\Http\Controllers\Auth\ChangePasswordController::class, 'update'])
+                ->middleware('throttle:password-change')->name('password.change.update');
+        });
 
         // ── Profile / 2FA setup ──────────────────────────────────────────────
         Route::get('/profile/security', [ProfileController::class, 'security'])->name('profile.security');

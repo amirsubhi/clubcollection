@@ -148,6 +148,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   bill is flagged once, not on every run. Settlements started by a member's status check are audited as the system.
 - `pay` and `pay-all` are throttled (10 per minute).
 
+### Security (S2: sign-in and account hardening)
+- **Sign-in limits:** POST /login has its own `login` limiter: 5 a minute per account (or unknown email) + IP and 30 a
+  minute per IP, so a staff club on one office network can sign in together. The 2FA challenge and the installer
+  have their own buckets (they shared one counter with sign-in). After 10 wrong passwords for one account from any IP,
+  sign-in for it pauses for 15 minutes (never permanent; a password reset still works and ends the pause; an unknown
+  email gets the same answer). The owner gets one email per pause. Spelling variants of an email that match the same
+  account share one counter.
+- **Temporary passwords are replaced at first sign-in:** accounts created by an admin (add member, CSV import, add
+  administrator) must choose their own password on the new **/password/change** page before anything else. New
+  column `users.must_change_password` (additive migration, existing users unaffected). The page is also open for a
+  voluntary change.
+- **Admins need 2FA:** a super admin or club admin without 2FA is sent to Security & 2FA until it is on
+  (`REQUIRE_ADMIN_2FA`, default `true`). Members stay optional. Turning 2FA off now needs a current code or a recovery
+  code as well as the password.
+- **Passwords:** new passwords need 12+ characters and must not appear in a known data breach (Have I Been Pwned range
+  API; it passes when the API can't be reached, 5 s timeout). No upper-case / symbol rules (NIST).
+- **No account discovery:** POST /password/reset answers an unknown email like a bad link; the reset-link email is
+  sent after the answer, so known emails are not slower.
+- **Audit and emails:** wrong passwords, lockouts, account pauses, completed resets and password changes are in the
+  audit log (never the password); the owner is emailed when their password is reset or changed.
+- **Headers:** HSTS is configurable (`HSTS_MAX_AGE`, `HSTS_INCLUDE_SUBDOMAINS`, `HSTS_PRELOAD`; no `includeSubDomains`
+  or `preload` by default), `X-XSS-Protection: 0`, `img-src` limited to the site and `data:`, and `public/.htaccess`
+  adds `nosniff`, `X-Frame-Options` and `Referrer-Policy` to static files. "Keep me signed in" lasts 30 days
+  (`AUTH_REMEMBER_MINUTES`) instead of about 400.
+
 ### Security (S1: hardening from the full audit)
 - **Gateway callbacks:** absolute URLs come from `APP_URL` (host and scheme) in production and other `Host` headers are
   refused, so a forged `Host`/`X-Forwarded-Host` can't redirect callbacks or email links. The ToyyibPay callback

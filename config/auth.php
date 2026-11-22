@@ -41,6 +41,10 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // "Keep me signed in" lasts this many minutes (default 30 days), not Laravel's ~400 days:
+            // a stolen or shared device should not stay signed in for years. It stays well past the
+            // idle session timeout (SESSION_LIFETIME) on purpose; that is what the checkbox is for.
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 60 * 24 * 30),
         ],
     ],
 

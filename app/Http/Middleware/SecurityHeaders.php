@@ -33,15 +33,16 @@ class SecurityHeaders
         // Prevent MIME-type sniffing
         $response->headers->set('X-Content-Type-Options', 'nosniff');
 
-        // Enable XSS filter in legacy browsers
-        $response->headers->set('X-XSS-Protection', '1; mode=block');
+        // The legacy XSS auditor is off: its "block" mode could itself be abused to
+        // hide parts of a page, and modern browsers ignore it. The CSP below protects.
+        $response->headers->set('X-XSS-Protection', '0');
 
         // Only send referrer to same origin
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-        // Strict HTTPS (1 year, include subdomains)
+        // Strict HTTPS, from config/security.php (HSTS_*): 1 year, this host only by default.
         if ($request->secure()) {
-            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+            $response->headers->set('Strict-Transport-Security', self::hstsHeader());
         }
 
         // Content Security Policy — per-request nonce for inline scripts/styles.
@@ -57,6 +58,13 @@ class SecurityHeaders
         $styleSrc = ["'self'", "'nonce-{$nonce}'"];
         $fontSrc = ["'self'"];
         $connectSrc = ["'self'"];
+        // Images are all same-origin (club logos via asset(), attachment thumbnails, PWA icons) or data:
+        // URIs (Bootstrap's form icons, inline SVG); the QR code is inline SVG. An ASSET_URL on another
+        // host (a CDN) is allowed as well, since asset() then points there.
+        $imgSrc = ["'self'", 'data:'];
+        if (($assetOrigin = self::origin((string) config('app.asset_url'))) !== null) {
+            $imgSrc[] = $assetOrigin;
+        }
         if (! FrontendAssets::classicBundled()) {
             $scriptSrc[] = 'https://cdn.jsdelivr.net';
             $styleSrc[] = 'https://cdn.jsdelivr.net';
@@ -69,6 +77,7 @@ class SecurityHeaders
             $scriptSrc[] = $devServer;
             $styleSrc[] = $devServer;
             $fontSrc[] = $devServer;
+            $imgSrc[] = $devServer;
             $connectSrc[] = $devServer;
             $connectSrc[] = preg_replace('#^http#', 'ws', $devServer);
         }
@@ -79,7 +88,7 @@ class SecurityHeaders
             'style-src '.implode(' ', $styleSrc),
             "style-src-attr 'unsafe-inline'",
             'font-src '.implode(' ', $fontSrc),
-            "img-src 'self' data: https:",
+            'img-src '.implode(' ', array_unique($imgSrc)),
             'connect-src '.implode(' ', $connectSrc),
             // PWA: the service worker (public/sw.js) and manifest are same-origin only.
             "worker-src 'self'",
@@ -102,6 +111,25 @@ class SecurityHeaders
     }
 
     /**
+     * The Strict-Transport-Security value. includeSubDomains and preload are
+     * sent only when turned on: they reach beyond this app (every subdomain,
+     * the browsers' preload lists). HSTS_MAX_AGE=0 tells browsers to forget it.
+     */
+    public static function hstsHeader(): string
+    {
+        $maxAge = max(0, (int) config('security.hsts.max_age', 31536000));
+        $value = 'max-age='.$maxAge;
+        if (config('security.hsts.include_subdomains')) {
+            $value .= '; includeSubDomains';
+        }
+        if (config('security.hsts.preload')) {
+            $value .= '; preload';
+        }
+
+        return $value;
+    }
+
+    /**
      * Origin (scheme://host:port) of the running Vite dev server, read from the
      * public/hot file that laravel-vite-plugin writes while `npm run dev` runs.
      */
@@ -112,12 +140,17 @@ class SecurityHeaders
             return null;
         }
 
-        $url = trim((string) file_get_contents($hot));
+        return self::origin(trim((string) file_get_contents($hot)));
+    }
+
+    /** scheme://host[:port] of an http(s) URL, or null. */
+    private static function origin(string $url): ?string
+    {
         $parts = parse_url($url);
-        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host']) || ! in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
             return null;
         }
 
-        return $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+        return strtolower($parts['scheme']).'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
     }
 }
