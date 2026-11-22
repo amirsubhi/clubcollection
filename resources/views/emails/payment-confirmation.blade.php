@@ -96,6 +96,11 @@
     <p style="font-size:13px;color:#6c757d">
       Please keep this email as your payment receipt. If you have any questions, contact your club administrator.
     </p>
+    {{-- The club's receipt footer as issued (issuer snapshot): plain text, escaped, line breaks kept. --}}
+    @php($receiptFooter = \App\Support\Member\MemberPaymentPresenter::issuer($payment)['footer'])
+    @if($receiptFooter)
+    <p style="font-size:13px;color:#6c757d" data-testid="receipt-footer">{!! nl2br(e($receiptFooter)) !!}</p>
+    @endif
   </div>
   <div class="footer">
     &copy; {{ date('Y') }} {{ config('app.name') }} &middot; This is an automated email, please do not reply.

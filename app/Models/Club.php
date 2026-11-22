@@ -307,9 +307,10 @@ class Club extends Model
     /**
      * The club details a receipt is issued with (payments.issuer_snapshot): written once when a fee becomes
      * paid, so later profile edits never change an issued receipt. The logo is kept as a path (its URL is built
-     * when shown); old logo files are never deleted (LogoService).
+     * when shown); old logo files are never deleted (LogoService). The receipt footer (settings phase 2) is part
+     * of it, so a receipt keeps the footer it was issued with.
      *
-     * @return array{name: string, registration_no: ?string, address: ?string, logo: ?string, email: ?string}
+     * @return array{name: string, registration_no: ?string, address: ?string, logo: ?string, email: ?string, footer: ?string}
      */
     public function issuerSnapshot(): array
     {
@@ -319,6 +320,7 @@ class Club extends Model
             'address' => $this->address ?: null,
             'logo' => $this->logo ?: null,
             'email' => $this->email ?: null,
+            'footer' => $this->receipt_footer ?: null,
         ];
     }
 }

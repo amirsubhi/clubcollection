@@ -90,9 +90,10 @@ final class MemberPaymentPresenter
 
     /**
      * The club as a receipt names it: the details the fee was issued with (payments.issuer_snapshot, written
-     * when it became paid), or, for a fee paid before snapshots existed, the club as it is now.
+     * when it became paid), or, for a fee paid before snapshots existed, the club as it is now. The footer comes
+     * from the snapshot only: a snapshot written before receipt footers existed has none and shows none.
      *
-     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string}
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string, footer: ?string}
      */
     public static function issuer(Payment $payment): array
     {
@@ -107,13 +108,14 @@ final class MemberPaymentPresenter
             'address' => ($snap['address'] ?? null) ?: null,
             'email' => ($snap['email'] ?? null) ?: null,
             'logoUrl' => LogoService::url($snap['logo'] ?? null),
+            'footer' => is_string($snap['footer'] ?? null) && $snap['footer'] !== '' ? $snap['footer'] : null,
         ];
     }
 
     /**
      * The club's details as they are now (invoices, and old receipts without a snapshot).
      *
-     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string}
+     * @return array{name: string, registrationNo: ?string, address: ?string, email: ?string, logoUrl: ?string, footer: ?string}
      */
     public static function issuerOf(Club $club): array
     {
@@ -123,6 +125,7 @@ final class MemberPaymentPresenter
             'address' => $club->address ?: null,
             'email' => $club->email ?: null,
             'logoUrl' => $club->logo_url,
+            'footer' => $club->receipt_footer ?: null,
         ];
     }
 

@@ -78,7 +78,7 @@
                         @error('address')<div id="f-address-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label for="f-fy" class="form-label fw-semibold">Financial year starts in</label>
                         <select id="f-fy" name="financial_year_start_month" aria-describedby="f-fy-help @error('financial_year_start_month') f-fy-error @enderror" @error('financial_year_start_month') aria-invalid="true" @enderror
                                 class="form-select @error('financial_year_start_month') is-invalid @enderror">
@@ -89,6 +89,18 @@
                         </select>
                         <div id="f-fy-help" class="form-text">"This year" on the dashboard, Fund Usage, the ledger and the members' "where the money went" page starts in this month. January = the calendar year.</div>
                         @error('financial_year_start_month')<div id="f-fy-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="f-footer" class="form-label fw-semibold">Receipt footer <span class="fw-normal text-body-secondary">(optional)</span></label>
+                        <textarea id="f-footer" name="receipt_footer" rows="3" maxlength="{{ $footerMax }}" aria-describedby="f-footer-help @error('receipt_footer') f-footer-error @enderror" @error('receipt_footer') aria-invalid="true" @enderror
+                                  class="form-control @error('receipt_footer') is-invalid @enderror">{{ old('receipt_footer', $club->receipt_footer) }}</textarea>
+                        <div id="f-footer-help" class="form-text">
+                            Plain text, up to {{ $footerMax }} characters, printed under "This is a computer-generated receipt" on
+                            receipts and receipt emails (for example a thank-you note or the treasurer's contact). Line breaks are kept.
+                            Receipts already issued keep the footer they were issued with.
+                        </div>
+                        @error('receipt_footer')<div id="f-footer-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <button type="submit" class="btn btn-primary">Save profile</button>

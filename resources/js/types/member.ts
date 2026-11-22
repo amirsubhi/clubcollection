@@ -44,6 +44,8 @@ export interface ReceiptIssuer {
   address: string | null;
   email: string | null;
   logoUrl: string | null;
+  /** The club's receipt footer as issued (plain text, may hold line breaks); null when none. */
+  footer?: string | null;
 }
 
 /** Props every single-payment page receives (PaymentController::context()). */
