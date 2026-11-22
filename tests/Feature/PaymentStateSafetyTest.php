@@ -286,7 +286,7 @@ class PaymentStateSafetyTest extends TestCase
             ])->assertSessionHasErrors(['status' => 'To mark this fee paid, use "Record payment…" on the payment page: it asks how and when the money was received.']);
             $this->assertSame('pending', $fee->fresh()->status);
         }
-        // The form offers Paid only for a fee that is already paid (to keep it or undo it).
+        // The form offers Paid only for a fee that is already paid (to keep it; undoing it is "Cancel payment").
         $x = $this->dom($this->get(route('admin.payments.edit', $plain))->getContent());
         $this->assertSame(0, $x->query('//select[@id="f-status"]/option[@value="paid"]')->length);
         $this->assertSame('Not paid (no more reminders)', trim($x->query('//select[@id="f-status"]/option[@value="overdue"]')->item(0)->textContent));
@@ -404,10 +404,10 @@ class PaymentStateSafetyTest extends TestCase
         $this->openSingleBill($fee);
         $ref = $fee->fresh()->reference;
         $code = $fee->fresh()->bill_code;
-        // Paid by a checked slip, then reverted by an admin.
+        // Paid by a checked slip, then cancelled by an admin ("Cancel payment").
         $fee->forceFill(['status' => 'paid', 'paid_date' => '2026-11-10', 'paid_via' => 'transfer', 'transfer_submitted_at' => now(), 'transfer_ref' => 'M-1',
             'transfer_bank_ref' => 'B-1', 'verified_by' => $admin->id, 'verified_at' => now()])->save();
-        $this->put(route('admin.payments.update', $fee), ['amount' => '10.00', 'due_date' => $fee->due_date->toDateString(), 'status' => 'pending', 'original_status' => 'paid'])
+        $this->post(route('admin.payments.cancel', $fee), ['reason' => 'money_not_received', 'confirm' => '1'])
             ->assertSessionHasNoErrors();
         $fresh = $fee->fresh();
         foreach (['paid_via', 'verified_by', 'transfer_submitted_at', 'transfer_bank_ref', 'transfer_ref', 'transfer_group_id'] as $col) {

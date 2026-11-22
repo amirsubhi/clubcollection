@@ -115,21 +115,19 @@ class R1dFollowUpsTest extends TestCase
         $ytd = FundFigures::yearToDate();
         $this->assertSame(120, $f->forWindow($ytd)['charges']);
 
-        // The edit form says what reverting does to the figures, and asks first.
-        $this->get(route('admin.payments.edit', $fee))->assertOk()
-            ->assertSee('data-testid="revert-charge-warning"', false)
-            ->assertSee('RM 1.20')
-            ->assertSee('data-revert-warning=', false);
+        // The cancel form says what cancelling does to the figures.
+        $this->get(route('admin.payments.cancel-form', $fee))->assertOk()
+            ->assertSee('data-testid="cancel-charge-warning"', false)
+            ->assertSee('RM 1.20');
 
-        // Revert to pending: the charge leaves the figures with the fee.
-        $this->put(route('admin.payments.update', $fee), [
-            'amount' => '50.00', 'due_date' => '2026-11-02', 'status' => 'pending', 'original_status' => 'paid',
-        ])->assertRedirect(route('admin.payments.show', $fee));
+        // Cancelled ("Cancel payment"): the charge leaves the figures with the fee.
+        $this->post(route('admin.payments.cancel', $fee), ['reason' => 'refunded', 'confirm' => '1'])
+            ->assertRedirect(route('admin.payments.show', $fee));
         $fee->refresh();
         $this->assertNull($fee->paid_via);
         $this->assertSame(120, (int) $fee->fee_absorbed_sen, 'the absorbed charge is kept on the record');
         $this->assertSame(0, $f->forWindow($ytd)['charges']);
-        $this->get(route('admin.payments.edit', $fee))->assertDontSee('data-testid="revert-charge-warning"', false);
+        $this->get(route('admin.payments.cancel-form', $fee))->assertRedirect(route('admin.payments.show', $fee));
 
         // Marked paid again by hand: the gateway still took its charge, so it counts again.
         $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertRedirect();
@@ -147,9 +145,8 @@ class R1dFollowUpsTest extends TestCase
         $fee = Payment::factory()->forClub($this->club)->create(['status' => 'paid', 'paid_via' => 'transfer', 'fee_absorbed_sen' => 0]);
         $this->actingAsClubAdmin($this->club);
 
-        $this->get(route('admin.payments.edit', $fee))->assertOk()
-            ->assertDontSee('data-testid="revert-charge-warning"', false)
-            ->assertDontSee('data-revert-warning=', false);
+        $this->get(route('admin.payments.cancel-form', $fee))->assertOk()
+            ->assertDontSee('data-testid="cancel-charge-warning"', false);
     }
 
     // ── Former members ────────────────────────────────────────────────────
@@ -240,18 +237,17 @@ class R1dFollowUpsTest extends TestCase
         $this->actingAsClubAdmin($this->club);
         $f = FundFigures::for($this->club);
         $ytd = FundFigures::yearToDate();
-        $revert = fn () => $this->put(route('admin.payments.update', $fee), [
-            'amount' => '50.00', 'due_date' => '2026-11-02', 'status' => 'pending', 'original_status' => 'paid',
-        ])->assertRedirect(route('admin.payments.show', $fee));
+        $revert = fn (string $reason) => $this->post(route('admin.payments.cancel', $fee), ['reason' => $reason, 'confirm' => '1'])
+            ->assertRedirect(route('admin.payments.show', $fee));
 
-        $revert();
+        $revert('refunded');
         $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertRedirect();
         $this->assertSame('cash', $fee->fresh()->paid_via);
         $this->assertSame(120, $f->forWindow($ytd)['charges']);
         // Paid by hand now, but the charge is in the figures: the warning still shows.
-        $this->get(route('admin.payments.edit', $fee))->assertSee('data-testid="revert-charge-warning"', false)->assertSee('RM 1.20');
+        $this->get(route('admin.payments.cancel-form', $fee))->assertSee('data-testid="cancel-charge-warning"', false)->assertSee('RM 1.20');
 
-        $revert();
+        $revert('recorded_by_mistake');
         $this->assertSame(0, $f->forWindow($ytd)['charges']);
         $this->assertSame(120, (int) $fee->fresh()->fee_absorbed_sen);
     }

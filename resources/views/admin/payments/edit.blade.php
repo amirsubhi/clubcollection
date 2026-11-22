@@ -9,12 +9,7 @@
         <div class="card shadow-sm">
             <div class="card-body p-4">
                 <p class="text-muted small mb-4">Member: <strong>{{ $payment->user?->name ?? 'Former member' }}</strong> &middot; Period: {{ $payment->period_start->format('d M Y') }} – {{ $payment->period_end->format('d M Y') }}</p>
-                @php
-                    // Paid with a gateway charge the club absorbed (same rule as FundFigures::chargesQuery): taking it off "Paid" also takes that charge out of the fund figures.
-                    $absorbedSen = ($payment->status === 'paid' && (int) $payment->fee_absorbed_sen > 0) ? (int) $payment->fee_absorbed_sen : 0;
-                @endphp
-                <form action="{{ route('admin.payments.update', $payment) }}" method="POST" id="paymentEditForm"
-                      @if($absorbedSen) data-revert-warning="When this fee was paid online the club absorbed a gateway charge of RM {{ number_format($absorbedSen / 100, 2) }}. Changing it from Paid takes that charge out of the fund figures until you mark the fee paid by hand again. Continue?" @endif>
+                <form action="{{ route('admin.payments.update', $payment) }}" method="POST" id="paymentEditForm">
                     @csrf @method('PUT')
                     {{-- The status this form was loaded with: a save over a newer change is refused. --}}
                     <input type="hidden" name="original_status" value="{{ $payment->status }}">
@@ -36,23 +31,21 @@
                     </div>
                     <div class="mb-3">
                         <label for="f-status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                        <select id="f-status" aria-describedby="f-status-help @if($absorbedSen) f-status-charge @endif @error('status') f-status-error @enderror" @error('status') aria-invalid="true" @enderror name="status" class="form-select @error('status') is-invalid @enderror">
-                            <option value="pending" {{ old('status', $payment->status) == 'pending' ? 'selected' : '' }}>Not paid</option>
-                            {{-- A fee is marked paid only with "Record payment…" (method and date); here Paid can only be kept or undone. --}}
+                        <select id="f-status" aria-describedby="f-status-help @error('status') f-status-error @enderror" @error('status') aria-invalid="true" @enderror name="status" class="form-select @error('status') is-invalid @enderror">
                             @if($payment->status === 'paid')
-                            <option value="paid" {{ old('status', $payment->status) == 'paid' ? 'selected' : '' }}>Paid</option>
-                            @endif
+                            {{-- A paid fee stays paid here: undoing a payment is "Cancel payment" (reason, record, the member is told). --}}
+                            <option value="paid" selected>Paid</option>
+                            @else
+                            <option value="pending" {{ old('status', $payment->status) == 'pending' ? 'selected' : '' }}>Not paid</option>
+                            {{-- A fee is marked paid only with "Record payment…" (method and date). --}}
                             <option value="overdue" {{ old('status', $payment->status) == 'overdue' ? 'selected' : '' }}>Not paid (no more reminders)</option>
+                            @endif
                             @if($payment->status === 'pending_verification')
                             <option value="pending_verification" selected>Awaiting verification (set by the member's slip)</option>
                             @endif
                         </select>
-                        @if($absorbedSen)
-                        <div id="f-status-charge" class="alert alert-warning small py-2 mt-2 mb-0" data-testid="revert-charge-warning">
-                            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-                            Gateway charge: when this fee was paid online the club absorbed <strong>RM {{ number_format($absorbedSen / 100, 2) }}</strong>.
-                            Changing the status from Paid takes that charge out of the fund figures; it counts again if you mark the fee paid here by hand.
-                        </div>
+                        @if($payment->status === 'paid')
+                        <div class="form-text" data-testid="use-cancel-payment">To undo this payment, use <a href="{{ route('admin.payments.cancel-form', $payment) }}">Cancel payment…</a>: it asks for a reason, keeps the record and tells the member.</div>
                         @endif
                         @if($payment->status === 'pending_verification')
                         <div class="form-text text-info-emphasis">A transfer slip is waiting. Approve or reject it in <a href="{{ route('admin.clubs.verifications.index', $payment->club) }}">Verifications</a>.</div>
@@ -99,14 +92,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script nonce="{{ $cspNonce }}">
-// Reverting an online-paid fee: confirm, since its absorbed gateway charge leaves the fund figures.
-document.getElementById('paymentEditForm')?.addEventListener('submit', function (e) {
-    const msg = this.dataset.revertWarning;
-    const status = this.querySelector('[name="status"]');
-    if (msg && status && status.value !== 'paid' && !window.confirm(msg)) e.preventDefault();
-});
-</script>
-@endpush

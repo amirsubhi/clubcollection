@@ -68,7 +68,10 @@ class SecurityHardeningTest extends TestCase
         $p = Payment::factory()->forClub($club)->forMember($this->memberOf($club))->create(['status' => 'paid', 'gateway' => 'toyyibpay', 'transaction_id' => 'TXN-KEEP']);
         $p->forceFill(['paid_via' => 'transfer', 'verified_by' => $admin->id, 'verified_at' => now()])->save();
 
+        // A status edit no longer takes it back from paid; "Cancel payment" does.
         $this->put(route('admin.payments.update', $p), $this->editPayload($p, ['status' => 'pending', 'paid_date' => '']))
+            ->assertSessionHasErrors('status');
+        $this->post(route('admin.payments.cancel', $p), ['reason' => 'money_not_received', 'confirm' => '1'])
             ->assertSessionHasNoErrors();
 
         $fresh = $p->fresh();

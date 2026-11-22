@@ -716,12 +716,11 @@ class PayAllTest extends TestCase
     {
         $group = $this->sendGroupSlip();
         $admin = $this->join(User::factory()->create(['role' => 'admin']), $this->club, 'admin');
-        // Fee A paid online mid-check, then the admin reverts it and the member sends a slip for A alone.
+        // Fee A paid online mid-check, then the admin cancels that payment and the member sends a slip for A alone.
         $this->fees[0]->forceFill(['status' => 'paid', 'paid_via' => 'toyyibpay', 'paid_date' => now()->toDateString()])->save();
         $a = $this->fees[0]->fresh();
-        $this->actingAs($admin)->put(route('admin.payments.update', $a), [
-            'amount' => $a->amount, 'due_date' => $a->due_date->toDateString(), 'status' => 'pending', 'original_status' => 'paid',
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('admin.payments.cancel', $a), ['reason' => 'refunded', 'confirm' => '1'])->assertSessionHasNoErrors();
+        $this->assertSame(1, \App\Models\PaymentCancellation::count(), 'only A: the slip set is not paid');
         $this->travel(1)->minutes();
         $this->actingAs($this->member)->post(route('member.payments.transfer', $a), [
             'files' => [UploadedFile::fake()->image('a.png')],
@@ -846,10 +845,11 @@ class PayAllTest extends TestCase
         $f = $this->fees[0]->fresh();
         $this->assertSame($group->id, $f->transferGroup()?->id);
 
-        $this->actingAs($admin)->put(route('admin.payments.update', $f), [
-            'amount' => $f->amount, 'due_date' => $f->due_date->toDateString(), 'status' => 'pending', 'original_status' => 'paid', 'notes' => 'x',
-        ])->assertSessionHasNoErrors();
+        // "Cancel payment" takes back the whole slip set (one receipt), and clears the group link on each fee.
+        $this->actingAs($admin)->post(route('admin.payments.cancel', $f), ['reason' => 'money_not_received', 'confirm' => '1', 'note' => 'x'])
+            ->assertSessionHasNoErrors();
         $this->assertNull($f->fresh()->transfer_group_id);
+        $this->assertSame(['pending', 'pending', 'pending'], $this->statuses());
 
         $this->travel(5)->minutes();
         $this->actingAs($this->member)->post(route('member.payments.transfer', $f), [

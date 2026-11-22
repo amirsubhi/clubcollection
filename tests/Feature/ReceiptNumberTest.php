@@ -322,11 +322,8 @@ class ReceiptNumberTest extends TestCase
         $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertSessionHasNoErrors();
         $this->assertStringContainsString('Receipt RCP-2026-0001.', \App\Models\AuditLog::where('action', 'payment.marked_paid')->sole()->description);
 
-        $this->put(route('admin.payments.update', $fee), [
-            'due_date' => $fee->due_date->toDateString(), 'amount' => '10.00',
-            'status' => 'pending', 'original_status' => 'paid',
-        ])->assertSessionHasNoErrors();
-        $this->assertStringContainsString('Receipt RCP-2026-0001 voided', \App\Models\AuditLog::where('action', 'payment.updated')->latest('id')->first()->description);
+        $this->post(route('admin.payments.cancel', $fee), ['reason' => 'recorded_by_mistake', 'confirm' => '1'])->assertSessionHasNoErrors();
+        $this->assertStringContainsString('Receipt RCP-2026-0001 voided', \App\Models\AuditLog::where('action', 'payment.cancelled')->latest('id')->first()->description);
 
         $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertSessionHasNoErrors();
         $this->delete(route('admin.payments.destroy', $fee->fresh()))->assertSessionHasNoErrors();
@@ -340,12 +337,10 @@ class ReceiptNumberTest extends TestCase
         $this->assertSame('RCP-2026-0001', $fee->receipt_no);
         $this->actingAsClubAdmin($this->club);
 
-        $this->put(route('admin.payments.update', $fee), [
-            'due_date' => $fee->due_date->toDateString(), 'amount' => '10.00',
-            'status' => 'pending', 'original_status' => 'paid',
-        ])->assertSessionHasNoErrors();
+        $this->post(route('admin.payments.cancel', $fee), ['reason' => 'money_not_received', 'confirm' => '1'])->assertSessionHasNoErrors();
 
         $this->assertNull($fee->fresh()->receipt_no, 'no longer a receipt');
+        $this->assertNull($fee->fresh()->issuer_snapshot, 'nor a receipt snapshot');
         $this->assertNotNull($this->links($fee->id)->sole()->voided_at, 'the number is kept, as void');
         $this->assertTrue(DB::table('receipt_allocations')->where('receipt_no', 'RCP-2026-0001')->exists());
 

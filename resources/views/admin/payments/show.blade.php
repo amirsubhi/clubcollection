@@ -153,7 +153,7 @@
                 <h2 class="h6 fw-semibold mb-2">Transfer slips ({{ $slips->count() }})</h2>
                 <ul class="list-unstyled mb-0 small">
                     @foreach($slips as $slip)
-                    @php [$label, $badge] = in_array($slip->id, $currentSlipIds, true) ? $currentLabel : ['Earlier, rejected', 'bg-secondary']; @endphp
+                    @php [$label, $badge] = in_array($slip->id, $currentSlipIds, true) ? $currentLabel : [$cancellations->isNotEmpty() ? 'Earlier (rejected or cancelled)' : 'Earlier, rejected', 'bg-secondary']; @endphp
                     <li class="d-flex align-items-center gap-2 py-1">
                         <i class="bi {{ $slip->mime === 'application/pdf' ? 'bi-file-earmark-pdf' : 'bi-file-earmark-image' }} text-muted"></i>
                         <a href="{{ route('admin.attachments.show', ['attachment' => $slip, 'inline' => 1]) }}" target="_blank" rel="noopener" class="text-truncate">{{ $slip->original_name }}</a>
@@ -163,6 +163,32 @@
                     @endforeach
                 </ul>
                 <div class="form-text">Opening a slip is logged in the audit trail.</div>
+            </div>
+            @endif
+            @if($cancellations->isNotEmpty())
+            <div class="card-body border-top px-4 py-3" id="cancellations" data-testid="cancellations">
+                <h2 class="h6 fw-semibold mb-2">Cancelled payments ({{ $cancellations->count() }})</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm small mb-0">
+                        <thead>
+                            <tr><th scope="col">Cancelled</th><th scope="col">By</th><th scope="col">Receipt no.</th><th scope="col">Paid</th><th scope="col">Reason</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach($cancellations as $c)
+                            <tr>
+                                <td class="text-nowrap">{{ $c->created_at?->format('d M Y, g:i a') }}</td>
+                                <td>{{ $c->cancelledBy?->name ?? '—' }}</td>
+                                <td class="font-monospace">{{ $c->receipt_no ?? \App\Models\Payment::legacyReceiptNumber((int) $c->payment_id) }}</td>
+                                <td class="text-nowrap">RM {{ number_format($c->amount_sen / 100, 2) }}{{ $c->paid_date ? ' on '.$c->paid_date->format('d M Y') : '' }}{{ $c->transaction_id ? ' · txn '.$c->transaction_id : '' }}</td>
+                                <td>
+                                    {{ \App\Services\Payments\PaymentCancellationService::REASON_LABELS[$c->reason_code] ?? $c->reason_code }}
+                                    @if($c->note)<div class="text-body-secondary" style="white-space: pre-line">{{ $c->note }}</div>@endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
             @endif
             <div class="card-footer d-flex flex-wrap gap-2">
@@ -176,6 +202,11 @@
                 <a href="{{ route('admin.payments.edit', $payment) }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-pencil me-1"></i>Edit
                 </a>
+                @if($canCancel)
+                <a href="{{ route('admin.payments.cancel-form', $payment) }}" class="btn btn-outline-danger btn-sm" data-testid="cancel-payment">
+                    <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel payment…
+                </a>
+                @endif
                 <a href="{{ route('admin.clubs.payments.index', $payment->club) }}" class="btn btn-outline-secondary btn-sm ms-auto">
                     Back to List
                 </a>

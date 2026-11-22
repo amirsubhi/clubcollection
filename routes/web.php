@@ -206,6 +206,9 @@ Route::middleware('check_installed')->group(function () {
 
             Route::resource('clubs.payments', PaymentController::class)->shallow();
             Route::patch('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid'])->name('payments.mark-paid');
+            // "Cancel payment" (PaymentCancellationService): a paid fee, or the set it was paid with, back to unpaid with a reason.
+            Route::get('payments/{payment}/cancel', [PaymentController::class, 'cancelForm'])->name('payments.cancel-form');
+            Route::post('payments/{payment}/cancel', [PaymentController::class, 'cancel'])->middleware('throttle:10,1')->name('payments.cancel');
 
             // ── Fund Usage (expenses + welfare, maker-checker) ─────────────
             Route::get('clubs/{club}/fund-usage', [FundUsageController::class, 'index'])->name('clubs.fund-usage.index');
