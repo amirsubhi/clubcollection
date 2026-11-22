@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentBill;
+use App\Models\PaymentCancellation;
 use App\Services\AuditService;
 use App\Services\PaymentGateways\PaymentGatewayManager;
 use App\Support\Payments\GatewayConfirmation;
@@ -118,8 +119,11 @@ class SettlementService
             return false;
         }
 
+        // A payment an admin cancelled ("Cancel payment") stays used for good, even once the fee no longer
+        // carries it (paid again, or recorded by hand, which clears payments.transaction_id).
         return Payment::where('transaction_id', $txn)->exists()
-            || PaymentBill::where('gateway', $result->gateway)->where('transaction_id', $txn)->exists();
+            || PaymentBill::where('gateway', $result->gateway)->where('transaction_id', $txn)->exists()
+            || PaymentCancellation::where('gateway', $result->gateway)->where('transaction_id', $txn)->exists();
     }
 
     // ── Settling ─────────────────────────────────────────────────────────

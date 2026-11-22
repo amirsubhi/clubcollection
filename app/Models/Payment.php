@@ -246,6 +246,12 @@ class Payment extends Model
         return $this->hasMany(PaymentBill::class);
     }
 
+    /** "Cancel payment" records for this fee (PaymentCancellationService), newest first. */
+    public function cancellations()
+    {
+        return $this->hasMany(PaymentCancellation::class)->orderByDesc('id');
+    }
+
     public function club()
     {
         return $this->belongsTo(Club::class);
