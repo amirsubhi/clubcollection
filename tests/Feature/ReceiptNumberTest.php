@@ -187,15 +187,42 @@ class ReceiptNumberTest extends TestCase
         $this->assertSame('RCP-2027-0001', $this->pay($this->fee(club: $cal))->receipt_no);
     }
 
-    public function test_the_year_is_the_one_the_number_is_issued_in_not_a_backdated_paid_date(): void
+    public function test_the_year_is_the_one_the_money_was_paid_in_and_never_changes_afterwards(): void
     {
         $this->club->forceFill(['financial_year_start_month' => 7])->save();
         Carbon::setTestNow('2026-07-02 10:00:00');
         $fee = $this->fee();
 
+        // Recorded on 2 July for money received on 28 June: the receipt belongs to the year ending 30 June.
         $fee->update(['status' => 'paid', 'paid_date' => '2026-06-28']);
+        $this->assertSame('RCP-2025-0001', $fee->fresh()->receipt_no);
 
-        $this->assertSame('RCP-2026-0001', $fee->fresh()->receipt_no);
+        // The number is fixed at issue: correcting the paid date later never renumbers it.
+        $fee->fresh()->update(['paid_date' => '2026-07-01']);
+        $this->assertSame('RCP-2025-0001', $fee->fresh()->receipt_no);
+
+        // Today's payment takes the new year's sequence.
+        $this->assertSame('RCP-2026-0001', $this->pay($this->fee())->fresh()->receipt_no);
+    }
+
+    public function test_a_slip_sent_before_the_year_end_and_approved_after_is_numbered_in_the_year_it_was_paid(): void
+    {
+        $this->club->forceFill(['financial_year_start_month' => 7])->save();
+        $fees = [$this->fee(), $this->fee(['amount' => 20.00])];
+        $admin = $this->join(User::factory()->create(['role' => 'admin']), 'admin');
+        Carbon::setTestNow('2026-06-28 09:00:00');
+        $this->actingAs($this->member)->post(route('member.payments.transfer-all', $this->club), [
+            'payment_ids' => [$fees[0]->id, $fees[1]->id], 'total_sen' => 3000,
+            'files' => [UploadedFile::fake()->image('slip.png', 600, 800)],
+            'transfer_date' => '2026-06-28',
+        ])->assertSessionHasNoErrors();
+
+        Carbon::setTestNow('2026-07-02 10:00:00');
+        $this->actingAs($admin)->post(route('admin.verifications.approve', $fees[0]), ['paid_date' => '2026-06-28'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('RCP-2025-0001', $fees[0]->fresh()->receipt_no);
+        $this->assertSame('RCP-2025-0001', $fees[1]->fresh()->receipt_no);
     }
 
     public function test_numbers_past_9999_keep_counting(): void
@@ -286,6 +313,26 @@ class ReceiptNumberTest extends TestCase
     }
 
     // ── Never reused ────────────────────────────────────────────────────
+
+    public function test_the_audit_log_names_the_receipt_number_issued_voided_and_deleted(): void
+    {
+        $fee = $this->fee();
+        $this->actingAsClubAdmin($this->club);
+
+        $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertSessionHasNoErrors();
+        $this->assertStringContainsString('Receipt RCP-2026-0001.', \App\Models\AuditLog::where('action', 'payment.marked_paid')->sole()->description);
+
+        $this->put(route('admin.payments.update', $fee), [
+            'due_date' => $fee->due_date->toDateString(), 'amount' => '10.00',
+            'status' => 'pending', 'original_status' => 'paid',
+        ])->assertSessionHasNoErrors();
+        $this->assertStringContainsString('Receipt RCP-2026-0001 voided', \App\Models\AuditLog::where('action', 'payment.updated')->latest('id')->first()->description);
+
+        $this->patch(route('admin.payments.mark-paid', $fee), $this->recordPayment())->assertSessionHasNoErrors();
+        $this->delete(route('admin.payments.destroy', $fee->fresh()))->assertSessionHasNoErrors();
+        $this->assertStringContainsString('Receipt RCP-2026-0002 voided', \App\Models\AuditLog::where('action', 'payment.deleted')->sole()->description);
+    }
+
 
     public function test_a_fee_taken_back_from_paid_keeps_its_number_as_void_and_gets_a_new_one_when_paid_again(): void
     {

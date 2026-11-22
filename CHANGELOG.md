@@ -19,7 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added (settings phase 2: receipts and privacy)
 - **Receipt numbers per club**: `{PREFIX}-{FY start year}-{NNNN}` (e.g. `RCP-2026-0001`), a sequence per club and
-  financial year (`clubs.financial_year_start_month`; the year the number is issued in), issued when a fee becomes
+  financial year (`clubs.financial_year_start_month`; the year the money was paid in, fixed at issue), issued when a fee becomes
   paid. The prefix (default `RCP`, 2–6 of A–Z / 0–9) is set on the Club profile and applies to later receipts only.
   A "Bayar semua" bill or slip is one receipt with one number shared by its fees (stored on the bill and on each fee).
   Numbers are **never reused** (not gap-free): a fee taken back from paid keeps its number recorded as void and gets

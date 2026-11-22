@@ -285,7 +285,7 @@ class SettlementService
             AuditService::log(
                 'payment.paid_via_webhook',
                 "Payment #{$payment->id} marked paid via {$label}{$billNote} (txn: ".
-                    ($result->transactionId ?? 'n/a').').',
+                    ($result->transactionId ?? 'n/a').'). Receipt '.($payment->receipt_no ?? 'n/a').'.',
                 $payment,
                 $payment->club_id,
                 ['status' => $oldStatus],
@@ -423,7 +423,7 @@ class SettlementService
 
                 AuditService::log(
                     'payment.paid_via_webhook',
-                    "Payment #{$payment->id} marked paid via {$label} with group bill {$bill->bill_code}{$note} ({$fees->count()} fees, RM ".number_format($bill->amount_sen / 100, 2)."; txn: {$txn}).",
+                    "Payment #{$payment->id} marked paid via {$label} with group bill {$bill->bill_code}{$note} ({$fees->count()} fees, RM ".number_format($bill->amount_sen / 100, 2)."; txn: {$txn}). Receipt {$receipt['receipt_no']} (shared by the set).",
                     $payment,
                     $payment->club_id,
                     ['status' => $oldStatus],

@@ -113,7 +113,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   club's receipt footer (`clubs.receipt_footer`, plain text, max 300) is in the snapshot; an older snapshot without a
   `footer` key shows none. Render it escaped (`whitespace-pre-line` in React, `nl2br(e())` in Blade).
 - **Receipt numbers**: `{PREFIX}-{FY start year}-{NNNN}` from `App\Support\Payments\ReceiptNumbers::allocate()`,
-  per club and financial year (the year it is issued in, `now()`), prefix `clubs.receipt_prefix` (read at issue time).
+  per club and financial year (the year of the paid date, fixed at issue; `ReceiptNumbers::allocate(..., $paidOn)`), prefix `clubs.receipt_prefix` (read at issue time).
   One fee: `Payment::booted()` saving hook, when it becomes paid and `receipt_no` is null (next to the snapshot). A
   group bill / slip: `SettlementService::markGroupPaid()` and `TransferVerificationService::approveGroup()` allocate
   once with the bill id and set `receipt_no` + `receiptAllocationId` on each fee **before** saving it (so the hook

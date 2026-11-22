@@ -221,7 +221,7 @@ class TransferVerificationService
 
             AuditService::log(
                 'payment.transfer_approved',
-                "Payment #{$payment->id}: transfer slip approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}).",
+                "Payment #{$payment->id}: transfer slip approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}). Receipt ".($payment->receipt_no ?? 'n/a').'.',
                 $payment,
                 $payment->club_id,
                 $old,
@@ -313,7 +313,7 @@ class TransferVerificationService
             // One slip, one receipt: one number for the fees approved, taken after the group and fee locks
             // (CLAUDE.MD "Lock order"; later locks are only rows reached through these fees), kept on the group
             // and on every fee.
-            $receipt = ReceiptNumbers::allocate(Club::findOrFail($group->club_id), $group->id);
+            $receipt = ReceiptNumbers::allocate(Club::findOrFail($group->club_id), $group->id, $date);
             foreach ($fees as $payment) {
                 // The shared number, set before the save so the Payment hook doesn't issue one of its own.
                 $payment->receipt_no = $receipt['receipt_no'];
@@ -333,7 +333,7 @@ class TransferVerificationService
 
                 AuditService::log(
                     'payment.transfer_approved',
-                    "Payment #{$payment->id}: transfer slip {$group->reference} ({$fees->count()} fees, {$total}) approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}).",
+                    "Payment #{$payment->id}: transfer slip {$group->reference} ({$fees->count()} fees, {$total}) approved; marked paid (RM {$payment->amount}, paid {$payment->paid_date->toDateString()}). Receipt {$receipt['receipt_no']} (shared by the set).",
                     $payment,
                     $payment->club_id,
                     $old,

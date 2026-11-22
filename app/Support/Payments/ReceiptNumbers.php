@@ -47,9 +47,12 @@ final class ReceiptNumbers
      *
      * @return array{id: int, receipt_no: string}
      */
-    public static function allocate(Club $club, ?int $paymentBillId = null): array
+    public static function allocate(Club $club, ?int $paymentBillId = null, \DateTimeInterface|string|null $paidOn = null): array
     {
-        $fy = self::financialYear($club);
+        // The financial year of the day the money was paid (the date on the receipt and in the ledger), so a
+        // slip sent on 28 June and approved on 2 July is numbered in the year it was paid. Fixed at issue: a later
+        // edit of the paid date never renumbers.
+        $fy = self::financialYear($club, $paidOn);
         $prefix = self::prefix($club);
 
         return DB::transaction(function () use ($club, $fy, $prefix, $paymentBillId) {
@@ -132,8 +135,10 @@ final class ReceiptNumbers
     }
 
     /** The year the club's current financial year started in (today, app timezone). */
-    public static function financialYear(Club $club): int
+    public static function financialYear(Club $club, \DateTimeInterface|string|null $paidOn = null): int
     {
-        return FundFigures::financialYearStart(Carbon::now(), $club)->year;
+        $day = $paidOn === null || $paidOn === '' ? Carbon::now() : Carbon::parse($paidOn);
+
+        return FundFigures::financialYearStart($day, $club)->year;
     }
 }

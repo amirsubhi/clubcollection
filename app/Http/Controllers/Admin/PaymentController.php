@@ -283,6 +283,7 @@ class PaymentController extends Controller
             }
 
             $old = $payment->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference', 'paid_via', 'gateway', 'verified_by']);
+            $receiptBefore = $payment->receipt_no;
             $payment->fill($data);
             // No longer paid: how and by whom it was settled no longer applies.
             if ($old['status'] === 'paid' && $data['status'] !== 'paid') {
@@ -297,7 +298,8 @@ class PaymentController extends Controller
 
             AuditService::log(
                 'payment.updated',
-                "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']}).",
+                "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']})."
+                    .($receiptBefore !== null && $payment->receipt_no === null ? " Receipt {$receiptBefore} voided (the number is never reused)." : ''),
                 $payment,
                 $payment->club_id,
                 $old,
@@ -397,7 +399,8 @@ class PaymentController extends Controller
                 'payment.marked_paid',
                 "Payment #{$locked->id} recorded as paid by {$label} on {$data['paid_date']}"
                     .($reference ? " (ref: {$reference})" : '')
-                    .($processing ? '; the admin confirmed an open FPX payment did not go through' : '').'.',
+                    .($processing ? '; the admin confirmed an open FPX payment did not go through' : '')
+                    .'. Receipt '.($locked->receipt_no ?? 'n/a').'.',
                 $locked,
                 $locked->club_id,
                 $old,
@@ -419,7 +422,8 @@ class PaymentController extends Controller
         $this->authorizeClubAdmin($payment->club);
         $club    = $payment->club;
         $clubId  = $club->id;
-        $summary = "Payment #{$payment->id} (RM {$payment->amount}, {$payment->status}) deleted.";
+        $summary = "Payment #{$payment->id} (RM {$payment->amount}, {$payment->status}) deleted."
+            .($payment->receipt_no !== null ? " Receipt {$payment->receipt_no} voided (the number is never reused)." : '');
         $old     = $payment->only(['status', 'amount', 'period_start', 'period_end', 'user_id']);
         if ($own = OwnFeeRule::blocker($payment, request()->user(), 'delete it')) {
             return back()->with('error', $own);

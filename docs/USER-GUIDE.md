@@ -275,12 +275,18 @@ files are kept on the server for that reason.
 
 Every receipt gets a number of its own club when the fee is marked paid (online, slip approved, or recorded by
 hand): **PREFIX-YEAR-NNNN**, e.g. **RCP-2026-0001**. YEAR is the year the club's financial year started (with a
-July start, a receipt issued on 30 June 2026 is RCP-2025-…, one issued on 1 July 2026 starts RCP-2026-0001). The
-running number starts again at 0001 each financial year and is counted per club; it is the date the receipt is
-issued that counts, not a backdated "date received".
+July start, money paid on 30 June 2026 is RCP-2025-…, money paid on 1 July 2026 starts RCP-2026-0001). The
+running number starts again at 0001 each financial year and is counted per club. The year is the one the money was
+**paid** in (the "date received" on the receipt and in the Ledger), not the day it was approved: a slip sent on
+28 June and approved on 2 July is numbered in the year that ended on 30 June. So a late approval or a backdated
+"Record payment…" can still add a number to the previous year. The number is fixed once issued: correcting the
+date received later does not renumber it.
 
 - **One payment, one number**: a "Bayar semua" FPX bill or transfer slip is one receipt, so all its fees share one
-  number; each fee is listed on it with its invoice number.
+  number; each fee is listed on it with its invoice number. Each fee's own receipt page says it is part of that
+  receipt (how many fees, the total) and links to it; sharing from there sends the whole receipt.
+- **Audit Log**: every fee marked paid names its receipt number, and setting a paid fee back or deleting it names the
+  number that became void, so every gap in the sequence can be explained.
 - **Never reused**: a fee taken back from paid (status changed on the payment's Edit page) loses its receipt number,
   which stays recorded as void (shown on the payment page as "Earlier receipt no."); when the fee is paid again it
   gets a new number. The numbers are therefore never reused, but they are **not guaranteed gap-free**.

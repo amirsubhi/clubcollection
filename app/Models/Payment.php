@@ -86,7 +86,7 @@ class Payment extends Model
                 $club ??= Club::find($payment->club_id);
                 if ($club !== null) {
                     // Inside the caller's transaction, after its own row locks (CLAUDE.MD "Lock order").
-                    $receipt = ReceiptNumbers::allocate($club);
+                    $receipt = ReceiptNumbers::allocate($club, null, $payment->paid_date);
                     $payment->receipt_no = $receipt['receipt_no'];
                     $payment->receiptAllocationId = $receipt['id'];
                 }

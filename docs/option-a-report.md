@@ -597,7 +597,7 @@ rename, portal name, teal preset, icons (200 image/png), receipt `KSU-2026-0001`
 - The race harness drives gateway settlement only: slip approval and a revert racing a settlement were not run
   concurrently on MariaDB / MySQL.
 - Still lavender: charts, emails, the ledger PDF, `offline.html`; the manifest `background_color` is shared.
-- The receipt number's financial year follows the issue (approval) date, not the paid date.
+- ✅ Receipt year follows the paid date (owner's call, 22 Nov); the audit log names issued and voided numbers.
 - One club admin alone can change what receipts print (name, registration no., prefix, footer): audited, no second
   approval. Deleting a paid fee voids its number; refusing the delete would be stricter.
 - A receipt-number sequence starts at 0001 when this ships; fees paid before keep `RCP-{id}` / `RCP-G{id}`.

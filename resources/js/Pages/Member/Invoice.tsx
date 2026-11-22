@@ -60,7 +60,14 @@ export default function Invoice({ payment, receipt, issuedOn, discount, member, 
             items: [{ id: payment.id, description: feeLabel(payment), amount: payment.amount }],
           }}
         />
-        <ReceiptActions receiptNo={receipt.receiptNo} amount={receipt.amount} paidAt={receipt.paidAt} clubName={payClub.name} url={payment.urls.invoice} />
+        {/* A fee paid in a set: sharing sends the set's receipt (its total and link), never this fee's amount under the shared number. */}
+        <ReceiptActions
+          receiptNo={receipt.receiptNo}
+          amount={receipt.partOf?.amount ?? receipt.amount}
+          paidAt={receipt.paidAt}
+          clubName={payClub.name}
+          url={receipt.partOf?.url ?? payment.urls.invoice}
+        />
         <HelpLine club={payClub} fee={payment} reference={receipt.receiptNo} />
       </MemberShell>
     );
