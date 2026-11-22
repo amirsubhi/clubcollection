@@ -25,8 +25,7 @@ class LoginProtectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Many sign-ins here: skip the guard's 200 ms timebox on failed attempts to keep the run quick.
-        config(['auth.timebox_duration' => 0]);
+        // Many sign-ins here: phpunit.xml already shortens the failed-sign-in floor (AUTH_TIMEBOX_MICROSECONDS).
     }
 
     private function attempt(string $email, string $password, string $ip = '10.0.0.1')
