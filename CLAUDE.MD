@@ -25,7 +25,7 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
     2FA challenge and password pages.
   - **Blade + Bootstrap 5 from jsDelivr** for the installer and the remaining admin pages
-    (members, payments, fee rates, discounts, categories, billing settings, ledger, audit logs, clubs, admins,
+    (members, payments, fee rates, job levels, discounts, categories, billing settings, ledger, audit logs, clubs, admins,
     statistics, classic dashboard). Use Bootstrap classes there, Tailwind only in the React pages.
 - `pragmarx/google2fa`, `barryvdh/laravel-dompdf`, Recharts (React), Chart.js (Blade, CDN).
 
@@ -33,12 +33,12 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
 
 ```
 app/Contracts/                 PaymentGateway, ConfirmsWebhookPayments
-app/Http/Controllers/Admin/    Club, ClubBilling, Member, FeeRate, Payment, FundUsage, Attachment,
+app/Http/Controllers/Admin/    Club, ClubBilling, Member, FeeRate, JobLevel, Payment, FundUsage, Attachment,
                                TransferVerification, Dashboard, Ledger, Statistics, AuditLog, AdminUser, Profile, ...
 app/Http/Controllers/Member/   Dashboard, Payment (review, pay, status, transfer, slip, invoice, generateFuture)
 app/Http/Controllers/          InstallController, WebhookController, HomeController, Auth/*
 app/Models/                    User, Club, Payment, PaymentBill, Expense, WelfareCase, Attachment, FeeRate,
-                               Discount, ExpenseCategory, AuditLog
+                               Discount, ExpenseCategory, AuditLog, ClubJobLevel
 app/Services/                  AuditService, AttachmentService, FundUsageService, TransferVerificationService,
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
 app/Support/                   presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
@@ -79,6 +79,12 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   (request + confirm by another admin), bank/DuitNow detail changes (`BankDetailsChangeService`), and `OwnFeeRule`
   (a club admin can't settle, verify or edit their own fee; super admin exempt). Only the super admin grants the club-admin role.
 - **Counted totals**: only `approved` expenses count (`Expense::scopeCounted`); money is summed in sen.
+- **Job levels are per club** (`club_job_levels`, `ClubJobLevel`, `Club::jobLevels()`): `club_user.job_level` and
+  `fee_rates.job_level` hold the level's stable `code` (slugged once from the first name, never changed); show the
+  `name` with `$club->jobLevelName($code)` (falls back to the code). Validate input with
+  `Rule::in(array_keys($club->activeJobLevelNames()))`; display lists use `jobLevelNames()` (inactive included). A level
+  in use can only be deactivated. New clubs get one level (`createDefaultJobLevel()`: `member` / "Ahli"); factory
+  clubs get `executive` and `manager` (`ClubFactory::withJobLevels()` to change). Never hard-code a level list.
 - **Attachments**: encrypted with `Crypt` on the private `local` disk (`serve => false`), served only via
   `admin.attachments.show` (audited) / `thumb` (not audited) or the member's own slip route. Locked once submitted.
 - **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and

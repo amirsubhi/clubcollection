@@ -16,6 +16,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Front end:** Inertia 2 + React 18 + TypeScript + Tailwind 3, built with Vite (`npm run build`; the server
   never needs Node). Light and dark themes; member pages in Bahasa Melayu by default with an English toggle.
   The installer and the remaining admin pages are still Blade + Bootstrap.
+- **Job levels per club:** each club defines its own job levels (tahap jawatan) on a new **Job levels** page (add,
+  rename, reorder, deactivate / reactivate, delete while unused; all audited) instead of the fixed GM / AGM / Manager /
+  Executive / Non-Executive list, which also clashed with "AGM" (Annual General Meeting) in the ledger. A new club
+  starts with one level, "Ahli". Existing clubs keep the five old levels (migration backfill), so nothing changes for
+  them until an admin edits them. Members, fee rates and the CSV import (level by code or name, any case) use the
+  club's active levels; a deactivated level stays on the members already on it. `club_user.job_level` and
+  `fee_rates.job_level` are now VARCHAR(40).
 - **Front page:** `/` is now the sign-in page itself (no redirect), with a "New member? How to join" section
   (no self sign-up: contact your club admin, linked when there is one active club) and a show/hide password button.
 - **Member app:** Home (amount due, upcoming and recent fees, club-wide "where your money goes" totals), Payments by
