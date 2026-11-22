@@ -17,6 +17,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (among them CRLF / header injection in the `email` rule and `symfony/mime`, which the password-reset mail used).
   CI now fails on a locked package with a known advisory (`composer audit`) or a high npm advisory in shipped code.
 
+### Added (cancel payment)
+- **Cancel payment** ("Batalkan bayaran", `PaymentCancellationService`): on a paid fee's admin page, **Cancel
+  payment…** opens a form with a reason that fits how it was paid (checked slip: not genuine, money not received,
+  recorded by mistake, other; recorded by hand: money not received, recorded by mistake, other; online FPX: refunded,
+  other), an optional internal note (500 characters) and a confirmation. `POST /admin/payments/{payment}/cancel`
+  (club admins of the fee's club and the super admin; never an admin's own fee; `throttle:10,1`). The fee goes back
+  to unpaid in one transaction under the settlement lock order; its receipt number is voided (never reused) and the
+  issuer snapshot cleared; a "Bayar semua" bill or slip is cancelled as one set (every fee still carrying its receipt
+  number). `payments.transaction_id` and the bill's transaction and paid time are kept, and the new table
+  `payment_cancellations` (additive migration) records every cancelled payment (receipt number, amount, paid date,
+  method, gateway transaction, bank references, set, issuer snapshot, reason, note, who, when), so a replayed gateway
+  callback never marks the fee paid again. A single FPX bill that settled a fee once never settles it again (a late
+  callback of the cancelled payment under another transaction id, e.g. after a status-check settlement, is ignored;
+  flagged for a refund only when the gateway lists a second successful payment). One `payment.cancelled` audit row per fee; one email per cancel to the
+  member (`PaymentCancelled`, BM and EN, neutral wording per reason; the note is never sent). The admin payment page
+  lists the cancellations.
+- Member pages: an unpaid fee whose payment was cancelled shows "Resit {no} telah dibatalkan pada {date}. … Yuran
+  ini belum dibayar." above the invoice; once paid again its receipt notes the earlier, cancelled number. A cancelled
+  "Bayar semua" result page shows "Resit {no} dibatalkan" instead of a receipt. The old FPX return page of a
+  cancelled payment leads to the fee page.
+- An online payment made while the fee's own slip, or its set's slip, was still being checked: cancelling it puts
+  the fee back to awaiting verification on that slip (email and banner say the slip is still being checked).
+
+### Changed (cancel payment)
+- The payment **Edit** page no longer takes a fee back from Paid: the server refuses a status change of a paid fee
+  ("To undo a payment, use Cancel payment…") and the dropdown offers only Paid for it. The gateway-charge warning
+  moved to the cancel form. A cancelled fee leaves the income of its paid date, so cancelling a payment dated in an
+  earlier financial year changes that year's totals (the form warns; the audit log is the trail).
+
 ### Added (settings phase 2: receipts and privacy)
 - **Receipt numbers per club**: `{PREFIX}-{FY start year}-{NNNN}` (e.g. `RCP-2026-0001`), a sequence per club and
   financial year (`clubs.financial_year_start_month`; the year the money was paid in, fixed at issue), issued when a fee becomes

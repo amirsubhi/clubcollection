@@ -54,6 +54,9 @@ Billplz sandbox run on your own host.
 - **Payment verifications**: check members' transfer slips against the bank statement, approve (the member gets the
   receipt by email) or reject with a reason (the member is emailed and can send a new slip). A "Bayar semua" slip is
   approved or rejected as one set.
+- **Cancel payment** ("Batalkan bayaran"): take back a payment that turned out bad (fake slip, money never arrived,
+  recorded by mistake, refunded online) with a reason that fits how it was paid. The receipt number becomes void,
+  the member is emailed, a set paid together is cancelled together, and everything stays on record.
 - **Club profile**: the club's name, logo, contact email, registration no. (ROS/PPM), address and the month its
   financial year starts ("this year" on the dashboard, Fund Usage, ledger and member pages then runs from that
   month), and an optional receipt footer. Logos are PNG / JPEG / WebP only, re-encoded on the server.

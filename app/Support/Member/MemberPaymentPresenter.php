@@ -5,6 +5,7 @@ namespace App\Support\Member;
 use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentBill;
+use App\Models\PaymentCancellation;
 use App\Services\LogoService;
 use App\Support\Payments\DisplayStatus;
 use Illuminate\Support\Collection;
@@ -194,6 +195,42 @@ final class MemberPaymentPresenter
             'amount' => (int) $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount)),
             'count' => $fees->count(),
             'url' => route('member.payments.group-result', $bill),
+        ];
+    }
+
+    /**
+     * The fee's latest "Cancel payment" (PaymentCancellationService), for the member: the receipt number that was
+     * cancelled, when, and the reason code (the page words it; the admin's note and name are never sent).
+     *
+     * @return array{receiptNo: string, cancelledOn: string, reason: string}|null
+     */
+    public static function cancellation(Payment $payment): ?array
+    {
+        $c = PaymentCancellation::query()->where('payment_id', $payment->id)->orderByDesc('id')->first();
+
+        return $c ? self::cancellationProps($c) : null;
+    }
+
+    /**
+     * The cancellation of a "Bayar semua" bill or slip's receipt (its fees share one event), or null.
+     *
+     * @return array{receiptNo: string, cancelledOn: string, reason: string}|null
+     */
+    public static function groupCancellation(PaymentBill $bill): ?array
+    {
+        $c = PaymentCancellation::query()->where('payment_bill_id', $bill->id)->where('club_id', $bill->club_id)
+            ->orderByDesc('id')->first();
+
+        return $c ? self::cancellationProps($c, self::groupReceiptNo($bill)) : null;
+    }
+
+    /** @return array{receiptNo: string, cancelledOn: string, reason: string} */
+    private static function cancellationProps(PaymentCancellation $c, ?string $fallbackNo = null): array
+    {
+        return [
+            'receiptNo' => $c->receipt_no ?? $fallbackNo ?? Payment::legacyReceiptNumber((int) $c->payment_id),
+            'cancelledOn' => ($c->created_at ?? now())->toDateString(),
+            'reason' => $c->reason_code,
         ];
     }
 

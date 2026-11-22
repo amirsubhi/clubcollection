@@ -425,6 +425,26 @@ const dict = {
     en: "This fee is part of receipt {no}: {n} fees, {total} in total.",
   },
   receiptPartOfLink: { bm: "Lihat resit penuh", en: "See the full receipt" },
+  /** "Cancel payment" (an admin took a paid fee back): {no} receipt no., {date} when, {why} cancelReason_* below. */
+  cancelledBanner: {
+    bm: "Resit {no} telah dibatalkan pada {date}. {why}. Yuran ini belum dibayar.",
+    en: "Receipt {no} was cancelled on {date}. {why}. This fee is unpaid.",
+  },
+  cancelledBannerVerifying: {
+    bm: "Resit {no} telah dibatalkan pada {date}. {why}. Slip pindahan anda masih disemak; jangan bayar sekali lagi.",
+    en: "Receipt {no} was cancelled on {date}. {why}. Your transfer slip is still being checked; don't pay again.",
+  },
+  cancelledTitle: { bm: "Resit {no} dibatalkan", en: "Receipt {no} cancelled" },
+  cancelledSetBody: {
+    bm: "Dibatalkan pada {date}. {why}. Yuran di bawah belum dibayar; anda boleh membayarnya semula.",
+    en: "Cancelled on {date}. {why}. The fees below are unpaid; you can pay them again.",
+  },
+  cancelledEarlier: { bm: "Resit terdahulu {no} dibatalkan.", en: "Earlier receipt {no} was cancelled." },
+  cancelReason_slip_not_genuine: { bm: "Kami tidak dapat mengesahkan bayaran ini", en: "We could not confirm this payment" },
+  cancelReason_money_not_received: { bm: "Kami tidak dapat mengesahkan bayaran ini", en: "We could not confirm this payment" },
+  cancelReason_recorded_by_mistake: { bm: "Bayaran ini telah direkodkan secara tersilap", en: "This payment was recorded by mistake" },
+  cancelReason_refunded: { bm: "Bayaran ini telah dikembalikan kepada anda", en: "This payment was refunded to you" },
+  cancelReason_other: { bm: "Hubungi bendahari kelab untuk maklumat lanjut", en: "Contact the club treasurer for details" },
   flash_2fa_disable_locked: {
     bm: "Terlalu banyak kod salah. Cuba lagi dalam 15 minit.",
     en: "Too many wrong codes. Try again in 15 minutes.",

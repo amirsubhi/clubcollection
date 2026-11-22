@@ -8,6 +8,7 @@ use App\Models\Club;
 use App\Models\Discount;
 use App\Models\Payment;
 use App\Services\AuditService;
+use App\Services\Payments\PaymentCancellationService;
 use App\Support\Payments\DisplayStatus;
 use App\Support\Payments\OwnFeeRule;
 use Carbon\Carbon;
@@ -193,7 +194,11 @@ class PaymentController extends Controller
                 ->sortByDesc('id')->values();
         }
 
-        return view('admin.payments.show', compact('payment', 'slips', 'currentSlipIds', 'refundFlags'));
+        // "Cancel payment" history: what was cancelled, when, by whom and why (the note is internal).
+        $cancellations = $payment->cancellations()->with('cancelledBy:id,name')->get();
+        $canCancel = $payment->status === 'paid' && PaymentCancellationService::blocker($payment, request()->user()) === null;
+
+        return view('admin.payments.show', compact('payment', 'slips', 'currentSlipIds', 'refundFlags', 'cancellations', 'canCancel'));
     }
 
     public function edit(Payment $payment)
@@ -244,6 +249,11 @@ class PaymentController extends Controller
                 return $refuse("This payment changed since you opened the form (it is now \"{$payment->status}\"). Reload the page and make your change again.");
             }
 
+            // Undoing a payment is "Cancel payment" only (reason, record, the member is told), never a status edit.
+            if ($payment->status === 'paid' && $data['status'] !== 'paid') {
+                return $refuse(self::USE_CANCEL_MESSAGE);
+            }
+
             $verifying = $payment->status === 'pending_verification';
             if (($data['status'] === 'pending_verification') !== $verifying) {
                 return $refuse($verifying
@@ -283,23 +293,12 @@ class PaymentController extends Controller
             }
 
             $old = $payment->only(['status', 'amount', 'due_date', 'paid_date', 'notes', 'reference', 'paid_via', 'gateway', 'verified_by']);
-            $receiptBefore = $payment->receipt_no;
             $payment->fill($data);
-            // No longer paid: how and by whom it was settled no longer applies.
-            if ($old['status'] === 'paid' && $data['status'] !== 'paid') {
-                // ...nor does a group slip it was settled with.
-                // The slip fields too: a later "Record payment…" by transfer must read as recorded by hand (refund flags).
-                $payment->forceFill([
-                    'paid_via' => null, 'gateway' => null, 'verified_by' => null, 'verified_at' => null, 'transfer_group_id' => null,
-                    'transfer_submitted_at' => null, 'transfer_bank_ref' => null, 'transfer_ref' => null,
-                ]);
-            }
             $payment->save();
 
             AuditService::log(
                 'payment.updated',
-                "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']})."
-                    .($receiptBefore !== null && $payment->receipt_no === null ? " Receipt {$receiptBefore} voided (the number is never reused)." : ''),
+                "Payment #{$payment->id} updated (status: {$old['status']} → {$data['status']}).",
                 $payment,
                 $payment->club_id,
                 $old,
@@ -314,6 +313,57 @@ class PaymentController extends Controller
 
         return redirect()->route('admin.payments.show', $payment)
             ->with('success', 'Payment updated.');
+    }
+
+    /** update() refuses taking a fee back from paid: that is "Cancel payment". */
+    public const USE_CANCEL_MESSAGE = 'To undo a payment, use Cancel payment: it asks for a reason and tells the member.';
+
+    /**
+     * "Cancel payment": the form. Shows how the fee was paid, the reasons that fit, and, for a fee paid in a set,
+     * every fee that will be cancelled with it and their total.
+     */
+    public function cancelForm(Payment $payment)
+    {
+        $this->authorizeClubAdmin($payment->club);
+        if ($payment->status !== 'paid') {
+            return redirect()->route('admin.payments.show', $payment)->with('error', 'This payment is not paid, so there is nothing to cancel.');
+        }
+        if ($own = PaymentCancellationService::blocker($payment, request()->user())) {
+            return redirect()->route('admin.payments.show', $payment)->with('error', $own);
+        }
+        $payment->load(['user', 'club']);
+        [$set, $fees] = PaymentCancellationService::scope($payment);
+        $method = PaymentCancellationService::paidMethod($payment);
+        $reasons = array_intersect_key(PaymentCancellationService::REASON_LABELS, array_flip(PaymentCancellationService::REASONS[$method]));
+        // The gateway charge the club absorbed on these fees leaves the fund figures with them.
+        $absorbedSen = (int) $fees->sum(fn (Payment $p) => (int) $p->fee_absorbed_sen);
+
+        return view('admin.payments.cancel', compact('payment', 'set', 'fees', 'method', 'reasons', 'absorbedSen'));
+    }
+
+    /** "Cancel payment": take a paid fee (or the set it was paid with) back to unpaid, with a reason. */
+    public function cancel(Request $request, Payment $payment, PaymentCancellationService $service)
+    {
+        $this->authorizeClubAdmin($payment->club);
+        if ($own = PaymentCancellationService::blocker($payment, $request->user())) {
+            return redirect()->route('admin.payments.show', $payment)->with('error', $own);
+        }
+        $data = $request->validate([
+            'reason' => ['required', 'string', Rule::in(array_keys(PaymentCancellationService::REASON_LABELS))],
+            'note' => ['nullable', 'string', 'max:'.PaymentCancellationService::NOTE_MAX],
+            'confirm' => ['accepted'],
+        ], [
+            'reason.required' => 'Choose why the payment is cancelled.',
+            'reason.in' => 'Choose one of the reasons offered.',
+            'confirm.accepted' => 'Tick the box to confirm.',
+        ]);
+
+        $rows = $service->cancel($payment, $request->user(), $data['reason'], $data['note'] ?? null);
+        $receipt = $rows->first()?->receipt_no;
+
+        return redirect()->route('admin.payments.show', $payment)->with('success',
+            ($rows->count() > 1 ? "Payment cancelled for {$rows->count()} fees paid together." : 'Payment cancelled.')
+            .($receipt ? " Receipt {$receipt} is void." : '').' The member has been emailed.');
     }
 
     /** Audit actions that mean the member paid twice and one payment must be refunded. */

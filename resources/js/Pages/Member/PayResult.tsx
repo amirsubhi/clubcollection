@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Clock, FileText, Hourglass, ImageIcon, Loader2, MailCheck, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { Head, Link, router } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
-import { FlashBanner, HelpLine, useFeeLabel } from "@/components/app/MemberParts";
+import { FlashBanner, HelpLine, useCancelReason, useFeeLabel } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { ReceiptActions } from "@/components/app/ReceiptActions";
 import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
@@ -10,13 +10,15 @@ import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate } from "@/lib/format";
 import { fill, useLang, useT } from "@/lib/i18n";
-import type { GroupReceipt, MemberPaymentRow, MemberReceipt, PaymentContext, PaymentGroup, TransferVerification } from "@/types/member";
+import type { GroupReceipt, MemberPaymentRow, MemberReceipt, PaymentCancellationInfo, PaymentContext, PaymentGroup, TransferVerification } from "@/types/member";
 
-/** "verifying": a "Bayar semua" slip the treasurer is still checking. */
-type Outcome = "paid" | "pending" | "failed" | "verifying";
+/** "verifying": a "Bayar semua" slip the treasurer is still checking. "cancelled": its receipt was cancelled by an admin. */
+type Outcome = "paid" | "pending" | "failed" | "verifying" | "cancelled";
 
 interface Props extends PaymentContext {
   outcome: Outcome;
+  /** outcome "cancelled": the receipt number, when, and the reason code (worded here). */
+  cancellation?: PaymentCancellationInfo | null;
   /** The fee; null for "Bayar semua", which sends `group`. */
   payment: MemberPaymentRow | null;
   group?: PaymentGroup | null;
@@ -137,12 +139,41 @@ function usePaymentStatusPoll(statusUrl: string, enabled: boolean) {
   return { check, checking, checkedAt, gaveUp: checks >= POLL_MAX };
 }
 
-export default function PayResult({ outcome, payment, group, receipt, verification, gateway, reference, statusUrl, reviewUrl, receiptUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
+export default function PayResult({ outcome, cancellation, payment, group, receipt, verification, gateway, reference, statusUrl, reviewUrl, receiptUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
+  const why = useCancelReason();
   const nav = { home: dashboardUrl, payments: paymentsUrl };
   const poll = usePaymentStatusPoll(statusUrl, outcome === "pending");
+
+  // A "Bayar semua" receipt an admin cancelled: no receipt, the number and why (never the admin's note).
+  if (outcome === "cancelled" && cancellation) {
+    return (
+      <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} titleIsHeading={false} title={t("paymentStatus")}>
+        <Head title={fill(t("cancelledTitle"), { no: cancellation.receiptNo })} />
+        <section aria-labelledby="cx-h" className="flex items-start gap-3 rounded-2xl bg-warning-soft p-4 text-warning-foreground ring-1 ring-warning/30" data-testid="cancelled">
+          <XCircle className="mt-0.5 h-6 w-6 shrink-0" strokeWidth={1.75} aria-hidden />
+          <div className="min-w-0">
+            <h1 id="cx-h" className="break-words font-display text-xl font-bold leading-tight tracking-tight">
+              {fill(t("cancelledTitle"), { no: cancellation.receiptNo })}
+            </h1>
+            <p className="mt-1 text-base">{fill(t("cancelledSetBody"), { date: fmtDate(cancellation.cancelledOn, lang), why: why(cancellation.reason) })}</p>
+          </div>
+        </section>
+        <Details payment={null} group={group} gateway={gateway} reference={reference} />
+        <div className="flex flex-col gap-2">
+          <Button asChild size="xl" className="w-full rounded-full">
+            <Link href={paymentsUrl}>{t("viewPayments")}</Link>
+          </Button>
+          <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">
+            <Link href={dashboardUrl}>{t("backHome")}</Link>
+          </Button>
+        </div>
+        <HelpLine club={payClub} reference={cancellation.receiptNo} />
+      </MemberShell>
+    );
+  }
 
   if (outcome === "verifying" && group) {
     return (

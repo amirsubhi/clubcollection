@@ -110,6 +110,8 @@ class PaymentController extends Controller
         return Inertia::render('Member/Invoice', [
             'payment' => P::summary($payment),
             'receipt' => P::receipt($payment),
+            // The latest cancelled payment of this fee: a banner while unpaid, a small note once paid again.
+            'cancellation' => P::cancellation($payment),
             'issuedOn' => $payment->created_at?->toDateString(),
             'discount' => $payment->discount ? [
                 'name' => $payment->discount->name,
@@ -597,6 +599,12 @@ class PaymentController extends Controller
         // review page shows the right state.
         if ($payment->status !== 'paid' && (empty($payment->bill_code) || $payment->isVerifying())) {
             return redirect()->route('member.payments.review', $payment);
+        }
+        // The payment this page was opened for was cancelled since (its bill already settled once): the fee page
+        // shows the cancelled receipt and what to do, rather than "still processing".
+        if ($payment->status !== 'paid' && $payment->bills()->where('bill_code', $payment->bill_code)->whereNotNull('paid_at')->exists()
+            && $payment->cancellations()->exists()) {
+            return redirect()->route('member.payments.invoice', $payment);
         }
 
         $payment->load(['club', 'user']);

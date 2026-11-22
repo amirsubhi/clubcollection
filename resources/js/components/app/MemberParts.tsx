@@ -9,7 +9,7 @@ import { fmtDate, fmtPeriod } from "@/lib/format";
 import { fill, isDictKey, textIn, useLang, useT, type DictKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { CategorySlice, PaymentStatus } from "@/types/domain";
-import type { FundCategory, MemberPaymentRow } from "@/types/member";
+import type { FundCategory, MemberPaymentRow, PaymentCancellationInfo } from "@/types/member";
 
 /** "Yuran keahlian Okt – Dis 2026" for a fee row. */
 export function useFeeLabel() {
@@ -77,6 +77,28 @@ export function FlashBanner() {
         </Alert>
       )}
     </>
+  );
+}
+
+/** The member wording for a "Cancel payment" reason code (never the admin's note). */
+export function useCancelReason() {
+  const t = useT();
+  return (reason: string) => {
+    const key = `cancelReason_${reason}`;
+    return t(isDictKey(key) ? key : "cancelReason_other");
+  };
+}
+
+/** "Resit {no} telah dibatalkan pada {date}. …": an unpaid fee whose payment an admin cancelled. */
+export function CancelledBanner({ c, verifying = false }: { c: PaymentCancellationInfo; verifying?: boolean }) {
+  const t = useT();
+  const { lang } = useLang();
+  const why = useCancelReason();
+  return (
+    <Alert variant="warning" className="text-base" data-testid="cancelled-banner">
+      <AlertTriangle aria-hidden />
+      <p>{fill(t(verifying ? "cancelledBannerVerifying" : "cancelledBanner"), { no: c.receiptNo, date: fmtDate(c.cancelledOn, lang), why: why(c.reason) })}</p>
+    </Alert>
   );
 }
 

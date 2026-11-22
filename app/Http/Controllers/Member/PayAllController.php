@@ -171,6 +171,25 @@ class PayAllController extends Controller
         $club = Club::findOrFail($bill->club_id);
         $fees = $bill->orderedPayments()->get();
 
+        // Settled, then cancelled by an admin ("Cancel payment"): its receipt is void. Say so (receipt number and
+        // why, never the admin's note) instead of a receipt, also after the fees were paid again (with new numbers).
+        if ($bill->paid_at && ($cancel = P::groupCancellation($bill)) && P::groupReceipt($bill, $fees) === null) {
+            return Inertia::render('Member/PayResult', [
+                'outcome' => 'cancelled',
+                'payment' => null,
+                'group' => self::groupProps($fees, $bill),
+                'receipt' => null,
+                'cancellation' => $cancel,
+                'gateway' => $bill->isTransfer() ? null : P::gatewayLabel($bill->gateway),
+                'reference' => $bill->reference,
+                'verification' => null,
+                'statusUrl' => route('member.payments.group-status', $bill),
+                'reviewUrl' => route('member.payments.review-all', $club),
+                'receiptUrl' => null,
+                ...self::context($club),
+            ]);
+        }
+
         // Settled, but an admin has since reverted a fee in the set: "paid" would no longer be true,
         // so send the member to their fee list, where that fee shows as open again.
         if ($bill->paid_at && ! self::allStillPaid($fees)) {
