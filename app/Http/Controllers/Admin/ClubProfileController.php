@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Services\AuditService;
 use App\Services\LogoService;
+use App\Support\Payments\ReceiptNumbers;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -18,7 +19,7 @@ use Illuminate\View\View;
 class ClubProfileController extends Controller
 {
     /** Fields compared for the audit log (the logo as its stored path, never the file). */
-    private const AUDITED = ['name', 'email', 'registration_no', 'address', 'financial_year_start_month', 'receipt_footer', 'logo'];
+    private const AUDITED = ['name', 'email', 'registration_no', 'address', 'financial_year_start_month', 'receipt_footer', 'receipt_prefix', 'logo'];
 
     /** Receipt footer: plain text, at most this many characters (line breaks count as one). */
     public const FOOTER_MAX = 300;
@@ -37,6 +38,8 @@ class ClubProfileController extends Controller
             'months' => self::MONTHS,
             'gdAvailable' => LogoService::available(),
             'footerMax' => self::FOOTER_MAX,
+            // What the next receipt would be numbered (nothing is reserved).
+            'nextReceiptNo' => ReceiptNumbers::preview($club),
         ]);
     }
 
@@ -46,6 +49,10 @@ class ClubProfileController extends Controller
         if (is_string($request->input('receipt_footer'))) {
             $request->merge(['receipt_footer' => str_replace(["\r\n", "\r"], "\n", $request->input('receipt_footer'))]);
         }
+        // The receipt prefix is stored in capitals: "kbs" is taken as "KBS".
+        if (is_string($request->input('receipt_prefix'))) {
+            $request->merge(['receipt_prefix' => strtoupper(trim($request->input('receipt_prefix')))]);
+        }
         $data = $request->validate([
             'name' => 'required|string|max:255|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'email' => 'nullable|email|max:255',
@@ -54,15 +61,19 @@ class ClubProfileController extends Controller
             'financial_year_start_month' => 'required|integer|between:1,12',
             // Plain text: line breaks are allowed, every other control character (tab included) is refused.
             'receipt_footer' => 'nullable|string|max:'.self::FOOTER_MAX.'|not_regex:/[\\x00-\\x09\\x0B-\\x1F\\x7F]/u',
+            // 2-6 of A-Z / 0-9 (anchored with \A…\z). Left out of the form: unchanged; emptied: back to RCP.
+            'receipt_prefix' => ['nullable', 'string', 'regex:'.ReceiptNumbers::PREFIX_PATTERN],
             'logo' => LogoService::rules(),
             'remove_logo' => 'boolean',
         ], LogoService::messages() + [
+            'receipt_prefix.regex' => 'The receipt prefix must be 2 to 6 capital letters or digits (A-Z, 0-9), for example RCP.',
             'financial_year_start_month.between' => 'Choose a month from January to December.',
             'receipt_footer.not_regex' => 'The receipt footer can only hold plain text and line breaks.',
         ], [
             'registration_no' => 'registration no.',
             'financial_year_start_month' => 'financial year start',
             'receipt_footer' => 'receipt footer',
+            'receipt_prefix' => 'receipt prefix',
         ]);
 
         $new = [
@@ -73,6 +84,10 @@ class ClubProfileController extends Controller
             'financial_year_start_month' => (int) $data['financial_year_start_month'],
             'receipt_footer' => self::cleanAddress($data['receipt_footer'] ?? null),
         ];
+        // Only receipts issued from now on use a new prefix; the year's sequence carries on.
+        if ($request->has('receipt_prefix')) {
+            $new['receipt_prefix'] = $data['receipt_prefix'] ?? ReceiptNumbers::DEFAULT_PREFIX;
+        }
 
         // A new file wins over "remove". The old file is kept on disk: receipts issued with it still show it.
         if ($request->hasFile('logo')) {

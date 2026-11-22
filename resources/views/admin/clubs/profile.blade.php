@@ -91,6 +91,21 @@
                         @error('financial_year_start_month')<div id="f-fy-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
+                    <div class="mb-3">
+                        <label for="f-prefix" class="form-label fw-semibold">Receipt number prefix</label>
+                        <input id="f-prefix" type="text" name="receipt_prefix" minlength="2" maxlength="6" pattern="[A-Za-z0-9]{2,6}" autocapitalize="characters" spellcheck="false"
+                               aria-describedby="f-prefix-help @error('receipt_prefix') f-prefix-error @enderror" @error('receipt_prefix') aria-invalid="true" @enderror
+                               class="form-control font-monospace @error('receipt_prefix') is-invalid @enderror" style="max-width:10rem"
+                               value="{{ old('receipt_prefix', \App\Support\Payments\ReceiptNumbers::prefix($club)) }}">
+                        <div id="f-prefix-help" class="form-text">
+                            2 to 6 capital letters or digits. Receipts are numbered <span class="font-monospace">PREFIX-YEAR-0001</span>
+                            per financial year (the year it starts in), starting again at 0001 each year. Next receipt:
+                            <span class="font-monospace" data-testid="next-receipt-no">{{ $nextReceiptNo }}</span>.
+                            A new prefix applies only to receipts issued from now on; a number is never reused.
+                        </div>
+                        @error('receipt_prefix')<div id="f-prefix-error" role="alert" class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
                     <div class="mb-4">
                         <label for="f-footer" class="form-label fw-semibold">Receipt footer <span class="fw-normal text-body-secondary">(optional)</span></label>
                         <textarea id="f-footer" name="receipt_footer" rows="3" maxlength="{{ $footerMax }}" aria-describedby="f-footer-help @error('receipt_footer') f-footer-error @enderror" @error('receipt_footer') aria-invalid="true" @enderror
