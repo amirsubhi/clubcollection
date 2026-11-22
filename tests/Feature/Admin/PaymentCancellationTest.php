@@ -378,6 +378,47 @@ class PaymentCancellationTest extends TestCase
         $this->assertSame(2, PaymentCancellation::count());
     }
 
+    public function test_a_cancelled_single_bill_never_pays_the_fee_again_whatever_id_it_is_reported_under(): void
+    {
+        $fee = $this->fee();
+        $this->actingAs($this->member)->post(route('member.payments.pay', $fee));
+        $bill = PaymentBill::where('payment_id', $fee->id)->sole();
+        // Settled by the member's status check (the gateway gives no id: "requery-{bill}").
+        $this->actingAs($this->member)->getJson(route('member.payments.status', $fee))->assertJson(['status' => 'paid']);
+        $this->assertSame('requery-'.$bill->bill_code, $fee->fresh()->transaction_id);
+
+        $this->cancel($fee, 'refunded')->assertSessionHasNoErrors();
+
+        // The lost callback of that same payment arrives late, under the gateway's own id.
+        $this->webhook($bill->bill_code, $bill->reference, 'TP-REAL-1');
+        $this->assertSame('pending', $fee->fresh()->status);
+        $this->assertNull($fee->fresh()->receipt_no);
+        $this->assertSame(0, $this->refundFlags());
+
+        // Another status check and the scheduled reconcile leave a settled bill alone.
+        $this->travel(2)->minutes();
+        $this->actingAs($this->member)->getJson(route('member.payments.status', $fee))->assertJson(['status' => 'overdue']);
+        $this->travel(20)->minutes();
+        $this->artisan('payments:reconcile-open-bills')->assertSuccessful();
+        $this->assertSame('pending', $fee->fresh()->status);
+        $this->assertSame(0, $this->refundFlags());
+
+        // The gateway lists a second successful payment for the bill: flagged once for the treasurer, still not paid.
+        $this->fakeToyyibConfirm(null, [], 2);
+        $this->webhook($bill->bill_code, $bill->reference, 'TP-REAL-2');
+        $this->webhook($bill->bill_code, $bill->reference, 'TP-REAL-2');
+        $this->assertSame('pending', $fee->fresh()->status);
+        $this->assertSame(1, AuditLog::where('action', 'payment.gateway_paid_twice')->where('auditable_id', $fee->id)->count());
+
+        // Paid again on a new bill: a late report of the cancelled bill is not taken for a second payment.
+        $this->fakeToyyibConfirm(null, [], 1);
+        $this->payFpx($fee);
+        $this->assertSame('RCP-2026-0002', $fee->fresh()->receipt_no);
+        $this->webhook($bill->bill_code, $bill->reference, 'TP-REAL-3');
+        $this->assertSame('paid', $fee->fresh()->status);
+        $this->assertSame(1, $this->refundFlags(), 'only the flag above');
+    }
+
     public function test_a_cancelled_transaction_stays_used_even_once_the_fee_no_longer_carries_it(): void
     {
         // An older fee whose bill is only on the fee row (no payment_bills entry).
@@ -454,6 +495,8 @@ class PaymentCancellationTest extends TestCase
         Mail::assertSent(PaymentCancelled::class, 1);
         Mail::assertSent(PaymentCancelled::class, fn (PaymentCancelled $m) => $m->fees->count() === 3 && $m->group?->id === $bill->id);
         $this->assertNotNull($bill->fresh()->paid_at, 'the bill keeps its payment: a replay is refused');
+        $this->actingAs($this->member)->getJson(route('member.payments.group-status', $bill))->assertJson(['status' => 'pending']);
+        $this->assertSame(['pending'], collect($fees)->map(fn ($f) => $f->fresh()->status)->unique()->values()->all());
 
         // The member's group page says the receipt was cancelled, without the admin's note.
         $this->actingAs($this->member)->get(route('member.payments.group-result', $bill))->assertOk()
@@ -681,6 +724,8 @@ class PaymentCancellationTest extends TestCase
         $this->cancel($fee, 'money_not_received')->assertSessionHasNoErrors();
 
         $this->assertSame(4000, $f->forWindow($ytd)['collected']);
+        $this->actingAs($this->admin)->get(route('admin.clubs.ledger', $this->club).'?from=2026-01-01&to=2026-03-10')
+            ->assertInertia(fn (Assert $page) => $page->where('summary.in', 4000)->where('summary.inCount', 1));
         $this->actingAs($this->admin)->get(route('admin.clubs.payments.index', $this->club))->assertOk();
         $this->actingAs($this->admin)->get(route('admin.payments.show', $fee))->assertOk();
     }

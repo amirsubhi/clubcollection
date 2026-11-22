@@ -212,6 +212,16 @@ class SettlementService
                 return self::NOTHING;
             }
 
+            // A single bill settles its fee once. It did, and the payment was since cancelled ("Cancel payment"):
+            // a later report for this bill (the lost callback under another id than the requery's, a retry) is
+            // that payment again, so the fee is never paid again by it. Flagged only when the gateway lists more
+            // successful payments for the bill than the one that was cancelled.
+            if ($bill !== null && ! $bill->isGroup() && $bill->paid_at !== null) {
+                $this->flagCancelledBillPaidAgain($payment, $bill, $result, $confirmation);
+
+                return self::NOTHING;
+            }
+
             // Fail closed (G1): with no paid amount from the gateway, no bill
             // record and no bill_amount on the fee, nothing says how much was
             // paid, so it is not settled. Non-200 upstream; audited for the treasurer.
@@ -478,6 +488,35 @@ class SettlementService
     }
 
     /**
+     * A report for a single bill that already settled its fee once, the fee's payment since cancelled: nothing is
+     * settled. Flagged for a refund (once per transaction) only when the gateway lists more successful payments
+     * for the bill than that one; without a confirm step (Billplz), the signed callback is the proof.
+     */
+    private function flagCancelledBillPaidAgain(Payment $payment, PaymentBill $bill, WebhookResult $result, ?GatewayConfirmation $confirmation): void
+    {
+        $txn = $result->transactionId ?? 'n/a';
+        $flags = AuditLog::where('action', 'payment.gateway_paid_twice')
+            ->where('auditable_type', Payment::class)->where('auditable_id', $payment->id)->get()
+            ->filter(fn (AuditLog $log) => ($log->new_values['bill_code'] ?? null) === $bill->bill_code);
+        if ($flags->contains(fn (AuditLog $log) => ($log->new_values['transaction_id'] ?? 'n/a') === $txn)
+            || ($confirmation && $flags->count() >= $confirmation->successCount - 1)) {
+            Log::info("{$result->gateway}: report for a bill whose payment was cancelled; not settled again", $result->logContext() + ['payment_id' => $payment->id]);
+
+            return;
+        }
+        $label = $this->gatewayLabel($result->gateway);
+        Log::warning("{$result->gateway}: another payment for a bill whose payment was cancelled", $result->logContext() + ['payment_id' => $payment->id]);
+        AuditService::log(
+            'payment.gateway_paid_twice',
+            "Payment #{$payment->id}: bill {$bill->bill_code} was paid via {$label} (txn: ".($bill->transaction_id ?? 'n/a').") and that payment was cancelled, but {$label} reported another payment for it (txn: {$txn}). Nothing was marked paid: check the gateway account and refund the member if they paid twice.",
+            $payment,
+            $payment->club_id,
+            ['status' => $payment->status],
+            ['gateway' => $result->gateway, 'transaction_id' => $result->transactionId, 'bill_code' => $bill->bill_code, 'paid_amount_sen' => $result->paidAmountSen]
+        );
+    }
+
+    /**
      * A gateway payment for a fee that is already paid: by transfer slip
      * (payment.gateway_paid_during_verification) or by another gateway payment
      * (payment.gateway_paid_twice). The member paid twice, so it is recorded
@@ -514,11 +553,12 @@ class SettlementService
         }
 
         if ($confirmation) {
-            // This bill settled the fee: one of its successful payments is that one.
-            $settledByThisBill = ! $byTransfer && $billCode !== null
+            // This bill settled the fee: one of its successful payments is that one. A bill that settled the fee
+            // once (paid_at) counts too when that payment was since cancelled and the fee paid again another way.
+            $settledByThisBill = $billCode !== null
                 && ($bill
-                    ? $bill->transaction_id !== null && $bill->transaction_id === $payment->transaction_id
-                    : $payment->bill_code === $billCode); // legacy row with no payment_bills entry
+                    ? $bill->paid_at !== null || (! $byTransfer && $bill->transaction_id !== null && $bill->transaction_id === $payment->transaction_id)
+                    : ! $byTransfer && $payment->bill_code === $billCode); // legacy row with no payment_bills entry
             $allowed = $confirmation->successCount - ($settledByThisBill ? 1 : 0);
             $already = $flags->filter(fn (AuditLog $log) => ($log->new_values['bill_code'] ?? null) === $billCode)->count();
             if ($already >= $allowed) {

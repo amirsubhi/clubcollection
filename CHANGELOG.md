@@ -28,7 +28,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   number). `payments.transaction_id` and the bill's transaction and paid time are kept, and the new table
   `payment_cancellations` (additive migration) records every cancelled payment (receipt number, amount, paid date,
   method, gateway transaction, bank references, set, issuer snapshot, reason, note, who, when), so a replayed gateway
-  callback never marks the fee paid again. One `payment.cancelled` audit row per fee; one email per cancel to the
+  callback never marks the fee paid again. A single FPX bill that settled a fee once never settles it again (a late
+  callback of the cancelled payment under another transaction id, e.g. after a status-check settlement, is ignored;
+  flagged for a refund only when the gateway lists a second successful payment). One `payment.cancelled` audit row per fee; one email per cancel to the
   member (`PaymentCancelled`, BM and EN, neutral wording per reason; the note is never sent). The admin payment page
   lists the cancellations.
 - Member pages: an unpaid fee whose payment was cancelled shows "Resit {no} telah dibatalkan pada {date}. … Yuran

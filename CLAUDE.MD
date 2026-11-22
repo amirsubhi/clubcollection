@@ -131,7 +131,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `pending` (the hook voids the number), clearing paid_via/gateway/verified_*/transfer_* and `transfer_group_id`
   (the set stays traceable via `payment_bill_items` + `payment_cancellations.payment_bill_id`). Never clear
   `payments.transaction_id` or the bill's `transaction_id`/`paid_at` there: `transactionAlreadyUsed()` (which also
-  reads `payment_cancellations`) refuses replays. One `payment.cancelled` audit row per fee, one `PaymentCancelled`
+  reads `payment_cancellations`) refuses replays, and `markPaymentPaid()` never settles a fee again through a single bill with `paid_at` set (a late callback under another id). One `payment.cancelled` audit row per fee, one `PaymentCancelled`
   email per cancel after the commit (a mail failure is logged only). Member props: `MemberPaymentPresenter::cancellation()`
   / `groupCancellation()` (receipt no., date, reason code only).
 - **Financial year**: "this year" for a club is `FundFigures::yearToDate($today, $club)` /
