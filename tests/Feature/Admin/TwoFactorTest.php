@@ -212,8 +212,14 @@ class TwoFactorTest extends TestCase
 
         $this->post(route('profile.2fa.enable'), ['current_password' => 'password'])->assertOk();
         $code = (new Google2FA())->getCurrentOtp($user->fresh()->getTwoFactorSecret());
-        $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'wrong'])
-            ->assertStatus(422)->assertSee('is-invalid', false);
+        $secret = $user->fresh()->getTwoFactorSecret();
+        // A wrong or missing password never shows the pending key again (a borrowed session must not read it).
+        $wrong = $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'wrong']);
+        $wrong->assertRedirect(route('profile.security'))->assertSessionHasErrors('current_password');
+        $this->assertStringNotContainsString($secret, $wrong->getContent());
+        $none = $this->post(route('profile.2fa.confirm'), ['code' => 'junk']);
+        $none->assertRedirect(route('profile.security'));
+        $this->assertStringNotContainsString($secret, $none->getContent());
         $this->assertNull($user->fresh()->two_factor_confirmed_at);
     }
 

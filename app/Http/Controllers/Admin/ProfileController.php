@@ -147,10 +147,14 @@ class ProfileController extends Controller
         $user = auth()->user();
         $pendingSecret = $user->hasEnabledTwoFactor() ? null : $user->getTwoFactorSecret();
         if ($user->isAdmin() && $pendingSecret) {
-            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-                'code' => 'required|string|digits:6',
-                'current_password' => 'required|current_password',
-            ], [], ['current_password' => 'password']);
+            // The key is shown again only to someone who just typed the right password: a borrowed session
+            // must not read a pending secret by posting junk. A wrong or missing password starts over.
+            $password = $request->input('current_password');
+            if (! is_string($password) || ! \Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+                return redirect()->route('profile.security')
+                    ->withErrors(['current_password' => 'That password is not right. Click Enable 2FA to start again.']);
+            }
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), ['code' => 'required|string|digits:6']);
             if ($validator->fails()) {
                 return $this->adminSetupPage($user, $pendingSecret, $validator->errors());
             }
