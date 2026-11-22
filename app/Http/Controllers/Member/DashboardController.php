@@ -131,6 +131,8 @@ class DashboardController extends Controller
                 'isAdmin' => $user->isAdmin(),
                 'adminUrl' => $user->isAdmin() ? route('home') : null,
                 'securityUrl' => route('profile.security'),
+                // The portal's privacy notice (public page; a placeholder until the super admin writes one).
+                'privacyUrl' => route('privacy'),
                 'logoutUrl' => route('logout'),
             ],
         ]);

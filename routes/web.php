@@ -65,6 +65,9 @@ Route::middleware('check_installed')->group(function () {
         // `guest` middleware sends a signed-in user on to /home.
         Route::get('/', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('front');
 
+        // The portal's privacy notice: public (no sign-in, no `guest`, so members can open it too).
+        Route::get('/privacy', [\App\Http\Controllers\PrivacyController::class, 'show'])->name('privacy');
+
         // Register disabled.
         Auth::routes(['register' => false]);
 
@@ -150,6 +153,9 @@ Route::middleware('check_installed')->group(function () {
         Route::middleware(['super_admin'])->prefix('admin')->name('admin.')->group(function () {
             Route::resource('clubs', ClubController::class);
             Route::resource('admins', AdminUserController::class)->except('show');
+            // Privacy notice and data-protection contact (App\Support\Portal\PrivacyNotice), shown on /privacy.
+            Route::get('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'edit'])->name('privacy-notice.edit');
+            Route::put('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'update'])->middleware('throttle:20,1')->name('privacy-notice.update');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
             // Portal name and logo (App\Support\Portal\PortalSettings).

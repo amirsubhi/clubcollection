@@ -148,6 +148,7 @@ const dict = {
   signOut: { bm: "Log keluar", en: "Sign out" },
   security: { bm: "Keselamatan & 2FA", en: "Security & 2FA" },
   adminPortal: { bm: "Portal pentadbir", en: "Admin portal" },
+  privacyNotice: { bm: "Notis privasi", en: "Privacy notice" },
   year: { bm: "Tahun", en: "Year" },
   paidGroup: { bm: "Sudah dibayar", en: "Paid" },
   noPaymentsYear: { bm: "Tiada bayaran untuk {y}.", en: "No payments for {y}." },

@@ -132,6 +132,9 @@
                     @endif
                 </div>
             </details>
+            @if (Route::has('privacy') && ! request()->routeIs('privacy'))
+                <p class="mt-2"><a href="{{ route('privacy') }}" class="auth-link underline" data-testid="auth-privacy-link">{{ __('Privacy notice') }}</a></p>
+            @endif
         </footer>
     </div>
 </body>
