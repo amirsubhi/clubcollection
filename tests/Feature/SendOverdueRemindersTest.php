@@ -84,4 +84,78 @@ class SendOverdueRemindersTest extends TestCase
         Mail::assertNothingSent();
         $this->assertDatabaseMissing('audit_logs', ['action' => 'payment.marked_overdue', 'auditable_id' => $payment->id]);
     }
+
+    /** Nothing flipped, nothing emailed, no audit row. */
+    private function assertLeftAlone(Payment $payment): void
+    {
+        $this->assertSame('pending', $payment->fresh()->status);
+        Mail::assertNothingSent();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'payment.marked_overdue', 'auditable_id' => $payment->id]);
+    }
+
+    public function test_an_inactive_membership_is_not_reminded_until_reactivated(): void
+    {
+        Mail::fake();
+        $payment = $this->makePendingOverdue();
+        $payment->club->members()->updateExistingPivot($payment->user_id, ['is_active' => false]);
+
+        Artisan::call('payments:send-overdue-reminders');
+        $this->assertLeftAlone($payment);
+
+        // Reactivated: the next run reminds them once.
+        $payment->club->members()->updateExistingPivot($payment->user_id, ['is_active' => true]);
+        Artisan::call('payments:send-overdue-reminders');
+        Artisan::call('payments:send-overdue-reminders');
+
+        $this->assertSame('overdue', $payment->fresh()->status);
+        Mail::assertSent(OverdueReminder::class, 1);
+    }
+
+    public function test_a_member_removed_from_the_club_is_not_reminded(): void
+    {
+        Mail::fake();
+        $payment = $this->makePendingOverdue();
+        $payment->club->members()->detach($payment->user_id);
+
+        Artisan::call('payments:send-overdue-reminders');
+        $this->assertLeftAlone($payment);
+    }
+
+    public function test_an_inactive_club_is_not_reminded(): void
+    {
+        Mail::fake();
+        $payment = $this->makePendingOverdue();
+        $payment->club->update(['is_active' => false]);
+
+        Artisan::call('payments:send-overdue-reminders');
+        $this->assertLeftAlone($payment);
+    }
+
+    public function test_a_membership_in_another_club_does_not_count(): void
+    {
+        Mail::fake();
+        $payment = $this->makePendingOverdue();
+        $payment->club->members()->updateExistingPivot($payment->user_id, ['is_active' => false]);
+        Club::factory()->create()->members()->attach($payment->user_id, [
+            'role' => 'member', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true,
+        ]);
+
+        Artisan::call('payments:send-overdue-reminders');
+        $this->assertLeftAlone($payment);
+    }
+
+    public function test_a_deleted_account_leaves_nothing_to_remind_and_the_run_still_reaches_others(): void
+    {
+        Mail::fake();
+        $gone = $this->makePendingOverdue();
+        $kept = $this->makePendingOverdue();
+        // Deleting the account takes its memberships and fees with it (cascade).
+        User::whereKey($gone->user_id)->delete();
+
+        Artisan::call('payments:send-overdue-reminders');
+
+        $this->assertNull(Payment::find($gone->id));
+        $this->assertSame('overdue', $kept->fresh()->status);
+        Mail::assertSent(OverdueReminder::class, 1);
+    }
 }
