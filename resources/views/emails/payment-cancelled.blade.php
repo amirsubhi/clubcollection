@@ -35,7 +35,7 @@
   </div>
   <div class="body">
     <p>Salam <strong>{{ $payment->user->name }}</strong>,</p>
-    <p>Resit <strong>{{ $receiptNo }}</strong> telah dibatalkan pada {{ $cancelledOn }}. {{ $wording[0] }} {{ $several ? 'Yuran di bawah' : 'Yuran ini' }} <strong>belum dibayar</strong>.</p>
+    <p>Resit <strong>{{ $receiptNo }}</strong> telah dibatalkan pada {{ $cancelledOn }}. {{ $wording[0] }} @if($slipPending) Slip pindahan anda masih disemak oleh bendahari; jangan bayar sekali lagi.@else {{ $several ? 'Yuran di bawah' : 'Yuran ini' }} <strong>belum dibayar</strong>.@endif</p>
 
     <div class="details">
       <table>
@@ -58,14 +58,16 @@
       </table>
     </div>
 
+    @unless($slipPending)
     <p>Anda boleh membayar semula seperti biasa; resit baharu dengan nombor baharu akan dikeluarkan. Jika wang telah keluar dari akaun anda dan belum dikembalikan, jangan bayar sekali lagi: hubungi bendahari.</p>
+    @endunless
 
     <div class="cta">
       <a href="{{ $several ? route('member.payments.index', $payment->club_id) : route('member.payments.invoice', $payment) }}">Lihat yuran / View the fee</a>
     </div>
 
     <hr>
-    <p class="en">Receipt <strong>{{ $receiptNo }}</strong> was cancelled on {{ $cancelledOn }}. {{ $wording[1] }} {{ $several ? 'The fees above are' : 'This fee is' }} <strong>unpaid</strong> again. You can pay again as usual and you will get a new receipt with a new number. If money already left your account and was not refunded, don't pay again: contact the treasurer.</p>
+    <p class="en">Receipt <strong>{{ $receiptNo }}</strong> was cancelled on {{ $cancelledOn }}. {{ $wording[1] }} @if($slipPending) Your transfer slip is still being checked by the treasurer; don't pay again.@else {{ $several ? 'The fees above are' : 'This fee is' }} <strong>unpaid</strong> again. You can pay again as usual and you will get a new receipt with a new number. If money already left your account and was not refunded, don't pay again: contact the treasurer.@endif</p>
   </div>
   <div class="footer">
     &copy; {{ date('Y') }} {{ config('app.name') }} &middot; E-mel automatik, jangan balas. / Automated email, please do not reply.

@@ -253,9 +253,13 @@ class PaymentCancellationService
                 // Paid online while the member's slip for a set was still being checked (the webhook settled it
                 // and flagged the slip share for a refund): cancelling the online payment puts the fee back
                 // into that slip set, still awaiting verification, so the slip can be approved or rejected.
-                $slipStillOpen = $fee->paid_via !== 'transfer' && $fee->transfer_group_id !== null
-                    && ($group = PaymentBill::find($fee->transfer_group_id)) !== null
-                    && $group->isTransfer() && $group->isOpen();
+                // The same for a slip of the fee's own that was sent and never decided (no checker yet).
+                $slipStillOpen = $fee->paid_via !== 'transfer' && (
+                    ($fee->transfer_group_id !== null
+                        && ($group = PaymentBill::find($fee->transfer_group_id)) !== null
+                        && $group->isTransfer() && $group->isOpen())
+                    || ($fee->transfer_group_id === null && $fee->transfer_submitted_at !== null && $fee->verified_by === null)
+                );
                 $fee->forceFill($slipStillOpen ? [
                     'status' => 'pending_verification',
                     'paid_date' => null,
@@ -278,7 +282,7 @@ class PaymentCancellationService
 
                 AuditService::log(
                     'payment.cancelled',
-                    "Payment #{$fee->id} cancelled (".self::REASON_LABELS[$reasonCode].'): the fee is unpaid again.'
+                    "Payment #{$fee->id} cancelled (".self::REASON_LABELS[$reasonCode].'): '.($slipStillOpen ? 'the fee is back awaiting the check of its transfer slip.' : 'the fee is unpaid again.')
                         .($receiptBefore !== null ? " Receipt {$receiptBefore} voided (the number is never reused)." : '')
                         .(count($setIds) > 1 ? ' Cancelled with its set ('.count($setIds).' fees).' : ''),
                     $fee,

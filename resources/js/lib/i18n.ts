@@ -430,6 +430,10 @@ const dict = {
     bm: "Resit {no} telah dibatalkan pada {date}. {why}. Yuran ini belum dibayar.",
     en: "Receipt {no} was cancelled on {date}. {why}. This fee is unpaid.",
   },
+  cancelledBannerVerifying: {
+    bm: "Resit {no} telah dibatalkan pada {date}. {why}. Slip pindahan anda masih disemak; jangan bayar sekali lagi.",
+    en: "Receipt {no} was cancelled on {date}. {why}. Your transfer slip is still being checked; don't pay again.",
+  },
   cancelledTitle: { bm: "Resit {no} dibatalkan", en: "Receipt {no} cancelled" },
   cancelledSetBody: {
     bm: "Dibatalkan pada {date}. {why}. Yuran di bawah belum dibayar; anda boleh membayarnya semula.",

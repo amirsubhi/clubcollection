@@ -572,7 +572,7 @@ and password hardening (per-account pause, separate limiters, no account enumera
 change of emailed temporary passwords, admin 2FA required, 12+ characters and breach check, audit + owner emails) and
 per-club job levels. 826 tests on SQLite, MariaDB and MySQL; settlement race unchanged (PR #25 merged first).
 
-## Settings (branches `settings-phase1` → `settings-phase2`, not merged yet)
+## Settings (PR #27, merged 22 Nov)
 
 **Phase 1:** club profile page for club admins (name, logo, contact, optional ROS no., address, financial-year start
 month); logos re-encoded to PNG (no SVG/GIF); club identity on member home, invoices, receipts, ledger PDF and the
@@ -601,3 +601,22 @@ rename, portal name, teal preset, icons (200 image/png), receipt `KSU-2026-0001`
 - One club admin alone can change what receipts print (name, registration no., prefix, footer): audited, no second
   approval. Deleting a paid fee voids its number; refusing the delete would be stricter.
 - A receipt-number sequence starts at 0001 when this ships; fees paid before keep `RCP-{id}` / `RCP-G{id}`.
+
+## Cancel payment (branch `cancel-payment-impl`)
+
+"Cancel payment…" on a paid fee (reason per how it was paid, internal note, confirmation): the fee is unpaid again,
+its receipt number void, a `payment_cancellations` row keeps the old details, one audit row per fee, one email per
+cancel; a set paid together is cancelled together; replays and late callbacks of the cancelled payment are ignored;
+the Edit page can no longer take a fee back from Paid. An online payment made while the fee's slip was being checked
+goes back to that slip instead.
+
+**Verified:** 986 tests on SQLite, MariaDB and MySQL; upgrade / rollback / re-upgrade with data on both; cancel race
+(settlement workers + cancel workers on the same fees): 0 errors, every paid fee with one live receipt, every
+cancelled number void, no double cancel, in 5 MariaDB and 4 MySQL runs (most at 16 + 4 workers: the 2 GB test VM ran
+out of memory at 24 + 6, and that first run's ~20 lock-wait timeouts on MariaDB coincided with it; cause inferred);
+independent review (4 minor, fixed); browser run on the test bed (slip cancel, set cancel, member banners).
+
+### Cancel payment follow-ups
+- Cancel workers only cancel online payments: a slip approval racing a cancel was not run concurrently.
+- Cancelling a payment dated in an earlier financial year changes that year's totals (the audit log is the trail).
+- Test bed `LOG_LEVEL=warning` hides log-mailer emails: cancellation emails were checked by the suite only.

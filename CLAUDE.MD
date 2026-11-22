@@ -129,7 +129,10 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   with every fee still carrying that number (never match a NULL number). A `payment_cancellations` row per fee is
   written **before** the save (it copies receipt no., snapshot, paid fields); the fee is saved through Eloquent to
   `pending` (the hook voids the number), clearing paid_via/gateway/verified_*/transfer_* and `transfer_group_id`
-  (the set stays traceable via `payment_bill_items` + `payment_cancellations.payment_bill_id`). Never clear
+  (the set stays traceable via `payment_bill_items` + `payment_cancellations.payment_bill_id`). Exception: an online
+  payment that arrived while the fee's slip (its own, or a set's still open) was being checked goes back to
+  `pending_verification` with its transfer fields kept, so the slip can still be decided. `thankyou` of a cancelled
+  payment redirects to the invoice. Never clear
   `payments.transaction_id` or the bill's `transaction_id`/`paid_at` there: `transactionAlreadyUsed()` (which also
   reads `payment_cancellations`) refuses replays, and `markPaymentPaid()` never settles a fee again through a single bill with `paid_at` set (a late callback under another id). One `payment.cancelled` audit row per fee, one `PaymentCancelled`
   email per cancel after the commit (a mail failure is logged only). Member props: `MemberPaymentPresenter::cancellation()`

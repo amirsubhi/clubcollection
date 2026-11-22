@@ -220,6 +220,9 @@ the member. (The status on the Edit page can no longer take a fee back from Paid
 What happens:
 
 - The fee is unpaid again. Its receipt number becomes void (never reused) and paying again issues a new one.
+  Exception: if the member paid online while their transfer slip for that fee was still being checked, cancelling
+  the online payment puts the fee back to **awaiting verification** on that slip (the member is told the slip is
+  still being checked, not to pay again); then approve or reject the slip as usual.
 - A fee paid in a set ("Bayar semua", one FPX bill or one slip) shares its receipt with the other fees, so the
   whole set is cancelled together: the form lists the fees and the total first. A fee of the set that was already
   taken back and receipted on its own is left alone.

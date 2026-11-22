@@ -626,6 +626,36 @@ class PaymentCancellationTest extends TestCase
         $this->assertSame($a->fresh()->receipt_no, $b->fresh()->receipt_no, 'one slip, one receipt');
     }
 
+    public function test_cancelling_an_online_payment_made_while_the_fees_own_slip_was_checked_keeps_that_slip(): void
+    {
+        $fee = $this->fee();
+        // An FPX bill is opened, then the member sends a slip for the same fee; the FPX payment still arrives.
+        $this->actingAs($this->member)->post(route('member.payments.pay', $fee));
+        $bill = PaymentBill::where('payment_id', $fee->id)->latest('id')->firstOrFail();
+        $this->actingAs($this->member)->post(route('member.payments.transfer', $fee), [
+            'files' => $this->slip(), 'transfer_date' => today()->toDateString(), 'transfer_ref' => 'M-REF',
+        ])->assertSessionHasNoErrors();
+        $this->webhook($bill->bill_code, $bill->reference, 'TXN-'.(++$this->txnSeq));
+        $this->assertSame('paid', $fee->fresh()->status);
+
+        $this->cancel($fee->fresh(), 'refunded')->assertSessionHasNoErrors();
+
+        $fresh = $fee->fresh();
+        $this->assertSame('pending_verification', $fresh->status, 'its own slip is still waiting');
+        $this->assertNotNull($fresh->transfer_submitted_at);
+        $this->assertSame('M-REF', $fresh->transfer_ref);
+        $this->assertStringContainsString('awaiting the check of its transfer slip', \App\Models\AuditLog::where('action', 'payment.cancelled')->sole()->description);
+        Mail::assertSent(\App\Mail\PaymentCancelled::class, fn ($m) => $m->slipPending === true
+            && str_contains($m->render(), 'masih disemak') && ! str_contains($m->render(), 'belum dibayar'));
+        $this->actingAs($this->member)->get(route('member.payments.invoice', $fee))
+            ->assertInertia(fn ($page) => $page->where('payment.status', 'verifying')->has('cancellation'));
+
+        // The slip is then decided as usual.
+        $this->actingAs($this->admin)->post(route('admin.verifications.approve', $fee), ['paid_date' => today()->toDateString()])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('paid', $fee->fresh()->status);
+    }
+
     public function test_the_old_online_return_page_of_a_cancelled_payment_leads_to_the_fee_page(): void
     {
         $fee = $this->fee();

@@ -25,6 +25,9 @@ class PaymentCancelled extends Mailable
     /** @var array{0: string, 1: string} BM, EN */
     public array $wording;
 
+    /** Every fee went back to its transfer slip still being checked (an online payment made meanwhile was cancelled). */
+    public bool $slipPending;
+
     /**
      * @param  Collection<int, Payment>  $fees  every fee cancelled together (one fee, or the set)
      * @param  PaymentCancellation  $cancellation  one row of the cancel (receipt number, reason)
@@ -34,6 +37,7 @@ class PaymentCancelled extends Mailable
     {
         $this->wording = PaymentCancellationService::MEMBER_WORDING[$cancellation->reason_code]
             ?? PaymentCancellationService::MEMBER_WORDING['other'];
+        $this->slipPending = $fees->isNotEmpty() && $fees->every(fn (Payment $f) => $f->status === 'pending_verification');
     }
 
     public function envelope(): Envelope

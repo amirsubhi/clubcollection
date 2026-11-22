@@ -35,7 +35,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   lists the cancellations.
 - Member pages: an unpaid fee whose payment was cancelled shows "Resit {no} telah dibatalkan pada {date}. … Yuran
   ini belum dibayar." above the invoice; once paid again its receipt notes the earlier, cancelled number. A cancelled
-  "Bayar semua" result page shows "Resit {no} dibatalkan" instead of a receipt.
+  "Bayar semua" result page shows "Resit {no} dibatalkan" instead of a receipt. The old FPX return page of a
+  cancelled payment leads to the fee page.
+- An online payment made while the fee's own slip, or its set's slip, was still being checked: cancelling it puts
+  the fee back to awaiting verification on that slip (email and banner say the slip is still being checked).
 
 ### Changed (cancel payment)
 - The payment **Edit** page no longer takes a fee back from Paid: the server refuses a status change of a paid fee

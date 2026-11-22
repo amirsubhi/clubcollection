@@ -90,14 +90,14 @@ export function useCancelReason() {
 }
 
 /** "Resit {no} telah dibatalkan pada {date}. …": an unpaid fee whose payment an admin cancelled. */
-export function CancelledBanner({ c }: { c: PaymentCancellationInfo }) {
+export function CancelledBanner({ c, verifying = false }: { c: PaymentCancellationInfo; verifying?: boolean }) {
   const t = useT();
   const { lang } = useLang();
   const why = useCancelReason();
   return (
     <Alert variant="warning" className="text-base" data-testid="cancelled-banner">
       <AlertTriangle aria-hidden />
-      <p>{fill(t("cancelledBanner"), { no: c.receiptNo, date: fmtDate(c.cancelledOn, lang), why: why(c.reason) })}</p>
+      <p>{fill(t(verifying ? "cancelledBannerVerifying" : "cancelledBanner"), { no: c.receiptNo, date: fmtDate(c.cancelledOn, lang), why: why(c.reason) })}</p>
     </Alert>
   );
 }

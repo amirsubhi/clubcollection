@@ -85,7 +85,7 @@ export default function Invoice({ payment, receipt, cancellation, issuedOn, disc
     <MemberShell tab="payments" navHrefs={nav} clubName={payClub.name} title={t("invoice")} backHref={paymentsUrl}>
       <Head title={t("invoice")} />
       <FlashBanner />
-      {cancellation && payment.status !== "paid" && <CancelledBanner c={cancellation} />}
+      {cancellation && payment.status !== "paid" && <CancelledBanner c={cancellation} verifying={payment.status === "verifying"} />}
       <section aria-label={t("invoice")} className="flex flex-col gap-5 rounded-[20px] border bg-card p-5">
         {/* The club as it is now (Club profile): an invoice is not issued yet, so it is never a snapshot. */}
         <div className="flex flex-wrap items-start gap-3 border-b pb-4" data-testid="invoice-issuer">
