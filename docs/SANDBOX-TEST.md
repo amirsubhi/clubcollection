@@ -19,7 +19,7 @@ What the test answers:
 | a | Does ToyyibPay accept the bills the portal creates (name, description, amount, charge setting)? | A refused bill means members can't pay at all. |
 | b | Which fields does ToyyibPay's callback (its server-to-server "this bill was paid" message) really send: `status` or `status_id`, `refno` or `transaction_id`, and is `amount` in ringgit or sen? | The portal marks a fee paid only from this message. If the names differ, fees stay unpaid. |
 | c | What does `getBillTransactions` (ToyyibPay's "list this bill's payments" answer) look like, and in what unit is `billpaymentAmount`? | The portal asks it before trusting a callback (`TOYYIBPAY_VERIFY_CALLBACK=true`). |
-| d | When the member pays the gateway charge (`billChargeToCustomer`), what does the member pay and what does the club receive? | Decides whether "Member pays it" can be switched on. |
+| d | When the member pays the gateway charge (`billChargeToCustomer`), what does the member pay and what does the club receive? | Decides whether "The member pays it" can be switched on. |
 | e | Does ToyyibPay retry a callback that wasn't answered "OK", and are repeats harmless? | The portal relies on retries when ToyyibPay is slow to confirm. |
 
 Plan about two hours. You need a cPanel account with Terminal access and an email address you can read.
@@ -107,7 +107,7 @@ or `testing`. Create a small test club instead, logged in as the super admin you
    ToyyibPay keys empty, so it uses the sandbox keys from `.env`.
 2. **Fee Rates**: set **RM 1.00** a month for the club's job level (a new club has one, **Ahli**). Small amounts keep
    the test simple; RM 1 is ToyyibPay's usual minimum.
-3. **Billing settings**: leave **Gateway fee: Club absorbs it** and **Gateway fee per bill RM 1.00**.
+3. **Billing settings**: leave **Gateway fee: The club absorbs it** and **Gateway fee per bill RM 1.00**.
 4. **Members → Add member**: a test member at that job level, with an email you can read (or, with `MAIL_MAILER=log`,
    find the welcome email with the temporary password in `storage/logs/laravel.log`). Use a made-up name such as
    "Ahli Ujian".
@@ -200,7 +200,7 @@ that shape, and also the older `status_id` / `transaction_id` names, so either w
 Only on staging:
 
 1. In `.env` set `TOYYIBPAY_CHARGE_VERIFIED=true`, then `php artisan config:cache`.
-2. As a club admin: **Billing settings → Gateway fee: Member pays it**, gateway fee per bill RM 1.00, save.
+2. As a club admin: **Billing settings → Gateway fee: The member pays it**, gateway fee per bill RM 1.00, save.
 3. Add one more fee for the member with **Payments → Add** if none is open (or **Generate fees**, if that month isn't
    billed yet). As the member open it: the review page should show
    **Yuran + caj = Jumlah** (e.g. RM 1.00 + RM 1.00).
@@ -213,10 +213,10 @@ Only on staging:
    `php artisan toyyibpay:sandbox-check --create --payer=member`; open both payment pages (no need to pay) and note
    the total each one asks for.
 7. Set `TOYYIBPAY_CHARGE_VERIFIED=false` again and run `php artisan config:cache`, and set Billing settings back to
-   **Club absorbs it**.
+   **The club absorbs it**.
 
-What to look for: with "Member pays it" the payer should be asked for fee + charge **once** (not twice), and the fee
-must still be marked paid. With "Club absorbs it" the payer should be asked for the fee amount only.
+What to look for: with "The member pays it" the payer should be asked for fee + charge **once** (not twice), and the fee
+must still be marked paid. With "The club absorbs it" the payer should be asked for the fee amount only.
 
 ### Test 6: retries and repeats (question e)
 
@@ -291,12 +291,12 @@ every item passed and any fixes are released.
 | 5 | Test 2: callback entry read **PAID**; field names copied (`status` or `status_id`? `refno` or `transaction_id`? `amount` like `"1.00"`?); the callback `refno` matches the reference in `--bill` output and differs for each payment | | |
 | 6 | Test 3: failed payment: **Bayaran belum diterima**, fee still unpaid, no "Paid Via Webhook" | | |
 | 7 | Test 4: "Bayar semua": all fees paid together with one bill for the total | | |
-| 8 | Test 5: "Member pays it": payer asked for fee + charge once; fee marked paid; amounts written down | | |
-| 9 | Test 5: "Club absorbs it": payer asked for the fee amount only | | |
+| 8 | Test 5: "The member pays it": payer asked for fee + charge once; fee marked paid; amounts written down | | |
+| 9 | Test 5: "The club absorbs it": payer asked for the fee amount only | | |
 | 10 | Test 6: a callback arrived after maintenance mode ended (ToyyibPay retries); time noted | | |
 | 11 | Tests 2 and 4: one "Paid Via Webhook" per fee, no "Paid Twice" warning | | |
 | 12 | Test 7: `--bill` showed the payment immediately / after N seconds | | |
 | 13 | Test 8: lost callback: fee paid within 15 minutes by the scheduled check (or at once by "Semak status bayaran"), "Payment Reconciled" in the Audit Log, no "Paid Twice" after a late retry | | |
-| 14 | Settings restored: `TOYYIBPAY_CHARGE_VERIFIED=false`, Billing settings "Club absorbs it" | | |
+| 14 | Settings restored: `TOYYIBPAY_CHARGE_VERIFIED=false`, Billing settings "The club absorbs it" | | |
 
 Until every row says pass and the developers have confirmed, real FPX stays off (`TOYYIBPAY_SANDBOX=true`).
