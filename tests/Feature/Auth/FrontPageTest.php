@@ -57,7 +57,6 @@ class FrontPageTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertMatchesRegularExpression('/<button type="button" id="password-toggle"[^>]*\shidden[\s>]/', $html);
-        $this->assertStringContainsString('aria-pressed="false"', $html);
         $this->assertStringContainsString('data-show="Tunjuk" data-hide="Sorok"', $html);
         // The CSP allows only nonced inline scripts: the toggle script must carry the page's nonce.
         $this->assertMatchesRegularExpression('/<script nonce="[^"]+">\s*\(function \(\) \{\s*var input = document.getElementById\(\'password\'\)/', $html);

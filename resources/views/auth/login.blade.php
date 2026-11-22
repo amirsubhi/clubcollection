@@ -23,7 +23,7 @@
                    required autocomplete="current-password"
                    @error('password') aria-invalid="true" aria-describedby="auth-error" @enderror>
             <button type="button" id="password-toggle" class="auth-link absolute inset-y-0 right-1 px-3" hidden
-                    aria-controls="password" aria-pressed="false" data-testid="password-toggle"
+                    aria-controls="password" data-testid="password-toggle"
                     data-show="{{ __('Show') }}" data-hide="{{ __('Hide') }}">
                 <span data-label>{{ __('Show') }}</span><span class="sr-only"> {{ __('password') }}</span>
             </button>
@@ -52,7 +52,6 @@
     btn.addEventListener('click', function () {
         var show = input.type === 'password';
         input.type = show ? 'text' : 'password';
-        btn.setAttribute('aria-pressed', show ? 'true' : 'false');
         label.textContent = show ? btn.dataset.hide : btn.dataset.show;
         input.focus();
     });
