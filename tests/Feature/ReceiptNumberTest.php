@@ -302,6 +302,41 @@ class ReceiptNumberTest extends TestCase
             ->assertSee('RCP-2026-0001');
     }
 
+    public function test_an_online_group_receipt_drops_a_fee_that_was_taken_back_and_receipted_again(): void
+    {
+        $fees = [$this->fee(), $this->fee(['amount' => 20.00])];
+        Http::fake(['dev.toyyibpay.com/index.php/api/createBill' => Http::response([['BillCode' => 'GRP2']])]);
+        $this->actingAs($this->member)->post(route('member.payments.pay-all', $this->club), [
+            'payment_ids' => [$fees[0]->id, $fees[1]->id], 'total_sen' => 3000,
+        ]);
+        $bill = PaymentBill::where('bill_code', 'GRP2')->sole();
+        $this->fakeToyyibConfirm();
+        auth()->logout();
+        $this->post(route('webhook.toyyibpay').'?webhook_token='.$this->toyyibToken($bill->reference), [
+            'billcode' => 'GRP2', 'order_id' => $bill->reference, 'status_id' => 1, 'transaction_id' => 'TXN-G2', 'amount' => '30.00',
+        ])->assertOk();
+
+        $fees[1]->fresh()->update(['status' => 'pending', 'paid_date' => null]);
+        $this->pay($fees[1]);
+        $this->assertSame('RCP-2026-0002', $fees[1]->fresh()->receipt_no);
+
+        $receipt = \App\Support\Member\MemberPaymentPresenter::groupReceipt($bill->fresh(), collect([$fees[0]->fresh(), $fees[1]->fresh()]));
+        $this->assertSame('RCP-2026-0001', $receipt['receiptNo']);
+        $this->assertSame([$fees[0]->id], array_column($receipt['lines'], 'id'), 'the re-receipted fee is not on the old receipt');
+        $this->assertSame(1000, $receipt['amount']);
+    }
+
+    public function test_deleting_a_paid_fee_voids_its_number_which_is_never_reused(): void
+    {
+        $fee = $this->pay($this->fee());
+        $this->assertSame('RCP-2026-0001', $fee->fresh()->receipt_no);
+
+        $fee->fresh()->delete();
+
+        $this->assertNotNull(DB::table('receipt_allocation_payments')->where('payment_id', $fee->id)->value('voided_at'));
+        $this->assertSame('RCP-2026-0002', $this->pay($this->fee())->fresh()->receipt_no);
+    }
+
     public function test_a_group_fee_taken_back_and_paid_alone_gets_its_own_new_number(): void
     {
         $fees = [$this->fee(), $this->fee(['amount' => 20.00])];

@@ -143,6 +143,10 @@ class Payment extends Model
                 throw new \LogicException('Cannot delete a fee that is part of a group transfer slip.');
             }
             PaymentBill::supersedeOpenGroupsContaining($payment->id);
+            // A deleted fee's receipt number is no longer a valid receipt (it is still never reused).
+            if ($payment->receipt_no !== null) {
+                \App\Support\Payments\ReceiptNumbers::void($payment->id);
+            }
         });
     }
 

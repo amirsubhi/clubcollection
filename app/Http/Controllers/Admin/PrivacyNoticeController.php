@@ -32,13 +32,14 @@ class PrivacyNoticeController extends Controller
             }
         }
         // Plain text: line breaks allowed in the notice; no other control character anywhere.
-        $text = 'nullable|string|max:'.PrivacyNotice::MAX_TEXT.'|not_regex:/[\\x00-\\x09\\x0B-\\x1F\\x7F]/u';
-        $line = 'not_regex:/[\\x00-\\x1F\\x7F]/u';
+        $text = 'nullable|string|max:'.PrivacyNotice::MAX_TEXT.'|not_regex:/[\\x00-\\x09\\x0B-\\x1F\\x7F\\x{80}-\\x{9F}\\x{200B}-\\x{200F}\\x{202A}-\\x{202E}\\x{2066}-\\x{2069}]/u';
+        $line = 'not_regex:/[\\x00-\\x1F\\x7F\\x{80}-\\x{9F}\\x{200B}-\\x{200F}\\x{202A}-\\x{202E}\\x{2066}-\\x{2069}]/u';
         $data = $request->validate([
             'privacy_notice_ms' => $text,
             'privacy_notice_en' => $text,
             'privacy_contact_name' => 'nullable|string|max:100|'.$line,
-            'privacy_contact_email' => 'nullable|string|email:rfc|max:255|'.$line,
+            // strict: no quoted local part, and nothing a mail client would read as extra headers in mailto:
+            'privacy_contact_email' => ['nullable', 'string', 'email:rfc,strict', 'max:255', 'not_regex:/[?&"%]/', ...explode('|', $line)],
         ], [
             'privacy_notice_ms.not_regex' => 'The notice can only hold plain text and line breaks.',
             'privacy_notice_en.not_regex' => 'The notice can only hold plain text and line breaks.',

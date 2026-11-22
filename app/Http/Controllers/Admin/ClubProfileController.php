@@ -60,7 +60,7 @@ class ClubProfileController extends Controller
             'address' => 'nullable|string|max:500',
             'financial_year_start_month' => 'required|integer|between:1,12',
             // Plain text: line breaks are allowed, every other control character (tab included) is refused.
-            'receipt_footer' => 'nullable|string|max:'.self::FOOTER_MAX.'|not_regex:/[\\x00-\\x09\\x0B-\\x1F\\x7F]/u',
+            'receipt_footer' => 'nullable|string|max:'.self::FOOTER_MAX.'|not_regex:/[\\x00-\\x09\\x0B-\\x1F\\x7F\\x{80}-\\x{9F}\\x{200B}-\\x{200F}\\x{202A}-\\x{202E}\\x{2066}-\\x{2069}]/u',
             // 2-6 of A-Z / 0-9 (anchored with \A…\z). Left out of the form: unchanged; emptied: back to RCP.
             'receipt_prefix' => ['nullable', 'string', 'regex:'.ReceiptNumbers::PREFIX_PATTERN],
             'logo' => LogoService::rules(),

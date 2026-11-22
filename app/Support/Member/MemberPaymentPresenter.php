@@ -187,6 +187,13 @@ final class MemberPaymentPresenter
             if ($fees->isEmpty()) {
                 return null;
             }
+        } elseif ($bill->receipt_no !== null) {
+            // An online "Bayar semua" receipt covers the fees that still carry its number: a fee taken back
+            // and paid again since has a receipt of its own and must not appear on this one too.
+            $fees = $all->filter(fn (Payment $p) => $p->receipt_no === $bill->receipt_no)->values();
+            if ($fees->isEmpty()) {
+                return null;
+            }
         }
         $lead = $fees->first();
         $amount = $fees->sum(fn (Payment $p) => $amounts[$p->id] ?? self::sen($p->amount));

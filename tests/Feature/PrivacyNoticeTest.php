@@ -93,6 +93,9 @@ class PrivacyNoticeTest extends TestCase
             ['privacy_contact_name' => str_repeat('n', 101)],
             ['privacy_contact_email' => 'not-an-email'],
             ['privacy_contact_email' => "a@example.test\r\nBcc: x@example.test"],
+            ['privacy_contact_email' => '"x?bcc=a@evil.test"@club.example'],
+            ['privacy_contact_email' => 'dpo?cc=a@club.example'],
+            ['privacy_contact_name' => "Nama \u{202E}terbalik"],
         ] as $bad) {
             $this->put(route('admin.privacy-notice.update'), $this->payload($bad))->assertSessionHasErrors(array_key_first($bad));
         }
