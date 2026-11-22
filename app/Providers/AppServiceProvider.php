@@ -4,15 +4,23 @@ namespace App\Providers;
 
 use App\Models\Club;
 use App\Services\PaymentGateways\PaymentGatewayManager;
+use App\Support\Auth\AccountLoginBlock;
 use App\Support\Contact\WhatsAppNumber;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\NotPwnedVerifier;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +30,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PaymentGatewayManager::class);
+
+        // The breached-password check (Password::uncompromised(), Have I Been Pwned's k-anonymity range API: only
+        // the first 5 characters of the SHA-1 leave the server) passes when the API can't be reached, so an
+        // offline host never blocks a password reset. 5 s instead of the framework's 30 s keeps that wait short.
+        // extend(), not singleton(): ValidationServiceProvider is deferred and would replace a binding when it loads.
+        $this->app->extend(UncompromisedVerifier::class, fn ($verifier, $app) => new NotPwnedVerifier($app[HttpFactory::class], 5));
     }
 
     /**
@@ -32,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
         // Views use Bootstrap 5; the default Tailwind pagination renders unstyled.
         Paginator::useBootstrapFive();
 
+        // New passwords (reset, change): 12+ characters and not in a known breach. No "mixed case / symbol"
+        // rules (NIST SP 800-63B): a few ordinary words together is long, strong and easy to remember.
+        Password::defaults(fn () => Password::min(12)->uncompromised());
+
         // Named limiters get their own counters. A plain throttle:N,M on guest
         // routes shares one per-IP counter across every such route, so gateway
         // callbacks would eat into the login limit (and the other way round).
@@ -39,15 +57,46 @@ class AppServiceProvider extends ServiceProvider
         // a few IPs, and a busy collection day (or retries after an outage)
         // must never be cut off; the limit only stops a flood from one source.
         RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(300)->by('webhook|'.$request->ip()));
-        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by('password|'.$request->ip()));
+        // Password reset: its three forms each have their own buckets, so filling one (e.g. requests for many
+        // emails from an office IP) never stops a colleague finishing their own reset. Per email + IP 5 a
+        // minute, per IP 30 a minute (an office shares one IP).
+        foreach (['password-email' => 'pw-email', 'password-reset' => 'pw-reset', 'password-confirm' => 'pw-confirm'] as $name => $prefix) {
+            RateLimiter::for($name, fn (Request $request) => [
+                Limit::perMinute(30)->by($prefix.'-ip|'.$request->ip()),
+                Limit::perMinute(5)->by($prefix.'|'.($request->user()?->id ?? AccountLoginBlock::accountKey(is_string($e = $request->input('email')) ? $e : '')).'|'.$request->ip()),
+            ]);
+        }
         // Turning 2FA on checks the password (and a TOTP code): 5 tries a minute per user, its own bucket.
         RateLimiter::for('two-factor-setup', fn (Request $request) => Limit::perMinute(5)->by('2fa-setup|'.($request->user()?->id ?? $request->ip())));
+
+        // Sign-in (POST /login): 5 a minute per account (or unknown email) + IP, and 30 a minute per IP. A staff club often signs in
+        // from one office network (one public IP), so the per-IP ceiling is high enough for many colleagues at
+        // once; the per-email limit stops guessing one account. On top of that, LoginController pauses an
+        // account after 10 wrong passwords from any IP (App\Support\Auth\AccountLoginBlock). A hit limit is
+        // audited (Lockout event) and answered with the friendly 429 page.
+        RateLimiter::for('login', fn (Request $request) => [
+            Limit::perMinute(30)->by('login-ip|'.$request->ip())->response(self::loginLimitResponse(...)),
+            Limit::perMinute(5)->by('login|'.AccountLoginBlock::accountKey(is_string($email = $request->input('email')) ? $email : '').'|'.$request->ip())
+                ->response(self::loginLimitResponse(...)),
+        ]);
+        // The 2FA challenge POST and the installer each have their own bucket (they used to share the
+        // unnamed throttle:5,1 counter with sign-in). The challenge: 5 a minute per pending account (the
+        // session's two_factor_user_id) + IP, 30 a minute per IP (admins in one office share an IP); it also
+        // locks per account after 5 wrong codes (TwoFactorChallengeController).
+        RateLimiter::for('two-factor', fn (Request $request) => [
+            Limit::perMinute(30)->by('2fa-ip|'.$request->ip()),
+            Limit::perMinute(5)->by('2fa|'.(int) ($request->hasSession() ? $request->session()->get('two_factor_user_id') : 0).'|'.$request->ip()),
+        ]);
+        // Change password checks the current one: 5 tries a minute per user.
+        RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by('password-change|'.($request->user()?->id ?? $request->ip())));
+        RateLimiter::for('install', fn (Request $request) => Limit::perMinute(5)->by('install|'.$request->ip()));
 
         self::configureTrustedProxies();
 
         // Sign-in pages: the "Need help?" section names a club contact only when exactly one active club exists
         // (a guest's club is unknown, and listing several clubs' contacts would hand them to anyone).
-        View::composer('layouts.auth', function ($view) {
+        // auth.login too: its "how to join" section is rendered before the layout, so the layout's data is not there yet.
+        View::composer(['layouts.auth', 'auth.login'], function ($view) {
             // Error pages use this layout too, and must render without a database: no contact then.
             $clubs = rescue(fn () => Club::query()->where('is_active', true)->limit(2)->get(['id', 'name', 'email', 'whatsapp_number']), collect(), false);
             $club = $clubs->count() === 1 ? $clubs->first() : null;
@@ -65,6 +114,21 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->isProduction()) {
             self::pinRootUrl();
         }
+    }
+
+    /**
+     * A sign-in limit was hit: record a Lockout (audit log), then answer with the usual "Too many attempts,
+     * please wait about N seconds" page (resources/views/errors/429, BM/EN, sign-in styling). One Lockout per
+     * IP per wait, however many more posts arrive, so a flood can't fill the audit log.
+     */
+    public static function loginLimitResponse(Request $request, array $headers): never
+    {
+        $seconds = max(1, (int) ($headers['Retry-After'] ?? 60));
+        if (Cache::add('login-lockout-audited|'.$request->ip(), true, $seconds)) {
+            event(new Lockout($request));
+        }
+
+        throw new ThrottleRequestsException('Too Many Attempts.', null, $headers);
     }
 
     /**

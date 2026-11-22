@@ -44,6 +44,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'check_installed'       => \App\Http\Middleware\CheckInstalled::class,
             'redirect_if_installed' => \App\Http\Middleware\RedirectIfInstalled::class,
             'two_factor'            => \App\Http\Middleware\RequiresTwoFactor::class,
+            'password_changed'      => \App\Http\Middleware\EnsurePasswordChanged::class,
+            'admin_two_factor'      => \App\Http\Middleware\RequireAdminTwoFactor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

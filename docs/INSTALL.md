@@ -321,19 +321,21 @@ PostgreSQL also works through `DB_CONNECTION=pgsql` with the `pdo_pgsql` extensi
 
 Log in as the super admin, then:
 
-1. **Turn on 2FA** for your own account (**Security & 2FA** in the sidebar; see the
-   [user guide](USER-GUIDE.md#turn-on-two-factor-authentication)).
+1. **Turn on 2FA** for your own account: you are taken to **Security & 2FA** at your first sign-in, since admins
+   must have it (`REQUIRE_ADMIN_2FA`; see the [user guide](USER-GUIDE.md#turn-on-two-factor-authentication)).
 2. **Create the club:** **Clubs → New Club** with its name, email, logo and payment gateway (ToyyibPay or Billplz)
    with that club's credentials, stored encrypted (leave them empty to use the global ones in `.env`).
 3. **Grant club admins:** only the super admin can. **Members → Add member** for the club with **Club Role** set to
    **Admin** (or edit an existing member). Give each club **at least two admins** so there is always a second person
    to approve spending and bank changes.
-4. **Set the fees:** **Fee Rates** (monthly fee per job level), **Discounts** if any, and **Expense categories**.
+4. **Set the fees:** **Job levels** (the club starts with one, "Ahli"; add the club's own grades if fees differ by
+   grade), then **Fee Rates** (monthly fee per job level), **Discounts** if any, and **Expense categories**.
 5. **Billing settings:** which plans members may choose (monthly, quarterly, yearly), the default plan, and who pays
    the gateway fee.
 6. **Bank / DuitNow details** (Billing settings), for the free transfer option. Every change, the first one included,
    waits until a **second admin** (or the super admin) approves it; members see the new details only after that.
-7. **Add members** one by one or by CSV import. Each gets a welcome email with a temporary password.
+7. **Add members** one by one or by CSV import. Each gets a welcome email with a temporary password, and chooses
+   their own password at their first sign-in.
 8. **Send a test email:** log out and use **Forgot password?** on the login page with your own email. If it doesn't
    arrive, see [emails not sent](#emails-are-not-sent).
 9. **Try a payment** with the gateway's sandbox before going live (for ToyyibPay follow
@@ -341,6 +343,34 @@ Log in as the super admin, then:
    [option-a-report.md](option-a-report.md#before-go-live-checklist).
 
 The [user guide](USER-GUIDE.md) covers each of these screens in detail.
+
+### Post-install security checks
+
+Run these from your own computer (replace `club.example.com`). Each of the first four must answer **403 or 404**,
+never 200:
+
+```bash
+curl -I https://club.example.com/.env
+curl -I https://club.example.com/vendor/
+curl -I https://club.example.com/storage/logs/laravel.log
+curl -I https://club.example.com/.git/HEAD
+```
+
+A 200 means the domain points at the app folder instead of `public/` ([step 3](#step-3-point-the-domain-at-public)):
+fix that before anyone signs in.
+
+Then check:
+
+- `.env` has `APP_DEBUG=false` and `APP_ENV=production` (a wrong URL such as `/nothing-here` shows the plain "page
+  not found" page, not a stack trace);
+- PHP's `expose_php` is off (cPanel → **MultiPHP INI Editor** → `expose_php = Off`): `curl -I https://club.example.com/`
+  shows no `X-Powered-By: PHP/…` line;
+- the security headers are there for both a page and a static file:
+  `curl -I https://club.example.com/login` and `curl -I https://club.example.com/favicon.ico` both show
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN` and `Referrer-Policy`, each **once** (the page
+  also shows `Content-Security-Policy` and `Strict-Transport-Security: max-age=31536000`);
+- `TRUSTED_PROXIES` is empty unless your host or Cloudflare really puts a proxy in front of PHP;
+- every admin account has 2FA on (with `REQUIRE_ADMIN_2FA=true`, the default, they are asked at their next sign-in).
 
 ## 6. Backups
 

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Controller;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Inertia;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -26,7 +28,10 @@ class ProfileController extends Controller
             return $this->memberSecurity($user, $recoveryCodes);
         }
 
-        return $this->noStore(response()->view('admin.profile.security', compact('user', 'recoveryCodes')));
+        // Shown when RequireAdminTwoFactor sent them here: 2FA must be on before the admin pages open.
+        $twoFactorRequired = \App\Http\Middleware\RequireAdminTwoFactor::applies($user);
+
+        return $this->noStore(response()->view('admin.profile.security', compact('user', 'recoveryCodes', 'twoFactorRequired')));
     }
 
     /** Secrets and recovery codes must not be kept by the browser or a proxy cache. */
@@ -111,13 +116,6 @@ class ProfileController extends Controller
             'two_factor_last_used_step'  => null,
         ])->save();
 
-        // Generate QR code as inline SVG
-        $qrCodeUrl = $this->google2fa->getQRCodeUrl(
-            config('app.name'),
-            $user->email,
-            $secret
-        );
-
         if (! $user->isAdmin()) {
             // The member page shows the QR + key from this flag (kept until confirm or disable).
             session(['two_factor_setup_pending' => true]);
@@ -125,13 +123,43 @@ class ProfileController extends Controller
             return redirect()->route('profile.security');
         }
 
-        $qrSvg = $this->generateQrSvg($qrCodeUrl);
+        return $this->adminSetupPage($user, $secret);
+    }
 
-        return $this->noStore(response()->view('admin.profile.two-factor-setup', compact('user', 'qrSvg', 'secret')));
+    /**
+     * The admin setup page (QR + key + confirm form). It is the answer to a POST, so a mistake on the confirm
+     * form shows this page again with the same secret and the error: back() would land on the POST-only
+     * enable URL (404/405) in the middle of setup.
+     */
+    private function adminSetupPage($user, string $secret, ?\Illuminate\Support\MessageBag $errors = null)
+    {
+        $qrSvg = $this->generateQrSvg($this->google2fa->getQRCodeUrl(config('app.name'), $user->email, $secret));
+        $data = compact('user', 'qrSvg', 'secret');
+        if ($errors) {
+            $data['errors'] = (new \Illuminate\Support\ViewErrorBag)->put('default', $errors);
+        }
+
+        return $this->noStore(response()->view('admin.profile.two-factor-setup', $data, $errors ? 422 : 200));
     }
 
     public function confirmTwoFactor(Request $request)
     {
+        $user = auth()->user();
+        $pendingSecret = $user->hasEnabledTwoFactor() ? null : $user->getTwoFactorSecret();
+        if ($user->isAdmin() && $pendingSecret) {
+            // The key is shown again only to someone who just typed the right password: a borrowed session
+            // must not read a pending secret by posting junk. A wrong or missing password starts over.
+            $password = $request->input('current_password');
+            if (! is_string($password) || ! \Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+                return redirect()->route('profile.security')
+                    ->withErrors(['current_password' => 'That password is not right. Click Enable 2FA to start again.']);
+            }
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), ['code' => 'required|string|digits:6']);
+            if ($validator->fails()) {
+                return $this->adminSetupPage($user, $pendingSecret, $validator->errors());
+            }
+        }
+
         $request->validate([
             'code' => 'required|string|digits:6',
             'current_password' => 'required|current_password',
@@ -143,18 +171,20 @@ class ProfileController extends Controller
             'current_password.current_password' => 'member.2fa_password_invalid',
         ]), ['current_password' => 'password']);
 
-        $user   = auth()->user();
         $secret = $user->getTwoFactorSecret();
 
         if ($user->hasEnabledTwoFactor()) {
             return redirect()->route('profile.security')->with('error', $this->flashText('2fa_already_on', '2FA is already on.'));
         }
         if (! $secret) {
-            return back()->with('error', $this->flashText('2fa_not_started', '2FA setup not started. Please click Enable first.'));
+            return redirect()->route('profile.security')->with('error', $this->flashText('2fa_not_started', '2FA setup not started. Please click Enable first.'));
         }
 
         $valid = $user->verifyTwoFactorCode($request->code, $secret);
 
+        if (! $valid && $user->isAdmin()) {
+            return $this->adminSetupPage($user, $secret, new \Illuminate\Support\MessageBag(['code' => 'Invalid code. Please try again.']));
+        }
         if (! $valid) {
             return back()->withErrors(['code' => $this->flashText('2fa_code_invalid', 'Invalid code. Please try again.')]);
         }
@@ -184,12 +214,33 @@ class ProfileController extends Controller
 
     public function disableTwoFactor(Request $request)
     {
-        $request->validate(['password' => 'required|current_password'], $this->memberMessages([
+        // The password alone is not enough (a borrowed, unlocked session, or a password someone saw): the
+        // second factor itself must be shown too, as a current code or one of the recovery codes.
+        $request->validate([
+            'password' => 'required|current_password',
+            'code' => 'required|string|max:64',
+        ], $this->memberMessages([
             'password.required' => 'member.2fa_password_invalid',
             'password.current_password' => 'member.2fa_password_invalid',
+            'code.required' => 'member.2fa_disable_code_invalid',
+            'code.string' => 'member.2fa_disable_code_invalid',
+            'code.max' => 'member.2fa_disable_code_invalid',
         ]));
 
         $user = auth()->user();
+        // Same lock as the sign-in challenge: 5 wrong codes lock the account's 2FA checks for 15 minutes.
+        $lockKey = TwoFactorChallengeController::lockKey($user);
+        if ($user->hasEnabledTwoFactor() && RateLimiter::tooManyAttempts($lockKey, TwoFactorChallengeController::MAX_FAILURES)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($lockKey) / 60);
+
+            return back()->withErrors(['code' => $this->flashText('2fa_disable_locked', "Too many wrong codes. Try again in {$minutes} minutes.")]);
+        }
+        if ($user->hasEnabledTwoFactor() && ! $user->verifyTwoFactorCodeOrRecoveryCode((string) $request->input('code'))) {
+            RateLimiter::hit($lockKey, TwoFactorChallengeController::LOCK_SECONDS);
+            AuditService::log('2fa.disable_failed', '2FA not disabled: wrong authenticator or recovery code.');
+
+            return back()->withErrors(['code' => $this->flashText('2fa_disable_code_invalid', 'That code is not right. Enter the 6-digit code from your authenticator app, or one of your recovery codes.')]);
+        }
         $user->forceFill([
             'two_factor_secret'         => null,
             'two_factor_recovery_codes' => null,

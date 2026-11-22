@@ -8,6 +8,13 @@
 
         <p class="text-muted mb-4">Manage your account security and two-factor authentication.</p>
 
+        @if($twoFactorRequired ?? false)
+        <div class="alert alert-warning mb-4" role="alert" data-testid="2fa-required">
+            <div class="fw-semibold mb-1"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>Turn on 2FA to continue</div>
+            <p class="small mb-0">Administrator accounts look after the club's money and members' details, so two-factor authentication is required. Set it up below; it takes about two minutes with an authenticator app on your phone. The admin pages open as soon as it is on.</p>
+        </div>
+        @endif
+
         {{-- Recovery codes shown once after enabling --}}
         @if(isset($recoveryCodes) && count($recoveryCodes))
         <div class="alert alert-warning mb-4" role="alert">
@@ -56,6 +63,15 @@
                                placeholder="Current password" autocomplete="current-password" required>
                         @error('password')
                         <div id="disable2faPassword-error" role="alert" class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label for="disable2faCode" class="form-label small fw-semibold">Code from your authenticator app, or a recovery code</label>
+                        <input type="text" id="disable2faCode" name="code" @error('code') aria-invalid="true" aria-describedby="disable2faCode-error" @enderror
+                               class="form-control @error('code') is-invalid @enderror"
+                               autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="64" required>
+                        @error('code')
+                        <div id="disable2faCode-error" role="alert" class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <button type="submit" class="btn btn-sm btn-outline-danger">

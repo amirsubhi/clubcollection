@@ -27,6 +27,8 @@ class User extends Authenticatable
         return [
             'email_verified_at'        => 'datetime',
             'two_factor_confirmed_at'  => 'datetime',
+            // Not fillable: set with forceFill / forceCreate where an admin emails a temporary password.
+            'must_change_password'     => 'boolean',
             'password'                 => 'hashed',
         ];
     }
@@ -67,9 +69,76 @@ class User extends Authenticatable
             return false;
         }
 
-        $this->forceFill(['two_factor_last_used_step' => (int) $step])->save();
+        // Claim the step atomically: two requests racing with the same code cannot both win.
+        $claimed = static::query()->whereKey($this->getKey())
+            ->where(fn ($q) => $q->whereNull('two_factor_last_used_step')->orWhere('two_factor_last_used_step', '<', (int) $step))
+            ->update(['two_factor_last_used_step' => (int) $step]);
+        if ($claimed !== 1) {
+            return false;
+        }
+        $this->forceFill(['two_factor_last_used_step' => (int) $step])->syncOriginalAttribute('two_factor_last_used_step');
 
         return true;
+    }
+
+    /**
+     * Index of the stored recovery code that $typed matches, or false. Compared without case, spaces or
+     * dashes ("abcd efgh" matches "ABCD-EFGH"), in constant time per code.
+     */
+    public function findRecoveryCode(string $typed): int|false
+    {
+        $norm = fn ($c) => strtoupper(preg_replace('/[\s-]+/', '', (string) $c));
+        $typed = $norm($typed);
+        if ($typed === '') {
+            return false;
+        }
+
+        foreach ($this->getTwoFactorRecoveryCodes() as $i => $code) {
+            if (hash_equals($norm($code), $typed)) {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * A current TOTP code (not replayed) or one of the recovery codes. A matched recovery code is used up.
+     */
+    public function verifyTwoFactorCodeOrRecoveryCode(string $input): bool
+    {
+        $input = trim($input);
+        if (preg_match('/^\d{6}$/', $input)) {
+            return $this->verifyTwoFactorCode($input);
+        }
+
+        return $this->useRecoveryCode($input);
+    }
+
+    /**
+     * Spend a recovery code: read, match and remove it under a row lock, so one code cannot be used by two
+     * requests at once. False when it does not match.
+     */
+    public function useRecoveryCode(string $input): bool
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($input) {
+            $fresh = static::query()->whereKey($this->getKey())->lockForUpdate()->first();
+            if (! $fresh) {
+                return false;
+            }
+            $index = $fresh->findRecoveryCode($input);
+            if ($index === false) {
+                return false;
+            }
+
+            $codes = $fresh->getTwoFactorRecoveryCodes();
+            unset($codes[$index]);
+            $stored = encrypt(json_encode(array_values($codes)));
+            $fresh->forceFill(['two_factor_recovery_codes' => $stored])->save();
+            $this->forceFill(['two_factor_recovery_codes' => $stored])->syncOriginalAttribute('two_factor_recovery_codes');
+
+            return true;
+        });
     }
 
     // ── Role helpers ───────────────────────────────────────────────────────

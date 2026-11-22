@@ -37,7 +37,8 @@ class AdminUserController extends Controller
 
         $temporaryPassword = Str::password(12, letters: true, numbers: true, symbols: false);
 
-        $user = User::create([
+        $user = User::forceCreate([
+            'must_change_password' => true, // emailed temporary password: choose their own at first sign-in
             'name'     => $data['name'],
             'email'    => $data['email'],
             'password' => Hash::make($temporaryPassword),

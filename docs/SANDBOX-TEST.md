@@ -105,8 +105,8 @@ or `testing`. Create a small test club instead, logged in as the super admin you
 
 1. **Clubs → New Club**: name "Staging Test Club", any email, payment gateway **ToyyibPay**. Leave the club's
    ToyyibPay keys empty, so it uses the sandbox keys from `.env`.
-2. **Fee Rates**: set **RM 1.00** a month for one job level (e.g. Executive). Small amounts keep the test simple; RM 1
-   is ToyyibPay's usual minimum.
+2. **Fee Rates**: set **RM 1.00** a month for the club's job level (a new club has one, **Ahli**). Small amounts keep
+   the test simple; RM 1 is ToyyibPay's usual minimum.
 3. **Billing settings**: leave **Gateway fee: Club absorbs it** and **Gateway fee per bill RM 1.00**.
 4. **Members → Add member**: a test member at that job level, with an email you can read (or, with `MAIL_MAILER=log`,
    find the welcome email with the temporary password in `storage/logs/laravel.log`). Use a made-up name such as

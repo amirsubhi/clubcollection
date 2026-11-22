@@ -46,10 +46,24 @@ class TwoFactorTest extends TestCase
         $user = $this->actingAsSuperAdmin();
         $this->post(route('profile.2fa.enable'), ['current_password' => 'password']);
 
+        $secret = $user->fresh()->getTwoFactorSecret();
+
+        // A typo shows the setup page again (same key, the error), not a redirect to the POST-only enable URL.
         $this->post(route('profile.2fa.confirm'), ['code' => '000000', 'current_password' => 'password'])
-            ->assertRedirect();
+            ->assertStatus(422)
+            ->assertSee($secret)
+            ->assertSee('Invalid code. Please try again.')
+            ->assertSee('action="'.route('profile.2fa.confirm').'"', false);
+        $this->post(route('profile.2fa.confirm'), ['code' => '12', 'current_password' => 'password'])
+            ->assertStatus(422)->assertSee($secret);
 
         $this->assertNull($user->fresh()->two_factor_confirmed_at);
+        $this->assertSame($secret, $user->fresh()->getTwoFactorSecret());
+
+        // ...and the right code on that same page still works.
+        $this->post(route('profile.2fa.confirm'), ['code' => (new Google2FA())->getCurrentOtp($secret), 'current_password' => 'password'])
+            ->assertRedirect(route('profile.security'));
+        $this->assertNotNull($user->fresh()->two_factor_confirmed_at);
     }
 
     public function test_disable_two_factor_requires_correct_password(): void
@@ -68,12 +82,13 @@ class TwoFactorTest extends TestCase
         // verified so we exercise the controller.
         $this->withSession(['two_factor_verified' => true]);
 
-        $this->delete(route('profile.2fa.disable'), ['password' => 'wrong'])
+        $code = (new Google2FA())->getCurrentOtp('JBSWY3DPEHPK3PXP');
+        $this->delete(route('profile.2fa.disable'), ['password' => 'wrong', 'code' => $code])
             ->assertSessionHasErrors('password');
 
         $this->assertNotNull($user->fresh()->two_factor_confirmed_at);
 
-        $this->delete(route('profile.2fa.disable'), ['password' => 'SuperSecret!2026'])
+        $this->delete(route('profile.2fa.disable'), ['password' => 'SuperSecret!2026', 'code' => $code])
             ->assertRedirect(route('profile.security'));
 
         $this->assertNull($user->fresh()->two_factor_confirmed_at);
@@ -197,7 +212,14 @@ class TwoFactorTest extends TestCase
 
         $this->post(route('profile.2fa.enable'), ['current_password' => 'password'])->assertOk();
         $code = (new Google2FA())->getCurrentOtp($user->fresh()->getTwoFactorSecret());
-        $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'wrong'])->assertSessionHasErrors('current_password');
+        $secret = $user->fresh()->getTwoFactorSecret();
+        // A wrong or missing password never shows the pending key again (a borrowed session must not read it).
+        $wrong = $this->post(route('profile.2fa.confirm'), ['code' => $code, 'current_password' => 'wrong']);
+        $wrong->assertRedirect(route('profile.security'))->assertSessionHasErrors('current_password');
+        $this->assertStringNotContainsString($secret, $wrong->getContent());
+        $none = $this->post(route('profile.2fa.confirm'), ['code' => 'junk']);
+        $none->assertRedirect(route('profile.security'));
+        $this->assertStringNotContainsString($secret, $none->getContent());
         $this->assertNull($user->fresh()->two_factor_confirmed_at);
     }
 

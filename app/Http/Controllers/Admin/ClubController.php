@@ -49,7 +49,13 @@ class ClubController extends Controller
         $data['billplz_collection_id'] = ($data['billplz_collection_id'] ?? null) ?: null;
         $data['billplz_x_signature_key'] = ($data['billplz_x_signature_key'] ?? null) ?: null;
 
-        $club = Club::create($data);
+        $club = \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
+            $club = Club::create($data);
+            // One starting job level ("Ahli"); the club admins add and rename levels on the Job levels page.
+            $club->createDefaultJobLevel();
+
+            return $club;
+        });
 
         AuditService::log('club.created', "Club '{$club->name}' created.", $club);
 
@@ -58,7 +64,7 @@ class ClubController extends Controller
 
     public function show(Club $club)
     {
-        $club->load(['members', 'feeRates']);
+        $club->load(['members', 'feeRates', 'jobLevels']);
 
         return view('admin.clubs.show', compact('club'));
     }

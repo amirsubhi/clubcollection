@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 @section('title', __('Set a new password'))
-@section('auth-subtitle', __('Use at least 8 characters.'))
+@section('auth-subtitle', __(\App\Support\Auth\NewPassword::HINT))
 
 @section('content')
 @include('auth.partials.alerts')
@@ -19,14 +19,14 @@
     <div>
         <label for="password" class="auth-label">{{ __('New password') }}</label>
         <input id="password" type="password" name="password" class="auth-input"
-               required minlength="8" autocomplete="new-password" autofocus
+               required minlength="12" autocomplete="new-password" autofocus
                @error('password') aria-invalid="true" aria-describedby="auth-error" @enderror>
     </div>
 
     <div>
         <label for="password-confirm" class="auth-label">{{ __('Type the new password again') }}</label>
         <input id="password-confirm" type="password" name="password_confirmation" class="auth-input"
-               required minlength="8" autocomplete="new-password">
+               required minlength="12" autocomplete="new-password">
     </div>
 
     <button type="submit" class="auth-btn">{{ __('Save new password') }}</button>

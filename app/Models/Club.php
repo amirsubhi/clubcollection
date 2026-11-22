@@ -209,6 +209,53 @@ class Club extends Model
             ->withTimestamps();
     }
 
+    /** The club's job levels (inactive ones included), in display order. */
+    public function jobLevels()
+    {
+        return $this->hasMany(ClubJobLevel::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * code => name for every level of the club (inactive ones too, so existing members and fee rates keep their
+     * label), in display order. Uses the loaded jobLevels relation.
+     *
+     * @return array<string, string>
+     */
+    public function jobLevelNames(): array
+    {
+        return $this->jobLevels->pluck('name', 'code')->all();
+    }
+
+    /** The display name of a level code; the code itself when the club has no such level. */
+    public function jobLevelName(?string $code): string
+    {
+        return $this->jobLevelNames()[(string) $code] ?? (string) $code;
+    }
+
+    /**
+     * code => name of the levels offered for new members and fee rates, in display order.
+     *
+     * @return array<string, string>
+     */
+    public function activeJobLevelNames(): array
+    {
+        return $this->jobLevels->where('is_active', true)->pluck('name', 'code')->all();
+    }
+
+    /** Give a new club its one starting level ("Ahli"); admins add and rename levels themselves. */
+    public function createDefaultJobLevel(): ClubJobLevel
+    {
+        $level = $this->jobLevels()->create([
+            'code' => ClubJobLevel::DEFAULT_CODE,
+            'name' => ClubJobLevel::DEFAULT_NAME,
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+        $this->unsetRelation('jobLevels');
+
+        return $level;
+    }
+
     public function feeRates()
     {
         return $this->hasMany(FeeRate::class);

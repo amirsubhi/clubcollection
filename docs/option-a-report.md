@@ -154,7 +154,7 @@ not worth the cost. Billplz has no confirm step like ToyyibPay's, so its `x_sign
 3. Installer: check the typed `app_url` host matches the request host, so a typo can't lock the site out.
 4. Map untrusted-host errors to 400 instead of 500.
 5. Password-reset limiter keyed by IP + email (staff share one office IP); set `TRUSTED_PROXIES` if the host uses a proxy.
-6. 2FA setup: on a wrong password/code redirect to the security page instead of `back()` to a POST-only URL (405).
+6. ✅ Done (go-live hardening): a wrong password or code on the admin 2FA setup shows the setup page again with the same key.
 7. Unmatched-webhook audit rows can still be added with any real paid bill code (no settlement possible); low priority.
 8. Docs: a bank change requested by the only super admin for a club with no admin can't be approved; cancel and let a club admin request it.
 
@@ -232,6 +232,10 @@ All ★ and go-live items from A1–A4 plus what A5 and the final review found. 
 - [ ] PHP 8.4 on the host (both cPanel hosts offer it; it only needs enabling). `composer.json` already says `^8.4`.
 - [ ] Create the MariaDB database and user on the host and set `DB_CONNECTION=mariadb` (INSTALL.md section 4). Don't go live on SQLite.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, HTTPS forced, `SESSION_SECURE_COOKIE=true`.
+- [ ] S2 sign-in hardening: `REQUIRE_ADMIN_2FA=true` (every admin sets up 2FA at the next sign-in), `TRUSTED_PROXIES`
+  empty unless a real proxy, HSTS left at this host only unless the whole domain is HTTPS, and the post-install
+  `curl -I` checks in INSTALL.md §5 (`.env`, `vendor/`, logs, `.git` not reachable; headers once on pages and
+  static files; `expose_php` off).
 - [ ] Webhooks fail closed; per-payment pay lock (cache driver `database`/`file`, not `array`); unique index (club, user, period_start). Fail closed done in G1 and the unique index exists (P1); left: confirm the host's cache driver.
 - [x] A way to reconcile missed callbacks (manual "re-check bill status" or a scheduled job); cron for the scheduler. Done in G1 (`payments:reconcile-open-bills` every 15 minutes plus the "Semak status bayaran" requery; cron line in INSTALL.md step 12).
 

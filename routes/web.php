@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ClubController;
 use App\Http\Controllers\Admin\ClubBillingController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\FeeRateController;
+use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ExpenseController;
@@ -29,7 +30,7 @@ use App\Http\Controllers\Member\PayAllController as MemberPayAll;
 // ── Installation wizard (only accessible when NOT installed) ────────────────
 Route::middleware('redirect_if_installed')->group(function () {
     Route::get('/install', [InstallController::class, 'index'])->name('install');
-    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:5,1')->name('install.process');
+    Route::post('/install', [InstallController::class, 'process'])->middleware('throttle:install')->name('install.process');
 });
 
 // ── Payment gateway webhooks — external, no install check, no CSRF ────────
@@ -56,27 +57,28 @@ if (app()->environment('local', 'testing')) {
 // ── All other routes — require app to be installed ─────────────────────────
 Route::middleware('check_installed')->group(function () {
 
-    Route::get('/', function () {
-        return redirect()->route('login');
-    });
-
     // Sign-in pages: BM by default, EN via the page's switch (AuthPageLocale).
     Route::middleware('auth_locale')->group(function () {
-        // Register disabled; login throttled to 5 attempts / minute per IP+email
+        // The front page is the sign-in page itself (no extra step before the form). LoginController's
+        // `guest` middleware sends a signed-in user on to /home.
+        Route::get('/', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('front');
+
+        // Register disabled.
         Auth::routes(['register' => false]);
 
-        // Override login POST with explicit rate limiting
+        // Replaces Auth::routes()' POST /login (no name, so it doesn't clash with GET 'login' under route:cache).
+        // throttle:login (AppServiceProvider): 5 a minute per email + IP and 30 a minute per IP (an office network
+        // shares one IP); LoginController also pauses one account for 15 minutes after 10 wrong passwords.
         Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])
-            ->middleware('throttle:5,1');  // replaces Auth::routes()' POST /login; no name, so it doesn't clash with GET 'login' (route:cache)
+            ->middleware('throttle:login');
 
-        // Same for the password reset and confirm POSTs (S1): 5 a minute per IP,
-        // on their own named limiter (AppServiceProvider).
+        // Password reset and confirm POSTs: each form its own limiter, per email + IP and per IP (AppServiceProvider).
         Route::post('password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])
-            ->middleware('throttle:password-reset')->name('password.email');
+            ->middleware('throttle:password-email')->name('password.email');
         Route::post('password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
             ->middleware('throttle:password-reset')->name('password.update');
         Route::post('password/confirm', [\App\Http\Controllers\Auth\ConfirmPasswordController::class, 'confirm'])
-            ->middleware(['auth', 'throttle:password-reset']);
+            ->middleware(['auth', 'throttle:password-confirm']);
 
         // ── Two-factor challenge — no `auth` middleware ───────────────────────────
         // LoginController::authenticated() calls auth()->logout() and pins the
@@ -88,14 +90,25 @@ Route::middleware('check_installed')->group(function () {
         // Throttle the verify POST to defend against brute-forcing TOTP codes
         // (10**6 search space) and recovery codes (8 codes, alphanumeric).
         Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'verify'])
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:two-factor')
             ->name('two-factor.verify');
     }); // auth_locale
 
     // auth.session (AuthenticateSession) ends every other session of a user
     // whose password changed, e.g. after a password reset (S1).
-    Route::middleware(['auth', 'auth.session', 'two_factor'])->group(function () {
+    // password_changed: an account with an emailed temporary password must choose its own first
+    // (EnsurePasswordChanged); it allows only the change-password page and logout.
+    // admin_two_factor: with REQUIRE_ADMIN_2FA (default on) a super admin / club admin without 2FA is sent to
+    // the Security page to set it up (RequireAdminTwoFactor). Members are never forced.
+    Route::middleware(['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+        // ── Change password (sign-in page style, BM by default) ─────────────
+        Route::middleware('auth_locale')->group(function () {
+            Route::get('/password/change', [\App\Http\Controllers\Auth\ChangePasswordController::class, 'show'])->name('password.change');
+            Route::post('/password/change', [\App\Http\Controllers\Auth\ChangePasswordController::class, 'update'])
+                ->middleware('throttle:password-change')->name('password.change.update');
+        });
 
         // ── Profile / 2FA setup ──────────────────────────────────────────────
         Route::get('/profile/security', [ProfileController::class, 'security'])->name('profile.security');
@@ -148,6 +161,9 @@ Route::middleware('check_installed')->group(function () {
 
             Route::resource('clubs.members', MemberController::class)->shallow()->except('show');
             Route::resource('clubs.fee-rates', FeeRateController::class)->shallow()->only(['index', 'create', 'store', 'destroy']);
+            // The club's own job levels (fee rates are set per level). Shallow actions authorize via the level's club.
+            Route::patch('job-levels/{jobLevel}/active', [JobLevelController::class, 'setActive'])->name('job-levels.active');
+            Route::resource('clubs.job-levels', JobLevelController::class)->shallow()->only(['index', 'store', 'update', 'destroy']);
 
             Route::get('clubs/{club}/dashboard', [DashboardController::class, 'index'])->name('clubs.dashboard');
 

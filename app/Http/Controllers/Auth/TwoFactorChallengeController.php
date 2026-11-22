@@ -62,28 +62,12 @@ class TwoFactorChallengeController extends Controller
                 return back()->withErrors(['code' => __('Invalid authentication code.')]);
             }
         } elseif ($request->filled('recovery_code')) {
-            $codes = $user->getTwoFactorRecoveryCodes();
-            // Compare without case, spaces or dashes ("abcd efgh" matches "ABCD-EFGH"); the stored code is removed below.
-            $norm = fn ($c) => strtoupper(preg_replace('/[\s-]+/', '', (string) $c));
-            $typed = $norm($request->recovery_code);
-            $index = false;
-            foreach ($codes as $i => $code) {
-                if ($typed !== '' && hash_equals($norm($code), $typed)) {
-                    $index = $i;
-                    break;
-                }
-            }
-
-            if ($index === false) {
+            // Matched without case, spaces or dashes ("abcd efgh" matches "ABCD-EFGH") and removed in the same
+            // locked step, so two requests racing with one code cannot both get in.
+            if (! $user->useRecoveryCode((string) $request->recovery_code)) {
                 $this->fail($request, $user, "Invalid recovery code for '{$user->name}'.");
                 return back()->withErrors(['recovery_code' => __('Invalid recovery code.')]);
             }
-
-            // Invalidate used recovery code
-            unset($codes[$index]);
-            $user->forceFill([
-                'two_factor_recovery_codes' => encrypt(json_encode(array_values($codes))),
-            ])->save();
             $usedRecoveryCode = true;
         } else {
             return back()->withErrors(['code' => __('Please enter an authentication code or recovery code.')]);

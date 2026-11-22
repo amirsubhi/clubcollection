@@ -6,9 +6,16 @@
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-7">
+        @if(empty($jobLevels))
+        <div class="alert alert-warning">
+            This club has no active job levels, so there is nothing to set a rate for.
+            <a href="{{ route('admin.clubs.job-levels.index', $club) }}">Add job levels</a> first.
+        </div>
+        @else
         <div class="alert alert-info small">
             <i class="bi bi-info-circle me-1"></i>
             Setting new rates will automatically close existing active rates for updated job levels.
+            The levels are this club's own: add or rename them on the <a href="{{ route('admin.clubs.job-levels.index', $club) }}">Job Levels</a> page.
         </div>
         <div class="card shadow-sm">
             <div class="card-body p-4">
@@ -53,6 +60,7 @@
                 </form>
             </div>
         </div>
+        @endif
     </div>
 </div>
 @endsection

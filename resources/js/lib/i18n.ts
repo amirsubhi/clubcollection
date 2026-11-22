@@ -401,10 +401,23 @@ const dict = {
   secDownloadCodes: { bm: "Muat turun", en: "Download" },
   secTurnOff: { bm: "Matikan 2FA", en: "Turn off 2FA" },
   secTurnOffHint: { bm: "Masukkan kata laluan untuk mematikan 2FA.", en: "Enter your password to turn off 2FA." },
+  secTurnOffCode: { bm: "Kod daripada aplikasi pengesah, atau kod pemulihan", en: "Code from the authenticator app, or a recovery code" },
+  secTurnOffCodeHint: {
+    bm: "Taip 6 digit daripada aplikasi. Tiada telefon? Guna salah satu kod pemulihan anda.",
+    en: "Type the 6 digits from the app. No phone? Use one of your recovery codes.",
+  },
   secCodesSaved: { bm: "Saya sudah simpan", en: "I've saved them" },
   flash_2fa_password_invalid: { bm: "Kata laluan tidak betul.", en: "That password isn't right." },
   flash_2fa_code_invalid: { bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi dan cuba lagi.", en: "That code isn't right. Type the 6 digits from the app and try again." },
   flash_2fa_enabled: { bm: "2FA dihidupkan. Simpan kod pemulihan anda.", en: "2FA is on. Save your recovery codes." },
+  flash_2fa_disable_code_invalid: {
+    bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi pengesah, atau salah satu kod pemulihan anda.",
+    en: "That code isn't right. Type the 6 digits from the authenticator app, or one of your recovery codes.",
+  },
+  flash_2fa_disable_locked: {
+    bm: "Terlalu banyak kod salah. Cuba lagi dalam 15 minit.",
+    en: "Too many wrong codes. Try again in 15 minutes.",
+  },
   flash_2fa_disabled: { bm: "2FA telah dimatikan.", en: "2FA has been turned off." },
   flash_2fa_already_on: { bm: "2FA sudah dihidupkan.", en: "2FA is already on." },
   flash_2fa_not_started: { bm: "Mula semula dengan menekan Hidupkan 2FA.", en: "Start again by tapping Turn on 2FA." },

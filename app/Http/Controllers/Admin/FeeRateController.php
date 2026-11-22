@@ -9,6 +9,7 @@ use App\Models\FeeRate;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class FeeRateController extends Controller
 {
@@ -18,27 +19,36 @@ class FeeRateController extends Controller
     {
         $rates = $club->feeRates()->orderByDesc('effective_from')->get()
             ->groupBy('job_level');
-        $jobLevels = FeeRate::jobLevelLabels();
-        return view('admin.fee-rates.index', compact('club', 'rates', 'jobLevels'));
+        // Active levels, then inactive ones (or a code with no level row) that still have rate history.
+        $active = $club->activeJobLevelNames();
+        $jobLevels = $active;
+        foreach ($rates->keys() as $code) {
+            $jobLevels[$code] ??= $club->jobLevelName($code);
+        }
+        $inactive = array_keys(array_diff_key($jobLevels, $active));
+
+        return view('admin.fee-rates.index', compact('club', 'rates', 'jobLevels', 'inactive'));
     }
 
     public function create(Club $club)
     {
-        $jobLevels = FeeRate::jobLevelLabels();
+        // Only active levels get new rates: a deactivated level is no longer offered.
+        $jobLevels = $club->activeJobLevelNames();
         return view('admin.fee-rates.create', compact('club', 'jobLevels'));
     }
 
     public function store(Request $request, Club $club)
     {
+        $names = $club->activeJobLevelNames();
         $request->validate([
             'rates'                    => 'required|array',
-            'rates.*.job_level'        => 'required|in:gm,agm,manager,executive,non_exec',
+            'rates.*.job_level'        => ['required', 'string', 'distinct', Rule::in(array_keys($names))],
             'rates.*.monthly_amount'   => 'required|numeric|min:0',
             'rates.*.effective_from'   => 'required|date',
         ]);
 
         $newRates = [];
-        DB::transaction(function () use ($request, $club, &$newRates) {
+        DB::transaction(function () use ($request, $club, $names, &$newRates) {
             foreach ($request->rates as $rate) {
                 // Close previous active rate for this level
                 $club->feeRates()
@@ -52,7 +62,7 @@ class FeeRateController extends Controller
                     'effective_from' => $rate['effective_from'],
                     'effective_to'   => null,
                 ]);
-                $newRates[] = "{$rate['job_level']}: RM {$rate['monthly_amount']}";
+                $newRates[] = "{$names[$rate['job_level']]}: RM {$rate['monthly_amount']}";
             }
         });
 
@@ -84,7 +94,7 @@ class FeeRateController extends Controller
 
         AuditService::log(
             'fee_rate.deleted',
-            "Fee rate for '{$old['job_level']}' (RM {$old['monthly_amount']}, from {$old['effective_from']}) deleted.",
+            "Fee rate for '{$club->jobLevelName($old['job_level'])}' (RM {$old['monthly_amount']}, from {$old['effective_from']}) deleted.",
             null,
             $club->id,
             $old

@@ -78,7 +78,7 @@
                     </div>
                 @endif
                 <h2 class="h6 fw-bold">{{ $club->name }}</h2>
-                <p class="text-muted small">{{ ucfirst($club->pivot->role) }} &middot; {{ \App\Models\FeeRate::jobLevelLabels()[$club->pivot->job_level] ?? $club->pivot->job_level }}</p>
+                <p class="text-muted small">{{ ucfirst($club->pivot->role) }} &middot; {{ $club->jobLevelName($club->pivot->job_level) }}</p>
                 @if(auth()->user()->isAdmin())
                 <a href="{{ route('admin.clubs.members.index', $club) }}" class="btn btn-sm btn-outline-primary mt-2">
                     <i class="bi bi-people me-1"></i>Manage

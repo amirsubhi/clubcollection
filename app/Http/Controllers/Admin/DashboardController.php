@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Expense;
-use App\Models\FeeRate;
 use App\Support\Admin\AdminNav;
 use App\Support\Admin\FundUsagePresenter as P;
 use App\Support\Admin\FundFigures as Figures;
@@ -228,7 +227,8 @@ class DashboardController extends Controller
         $unpaidMembers = $club->members()->wherePivot('is_active', true)->whereNotIn('users.id', $paidMemberIds)->get();
 
         // ── Income by job level — 1 JOIN query instead of 5 whereHas queries ──
-        $jobLevels          = FeeRate::jobLevelLabels();
+        // Every level of the club (inactive ones too: members may still be on them).
+        $jobLevels          = $club->jobLevelNames();
         $incomeByJobLevelRaw = $club->payments()
             ->where('payments.status', 'paid')
             ->tap(fn ($q) => Figures::inRange($q, 'payments.paid_date', $monthStart, $monthEnd))
@@ -243,6 +243,13 @@ class DashboardController extends Controller
         $incomeByJobLevel = [];
         foreach (array_keys($jobLevels) as $level) {
             $incomeByJobLevel[$level] = (float) ($incomeByJobLevelRaw[$level] ?? 0);
+        }
+        // A code with income but no level row (shouldn't happen) still shows, under its code.
+        foreach ($incomeByJobLevelRaw as $level => $total) {
+            if (! isset($jobLevels[$level])) {
+                $jobLevels[$level] = (string) $level;
+                $incomeByJobLevel[$level] = (float) $total;
+            }
         }
 
         // ── Expenses by category ──────────────────────────────────────────────

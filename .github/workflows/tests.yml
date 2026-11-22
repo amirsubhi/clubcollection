@@ -83,6 +83,13 @@ jobs:
           composer install --no-interaction --no-progress --prefer-dist
           npm ci --no-audit --no-fund
 
+      - name: Security audit of dependencies
+        # Fails the build when a PHP package with a known advisory is locked, or a shipped (non-dev) npm package has a high one.
+        if: matrix.connection == 'sqlite'
+        run: |
+          composer audit --locked --no-interaction
+          npm audit --omit=dev --audit-level=high
+
       - name: Type check
         if: matrix.connection == 'sqlite'
         run: npm run typecheck

@@ -17,7 +17,7 @@ class FeeRateFactory extends Factory
     {
         return [
             'club_id'        => Club::factory(),
-            'job_level'      => fake()->randomElement(['gm', 'agm', 'manager', 'executive', 'non_exec']),
+            'job_level'      => fake()->randomElement(array_keys(ClubFactory::JOB_LEVELS)),
             'monthly_amount' => fake()->randomFloat(2, 5, 100),
             'effective_from' => now()->startOfYear()->toDateString(),
             'effective_to'   => null,
