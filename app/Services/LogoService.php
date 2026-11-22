@@ -181,10 +181,29 @@ class LogoService
      * The public URL of a stored logo path, or null when there is none (or the file is gone). Only paths this
      * app writes (club-logos/, portal/, and the older clubs/logos/) are turned into a URL.
      */
-    public static function url(?string $path): ?string
+    /** A stored logo path that passes the allow-list, else null (never trust the column blindly). */
+    public static function safePath(?string $path): ?string
     {
         if (! is_string($path) || $path === '' || str_contains($path, '..')
             || ! preg_match('#^(club-logos|portal|clubs/logos)/[A-Za-z0-9._-]+$#', $path)) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    /** Filesystem path of a stored logo for server-side rendering (the ledger PDF), or null. */
+    public static function localPath(?string $path): ?string
+    {
+        $path = self::safePath($path);
+        $full = $path === null ? null : storage_path('app/public/'.$path);
+
+        return $full !== null && is_file($full) ? $full : null;
+    }
+
+    public static function url(?string $path): ?string
+    {
+        if (self::safePath($path) === null) {
             return null;
         }
         $exists = rescue(fn () => Storage::disk(self::DISK)->exists($path), false, false);

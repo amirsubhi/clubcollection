@@ -208,6 +208,21 @@ class ReceiptSnapshotTest extends TestCase
         $this->assertOldSnapshot($fee);
     }
 
+    public function test_a_fee_taken_back_from_paid_gets_a_fresh_snapshot_when_paid_again(): void
+    {
+        $fee = $this->fee();
+        $fee->update(['status' => 'paid', 'paid_date' => now()->toDateString()]);
+        $this->assertSame('Kelab Lama', $fee->fresh()->issuer_snapshot['name']);
+
+        $fee->fresh()->update(['status' => 'pending', 'paid_date' => null]);
+        $this->assertNull($fee->fresh()->issuer_snapshot, 'no longer a receipt');
+
+        $this->club->forceFill(['name' => 'Kelab Baharu', 'registration_no' => 'PPM-NEW-2'])->save();
+        $fee->fresh()->update(['status' => 'paid', 'paid_date' => now()->toDateString()]);
+        $this->assertSame('Kelab Baharu', $fee->fresh()->issuer_snapshot['name']);
+        $this->assertSame('PPM-NEW-2', $fee->fresh()->issuer_snapshot['registration_no']);
+    }
+
     public function test_a_fee_created_as_paid_gets_it(): void
     {
         $fee = Payment::factory()->forClub($this->club)->forMember($this->member)->create();

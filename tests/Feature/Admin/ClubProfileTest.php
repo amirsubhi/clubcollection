@@ -60,6 +60,17 @@ class ClubProfileTest extends TestCase
         $this->assertSame('Kelab Rekreasi', $this->club->fresh()->name);
     }
 
+    public function test_names_with_control_characters_are_refused(): void
+    {
+        $this->actingAsClubAdmin($this->club);
+
+        foreach (['name' => "Kelab\r\nBcc: x@example.test", 'registration_no' => "PPM\x00-1"] as $field => $value) {
+            $this->put(route('admin.clubs.profile.update', $this->club), $this->payload([$field => $value]))
+                ->assertSessionHasErrors($field);
+        }
+        $this->assertNotSame('PPM-001-14-01012020', $this->club->fresh()->registration_no);
+    }
+
     public function test_the_clubs_admin_can_open_and_save_it(): void
     {
         $this->actingAsClubAdmin($this->club);

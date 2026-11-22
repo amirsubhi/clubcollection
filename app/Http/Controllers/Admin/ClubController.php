@@ -28,7 +28,7 @@ class ClubController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'email' => 'nullable|email|max:255',
             'logo' => LogoService::rules(),
             'payment_gateway' => 'nullable|in:toyyibpay,billplz',
@@ -81,7 +81,7 @@ class ClubController extends Controller
     public function update(Request $request, Club $club)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'email' => 'nullable|email|max:255',
             'logo' => LogoService::rules(),
             'is_active' => 'boolean',

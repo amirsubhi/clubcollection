@@ -49,6 +49,11 @@ class Payment extends Model
         // group bill, a fee created as paid). Never overwritten, so later edits to the club profile don't change
         // an issued receipt. Not fillable: only this hook writes it.
         static::saving(function (Payment $payment) {
+            // A fee taken back from paid is no longer a receipt: a later settlement is a new receipt with the
+            // club's details at that time.
+            if ($payment->exists && $payment->isDirty('status') && $payment->getOriginal('status') === 'paid' && $payment->status !== 'paid') {
+                $payment->issuer_snapshot = null;
+            }
             if ($payment->status === 'paid' && $payment->issuer_snapshot === null
                 && (! $payment->exists || $payment->isDirty('status'))) {
                 $club = Club::find($payment->club_id);

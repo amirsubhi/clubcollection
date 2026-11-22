@@ -140,8 +140,9 @@
                     </div>
                 </td>
                 <td class="report-logo-cell">
-                    @if($club->logo && is_file(storage_path('app/public/' . $club->logo)))
-                    <img src="{{ storage_path('app/public/' . $club->logo) }}" alt="{{ $club->name }} logo" style="max-height:40px;max-width:120px">
+                    @php($logoFile = \App\Services\LogoService::localPath($club->logo))
+                    @if($logoFile)
+                    <img src="{{ $logoFile }}" alt="{{ $club->name }} logo" style="max-height:40px;max-width:120px">
                     @endif
                 </td>
             </tr>

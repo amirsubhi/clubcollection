@@ -31,7 +31,7 @@ class PortalSettingsController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
-            'name' => 'nullable|string|max:100',
+            'name' => 'nullable|string|max:100|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'logo' => LogoService::rules(),
             'remove_logo' => 'boolean',
         ], LogoService::messages(), ['name' => 'portal name']);

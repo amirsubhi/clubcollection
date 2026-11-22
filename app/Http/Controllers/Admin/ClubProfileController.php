@@ -39,9 +39,9 @@ class ClubProfileController extends Controller
     public function update(Request $request, Club $club)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'email' => 'nullable|email|max:255',
-            'registration_no' => 'nullable|string|max:60',
+            'registration_no' => 'nullable|string|max:60|not_regex:/[\\x00-\\x1F\\x7F]/u',
             'address' => 'nullable|string|max:500',
             'financial_year_start_month' => 'required|integer|between:1,12',
             'logo' => LogoService::rules(),
