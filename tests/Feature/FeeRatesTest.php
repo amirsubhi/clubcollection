@@ -69,13 +69,13 @@ class FeeRatesTest extends TestCase
         $this->assertSame(1100, $this->sen('2026-11'));
     }
 
-    public function test_no_rate_a_zero_rate_another_level_or_no_membership_is_null(): void
+    public function test_no_rate_another_level_or_no_membership_is_null_and_a_zero_rate_is_zero(): void
     {
         $this->rate(10, '2026-01-01', null, 'manager');
         $this->assertNull($this->sen('2026-11'), 'only the member\'s own level counts');
 
         $this->rate(0, '2026-01-01');
-        $this->assertNull($this->sen('2026-11'), 'a zero rate bills nothing');
+        $this->assertSame(0, $this->sen('2026-11'), 'a RM 0 rate is a waived month, not a missing rate');
 
         $this->assertNull(FeeRates::monthlySen($this->club, User::factory()->create(), Carbon::parse('2026-11-01')));
     }
@@ -256,6 +256,34 @@ class FeeRatesTest extends TestCase
         $this->payAhead('quarterly', '2026-12-01')->assertSessionHas('error', 'member.no_fee_rate');
         $this->payAhead('quarterly', '2027-01-01')->assertSessionHas('success');
         $this->assertSame('36.00', Payment::where('user_id', $this->member->id)->sole()->amount);
+    }
+
+    public function test_pay_ahead_adds_a_waived_month_as_zero(): void
+    {
+        // RM 10, then December waived (RM 0), then RM 10 again from January.
+        $this->rate(10, '2026-01-01', '2026-11-30');
+        $this->rate(0, '2026-12-01', '2026-12-31');
+        $this->rate(10, '2027-01-01');
+
+        $this->payAhead('quarterly', '2026-12-01')->assertSessionHas('success');
+        $this->assertSame('20.00', Payment::where('user_id', $this->member->id)->sole()->amount);
+    }
+
+    public function test_pay_ahead_of_only_waived_months_is_refused(): void
+    {
+        $this->rate(0, '2026-01-01', '2027-02-28');
+        $this->rate(10, '2027-03-01');
+
+        $this->payAhead('monthly', '2026-12-01')->assertSessionHas('error', 'member.waived_period');
+        $this->payAhead('quarterly', '2026-12-01')->assertSessionHas('error', 'member.waived_period');
+        $this->assertSame(0, Payment::where('user_id', $this->member->id)->count());
+
+        // A period that reaches a paid month is billed for that month only.
+        $this->payAhead('quarterly', '2027-01-01')->assertSessionHas('success');
+        $this->assertSame('10.00', Payment::where('user_id', $this->member->id)->sole()->amount);
+
+        $this->get(route('member.payments.index', $this->club))
+            ->assertInertia(fn (Assert $page) => $page->where('futureForm.monthRates.2026-12-01', 0)->where('futureForm.monthlySen', 0));
     }
 
     public function test_the_pay_ahead_form_gets_each_months_rate(): void

@@ -446,6 +446,10 @@ class PaymentController extends Controller
         if ($totalSen === null) {
             return back()->with('error', 'member.no_fee_rate');
         }
+        // Every month of the period is waived (RM 0 rates): there is nothing to pay.
+        if ($totalSen === 0) {
+            return back()->with('error', 'member.waived_period');
+        }
 
         // Serialise per member+club so two quick submits can't both pass the
         // overlap check (the unique index also guards the same start month).
@@ -540,7 +544,7 @@ class PaymentController extends Controller
 
     /**
      * The fee for $months months from $start in sen: the member's rate in force in each month (FeeRates),
-     * added up. Null when any of those months has no rate (or a zero rate).
+     * added up (a RM 0 month adds nothing). Null when any of those months has no rate.
      */
     private function periodFeeSen(Club $club, $user, Carbon $start, int $months): ?int
     {

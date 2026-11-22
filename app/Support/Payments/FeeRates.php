@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
  * the month: effective_from on or before the month's last day, and effective_to empty or on/after the month's
  * first day. When several match (a rate changed during the month), the latest effective_from wins (then the
  * newest row). A row whose effective_to is before its effective_from (superseded by a backdated rate) never counts.
+ * No rate gives null (the month can't be billed); a rate of RM 0 gives 0 (a waived month: nothing to bill).
  */
 final class FeeRates
 {
@@ -32,7 +33,7 @@ final class FeeRates
 
     /**
      * The member's monthly fee in sen for each month given (keyed by the month's first day, Y-m-d), from one
-     * level lookup and one rate query. A month without a rate (or with a zero rate) is null.
+     * level lookup and one rate query. A month without a rate is null; a RM 0 rate (a waived month) is 0.
      *
      * @param  iterable<CarbonInterface>  $months
      * @return array<string, int|null>
@@ -49,21 +50,16 @@ final class FeeRates
         return $out;
     }
 
-    /** The member's monthly fee in sen for $month, or null (not a member of the club, no rate, or a zero rate). */
+    /** The member's monthly fee in sen for $month (0 for a RM 0 rate), or null (not a member of the club, or no rate). */
     public static function monthlySen(Club $club, User|int $user, CarbonInterface $month): ?int
     {
         return self::monthlySenByMonth($club, $user, [$month])[$month->copy()->startOfMonth()->toDateString()];
     }
 
-    /** A rate's monthly amount in sen; null for no rate or a zero rate. */
+    /** A rate's monthly amount in sen (0 for a RM 0 rate: the month is waived); null for no rate. */
     public static function sen(?FeeRate $rate): ?int
     {
-        if ($rate === null) {
-            return null;
-        }
-        $sen = MemberPaymentPresenter::sen($rate->monthly_amount);
-
-        return $sen > 0 ? $sen : null;
+        return $rate === null ? null : max(0, MemberPaymentPresenter::sen($rate->monthly_amount));
     }
 
     /**

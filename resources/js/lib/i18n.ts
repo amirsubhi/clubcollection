@@ -226,6 +226,7 @@ const dict = {
   },
   flash_bill_failed: { bm: "Bil bayaran tidak dapat dicipta. Sila cuba lagi.", en: "We couldn't create the payment bill. Please try again." },
   flash_no_fee_rate: { bm: "Tiada kadar yuran ditetapkan untuk tahap jawatan anda.", en: "No fee rate is set for your job level." },
+  flash_waived_period: { bm: "Tiada yuran untuk tempoh ini (kadar RM 0).", en: "There is nothing to pay for this period (the rate is RM 0)." },
   flash_period_exists: { bm: "Rekod bayaran untuk tempoh ini sudah wujud.", en: "A payment record already exists for this period." },
   flash_plan_not_allowed: { bm: "Tempoh bayaran ini tidak ditawarkan oleh kelab.", en: "Your club doesn't offer this payment period." },
   flash_too_far_ahead: { bm: "Bayaran awal hanya boleh bermula dalam tempoh 12 bulan.", en: "Paying ahead can start at most 12 months from now." },

@@ -83,8 +83,9 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
     }
     return sum;
   };
-  // A plan is offered only if its period ends within the 12-month cap from the chosen start (and has a rate).
-  const fits = (p: Plan) => !!form.data.period_start && periodEnd(form.data.period_start, PLAN_MONTHS[p]) <= maxEnd && priceFor(p) !== null;
+  // A plan is offered only if its period ends within the 12-month cap from the chosen start, every month has a
+  // rate, and it costs something (RM 0 months are waived; a period of only those has nothing to pay).
+  const fits = (p: Plan) => !!form.data.period_start && periodEnd(form.data.period_start, PLAN_MONTHS[p]) <= maxEnd && (priceFor(p) ?? 0) > 0;
   const chooseStart = (v: string) => {
     form.setData((d) => ({ period_start: v, frequency: firstFit(v, d.frequency) }));
   };

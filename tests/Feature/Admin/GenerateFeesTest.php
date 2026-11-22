@@ -112,7 +112,7 @@ class GenerateFeesTest extends TestCase
             $this->m['badrul']->id => MonthlyFeeGenerator::SKIP_INACTIVE,
             $this->m['chong']->id => MonthlyFeeGenerator::SKIP_JOINED_LATER,
             $this->m['devi']->id => MonthlyFeeGenerator::SKIP_NO_RATE,
-            $this->m['ehsan']->id => MonthlyFeeGenerator::SKIP_NO_RATE,
+            $this->m['ehsan']->id => MonthlyFeeGenerator::SKIP_ZERO_RATE,
             $this->m['farah']->id => MonthlyFeeGenerator::SKIP_ALREADY_BILLED,
             $this->m['gopal']->id => MonthlyFeeGenerator::SKIP_ALREADY_BILLED,
             $this->m['hana']->id => MonthlyFeeGenerator::SKIP_ALREADY_BILLED,
@@ -125,13 +125,14 @@ class GenerateFeesTest extends TestCase
         $this->assertSame(3000, $preview['totalSen']);
         $this->assertEquals([
             MonthlyFeeGenerator::SKIP_INACTIVE => 1, MonthlyFeeGenerator::SKIP_JOINED_LATER => 1,
-            MonthlyFeeGenerator::SKIP_NO_RATE => 2, MonthlyFeeGenerator::SKIP_ALREADY_BILLED => 3,
+            MonthlyFeeGenerator::SKIP_NO_RATE => 1, MonthlyFeeGenerator::SKIP_ZERO_RATE => 1, MonthlyFeeGenerator::SKIP_ALREADY_BILLED => 3,
         ], $preview['skipped']);
         $res->assertSeeText('2 members will be billed')
             ->assertSee('RM 30.00')
             ->assertSeeText('Inactive membership')
             ->assertSeeText('Joined after the month')
             ->assertSeeText('No fee rate for their level')
+            ->assertSeeText('Rate is RM 0')
             ->assertSeeText('Already has a fee covering the month')
             ->assertSee('value="2026-11-16"', false); // 1 Nov + 14 days is past: the default due date is today
     }
@@ -364,7 +365,7 @@ class GenerateFeesTest extends TestCase
         $this->assertSame('2026-11', $summary->new_values['month']);
         $this->assertSame(2, $summary->new_values['count']);
         $this->assertSame('30.00', $summary->new_values['total']);
-        $this->assertEquals(['inactive' => 1, 'joined_later' => 1, 'already_billed' => 3, 'no_rate' => 2], $summary->new_values['skipped']);
+        $this->assertEquals(['inactive' => 1, 'joined_later' => 1, 'already_billed' => 3, 'no_rate' => 1, 'zero_rate' => 1], $summary->new_values['skipped']);
         $this->assertSame('Fees Generated', $summary->action_label);
 
         $created = AuditLog::where('action', 'payment.created')->get();

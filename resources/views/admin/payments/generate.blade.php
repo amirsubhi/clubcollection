@@ -14,6 +14,7 @@
         G::SKIP_JOINED_LATER => 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle',
         G::SKIP_ALREADY_BILLED => 'bg-info-subtle text-info-emphasis border border-info-subtle',
         G::SKIP_NO_RATE => 'bg-warning-subtle text-warning-emphasis border border-warning-subtle',
+        G::SKIP_ZERO_RATE => 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle',
     ];
 @endphp
 

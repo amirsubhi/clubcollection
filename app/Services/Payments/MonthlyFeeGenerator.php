@@ -33,6 +33,9 @@ class MonthlyFeeGenerator
 
     public const SKIP_NO_RATE = 'no_rate';
 
+    /** The level's rate for the month is RM 0 (a waived month): no fee is created. */
+    public const SKIP_ZERO_RATE = 'zero_rate';
+
     /** Only at create time: another request held the member's lock (a pay-ahead in progress). */
     public const SKIP_BUSY = 'busy';
 
@@ -42,6 +45,7 @@ class MonthlyFeeGenerator
         self::SKIP_JOINED_LATER => 'Joined after the month',
         self::SKIP_ALREADY_BILLED => 'Already has a fee covering the month',
         self::SKIP_NO_RATE => 'No fee rate for their level',
+        self::SKIP_ZERO_RATE => 'Rate is RM 0',
         self::SKIP_BUSY => 'Busy (another change was in progress): generate again to include them',
     ];
 
@@ -110,6 +114,7 @@ class MonthlyFeeGenerator
                 $pivot->joined_date !== null && Carbon::parse($pivot->joined_date)->toDateString() > $end->toDateString() => self::SKIP_JOINED_LATER,
                 $billed->has($user->id) => self::SKIP_ALREADY_BILLED,
                 $sen === null => self::SKIP_NO_RATE,
+                $sen === 0 => self::SKIP_ZERO_RATE,
                 default => self::BILL,
             };
             $rows[] = [
