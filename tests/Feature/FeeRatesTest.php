@@ -120,6 +120,16 @@ class FeeRatesTest extends TestCase
         $this->assertSame(1000, $this->sen('2026-10'));
     }
 
+    public function test_the_add_payment_hint_uses_the_rate_in_force_this_month(): void
+    {
+        $this->rate(10, '2026-01-01', '2026-12-31');
+        $this->rate(12, '2027-01-01');
+        $this->actingAsClubAdmin($this->club);
+
+        $rates = $this->get(route('admin.clubs.payments.create', $this->club))->assertOk()->viewData('feeRates');
+        $this->assertSame('10.00', $rates['executive']->monthly_amount);
+    }
+
     // ---- Pay ahead uses the same rule ----
 
     private function payAhead(string $frequency, string $start)

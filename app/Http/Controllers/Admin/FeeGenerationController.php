@@ -35,7 +35,9 @@ class FeeGenerationController extends Controller
 
         $due = MonthlyFeeGenerator::defaultDueDate($month);
         $dueError = null;
-        if ($request->filled('due_date')) {
+        // A due date is kept only for the month it was chosen for (due_for): switching the month starts again
+        // from that month's default, so December's fees don't inherit a November date.
+        if ($request->filled('due_date') && $request->query('due_for') === $month->format('Y-m')) {
             [$parsed, $dueError] = $this->parseDue($request->query('due_date'), $month);
             $due = $parsed ?? $due;
         }
@@ -75,7 +77,7 @@ class FeeGenerationController extends Controller
                 ->with('error', 'Fees can be generated for this month or next month only.');
         }
         [$due, $dueError] = $this->parseDue($data['due_date'], $month);
-        $back = route('admin.clubs.payments.generate', [$club, 'month' => $month->format('Y-m'), 'due_date' => $data['due_date']]);
+        $back = route('admin.clubs.payments.generate', [$club, 'month' => $month->format('Y-m'), 'due_date' => $data['due_date'], 'due_for' => $month->format('Y-m')]);
         if ($due === null) {
             return redirect($back)->with('error', $dueError);
         }

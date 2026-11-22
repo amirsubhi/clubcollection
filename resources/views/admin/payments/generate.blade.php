@@ -25,6 +25,8 @@
             Nobody is emailed: members see the fee in the portal. Generating the same month again only adds members not billed yet.
         </p>
         <form method="GET" action="{{ route('admin.clubs.payments.generate', $club) }}" class="row g-2 align-items-end">
+            {{-- The due date below belongs to this month; picking another month starts from its default. --}}
+            <input type="hidden" name="due_for" value="{{ $month->format('Y-m') }}">
             <div class="col-sm-4">
                 <label for="g-month" class="form-label small fw-semibold mb-1">Month</label>
                 <select id="g-month" name="month" class="form-select">

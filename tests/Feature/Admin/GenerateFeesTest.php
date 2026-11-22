@@ -191,7 +191,7 @@ class GenerateFeesTest extends TestCase
     public function test_a_post_that_does_not_match_the_list_is_refused(): void
     {
         $this->generate('2026-11', '2026-11-30', 3, 3000)
-            ->assertRedirect(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11', 'due_date' => '2026-11-30']))
+            ->assertRedirect(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11', 'due_date' => '2026-11-30', 'due_for' => '2026-11']))
             ->assertSessionHas('error', fn ($m) => str_contains($m, 'it now bills 2 members, RM 30.00') && str_contains($m, 'review it again'));
         $this->generate('2026-11', '2026-11-30', 2, 2900)->assertSessionHas('error', fn ($m) => str_contains($m, 'The list changed'));
 
@@ -214,9 +214,22 @@ class GenerateFeesTest extends TestCase
         $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-10']))
             ->assertRedirect(route('admin.clubs.payments.generate', $this->club))
             ->assertSessionHas('error');
-        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11', 'due_date' => '2026-11-01']))
+        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-11', 'due_date' => '2026-11-01', 'due_for' => '2026-11']))
             ->assertOk()->assertSeeText("The due date can't be in the past.")
             ->assertDontSee('data-testid="generate-confirm"', false);
+    }
+
+    public function test_switching_the_month_starts_from_that_months_default_due_date(): void
+    {
+        // The form was showing November (due today) and the admin picks December.
+        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-12', 'due_date' => '2026-11-16', 'due_for' => '2026-11']))
+            ->assertOk()
+            ->assertSee('name="due_date" value="2026-12-15"', false)
+            ->assertSee('<input type="hidden" name="due_date" value="2026-12-15">', false);
+
+        // A date chosen for December itself is kept.
+        $this->get(route('admin.clubs.payments.generate', [$this->club, 'month' => '2026-12', 'due_date' => '2026-12-20', 'due_for' => '2026-12']))
+            ->assertSee('<input type="hidden" name="due_date" value="2026-12-20">', false);
     }
 
     public function test_only_this_clubs_admins_and_the_super_admin_may_generate(): void
