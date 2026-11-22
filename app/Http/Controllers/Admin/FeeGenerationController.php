@@ -101,7 +101,7 @@ class FeeGenerationController extends Controller
             .', total RM '.number_format($result['totalSen'] / 100, 2).', due '.$due->format('j M Y').'.';
         if ($result['skipped']) {
             $message .= ' Skipped: '.collect($result['skipped'])
-                ->map(fn ($n, $k) => strtolower(MonthlyFeeGenerator::SKIP_LABELS[$k]).' ('.$n.')')->implode(', ').'.';
+                ->map(fn ($n, $k) => lcfirst(MonthlyFeeGenerator::SKIP_LABELS[$k]).' ('.$n.')')->implode(', ').'.';
         }
 
         return redirect()->route('admin.clubs.payments.index', [$club, 'month' => $month->format('Y-m')])

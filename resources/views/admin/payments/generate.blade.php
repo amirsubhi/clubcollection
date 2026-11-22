@@ -65,7 +65,7 @@
         <ul class="small text-body-secondary mb-0 ps-3" data-testid="generate-skipped">
             @foreach($labels as $code => $label)
                 @if(($preview['skipped'][$code] ?? 0) > 0)
-                <li>Skipped, {{ strtolower($label) }}: {{ $preview['skipped'][$code] }}</li>
+                <li>Skipped, {{ lcfirst($label) }}: {{ $preview['skipped'][$code] }}</li>
                 @endif
             @endforeach
         </ul>

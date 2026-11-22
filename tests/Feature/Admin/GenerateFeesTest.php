@@ -133,6 +133,7 @@ class GenerateFeesTest extends TestCase
             ->assertSeeText('Joined after the month')
             ->assertSeeText('No fee rate for their level')
             ->assertSeeText('Rate is RM 0')
+            ->assertSeeText('Skipped, rate is RM 0: 1')
             ->assertSeeText('Already has a fee covering the month')
             ->assertSee('value="2026-11-16"', false); // 1 Nov + 14 days is past: the default due date is today
     }
@@ -143,7 +144,7 @@ class GenerateFeesTest extends TestCase
 
         $this->generate('2026-11', '2026-11-30', 2, 3000)
             ->assertRedirect(route('admin.clubs.payments.index', [$this->club, 'month' => '2026-11']))
-            ->assertSessionHas('success', fn ($m) => str_contains($m, 'Created 2 fees for Nov 2026, total RM 30.00'));
+            ->assertSessionHas('success', fn ($m) => str_contains($m, 'Created 2 fees for Nov 2026, total RM 30.00') && str_contains($m, 'rate is RM 0 (1)'));
 
         $made = Payment::where('club_id', $this->club->id)->whereDate('period_start', '2026-11-01')
             ->whereIn('user_id', [$this->m['ali']->id, $this->admin->id])->get()->keyBy('user_id');

@@ -207,6 +207,12 @@ class FeeRatesTest extends TestCase
         $this->delete(route('admin.fee-rates.destroy', $closed))->assertRedirect();
         $this->assertSame('2025-12-31', $first->fresh()->effective_to->toDateString());
         $this->assertNull($open->fresh()->effective_to);
+
+        // Two open rows (legacy data): deleting one leaves the other in force and reopens nothing.
+        $legacy = $this->rate(11, '2027-06-01');
+        $this->delete(route('admin.fee-rates.destroy', $legacy))->assertRedirect();
+        $this->assertSame('2025-12-31', $first->fresh()->effective_to->toDateString());
+        $this->assertSame(1200, $this->sen('2027-06'));
     }
 
     public function test_the_add_payment_hint_uses_the_rate_in_force_this_month(): void
