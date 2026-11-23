@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such
+  route, so viewing 20 slip thumbnails blocked an admin's next save or verification for a minute, and 10 slip views
+  blocked a member's payment (in v2.0.0 and v2.0.1). Each route now has its own counter; pay and pay-all still share
+  one (10 payment attempts a minute in all).
+
 ### Changed
 - Member app text moved from the dictionary inside `resources/js/lib/i18n.ts` to one file per language,
   `lang/member/ms.json` and `lang/member/en.json` (bundled, English is the reference), so a later release can add a
