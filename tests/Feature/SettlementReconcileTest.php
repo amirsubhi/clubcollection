@@ -475,7 +475,8 @@ class SettlementReconcileTest extends TestCase
     public function test_pay_and_pay_all_are_throttled(): void
     {
         foreach (['member.payments.pay', 'member.payments.pay-all'] as $name) {
-            $this->assertContains('throttle:10,1', Route::getRoutes()->getByName($name)->gatherMiddleware(), $name);
+            // One counter for both: 10 payment attempts a minute in all.
+            $this->assertContains('throttle:10,1,member-pay|', Route::getRoutes()->getByName($name)->gatherMiddleware(), $name);
         }
 
         $fee = $this->fee();
