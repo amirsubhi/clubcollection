@@ -8,6 +8,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Breached-password check switch** on Portal settings (super admin; on by default; audited): with it off, new
+  passwords on reset and change need only the 12-character minimum and nothing is sent to Have I Been Pwned. A site
+  upgraded from v2.0.0 keeps the check on.
+
+### Changed (Portal settings, from an Impeccable review: critique 30/40, audit 18/20, 0 axe violations)
+- A field error shows once, under its field (no duplicate alert at the top); a plain message for a portal name with
+  hidden characters; the success message says what changed.
+- Brand colours on a phone: the radio stays beside the colour name, so the list is about half as long.
+- Breached-password check: one line of help above the choice, the details under "How it works", "(recommended)" on
+  the label, and a warning line while it is off. The intro text is capped at a readable width.
+
+### Changed
+- **Installer:** the first super-admin password is also checked against known breaches (passes if the service
+  can't be reached), with a plain message when it has been seen in a leak.
+
 ### Documentation
 - `docs/screenshots/`: all 17 screenshots retaken from the current app (per-club receipt numbers with club details and Share, the current admin menu, Billing settings with the overdue and WhatsApp sections).
 - Treasurer & Club Admin Guide **1.1** (`docs/guides/`): section 3.3 says a new club starts with one job level, "Ahli".

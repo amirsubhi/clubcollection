@@ -45,7 +45,7 @@ app/Models/                    User, Club, Payment, PaymentBill, PaymentCancella
 app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
                                Payments/{SettlementService, FeeBillService, PaymentCancellationService, MonthlyFeeGenerator},
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
-app/Support/                   Portal/{PortalSettings (portal name, logo, brand key), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
+app/Support/                   Portal/{PortalSettings (portal name, logo, brand key, breach_check: only "off" stored), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                FeeRates, WebhookSecret, BillplzSignature, ...), Export/CsvSafe, Auth/AccountLoginBlock,
                                Doctor/HostProbe (app:doctor), ReleaseInfo, SchedulerHeartbeat, FrontendAssets
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
@@ -247,7 +247,8 @@ Known: on PHP 8.3 one `LedgerTest` test fails (the lock needs 8.4).
 - Helpers in `Tests\TestCase`: `actingAsSuperAdmin()`, `actingAsClubAdmin($club)`, `actingAsMember($club)`.
   `TestCase` also turns off `security.require_admin_two_factor` and fakes the breached-password check
   (`$fakeBreachedPasswordCheck = false` + `Http::fake` to test the real one). New passwords use `Password::defaults()`
-  (12+, not breached): test passwords must be 12+ characters.
+  (12+, not breached unless `PortalSettings::breachCheckOn()` is false; read per validation): test passwords must be
+  12+ characters. The installer always adds `uncompromised()`.
 - Cross-club access to admin resources: `assertForbidden()`. Member routes hide other people's data with 404:
   `assertNotFound()`.
 - 2FA challenge tests pre-seed `withSession(['two_factor_user_id' => $id])`.

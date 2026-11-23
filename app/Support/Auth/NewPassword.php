@@ -4,7 +4,8 @@ namespace App\Support\Auth;
 
 /**
  * Plain-language messages for a new password (reset and change-password forms). The rule itself is
- * Password::defaults() (AppServiceProvider): 12+ characters, not in a known data breach.
+ * Password::defaults() (AppServiceProvider): 12+ characters and, unless turned off on Portal settings, not in a
+ * known data breach.
  */
 final class NewPassword
 {

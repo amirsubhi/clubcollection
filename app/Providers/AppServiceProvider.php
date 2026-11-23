@@ -47,9 +47,11 @@ class AppServiceProvider extends ServiceProvider
         // Views use Bootstrap 5; the default Tailwind pagination renders unstyled.
         Paginator::useBootstrapFive();
 
-        // New passwords (reset, change): 12+ characters and not in a known breach. No "mixed case / symbol"
-        // rules (NIST SP 800-63B): a few ordinary words together is long, strong and easy to remember.
-        Password::defaults(fn () => Password::min(12)->uncompromised());
+        // New passwords (reset, change): 12+ characters and, unless the super admin turned it off on Portal
+        // settings, not in a known breach. Read on every validation, so the switch takes effect at once. No
+        // "mixed case / symbol" rules (NIST SP 800-63B): a few ordinary words together is long, strong and easy
+        // to remember.
+        Password::defaults(fn () => PortalSettings::breachCheckOn() ? Password::min(12)->uncompromised() : Password::min(12));
 
         // Named limiters get their own counters. A plain throttle:N,M on guest
         // routes shares one per-IP counter across every such route, so gateway

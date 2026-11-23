@@ -3,14 +3,18 @@
 @section('page-title', 'Portal settings')
 
 @section('content')
-<p class="text-muted">
+<p class="text-muted" style="max-width:70ch">
     The portal's name, logo and brand colour, shown on the sign-in pages, in the admin sidebar, in page titles and in emails,
     and used for the installable app's name and icon.
     When exactly one club is active, the sign-in pages show that club's name and logo instead (set on its Club profile page).
 </p>
 
-@if($errors->any())
-<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
+{{-- Field errors show (and are announced) once, under their field; only an error with no field here goes on top. --}}
+@php
+    $otherError = collect($errors->getMessages())->except(['name', 'logo', 'remove_logo', 'brand', 'breach_check'])->flatten()->first();
+@endphp
+@if($otherError)
+<div class="alert alert-danger" role="alert">{{ $otherError }}</div>
 @endif
 
 @unless($gdAvailable)
@@ -67,10 +71,10 @@
                                     $lightBg = \App\Support\Portal\BrandPalette::SURFACES['light']['card'];
                                     $darkBg = \App\Support\Portal\BrandPalette::SURFACES['dark']['card'];
                                 @endphp
-                                <div class="form-check d-flex flex-wrap align-items-center gap-3 border rounded px-3 py-2 m-0">
+                                <div class="form-check brand-choice d-flex align-items-start gap-3 border rounded px-3 py-2 m-0">
                                     <input class="form-check-input m-0 flex-shrink-0" type="radio" name="brand" value="{{ $key }}" id="f-brand-{{ $key }}" @checked($chosenBrand === $key)>
-                                    <label class="form-check-label d-flex flex-wrap align-items-center gap-3 flex-grow-1" for="f-brand-{{ $key }}">
-                                        <span class="fw-semibold" style="min-width:8.5rem">{{ \App\Support\Portal\BrandPalette::label($key) }}</span>
+                                    <label class="form-check-label d-flex flex-wrap align-items-center gap-2 gap-sm-3 flex-grow-1" style="min-width:0" for="f-brand-{{ $key }}">
+                                        <span class="fw-semibold brand-choice-name">{{ \App\Support\Portal\BrandPalette::label($key) }}</span>
                                         {{-- Static previews (no script): a button and a link, in light and in dark. --}}
                                         <span class="d-inline-flex align-items-center gap-2 rounded border px-2 py-1" style="background:{{ $lightBg }}" aria-hidden="true" data-swatch="{{ $key }}-light">
                                             <span class="rounded-pill px-2 small fw-bold" style="background:{{ $light['primary'] }};color:{{ $light['primary-foreground'] }}">Pay</span>
@@ -102,6 +106,34 @@
                             Phones that already installed the app may keep the old icon and name until the app is removed and added again.
                         </p>
                     </div>
+
+                    <fieldset class="mb-4" data-testid="breach-check">
+                        <legend class="form-label fw-semibold fs-6 mb-1">Breached-password check</legend>
+                        {{-- Right after the legend (Bootstrap clears the floated legend with "legend + *"); help above the
+                             choice, as for the brand colour. --}}
+                        <div id="f-breach-check-help" class="form-text mt-0 mb-2">
+                            When anyone sets a new password, it is checked against Have I Been Pwned, a public list of leaked passwords. The password itself is never sent.
+                        </div>
+                        <div class="form-check breach-check">
+                            <input type="hidden" name="breach_check" value="0">
+                            <input class="form-check-input" type="checkbox" name="breach_check" value="1" id="f-breach-check"
+                                   aria-describedby="f-breach-check-help" @checked(old('breach_check', $breachCheckOn ? '1' : '0') === '1')>
+                            <label class="form-check-label" for="f-breach-check">Refuse new passwords that appear in known data breaches <span class="fw-normal text-body-secondary">(recommended)</span></label>
+                            <div class="breach-check-off form-text text-warning-emphasis" data-testid="breach-check-off">
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Off: any password of 12 or more characters is accepted, even one known to have leaked.
+                            </div>
+                        </div>
+                        <details class="form-text mt-2">
+                            <summary>How it works</summary>
+                            <p class="mt-1 mb-0">
+                                Only the first 5 characters of the password's SHA-1 hash go to pwnedpasswords.com; the service answers
+                                with matching hashes and the server compares them itself. If the service can't be reached, the password
+                                is accepted. Turn this off only if your host blocks outgoing connections or your club doesn't want the
+                                lookup. The installer always checks the first admin's password.
+                            </p>
+                        </details>
+                        @error('breach_check')<div role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </fieldset>
 
                     <button type="submit" class="btn btn-primary">Save settings</button>
                 </form>
