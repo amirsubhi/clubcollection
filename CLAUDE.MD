@@ -255,7 +255,9 @@ missing": a locking read of a missing row takes a gap lock and two first receipt
   `App\Listeners\AuthSecurityListener` (auto-discovered: don't register it by hand). Mail that must not slow the
   answer: `App\Support\AfterResponse` (no queue worker on cPanel);
   Fund Usage / verification / billing writes, portal settings, privacy notice and club profile updates `throttle:20,1`;
-  pay, pay-all, slip upload, pay-ahead and Cancel payment `throttle:10,1`; Generate fees POST `throttle:6,1`; opening
+  pay, pay-all, slip upload, pay-ahead and Cancel payment `throttle:10,1`; every numeric throttle names its own counter
+  (`throttle:N,M,<name>|`; pay + pay-all share `member-pay|`, the two transfers `member-transfer|`): a bare
+  `throttle:N,M` keys by the user alone and would share one counter with every other one (`ThrottleCountersTest`); Generate fees POST `throttle:6,1`; opening
   a slip or attachment (member slip, `admin.attachments.show`) `throttle:60,1`, attachment thumbnails `throttle:300,1`.
 - **Exports**: `Cache-Control: no-store`, attachment disposition, `CsvSafe` for formula cells.
 - **Gateway access** goes through `PaymentGatewayManager::for($club)`, never a concrete gateway.

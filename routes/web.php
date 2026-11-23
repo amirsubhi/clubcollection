@@ -143,22 +143,22 @@ Route::middleware('check_installed')->group(function () {
             Route::get('clubs/{club}/payments', [MemberPayment::class, 'index'])->name('payments.index');
             // "Ke mana wang anda pergi": the club's fund this year (aggregates only).
             Route::get('clubs/{club}/fund', [\App\Http\Controllers\Member\FundController::class, 'show'])->name('clubs.fund');
-            Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->middleware('throttle:10,1')->name('payments.generate-future');
+            Route::post('clubs/{club}/payments/future', [MemberPayment::class, 'generateFuture'])->middleware('throttle:10,1,payments.generate-future|')->name('payments.generate-future');
             Route::get('payments/{payment}/invoice', [MemberPayment::class, 'invoice'])->name('payments.invoice');
             // Review is the GET page (email links point here); pay is POST-only so a
             // link, prefetch or crawler can never open a bill at the gateway.
             Route::get('payments/{payment}/review', [MemberPayment::class, 'review'])->name('payments.review');
-            Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->middleware('throttle:10,1')->name('payments.pay');
+            Route::post('payments/{payment}/pay', [MemberPayment::class, 'pay'])->middleware('throttle:10,1,member-pay|')->name('payments.pay');
             Route::get('payments/{payment}/status', [MemberPayment::class, 'status'])->name('payments.status');
             Route::get('payments/{payment}/thankyou', [MemberPayment::class, 'thankyou'])->name('payments.thankyou');
             // Manual bank / DuitNow transfer: upload a slip; a club admin approves it.
-            Route::post('payments/{payment}/transfer', [MemberPayment::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer');
+            Route::post('payments/{payment}/transfer', [MemberPayment::class, 'transfer'])->middleware('throttle:10,1,member-transfer|')->name('payments.transfer');
             // The member's own slip (owner only, audited, no-cache).
-            Route::get('slips/{attachment}', [MemberPayment::class, 'slip'])->middleware('throttle:60,1')->name('payments.slip');
+            Route::get('slips/{attachment}', [MemberPayment::class, 'slip'])->middleware('throttle:60,1,payments.slip|')->name('payments.slip');
             // "Bayar semua": every open fee in a club with one bill or one slip (R1b).
             Route::get('clubs/{club}/pay-all', [MemberPayAll::class, 'review'])->name('payments.review-all');
-            Route::post('clubs/{club}/pay-all', [MemberPayAll::class, 'pay'])->middleware('throttle:10,1')->name('payments.pay-all');
-            Route::post('clubs/{club}/pay-all/transfer', [MemberPayAll::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer-all');
+            Route::post('clubs/{club}/pay-all', [MemberPayAll::class, 'pay'])->middleware('throttle:10,1,member-pay|')->name('payments.pay-all');
+            Route::post('clubs/{club}/pay-all/transfer', [MemberPayAll::class, 'transfer'])->middleware('throttle:10,1,member-transfer|')->name('payments.transfer-all');
             Route::get('pay-all/{paymentBill}', [MemberPayAll::class, 'result'])->name('payments.group-result');
             Route::get('pay-all/{paymentBill}/status', [MemberPayAll::class, 'status'])->name('payments.group-status');
             // The language switch saves the choice on the account (UserLocale; app.tsx in the background, a small form
@@ -172,19 +172,19 @@ Route::middleware('check_installed')->group(function () {
             Route::resource('admins', AdminUserController::class)->except('show');
             // Privacy notice and data-protection contact (App\Support\Portal\PrivacyNotice), shown on /privacy.
             Route::get('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'edit'])->name('privacy-notice.edit');
-            Route::put('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'update'])->middleware('throttle:20,1')->name('privacy-notice.update');
+            Route::put('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'update'])->middleware('throttle:20,1,privacy-notice.update|')->name('privacy-notice.update');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
             // Portal name and logo (App\Support\Portal\PortalSettings).
             Route::get('portal-settings', [PortalSettingsController::class, 'edit'])->name('portal-settings.edit');
-            Route::put('portal-settings', [PortalSettingsController::class, 'update'])->middleware('throttle:20,1')->name('portal-settings.update');
+            Route::put('portal-settings', [PortalSettingsController::class, 'update'])->middleware('throttle:20,1,portal-settings.update|')->name('portal-settings.update');
         });
 
         // ── Club Admin + Super Admin ─────────────────────────────────
         Route::middleware(['club_admin'])->prefix('admin')->name('admin.')->group(function () {
             // Member import routes must come before the resource to avoid {member} wildcard collision
             Route::get('clubs/{club}/members/import', [MemberController::class, 'import'])->name('members.import');
-            Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->middleware('throttle:5,1')->name('members.import.process');
+            Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->middleware('throttle:5,1,members.import.process|')->name('members.import.process');
             Route::get('clubs/{club}/members/template', [MemberController::class, 'downloadTemplate'])->name('members.template');
 
             Route::resource('clubs.members', MemberController::class)->shallow()->except('show');
@@ -197,35 +197,35 @@ Route::middleware('check_installed')->group(function () {
 
             // Club profile: name, logo, contact, registration no., address, financial year (club admins of this club + super admin).
             Route::get('clubs/{club}/profile', [ClubProfileController::class, 'edit'])->name('clubs.profile.edit');
-            Route::put('clubs/{club}/profile', [ClubProfileController::class, 'update'])->middleware('throttle:20,1')->name('clubs.profile.update');
+            Route::put('clubs/{club}/profile', [ClubProfileController::class, 'update'])->middleware('throttle:20,1,clubs.profile.update|')->name('clubs.profile.update');
 
             // Billing plans and gateway-fee settings (club admins of this club + super admin).
             Route::get('clubs/{club}/billing', [ClubBillingController::class, 'edit'])->name('clubs.billing.edit');
-            Route::put('clubs/{club}/billing', [ClubBillingController::class, 'update'])->middleware('throttle:20,1')->name('clubs.billing.update');
+            Route::put('clubs/{club}/billing', [ClubBillingController::class, 'update'])->middleware('throttle:20,1,clubs.billing.update|')->name('clubs.billing.update');
             // Bank / DuitNow detail changes need a second admin (S1).
-            Route::post('clubs/{club}/billing/bank-change/approve', [ClubBillingController::class, 'approveBankChange'])->middleware('throttle:20,1')->name('clubs.billing.bank-change.approve');
-            Route::post('clubs/{club}/billing/bank-change/cancel', [ClubBillingController::class, 'cancelBankChange'])->middleware('throttle:20,1')->name('clubs.billing.bank-change.cancel');
+            Route::post('clubs/{club}/billing/bank-change/approve', [ClubBillingController::class, 'approveBankChange'])->middleware('throttle:20,1,clubs.billing.bank-change.approve|')->name('clubs.billing.bank-change.approve');
+            Route::post('clubs/{club}/billing/bank-change/cancel', [ClubBillingController::class, 'cancelBankChange'])->middleware('throttle:20,1,clubs.billing.bank-change.cancel|')->name('clubs.billing.bank-change.cancel');
             // The previous Blade dashboard (month filter, paid/unpaid members, job levels).
             Route::get('clubs/{club}/dashboard/classic', [DashboardController::class, 'classic'])->name('clubs.dashboard.classic');
 
             // "Generate fees for a month" (MonthlyFeeGenerator): preview, then create; literal routes before the resource.
             Route::get('clubs/{club}/payments/generate', [FeeGenerationController::class, 'preview'])->name('clubs.payments.generate');
-            Route::post('clubs/{club}/payments/generate', [FeeGenerationController::class, 'store'])->middleware('throttle:6,1')->name('clubs.payments.generate.store');
+            Route::post('clubs/{club}/payments/generate', [FeeGenerationController::class, 'store'])->middleware('throttle:6,1,clubs.payments.generate.store|')->name('clubs.payments.generate.store');
             Route::resource('clubs.payments', PaymentController::class)->shallow();
             Route::patch('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid'])->name('payments.mark-paid');
             // "Cancel payment" (PaymentCancellationService): a paid fee, or the set it was paid with, back to unpaid with a reason.
             Route::get('payments/{payment}/cancel', [PaymentController::class, 'cancelForm'])->name('payments.cancel-form');
-            Route::post('payments/{payment}/cancel', [PaymentController::class, 'cancel'])->middleware('throttle:10,1')->name('payments.cancel');
+            Route::post('payments/{payment}/cancel', [PaymentController::class, 'cancel'])->middleware('throttle:10,1,payments.cancel|')->name('payments.cancel');
 
             // ── Fund Usage (expenses + welfare, maker-checker) ─────────────
             Route::get('clubs/{club}/fund-usage', [FundUsageController::class, 'index'])->name('clubs.fund-usage.index');
             Route::get('clubs/{club}/fund-usage/create', [FundUsageController::class, 'create'])->name('clubs.fund-usage.create');
-            Route::post('clubs/{club}/fund-usage', [FundUsageController::class, 'store'])->middleware('throttle:20,1')->name('clubs.fund-usage.store');
+            Route::post('clubs/{club}/fund-usage', [FundUsageController::class, 'store'])->middleware('throttle:20,1,clubs.fund-usage.store|')->name('clubs.fund-usage.store');
             Route::get('fund-usage/{expense}', [FundUsageController::class, 'show'])->name('fund-usage.show');
             Route::get('fund-usage/{expense}/edit', [FundUsageController::class, 'edit'])->name('fund-usage.edit');
-            Route::put('fund-usage/{expense}', [FundUsageController::class, 'update'])->middleware('throttle:20,1')->name('fund-usage.update');
+            Route::put('fund-usage/{expense}', [FundUsageController::class, 'update'])->middleware('throttle:20,1,fund-usage.update|')->name('fund-usage.update');
             Route::delete('fund-usage/{expense}', [FundUsageController::class, 'destroy'])->name('fund-usage.destroy');
-            Route::middleware('throttle:20,1')->group(function () {
+            Route::middleware('throttle:20,1,fund-usage-workflow|')->group(function () {
                 Route::post('fund-usage/{expense}/submit', [FundUsageController::class, 'submit'])->name('fund-usage.submit');
                 Route::post('fund-usage/{expense}/approve', [FundUsageController::class, 'approve'])->name('fund-usage.approve');
                 Route::post('fund-usage/{expense}/return', [FundUsageController::class, 'returnToDraft'])->name('fund-usage.return');
@@ -234,15 +234,15 @@ Route::middleware('check_installed')->group(function () {
             });
             // ── Payment verifications (member transfer slips) ─────────────
             Route::get('clubs/{club}/verifications', [TransferVerificationController::class, 'index'])->name('clubs.verifications.index');
-            Route::middleware('throttle:20,1')->group(function () {
+            Route::middleware('throttle:20,1,verifications|')->group(function () {
                 Route::post('verifications/{payment}/approve', [TransferVerificationController::class, 'approve'])->name('verifications.approve');
                 Route::post('verifications/{payment}/reject', [TransferVerificationController::class, 'reject'])->name('verifications.reject');
             });
 
             // Private documents: club admins of the owning club only, audited.
-            Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->middleware('throttle:60,1')->name('attachments.show');
+            Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->middleware('throttle:60,1,attachments.show|')->name('attachments.show');
             // Gallery thumbnails (images only): authorized, not audited, looser limit.
-            Route::get('attachments/{attachment}/thumb', [AttachmentController::class, 'thumb'])->middleware('throttle:300,1')->name('attachments.thumb');
+            Route::get('attachments/{attachment}/thumb', [AttachmentController::class, 'thumb'])->middleware('throttle:300,1,attachments.thumb|')->name('attachments.thumb');
 
             // Old Expenses URLs redirect to Fund Usage (read-only GETs only).
             Route::get('clubs/{club}/expenses', [ExpenseController::class, 'index'])->name('clubs.expenses.index');

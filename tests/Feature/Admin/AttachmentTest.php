@@ -131,7 +131,7 @@ class AttachmentTest extends TestCase
     public function test_download_route_is_throttled(): void
     {
         $route = collect(app('router')->getRoutes())->first(fn ($r) => $r->getName() === 'admin.attachments.show');
-        $this->assertContains('throttle:60,1', $route->gatherMiddleware());
+        $this->assertContains('throttle:60,1,attachments.show|', $route->gatherMiddleware());
     }
 
     public function test_page_props_never_expose_storage_paths(): void

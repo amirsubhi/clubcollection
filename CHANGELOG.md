@@ -50,6 +50,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   still stored as `bm` in the `cp_lang` cookie and the app's saved choice, so open tabs and sign-in pages keep
   working. Nothing on screen changes.
 
+### Fixed
+- **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such
+  route, so viewing 20 slip thumbnails blocked an admin's next save or verification for a minute, and 10 slip views
+  blocked a member's payment (in v2.0.0 and v2.0.1). Each route now has its own counter; pay and pay-all still share
+  one (10 payment attempts a minute in all).
+
 ## [v2.0.1] — 2026-11-23
 
 > **Upgrade:** from v2.0.0 with the release zip and `docs/RELEASE.md` §2. No database changes. A patch release that
