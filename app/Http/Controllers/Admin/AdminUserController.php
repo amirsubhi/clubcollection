@@ -57,7 +57,8 @@ class AdminUserController extends Controller
         // Use a placeholder club for the welcome email (admin isn't tied to a specific club)
         try {
             $dummyClub = new Club(['name' => config('app.name', 'Club Portal')]);
-            Mail::to($user->email)->send(new MemberWelcome($user, $dummyClub, $temporaryPassword));
+            // An admin account: admin emails stay in English, whatever the portal's default language.
+            Mail::to($user)->locale('en')->send(new MemberWelcome($user, $dummyClub, $temporaryPassword));
         } catch (\Exception $e) {
             Log::error('Failed to send welcome email to admin', [
                 'user_id' => $user->id,

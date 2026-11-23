@@ -766,8 +766,9 @@ class PayAllTest extends TestCase
         Mail::assertSent(TransferRejected::class, function (TransferRejected $m) use ($group) {
             $html = $m->render();
 
-            return $m->group?->is($group) && $m->fees?->count() === 1
-                && str_contains($html, $group->reference) && str_contains($html, 'Jumlah / Total');
+            // In the member's language (Malay, the default), one language per email.
+            return $m->group?->is($group) && $m->fees?->count() === 1 && $m->locale === 'ms'
+                && str_contains($html, $group->reference) && str_contains($html, '<td>Jumlah</td>');
         });
     }
 

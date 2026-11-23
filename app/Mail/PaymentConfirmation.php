@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 
+/** The receipt email, in the member's language (User::preferredLocale(); send it with Mail::to($payment->user)). */
 class PaymentConfirmation extends Mailable
 {
     use Queueable, SerializesModels;
@@ -29,8 +30,9 @@ class PaymentConfirmation extends Mailable
 
     public function envelope(): Envelope
     {
+        // Built here, at send time: Laravel calls envelope() under the recipient's locale (not the constructor).
         return new Envelope(
-            subject: "Payment Confirmed – {$this->payment->club->name}",
+            subject: __('Payment Confirmed – :club', ['club' => $this->payment->club->name]),
         );
     }
 

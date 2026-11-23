@@ -1,7 +1,8 @@
 # Club Portal user guide
 
-Short, task-based instructions. Member pages are in Bahasa Melayu by default (switch with **BM / EN** at the top), so
-their labels are quoted in BM as they appear. Admin pages are in English. Everyone in the screenshots is fictional.
+Short, task-based instructions. Member pages are in Bahasa Melayu by default (switch with **BM / EN** at the top;
+the super admin can change the default on Portal settings), so their labels are quoted in BM as they appear. Admin
+pages are in English. Everyone in the screenshots is fictional.
 
 - [Members](#members): [pay by FPX](#pay-by-fpx) · [pay by bank transfer](#pay-by-bank-transfer--duitnow) ·
   [pay all at once](#pay-all-open-fees-at-once-bayar-semua) · [receipts](#view-an-invoice-or-receipt) · [pay ahead](#pay-ahead) · [install as an app](#install-as-an-app-pwa) · [2FA](#turn-on-two-factor-authentication)
@@ -39,6 +40,13 @@ an email about it. Wait and try again, or use **Lupa kata laluan?** to reset you
 - **Akaun saya**: theme (system / light / dark), **Keselamatan & 2FA** and **Log keluar**.
 
 **Bayaran** (bottom bar) lists all your fees by year.
+
+**Language.** Pick once: **BM / EN** at the top switches the app at once, and the portal remembers your choice on
+your account. It is used on your other phones and browsers, and for every email the portal sends you (receipts,
+reminders, slip results, security notices, password reset links). Until you choose, you get the portal's default
+language (Bahasa Melayu unless the super admin changed it), also if you switched before this was remembered: pick
+again once in the app. The **BM / EN** on the sign-in page only changes that page in this browser; signing in on
+someone else's phone never takes their language.
 
 <br clear="right">
 
@@ -474,7 +482,7 @@ statement by payments still in transit; match them by the bill reference or `YUR
 ### Overdue reminders
 
 Every day at **08:00 Malaysia time** the portal marks fees past their due date (plus the club's grace days) as
-overdue and emails each member a reminder, once per fee. Only active members of an active club are reminded: a fee of
+overdue and emails each member a reminder, once per fee, in the member's language. Only active members of an active club are reminded: a fee of
 an inactive or removed member, or of an inactive club, is left as it is and nobody is emailed. If the member is made
 active again, the next morning's run reminds them. This needs the server's cron job and `APP_TIMEZONE=Asia/Kuala_Lumpur` (set by the installer; see
 [INSTALL.md](INSTALL.md)). Without the time zone it runs at 08:00 UTC, which is 4 pm in Malaysia.
@@ -590,6 +598,9 @@ show that club's name and logo instead, with the portal name under it. Changes a
   Been Pwned (pwnedpasswords.com), never the password; if the service can't be reached, the password is accepted.
   Untick **Refuse new passwords that appear in known data breaches** only if your host blocks outgoing connections.
   The 12-character minimum always applies, and the installer always checks the first admin's password.
+- **Default language** (Bahasa Melayu unless changed): the language of the member app, the sign-in pages and member
+  emails for members who have not chosen one with the **BM / EN** switch. A member's own choice is remembered and
+  always wins. Admin pages and admin emails stay in English. Changes are audited ("default language: English").
 
 ### Privacy notice
 

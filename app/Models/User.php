@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use App\Notifications\ResetPassword;
+use App\Support\UserLocale;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+/**
+ * users.locale (not fillable; UserLocale::save) is the member's saved language, null = the portal default.
+ */
+class User extends Authenticatable implements HasLocalePreference
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -31,6 +37,25 @@ class User extends Authenticatable
             'must_change_password'     => 'boolean',
             'password'                 => 'hashed',
         ];
+    }
+
+    // ── Language ───────────────────────────────────────────────────────────
+
+    /**
+     * The language of this person's emails: Mail::to($user) and $user->notify() send in it (Laravel reads
+     * HasLocalePreference; a plain email address would not). A member's saved language, else the portal default,
+     * English for admins (UserLocale::forMail). Never the browser's choice: the password reset link too goes out in
+     * the account's language, whichever browser asked for it (someone else's browser may hold another language).
+     */
+    public function preferredLocale(): string
+    {
+        return UserLocale::forMail($this);
+    }
+
+    /** The reset-link email, with the Malay time-of-day greeting (App\Notifications\ResetPassword). */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPassword($token));
     }
 
     // ── Two-factor authentication ──────────────────────────────────────────

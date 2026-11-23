@@ -4,11 +4,12 @@ namespace App\Support\Portal;
 
 use App\Models\PortalSetting;
 use App\Services\LogoService;
+use App\Support\UiLang;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * Portal-wide settings the super admin sets on /admin/portal-settings (settings phase 1): the portal name,
- * logo, brand colour and the breached-password check. Stored as key / value rows (portal_settings) and cached forever under one key; the cache is cleared on
+ * logo, brand colour, the breached-password check and the default language of the member side. Stored as key / value rows (portal_settings) and cached forever under one key; the cache is cleared on
  * save. Every read is wrapped in rescue(): the installer, a fresh install before migrations, and error pages
  * with the database down all fall back to the defaults (APP_NAME, the built-in mark).
  */
@@ -16,7 +17,7 @@ final class PortalSettings
 {
     public const CACHE_KEY = 'portal-settings.v1';
 
-    public const KEYS = ['name', 'logo', 'brand', 'breach_check'];
+    public const KEYS = ['name', 'logo', 'brand', 'breach_check', 'default_locale'];
 
     /** The only stored value of breach_check: no row (or anything else) means the check is on. */
     public const BREACH_CHECK_OFF = 'off';
@@ -30,7 +31,7 @@ final class PortalSettings
     /**
      * Every setting (missing ones null).
      *
-     * @return array{name: ?string, logo: ?string, brand: ?string, breach_check: ?string}
+     * @return array{name: ?string, logo: ?string, brand: ?string, breach_check: ?string, default_locale: ?string}
      */
     public static function all(): array
     {
@@ -77,6 +78,17 @@ final class PortalSettings
     public static function breachCheckOn(): bool
     {
         return self::get('breach_check') !== self::BREACH_CHECK_OFF;
+    }
+
+    /**
+     * The language of the member side (member app, sign-in pages, member emails) for someone with no saved choice:
+     * the one set on Portal settings, else Malay (UiLang::DEFAULT). Only a code other than the built-in default is
+     * stored; no row, a settings cache from before this key existed, a code whose lang/member file is gone, an
+     * unreadable database and a not-yet-installed portal all read as Malay.
+     */
+    public static function defaultLocale(): string
+    {
+        return UiLang::normalise(self::get('default_locale')) ?? UiLang::DEFAULT;
     }
 
     /** Public URL of the portal logo, or null for the built-in mark. */

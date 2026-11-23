@@ -8,18 +8,53 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Fixed
-- **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such
-  route, so viewing 20 slip thumbnails blocked an admin's next save or verification for a minute, and 10 slip views
-  blocked a member's payment (in v2.0.0 and v2.0.1). Each route now has its own counter; pay and pay-all still share
-  one (10 payment attempts a minute in all).
+> **Upgrade:** one new migration (`users.locale`, nullable). Run `php artisan migrate --force` as in
+> `docs/RELEASE.md` §2.
+
+### Added
+- **Each member's language is remembered.** A member picks once with the BM / EN switch in the app (or on the
+  change-password page): the choice is saved on the account (`POST /my/language`, its own rate limit, so it never
+  uses up payment attempts) and follows them to another phone or browser, the signed-in pages and their emails. The
+  switch still changes the page at once; a choice made offline is sent when the connection is back (kept for 24
+  hours). Only that switch saves: nothing a browser merely carries (an earlier choice in the `cp_lang` cookie or the
+  app's storage, a `?lang=` link) is written to an account, so someone signing in on a browser another person used
+  gets their own language. A member who switched before this release sees the portal default until they pick again.
+- **Default language** on Portal settings (super admin, audited, "Saved: default language."): the language of the
+  member app, sign-in pages and member emails for members who have not chosen one. Bahasa Melayu unless changed. The
+  list is every language with a `lang/member/<code>.json` file. Admin pages and admin emails stay in English.
+  Accounts with an admin role (club admins and the super admin) always get English emails and never have a language
+  saved, even when they pay their own fees in the member app.
+- `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, approved by the owner.
+- **Malay emails greet by the time of day**: "Selamat pagi" (05:00–11:59), "Selamat petang" (12:00–18:59) or
+  "Selamat malam" (19:00–04:59), Malaysia time when the email is sent, instead of "Salam" (the password reset's
+  "Hello!" too, via `App\Notifications\ResetPassword`). Other languages keep their opener. Also from the owner's
+  Malay review: "Pegawai perlindungan data" on the privacy notice and "Bayaran tertunggak" as the overdue heading.
 
 ### Changed
+- **Member emails are in one language, the member's** (their saved choice, else the portal default): welcome,
+  payment confirmation, overdue reminder, transfer slip rejected, payment cancelled, the sign-in and password-change
+  security notices, and the password reset link (whose Malay is new). **Members with no saved choice now get the
+  confirmation, reminder and welcome emails in Malay, which were English before**; the three emails that carried BM
+  and EN together now carry one of them. Dates in emails use the member app's month names ("5 Ogo 2026"). The
+  welcome email to a new admin account and the club admin notices stay English.
+- One rule decides the member-side language everywhere (`App\Support\UserLocale`): a signed-in member's pages and
+  every member email use the account's saved language, else the portal default; the browser's choice (`?lang=` /
+  `cp_lang`) only applies to the sign-in pages before signing in. On the change-password and privacy pages a
+  signed-in member's BM / EN switch is a small form that saves the choice.
+- Malay wording review (Malaysian Malay, DBP usage): 21 strings reworded, 15 of them already live in v2.0.1 (for
+  example "Ahli baharu?", "Perlu bantuan?", "jangan bayar sekali lagi"); listed before → after in
+  `docs/i18n-new-wording.md`. A test now refuses common Indonesian words in every Malay file.
 - Member app text moved from the dictionary inside `resources/js/lib/i18n.ts` to one file per language,
   `lang/member/ms.json` and `lang/member/en.json` (bundled, English is the reference), so a later release can add a
   language by adding a file. Every BM/EN choice in the React components now goes through the i18n module. Malay is
   still stored as `bm` in the `cp_lang` cookie and the app's saved choice, so open tabs and sign-in pages keep
   working. Nothing on screen changes.
+
+### Fixed
+- **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such
+  route, so viewing 20 slip thumbnails blocked an admin's next save or verification for a minute, and 10 slip views
+  blocked a member's payment (in v2.0.0 and v2.0.1). Each route now has its own counter; pay and pay-all still share
+  one (10 payment attempts a minute in all).
 
 ## [v2.0.1] — 2026-11-23
 

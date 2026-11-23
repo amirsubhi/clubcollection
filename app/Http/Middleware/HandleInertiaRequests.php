@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Club;
 use App\Support\Portal\PortalSettings;
+use App\Support\UserLocale;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,6 +38,11 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'locale' => fn () => $this->locale($request),
+            // A signed-in member's language switch saves the choice at `url` (resources/js/lib/langSave.ts); `saved`:
+            // the account has a language, so this browser's copies follow it (the portal default is never written down).
+            'langSave' => fn () => $request->user()?->role === 'member'
+                ? ['url' => route('member.language.update'), 'saved' => UserLocale::saved($request->user()) !== null]
+                : null,
             'club' => fn () => $this->currentClub($request),
             // Portal settings: the name for page titles (app.tsx) and fallbacks.
             'portal' => fn () => ['name' => PortalSettings::name()],
@@ -44,13 +50,16 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Members (and guests) get Bahasa Melayu by default; admins get the app locale.
+     * Members get the member-side language (UserLocale: saved on the account, else the portal default; never the
+     * browser's cookie, which may be someone else's), guests the browser's choice else the default; admins get the
+     * app locale (admin pages stay English). For a signed-in member app.tsx opens in this value (after only that
+     * member's own unsent choice), never in what this browser stored.
      */
     protected function locale(Request $request): string
     {
         $user = $request->user();
 
-        return ($user === null || $user->role === 'member') ? 'ms' : (string) config('app.locale');
+        return ($user === null || $user->role === 'member') ? UserLocale::resolve($user, $request) : (string) config('app.locale');
     }
 
     /**

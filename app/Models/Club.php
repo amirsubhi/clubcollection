@@ -197,7 +197,8 @@ class Club extends Model
         }
         foreach ($recipients->filter()->unique()->values() as $email) {
             try {
-                \Illuminate\Support\Facades\Mail::to($email)->send(new \App\Mail\ClubAdminNotice($this, $heading, $lines, $actionUrl, $actionLabel));
+                // Admin email: English, whatever language the request that caused it runs in (a member's page).
+                \Illuminate\Support\Facades\Mail::to($email)->send((new \App\Mail\ClubAdminNotice($this, $heading, $lines, $actionUrl, $actionLabel))->locale(\App\Support\UserLocale::ADMIN_LOCALE));
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error('Club admin notice email failed', ['club_id' => $this->id, 'error' => $e->getMessage()]);
             }

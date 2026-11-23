@@ -1,5 +1,11 @@
+{{-- One language: the recipient's (sent under their locale; English sentences are the keys of lang/<code>.json). --}}
+@php
+    $daysLate = max(1, (int) abs($payment->due_date->copy()->startOfDay()->diffInDays(now()->startOfDay())));
+    $frequency = ['monthly' => __('Monthly'), 'quarterly' => __('Quarterly'), 'yearly' => __('Yearly')][$payment->frequency] ?? ucfirst((string) $payment->frequency);
+    $dueOn = \App\Support\UiLang::date($payment->due_date);
+@endphp
 <!DOCTYPE html>
-<html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>
@@ -23,55 +29,55 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>&#9888; Payment Overdue</h1>
+    <h1>&#9888; {{ __('Payment Overdue') }}</h1>
     <p style="margin:8px 0 0;opacity:0.9">{{ $payment->club->name }}</p>
   </div>
   <div class="body">
-    <p>Dear <strong>{{ $payment->user->name }}</strong>,</p>
-    <p>Your club membership fee payment is <strong>overdue</strong>. Please settle it as soon as possible to avoid any disruption to your membership.</p>
+    <p>{{ \App\Support\MailText::greeting('Dear **:name**,', $payment->user->name) }}</p>
+    <p>{{ \App\Support\MailText::bold('Your club membership fee payment is **overdue**. Please settle it as soon as possible to avoid any disruption to your membership.') }}</p>
 
     <div class="amount">RM {{ number_format($payment->amount, 2) }}</div>
 
     <div class="days-overdue">
-      &#128197; Originally due on <strong>{{ $payment->due_date->format('d M Y') }}</strong>
-      &mdash; <strong>{{ $payment->due_date->diffForHumans() }}</strong>
+      &#128197; {{ \App\Support\MailText::bold('Originally due on **:date**', ['date' => $dueOn]) }}
+      &mdash; <strong>{{ $daysLate === 1 ? __('1 day overdue') : __(':count days overdue', ['count' => $daysLate]) }}</strong>
     </div>
 
     <div class="details">
       <table>
         <tr>
-          <td>Club</td>
+          <td>{{ __('Club') }}</td>
           <td>{{ $payment->club->name }}</td>
         </tr>
         <tr>
-          <td>Period</td>
-          <td>{{ $payment->period_start->format('d M Y') }} &ndash; {{ $payment->period_end->format('d M Y') }}</td>
+          <td>{{ __('Period') }}</td>
+          <td>{{ \App\Support\UiLang::date($payment->period_start) }} &ndash; {{ \App\Support\UiLang::date($payment->period_end) }}</td>
         </tr>
         <tr>
-          <td>Payment Type</td>
-          <td>{{ ucfirst($payment->frequency) }}</td>
+          <td>{{ __('Payment Type') }}</td>
+          <td>{{ $frequency }}</td>
         </tr>
         <tr>
-          <td>Due Date</td>
-          <td style="color:#dc3545">{{ $payment->due_date->format('d M Y') }}</td>
+          <td>{{ __('Due Date') }}</td>
+          <td style="color:#dc3545">{{ $dueOn }}</td>
         </tr>
         <tr>
-          <td>Amount</td>
+          <td>{{ __('Amount') }}</td>
           <td style="color:#dc3545">RM {{ number_format($payment->amount, 2) }}</td>
         </tr>
       </table>
     </div>
 
     <div class="cta">
-      <a href="{{ route('member.payments.review', $payment) }}">Pay Now</a>
+      <a href="{{ route('member.payments.review', $payment) }}">{{ __('Pay Now') }}</a>
     </div>
 
     <p style="font-size:13px;color:#6c757d;text-align:center">
-      If you have already made this payment, please contact your club administrator.
+      {{ __('If you have already made this payment, please contact your club administrator.') }}
     </p>
   </div>
   <div class="footer">
-    &copy; {{ date('Y') }} {{ config('app.name') }} &middot; This is an automated reminder, please do not reply.
+    &copy; {{ date('Y') }} {{ config('app.name') }} &middot; {{ __('This is an automated reminder, please do not reply.') }}
   </div>
 </div>
 </body>

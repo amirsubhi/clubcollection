@@ -10,7 +10,9 @@ import ms from "../../../lang/member/ms.json";
  * tests/Feature/MemberLangFilesTest.php checks that every file has the same keys and {placeholders} as en.json.
  *
  * To add a language: lang/member/<code>.json, an import and an entry in FILES below, its LABELS and LOCALE_TAGS
- * entry (tsc asks for both), plus Laravel's lang/<code>.json and lang/<code>/{auth,passwords,validation}.php.
+ * entry (tsc asks for both), plus Laravel's lang/<code>.json (sign-in pages and member emails) and
+ * lang/<code>/{auth,passwords,validation}.php, and its LABELS / NAMES in App\Support\UiLang (the PHP list of languages
+ * is the files in lang/member: tests/Unit/UiLangTest.php checks it matches FILES).
  */
 
 /** English holds every key; this is the type of a key. */

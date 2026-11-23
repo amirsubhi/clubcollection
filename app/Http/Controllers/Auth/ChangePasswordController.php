@@ -57,7 +57,7 @@ class ChangePasswordController extends Controller
         // A first-time change of the emailed temporary password is expected; any other change is worth a heads-up.
         if (! $forced) {
             AfterResponse::run(
-                fn () => Mail::to($user->email)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED)),
+                fn () => Mail::to($user)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED)),
                 'password changed email',
             );
         }

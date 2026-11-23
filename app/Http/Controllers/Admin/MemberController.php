@@ -71,7 +71,7 @@ class MemberController extends Controller
 
         // Send welcome email with credentials — never expose password in flash messages
         try {
-            Mail::to($user->email)->send(new MemberWelcome($user, $club, $temporaryPassword));
+            Mail::to($user)->send(new MemberWelcome($user, $club, $temporaryPassword));
         } catch (\Exception $e) {
             Log::error('Failed to send welcome email to member', [
                 'user_id' => $user->id,
@@ -379,7 +379,7 @@ class MemberController extends Controller
             }
 
             try {
-                Mail::to($user->email)->send(new MemberWelcome($user, $club, $temporaryPassword));
+                Mail::to($user)->send(new MemberWelcome($user, $club, $temporaryPassword));
             } catch (\Exception $e) {
                 Log::error('Failed to send welcome email during CSV import', [
                     'user_id' => $user->id,

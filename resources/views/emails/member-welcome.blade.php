@@ -1,5 +1,6 @@
+{{-- One language: the recipient's (sent under their locale; English sentences are the keys of lang/<code>.json). --}}
 <!DOCTYPE html>
-<html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>
@@ -21,38 +22,38 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>Welcome to {{ $club->name }}</h1>
-    <p style="margin:6px 0 0;opacity:0.85">Your account has been created</p>
+    <h1>{{ __('Welcome to :club', ['club' => $club->name]) }}</h1>
+    <p style="margin:6px 0 0;opacity:0.85">{{ __('Your account has been created') }}</p>
   </div>
   <div class="body">
-    <p>Hi <strong>{{ $member->name }}</strong>,</p>
-    <p>An administrator has created your account on <strong>{{ config('app.name') }}</strong>. You can now log in and manage your club membership fees.</p>
+    <p>{{ \App\Support\MailText::greeting('Hi **:name**,', $member->name) }}</p>
+    <p>{{ \App\Support\MailText::bold('An administrator has created your account on **:portal**. You can now log in and manage your club membership fees.', ['portal' => config('app.name')]) }}</p>
 
     <div class="creds">
       <div>
-        <div class="label">Email</div>
+        <div class="label">{{ __('Email') }}</div>
         <div class="value">{{ $member->email }}</div>
       </div>
       <div style="margin-top:14px">
-        <div class="label">Temporary Password</div>
+        <div class="label">{{ __('Temporary password') }}</div>
         <div class="value">{{ $temporaryPassword }}</div>
       </div>
     </div>
 
     <div class="warning">
-      <strong>&#9888; Important:</strong> This is a temporary password. When you first sign in you will be asked to choose your own password.
+      &#9888; {{ \App\Support\MailText::bold('**Important:** This is a temporary password. When you first sign in you will be asked to choose your own password.') }}
     </div>
 
     <div class="cta">
-      <a href="{{ route('login') }}">Login Now</a>
+      <a href="{{ route('login') }}">{{ __('Login Now') }}</a>
     </div>
 
     <p style="font-size:13px;color:#6c757d">
-      If you did not expect this email, please contact your club administrator.
+      {{ __('If you did not expect this email, please contact your club administrator.') }}
     </p>
   </div>
   <div class="footer">
-    &copy; {{ date('Y') }} {{ config('app.name') }} &middot; Do not reply to this email.
+    &copy; {{ date('Y') }} {{ config('app.name') }} &middot; {{ __('Do not reply to this email.') }}
   </div>
 </div>
 </body>

@@ -161,6 +161,9 @@ Route::middleware('check_installed')->group(function () {
             Route::post('clubs/{club}/pay-all/transfer', [MemberPayAll::class, 'transfer'])->middleware('throttle:10,1,member-transfer|')->name('payments.transfer-all');
             Route::get('pay-all/{paymentBill}', [MemberPayAll::class, 'result'])->name('payments.group-result');
             Route::get('pay-all/{paymentBill}/status', [MemberPayAll::class, 'status'])->name('payments.group-status');
+            // The language switch saves the choice on the account (UserLocale; app.tsx in the background, a small form
+            // on the sign-in-style pages). Its own limiter: a plain throttle:N,1 would share pay's counter.
+            Route::post('language', [\App\Http\Controllers\Member\LanguageController::class, 'update'])->middleware('throttle:language')->name('language.update');
         });
 
         // ── Super Admin ──────────────────────────────────────────────

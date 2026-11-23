@@ -93,6 +93,10 @@ class AppServiceProvider extends ServiceProvider
         // Change password checks the current one: 5 tries a minute per user.
         RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by('password-change|'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('install', fn (Request $request) => Limit::perMinute(5)->by('install|'.$request->ip()));
+        // The member language switch (POST /my/language): 20 a minute per user, its own counter. A plain
+        // throttle:N,1 is keyed on the user alone (no prefix), so it would share one counter with pay / transfer /
+        // pay-all and a few quick switches could block a payment.
+        RateLimiter::for('language', fn (Request $request) => Limit::perMinute(20)->by('language|'.($request->user()?->id ?? $request->ip())));
 
         self::configureTrustedProxies();
 

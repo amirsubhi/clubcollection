@@ -11,7 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 
-/** Sent when a club admin rejects a member's transfer slip (BM and EN in one email). */
+/** Sent when a club admin rejects a member's transfer slip, in the member's language (send it with Mail::to($user)). */
 class TransferRejected extends Mailable
 {
     use Queueable, SerializesModels;
@@ -30,8 +30,9 @@ class TransferRejected extends Mailable
 
     public function envelope(): Envelope
     {
+        // Built here, at send time: Laravel calls envelope() under the recipient's locale (not the constructor).
         return new Envelope(
-            subject: "Slip pindahan perlu dihantar semula / Transfer slip needs another look – {$this->payment->club->name}",
+            subject: __('Transfer slip needs another look – :club', ['club' => $this->payment->club->name]),
         );
     }
 

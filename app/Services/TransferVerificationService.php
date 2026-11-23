@@ -233,7 +233,7 @@ class TransferVerificationService
 
         $payment->load(['user', 'club']);
         try {
-            Mail::to($payment->user->email)->send(new PaymentConfirmation($payment));
+            Mail::to($payment->user)->send(new PaymentConfirmation($payment));
         } catch (\Throwable $e) {
             Log::error('Payment confirmation email failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
         }
@@ -280,7 +280,7 @@ class TransferVerificationService
 
         $payment->load(['user', 'club']);
         try {
-            Mail::to($payment->user->email)->send(new TransferRejected($payment));
+            Mail::to($payment->user)->send(new TransferRejected($payment));
         } catch (\Throwable $e) {
             Log::error('Transfer rejected email failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
         }
@@ -348,7 +348,7 @@ class TransferVerificationService
         $fees->load(['user', 'club']);
         $lead = $fees->first();
         try {
-            Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $group->fresh() ?? $group));
+            Mail::to($lead->user)->send(new PaymentConfirmation($lead, $fees, $group->fresh() ?? $group));
         } catch (\Throwable $e) {
             Log::error('Payment confirmation email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
         }
@@ -399,7 +399,7 @@ class TransferVerificationService
         $lead = $fees->first();
         if ($lead) {
             try {
-                Mail::to($lead->user->email)->send(new TransferRejected($lead, $fees, $group));
+                Mail::to($lead->user)->send(new TransferRejected($lead, $fees, $group));
             } catch (\Throwable $e) {
                 Log::error('Transfer rejected email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
             }

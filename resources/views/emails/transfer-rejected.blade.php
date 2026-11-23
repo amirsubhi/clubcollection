@@ -1,5 +1,6 @@
+{{-- One language: the recipient's (sent under their locale; English sentences are the keys of lang/<code>.json). --}}
 <!DOCTYPE html>
-<html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>
@@ -16,70 +17,66 @@
   .details td:last-child { font-weight: 600; }
   .cta { text-align: center; margin: 28px 0; }
   .cta a { background: #5b4bc4; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block; }
-  .en { color: #6c757d; font-size: 13px; }
-  hr { border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0; }
   .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #6c757d; }
 </style>
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <h1>Slip pindahan belum diterima</h1>
+    <h1>{{ __('Transfer slip not accepted yet') }}</h1>
     <p style="margin:8px 0 0;opacity:0.9">{{ $payment->club->name }}</p>
   </div>
   <div class="body">
-    <p>Salam <strong>{{ $payment->user->name }}</strong>,</p>
-    <p>Bendahari telah menyemak slip pindahan anda untuk yuran di bawah, tetapi belum dapat mengesahkannya. Yuran ini masih <strong>belum dibayar</strong>.</p>
+    <p>{{ \App\Support\MailText::greeting('Hello **:name**,', $payment->user->name) }}</p>
+    <p>{{ \App\Support\MailText::bold('The treasurer checked your transfer slip for this fee but could not confirm it yet, so the fee is still **unpaid**.') }}</p>
 
-    <div class="reason"><strong>Sebab / Reason:</strong><br>{{ $payment->rejection_reason }}</div>
+    {{-- The admin's reason, as typed (any language). --}}
+    <div class="reason"><strong>{{ __('Reason:') }}</strong><br>{{ $payment->rejection_reason }}</div>
 
     <div class="details">
       <table>
         @if($fees)
         @foreach($fees as $fee)
         <tr>
-          <td>{{ $fee->period_start->format('d M Y') }} &ndash; {{ $fee->period_end->format('d M Y') }}</td>
+          <td>{{ \App\Support\UiLang::date($fee->period_start) }} &ndash; {{ \App\Support\UiLang::date($fee->period_end) }}</td>
           <td>RM {{ number_format($fee->amount, 2) }}</td>
         </tr>
         @endforeach
         <tr>
-          <td>Jumlah / Total</td>
+          <td>{{ __('Total') }}</td>
           <td>RM {{ number_format($fees->sum(fn ($f) => (float) $f->amount), 2) }}</td>
         </tr>
         @if($group)
         <tr>
-          <td>Rujukan / Reference</td>
+          <td>{{ __('Reference') }}</td>
           <td>{{ $group->reference }}</td>
         </tr>
         @endif
         @else
         <tr>
-          <td>Tempoh / Period</td>
-          <td>{{ $payment->period_start->format('d M Y') }} &ndash; {{ $payment->period_end->format('d M Y') }}</td>
+          <td>{{ __('Period') }}</td>
+          <td>{{ \App\Support\UiLang::date($payment->period_start) }} &ndash; {{ \App\Support\UiLang::date($payment->period_end) }}</td>
         </tr>
         <tr>
-          <td>Amaun / Amount</td>
+          <td>{{ __('Amount') }}</td>
           <td>RM {{ number_format($payment->amount, 2) }}</td>
         </tr>
         <tr>
-          <td>Rujukan / Reference</td>
+          <td>{{ __('Reference') }}</td>
           <td>{{ $payment->transferReference() }}</td>
         </tr>
         @endif
       </table>
     </div>
 
-    <p>Sila semak sebab di atas, kemudian hantar slip yang betul atau bayar dalam talian. Jika wang telah keluar dari akaun anda, jangan bayar sekali lagi. Hubungi bendahari.</p>
+    <p>{{ __("Please read the reason above, then send the right slip or pay online. If money already left your account, don't pay again: contact the treasurer.") }}</p>
 
     <div class="cta">
-      <a href="{{ $fees ? route('member.payments.review-all', $payment->club_id) : route('member.payments.review', $payment) }}">Semak &amp; bayar / Review &amp; pay</a>
+      <a href="{{ $fees ? route('member.payments.review-all', $payment->club_id) : route('member.payments.review', $payment) }}">{{ __('Review & pay') }}</a>
     </div>
-
-    <hr>
-    <p class="en">The treasurer checked your transfer slip for this fee but could not confirm it yet, so the fee is still <strong>unpaid</strong>. Please read the reason above, then send the right slip or pay online. If money already left your account, don't pay again: contact the treasurer.</p>
   </div>
   <div class="footer">
-    &copy; {{ date('Y') }} {{ config('app.name') }} &middot; E-mel automatik, jangan balas. / Automated email, please do not reply.
+    &copy; {{ date('Y') }} {{ config('app.name') }} &middot; {{ __('Automated email, please do not reply.') }}
   </div>
 </div>
 </body>

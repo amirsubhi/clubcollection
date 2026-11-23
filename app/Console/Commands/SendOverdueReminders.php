@@ -66,7 +66,7 @@ class SendOverdueReminders extends Command
                     );
 
                     try {
-                        Mail::to($payment->user->email)
+                        Mail::to($payment->user)
                             ->send(new OverdueReminder($payment));
                         $sent++;
                     } catch (\Exception $e) {

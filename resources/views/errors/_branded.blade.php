@@ -9,7 +9,7 @@
 --}}
 @php
     $pick = fn ($v) => \App\Support\UiLang::normalise($v);
-    $authLang = $pick($authLang ?? null) ?? $pick(request()->query('lang')) ?? $pick(request()->cookie(\App\Http\Middleware\AuthPageLocale::COOKIE)) ?? \App\Support\UiLang::DEFAULT;
+    $authLang = $pick($authLang ?? null) ?? $pick(request()->query('lang')) ?? $pick(request()->cookie(\App\Http\Middleware\AuthPageLocale::COOKIE)) ?? \App\Support\Portal\PortalSettings::defaultLocale();
     app()->setLocale($authLang);
 
     $safeRoute = function (string $name, string $fallback) {

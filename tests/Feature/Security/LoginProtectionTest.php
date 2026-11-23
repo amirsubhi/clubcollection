@@ -6,7 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Mail\AccountSecurityNotice;
 use App\Models\AuditLog;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPassword;
 use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
@@ -330,17 +330,28 @@ class LoginProtectionTest extends TestCase
         Mail::assertSent(AccountSecurityNotice::class, fn ($m) => $m->hasTo($user->email) && $m->kind === AccountSecurityNotice::KIND_PASSWORD_CHANGED);
     }
 
-    public function test_the_security_emails_render_in_both_languages(): void
+    /** One language per email, the account owner's (Mail::to($user) sets it; MemberEmailLanguageTest sends them). */
+    public function test_the_security_emails_render_in_either_language(): void
     {
         $user = User::factory()->make(['name' => 'Aminah']);
 
-        $paused = (new AccountSecurityNotice($user, AccountSecurityNotice::KIND_SIGN_IN_PAUSED, 15))->render();
+        $paused = (new AccountSecurityNotice($user, AccountSecurityNotice::KIND_SIGN_IN_PAUSED, 15))->locale('ms')->render();
         $this->assertStringContainsString('dihentikan seketika selama 15 minit', $paused);
-        $this->assertStringContainsString('If it was not you,', $paused);
+        $this->assertStringContainsString('<strong>Jika itu bukan anda,</strong>', $paused);
+        $this->assertStringNotContainsString('If it was not you,', $paused);
         $this->assertStringContainsString(route('password.request'), $paused);
 
-        $changed = (new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED))->render();
+        $paused = (new AccountSecurityNotice($user, AccountSecurityNotice::KIND_SIGN_IN_PAUSED, 15))->locale('en')->render();
+        $this->assertStringContainsString('signing in is paused for 15 minutes', $paused);
+        $this->assertStringContainsString('<strong>If it was not you,</strong>', $paused);
+        $this->assertStringNotContainsString('dihentikan', $paused);
+
+        $changed = (new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED))->locale('ms')->render();
         $this->assertStringContainsString('Kata laluan anda telah ditukar', $changed);
+        $this->assertStringContainsString('hubungi pentadbir kelab anda segera', $changed);
+
+        $changed = (new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED))->locale('en')->render();
+        $this->assertStringContainsString('Your password was changed', $changed);
         $this->assertStringContainsString('contact your club admin', $changed);
     }
 

@@ -14,16 +14,17 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 
 /**
- * Sent when an admin cancels a member's payment ("Cancel payment"), once per cancel (a set is one email). BM
- * first, then EN, like the other member emails. The wording is fixed per reason; the admin's note is internal
- * and never included.
+ * Sent when an admin cancels a member's payment ("Cancel payment"), once per cancel (a set is one email), in the
+ * member's language (User::preferredLocale(); send it with Mail::to($user)). The wording is fixed per reason (the
+ * English of PaymentCancellationService::MEMBER_WORDING, translated by lang/<code>.json at send time); the admin's
+ * note is internal and never included.
  */
 class PaymentCancelled extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /** @var array{0: string, 1: string} BM, EN */
-    public array $wording;
+    /** The reason in English: a translation key, turned into the member's language in the template. */
+    public string $reasonText;
 
     /** Every fee went back to its transfer slip still being checked (an online payment made meanwhile was cancelled). */
     public bool $slipPending;
@@ -35,15 +36,17 @@ class PaymentCancelled extends Mailable
      */
     public function __construct(public Payment $payment, public Collection $fees, public PaymentCancellation $cancellation, public ?PaymentBill $group = null)
     {
-        $this->wording = PaymentCancellationService::MEMBER_WORDING[$cancellation->reason_code]
+        // Only the English key here: the constructor runs before the recipient's locale is set.
+        $this->reasonText = PaymentCancellationService::MEMBER_WORDING[$cancellation->reason_code]
             ?? PaymentCancellationService::MEMBER_WORDING['other'];
         $this->slipPending = $fees->isNotEmpty() && $fees->every(fn (Payment $f) => $f->status === 'pending_verification');
     }
 
     public function envelope(): Envelope
     {
+        // Built here, at send time: Laravel calls envelope() under the recipient's locale (not the constructor).
         return new Envelope(
-            subject: "Bayaran dibatalkan / Payment cancelled – {$this->payment->club->name}",
+            subject: __('Payment cancelled – :club', ['club' => $this->payment->club->name]),
         );
     }
 
