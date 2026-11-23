@@ -84,9 +84,12 @@ class PortalSettingsController extends Controller
         // the built-in icons stay in use.
         AppIcons::ensure();
 
-        $what = implode(', ', array_map(fn ($key) => $key === 'breach_check'
-            ? 'breached-password check turned '.($new['breach_check'] === null ? 'on' : 'off')
-            : $key, $changed));
+        $what = implode(', ', array_map(fn ($key) => match ($key) {
+            'name' => 'portal name',
+            'logo' => 'logo',
+            'brand' => 'brand colour',
+            'breach_check' => 'breached-password check turned '.($new['breach_check'] === null ? 'on' : 'off'),
+        }, $changed));
 
         AuditService::log(
             'portal.settings_updated',

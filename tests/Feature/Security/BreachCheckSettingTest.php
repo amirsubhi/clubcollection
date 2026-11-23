@@ -117,7 +117,8 @@ class BreachCheckSettingTest extends TestCase
         $this->switchTo(false);
 
         // Another form (or an old page) posting only the name never turns the check back on or off.
-        $this->put(route('admin.portal-settings.update'), ['name' => 'Portal Kelab'])->assertRedirect();
+        $this->put(route('admin.portal-settings.update'), ['name' => 'Portal Kelab'])->assertRedirect()
+            ->assertSessionHas('success', 'Portal settings saved (portal name).');
         $this->assertFalse(PortalSettings::breachCheckOn());
     }
 
