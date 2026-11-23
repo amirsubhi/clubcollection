@@ -15,7 +15,8 @@ use Illuminate\View\View;
 /**
  * Portal settings (super admin only): the portal name (page titles, sign-in pages, emails, admin sidebar), the
  * portal logo (sign-in header when no single club's logo is shown, admin sidebar, app icons) and the brand colour
- * (one of BrandPalette's presets; only its key is stored). Left empty, the name is APP_NAME, the logo the
+ * (one of BrandPalette's presets; only its key is stored), and the breached-password check for new passwords (on
+ * unless switched off; only "off" is stored). Left empty, the name is APP_NAME, the logo the
  * built-in mark and the colour lavender.
  */
 class PortalSettingsController extends Controller
@@ -35,6 +36,7 @@ class PortalSettingsController extends Controller
             'brand' => BrandPalette::current(),
             'presets' => BrandPalette::keys(),
             'appIcons' => AppIcons::current(),
+            'breachCheckOn' => PortalSettings::breachCheckOn(),
         ]);
     }
 
@@ -46,14 +48,20 @@ class PortalSettingsController extends Controller
             'remove_logo' => 'boolean',
             // Only a preset key; never a colour value or CSS.
             'brand' => ['sometimes', 'string', Rule::in(BrandPalette::keys())],
+            // Only changed when the form sends it (hidden 0 + checkbox 1), so another form never turns it off.
+            'breach_check' => 'sometimes|boolean',
         ], LogoService::messages() + ['brand.in' => 'Choose one of the listed colours.'], ['name' => 'portal name', 'brand' => 'brand colour']);
 
-        $old = ['name' => PortalSettings::get('name'), 'logo' => PortalSettings::get('logo'), 'brand' => PortalSettings::get('brand')];
+        $old = ['name' => PortalSettings::get('name'), 'logo' => PortalSettings::get('logo'), 'brand' => PortalSettings::get('brand'), 'breach_check' => PortalSettings::get('breach_check')];
         $name = trim((string) ($data['name'] ?? ''));
-        $new = ['name' => $name === '' ? null : $name, 'logo' => $old['logo'], 'brand' => $old['brand']];
+        $new = ['name' => $name === '' ? null : $name, 'logo' => $old['logo'], 'brand' => $old['brand'], 'breach_check' => $old['breach_check']];
         // The default preset is stored as nothing, so it renders exactly as tokens.css.
         if (array_key_exists('brand', $data)) {
             $new['brand'] = $data['brand'] === BrandPalette::DEFAULT ? null : $data['brand'];
+        }
+
+        if (array_key_exists('breach_check', $data)) {
+            $new['breach_check'] = $request->boolean('breach_check') ? null : PortalSettings::BREACH_CHECK_OFF;
         }
 
         // A new file wins over "remove". Old files are kept (a sign-in page cached by a browser may still show it).
@@ -63,7 +71,7 @@ class PortalSettingsController extends Controller
             $new['logo'] = null;
         }
 
-        $changed = array_keys(array_filter(['name' => $old['name'] !== $new['name'], 'logo' => $old['logo'] !== $new['logo'], 'brand' => $old['brand'] !== $new['brand']]));
+        $changed = array_keys(array_filter($new, fn ($value, $key) => $old[$key] !== $value, ARRAY_FILTER_USE_BOTH));
         if ($changed === []) {
             return redirect()->route('admin.portal-settings.edit')->with('success', 'Nothing changed.');
         }

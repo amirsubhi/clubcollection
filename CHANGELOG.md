@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Breached-password check switch** on Portal settings (super admin; on by default; audited): with it off, new
+  passwords on reset and change need only the 12-character minimum and nothing is sent to Have I Been Pwned. A site
+  upgraded from v2.0.0 keeps the check on.
+
+### Changed
+- **Installer:** the first super-admin password is also checked against known breaches (passes if the service
+  can't be reached), with a plain message when it has been seen in a leak.
+
 ### Documentation
 - `docs/INSTALL.md`: `composer.json` requires PHP `^8.4` too (the "still says ^8.3" note is gone); the extension
   table lists `curl`, `xml` and `zip` (required by `app:doctor`; the backup uses `ZipArchive`); the `app:doctor`

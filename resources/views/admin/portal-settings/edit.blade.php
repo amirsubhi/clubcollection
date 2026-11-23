@@ -103,6 +103,23 @@
                         </p>
                     </div>
 
+                    <fieldset class="mb-4" data-testid="breach-check">
+                        <legend class="form-label fw-semibold fs-6 mb-1">Breached-password check</legend>
+                        <input type="hidden" name="breach_check" value="0">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="breach_check" value="1" id="f-breach-check"
+                                   aria-describedby="f-breach-check-help" @checked(old('breach_check', $breachCheckOn ? '1' : '0') === '1')>
+                            <label class="form-check-label" for="f-breach-check">Refuse new passwords that appear in known data breaches</label>
+                        </div>
+                        <div id="f-breach-check-help" class="form-text">
+                            Applies when anyone resets or changes a password. The server sends only the first 5 characters of the
+                            password's SHA-1 hash to Have I Been Pwned (pwnedpasswords.com), never the password. If the service
+                            can't be reached, the password is accepted. Turn this off only if your host blocks outgoing connections
+                            or your club doesn't want the lookup. Recommended: on.
+                        </div>
+                        @error('breach_check')<div role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </fieldset>
+
                     <button type="submit" class="btn btn-primary">Save settings</button>
                 </form>
             </div>

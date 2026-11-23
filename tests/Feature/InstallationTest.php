@@ -98,6 +98,25 @@ class InstallationTest extends BaseTestCase
         $this->assertFileDoesNotExist(storage_path('app/.installed'));
     }
 
+    public function test_install_rejects_a_breached_password_with_a_readable_message(): void
+    {
+        // The installer always checks (no Portal settings exist yet): here the breach service says "seen".
+        $this->app->instance(\Illuminate\Contracts\Validation\UncompromisedVerifier::class, new class implements \Illuminate\Contracts\Validation\UncompromisedVerifier
+        {
+            public function verify($data)
+            {
+                return false;
+            }
+        });
+
+        $this->post('/install', $this->validPayload())->assertSessionHasErrors([
+            'admin_password' => 'This password has appeared in a data leak on another website, so it is not safe. Please choose a different one.',
+        ]);
+
+        $this->assertDatabaseMissing('users', ['email' => 'admin@example.test']);
+        $this->assertFileDoesNotExist(storage_path('app/.installed'));
+    }
+
     public function test_install_creates_super_admin_and_writes_marker_on_success(): void
     {
         $this->post('/install', $this->validPayload())
