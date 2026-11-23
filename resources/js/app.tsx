@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { setNonce } from "get-nonce";
 import { DEFAULT_LANG, LangContext, PageLangContext, langFromLocale, normaliseLang, storedLang, type Lang } from "@/lib/i18n";
-import { saveLang, unsavedLang } from "@/lib/langSave";
+import { resendUnsaved, saveLang, unsavedLang } from "@/lib/langSave";
 import { captureInstallPrompt, registerServiceWorker } from "@/lib/pwa";
 import { readPref, writePref } from "@/lib/storage";
 import { bootTheme, ThemeProvider } from "@/lib/theme";
@@ -25,16 +25,14 @@ captureInstallPrompt();
 type Account = { id: number; saveUrl: string; saved: boolean } | null;
 
 /**
- * The language the app opens in. A choice made here that has not reached the server yet comes first. Then, for a
- * signed-in member with a saved language, the server's answer (UserLocale), so a choice saved on another device wins
- * over an older one stored here. With nothing saved, and for others (admins on member pages): the choice stored in
- * this browser, else the server's answer (this browser's cp_lang, else the portal default).
+ * The language the app opens in. A signed-in member: their own choice made here that has not reached the server yet
+ * (keyed by their user id, less than 24 hours old: lib/langSave.ts), else the server's answer (UserLocale: the
+ * account's saved language, else the portal default). Never what this browser stored (cp-lang / cp_lang): on a
+ * shared browser that may be someone else's choice. Others (admins on member pages): the choice stored in this
+ * browser, else the server's answer.
  */
 function initialLang(locale: unknown, account: Account): Lang {
-  const pending = account ? unsavedLang(account.id) : null;
-  if (pending) return pending;
-  if (account?.saved) return normaliseLang(locale) ?? DEFAULT_LANG;
-  if (account) return normaliseLang(readPref("cp-lang")) ?? normaliseLang(locale) ?? DEFAULT_LANG;
+  if (account) return unsavedLang(account.id) ?? normaliseLang(locale) ?? DEFAULT_LANG;
   return normaliseLang(readPref("cp-lang")) ?? langFromLocale(locale);
 }
 
@@ -72,21 +70,13 @@ function Providers({ locale, account, component, children }: { locale: unknown; 
   }, [pageLang]);
   useEffect(() => {
     if (account) {
-      // Only a real choice is copied or saved: never the portal default, or the next request would adopt it as the
-      // member's choice (AdoptBrowserLanguage) and a later change of the default would not reach them.
-      const stored = normaliseLang(readPref("cp-lang"));
-      if (account.saved || unsavedLang(account.id)) {
-        rememberLang(lang); // this browser's copies follow the account
-      } else if (stored) {
-        // A choice stored here before languages were saved (cp-lang): adopt it, like the cp_lang cookie.
-        rememberLang(stored);
-        saveLang(account.saveUrl, account.id, stored);
-      }
-      // Send a choice that did not reach the server: now, and again when the connection comes back.
-      const retry = () => {
-        const pending = unsavedLang(account.id);
-        if (pending) saveLang(account.saveUrl, account.id, pending);
-      };
+      // Nothing this browser holds is saved on the account on load: only the member's own switch saves (setLang).
+      // This browser's copies (read by the sign-in pages after signing out) follow the account's own language; with
+      // nothing saved they are left as they are, so the portal default is never written down as a choice.
+      if (account.saved || unsavedLang(account.id)) rememberLang(lang);
+      // Send this member's own choice that did not reach the server: now, and again when the connection comes back.
+      // It keeps the time it was made, so it expires 24 hours later however often it is resent.
+      const retry = () => resendUnsaved(account.saveUrl, account.id);
       retry();
       window.addEventListener("online", retry);
       return () => window.removeEventListener("online", retry);

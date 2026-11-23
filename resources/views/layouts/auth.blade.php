@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{{-- Sign-in pages (login, two-factor challenge, password reset). Language from AuthPageLocale: BM by default. --}}
+{{-- Sign-in pages (login, two-factor challenge, password reset and change, privacy). Language from AuthPageLocale. --}}
 @php($lang = \App\Support\UiLang::normalise($authLang ?? null) ?? \App\Support\Portal\PortalSettings::defaultLocale())
 <html lang="{{ $lang }}">
 <head>
@@ -31,7 +31,7 @@
             header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
             header svg, .sr-only { display: none; }
             header img { width: 40px; height: 40px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
-            nav a { margin-left: 8px; color: {{ $brandHex }}; font-weight: 700; }
+            nav a, nav button { margin-left: 8px; color: {{ $brandHex }}; font: inherit; font-weight: 700; background: none; border: 0; }
             .auth-card { background: #fff; border: 1px solid #DEDCEC; border-radius: 16px; padding: 24px; margin: 32px 0; }
             label, input:not([type=checkbox]), .auth-btn { display: block; width: 100%; box-sizing: border-box; }
             input:not([type=checkbox]) { min-height: 48px; padding: 8px 12px; margin: 6px 0 16px; border: 1px solid #8A87A6; border-radius: 12px; font: inherit; }
@@ -80,13 +80,28 @@
                 </span>
             </div>
             <nav aria-label="Bahasa / Language" class="inline-flex shrink-0 rounded-full border bg-card p-0.5 text-sm font-bold">
-                @foreach (\App\Support\UiLang::LABELS as $code => $label)
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
-                       hreflang="{{ $code }}"
-                       lang="{{ $code }}"
-                       @if ($lang === $code) aria-current="true" @endif
-                       class="auth-lang {{ $lang === $code ? 'is-active' : '' }}">{{ $label }}<span class="sr-only"> – {{ \App\Support\UiLang::NAMES[$code] }}</span></a>
-                @endforeach
+                @if ($authLangForm ?? false)
+                    {{-- A signed-in member (change password, privacy notice): the choice is saved on the account by a
+                         POST (member.language.update), the only way an account's language is written; ?lang= links
+                         would change nothing for them. The page comes back in the saved language. --}}
+                    <form method="POST" action="{{ route('member.language.update') }}" class="contents" data-testid="auth-lang-form">
+                        @csrf
+                        @foreach (\App\Support\UiLang::LABELS as $code => $label)
+                            <button type="submit" name="lang" value="{{ $code }}"
+                                    lang="{{ $code }}"
+                                    @if ($lang === $code) aria-current="true" @endif
+                                    class="auth-lang {{ $lang === $code ? 'is-active' : '' }}">{{ $label }}<span class="sr-only"> – {{ \App\Support\UiLang::NAMES[$code] }}</span></button>
+                        @endforeach
+                    </form>
+                @else
+                    @foreach (\App\Support\UiLang::LABELS as $code => $label)
+                        <a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
+                           hreflang="{{ $code }}"
+                           lang="{{ $code }}"
+                           @if ($lang === $code) aria-current="true" @endif
+                           class="auth-lang {{ $lang === $code ? 'is-active' : '' }}">{{ $label }}<span class="sr-only"> – {{ \App\Support\UiLang::NAMES[$code] }}</span></a>
+                    @endforeach
+                @endif
             </nav>
         </header>
 

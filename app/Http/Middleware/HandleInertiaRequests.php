@@ -39,7 +39,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'locale' => fn () => $this->locale($request),
             // A signed-in member's language switch saves the choice at `url` (resources/js/lib/langSave.ts); `saved`:
-            // the account has a language, so the browser copies it (else the portal default is never written down).
+            // the account has a language, so this browser's copies follow it (the portal default is never written down).
             'langSave' => fn () => $request->user()?->role === 'member'
                 ? ['url' => route('member.language.update'), 'saved' => UserLocale::saved($request->user()) !== null]
                 : null,
@@ -50,10 +50,10 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Members (and guests) get the member-side language (UserLocale: saved on the account, else the browser's
-     * choice, else the portal default); admins get the app locale (admin pages stay English). For a signed-in
-     * member app.tsx starts from this value rather than the browser's stored one, so a choice saved on another
-     * device wins over an old one here.
+     * Members get the member-side language (UserLocale: saved on the account, else the portal default; never the
+     * browser's cookie, which may be someone else's), guests the browser's choice else the default; admins get the
+     * app locale (admin pages stay English). For a signed-in member app.tsx opens in this value (after only that
+     * member's own unsent choice), never in what this browser stored.
      */
     protected function locale(Request $request): string
     {
