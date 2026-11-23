@@ -1,15 +1,17 @@
-// One-off (i18n phase 1): rebuilds lang/member/{ms,en}.json from the inline dictionary that lived in
-// resources/js/lib/i18n.ts (and the short month names in resources/js/lib/format.ts) at a given git ref, then checks
-// every value of the written files against that source. Usage: node scripts/i18n-extract.mjs [ref] [--check] [--extra-ok]
-// --check only compares (exit 1 on any difference); without it the files are (re)written first. --extra-ok allows
-// keys added after the move (e.g. `node scripts/i18n-extract.mjs 06e97d6 --check --extra-ok` on a later tree).
+// i18n phase 1: checks lang/member/{ms,en}.json against the inline dictionary that lived in resources/js/lib/i18n.ts
+// (and the short month names in resources/js/lib/format.ts) at a git ref, value by value in both directions.
+// Usage: node scripts/i18n-extract.mjs [ref] [--extra-ok] [--write]
+//   ref        default 06e97d6 (v2.0.1, the last commit with the inline dictionary)
+//   --extra-ok keys added after the move are not problems (needed on any tree after the move)
+//   --write    first (re)write both files from that ref (drops every key added since: only for the original move)
+// Exit 1 on any difference.
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 
 const args = process.argv.slice(2);
-const checkOnly = args.includes("--check");
-const ref = args.find((a) => !a.startsWith("--")) ?? "origin/master";
+const write = args.includes("--write");
+const ref = args.find((a) => !a.startsWith("--")) ?? "06e97d6";
 const root = new URL("..", import.meta.url).pathname;
 const ts = createRequire(root + "package.json")("typescript");
 
@@ -36,7 +38,7 @@ for (let i = 0; i < 12; i++) {
 }
 
 const dir = root + "lang/member";
-if (!checkOnly) {
+if (write) {
   fs.mkdirSync(dir, { recursive: true });
   for (const l of ["ms", "en"]) fs.writeFileSync(`${dir}/${l}.json`, JSON.stringify(want[l], null, 2) + "\n");
 }

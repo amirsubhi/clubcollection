@@ -738,8 +738,9 @@ A move with no visible change, so later languages are a file each. Member side o
   `layouts/auth`, the branded and 429 error pages). An unknown value still means Malay.
 - **Laravel and short keys.** Checked on the VM (tinker): `__('navHome')` returns `navHome` under both `ms` and `en`
   (a key missing from a JSON file shows the raw key, no fallback, and `lang/member/*.json` is not loaded by
-  Laravel). So the short keys must never go through `__()`; `lang/ms.json` (sentence keys) is unchanged.
-- **Proof.** Value identity: `node scripts/i18n-extract.mjs origin/master --check --extra-ok` compares every value
+  Laravel); with `en` and the fallback locale set to `ms`, `__('Password')` still gives `Password`, so JSON
+  keys do not fall back either). So the short keys must never go through `__()`; `lang/ms.json` (sentence keys) is unchanged.
+- **Proof.** Value identity: `node scripts/i18n-extract.mjs --extra-ok` (ref 06e97d6 by default) compares every value
   with master's `dict` and month arrays in both directions: 676 values identical (314 entries + 24 month names, × 2
   languages), 0 problems. `tsc --noEmit` and `npm run build` pass (locally and on the VM). New PHPUnit tests:
   `tests/Unit/MemberLangFilesTest.php` (every file has exactly `en.json`'s keys and `{placeholders}`, no empty text,
