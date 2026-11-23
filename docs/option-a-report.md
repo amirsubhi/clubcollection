@@ -850,3 +850,48 @@ in `resources/js/lib/i18n.ts`, `UiLang::LABELS` / `NAMES` (UiLangTest asks), and
 and sign-in sentence (copy the keys of `lang/ms.json`) plus `lang/<code>/{auth,passwords,validation}.php`. The PHP
 list, the Portal settings select and the save route follow the files by themselves. The BM/EN switch (and the
 sign-in pages' switch, from `UiLang::LABELS`) still shows every language side by side: the picker is phase 3.
+
+### Review fixes on PR #38 (23 Nov 2026)
+
+Owner's rule, decided: an account's language is written **only** by a POST its signed-in owner makes from a language
+switch. Nothing a browser merely carries (the `cp_lang` cookie, `cp-lang` storage, a `?lang=` link) is written to an
+account; admin accounts never get one.
+
+- **Adoption removed.** `AdoptBrowserLanguage` (`adopt_lang`), `UserLocale::adoptBrowserChoice()` and app.tsx's
+  load-time save of `cp-lang` are gone. Reviewer's probe: B signing in on A's browser (A chose EN) had A's EN saved
+  on B's account and got English emails. Now B's pages and emails are the portal default and `B.locale` stays NULL.
+  A member who switched before this release sees the default until they pick once in the app.
+- **Rule.** Signed-in member and every member email: saved → portal default. Guest (and an admin on a sign-in
+  page): `?lang=` → `cp_lang` → portal default. app.tsx: the member's own unsent choice, else the server's answer,
+  never `cp-lang`. The reset link now follows the account too (`sendPasswordResetNotification` override removed;
+  `preferredLocale()` applies), so it cannot take another person's browser language.
+- **`?lang=` never saves.** On the change-password / privacy pages a signed-in member's BM / EN switch is a small
+  POST form (CSRF) to `member.language.update` (chosen over hiding it: a new member with a temporary password can
+  read that page in their language; `EnsurePasswordChanged` allows the route; a form post is answered with `back()`,
+  JSON with 204). Guests and admins keep the `?lang=` links.
+- **Rate limit.** Laravel keys a plain `throttle:N,1` as `sha1(user id)` with no prefix, so every plain throttle
+  shares one per-user counter. The switch now has its own named limiter `language` (20/min, key `language|<id>`).
+  Probe inverted: 20 switches, then 10 pays all pass, the 11th pay is 429 (pay's own limit).
+- **Offline retry.** `cp-lang-unsaved` = `<user id>:<code>:<ms>`, dropped 24 h after the choice (and an old marker
+  without a time), resent with its original time so page loads never renew it.
+- **ClubAdminNotice** pinned to English with `->locale(UserLocale::ADMIN_LOCALE)`.
+- **Malay review**: 21 strings (15 live in v2.0.1, 6 new), `docs/i18n-new-wording.md` rewritten as before → after;
+  "Data protection contact" left for the owner. `tests/Unit/MalayWordingTest.php` bans 19 Indonesian words in
+  `lang/ms.json`, `lang/member/ms.json`, `lang/ms/*.php` (none found).
+- **Reset subject.** The reviewer's "Reset Password Notification has no Malay" is outdated: laravel/framework
+  v13.43.0's `ResetPassword` uses `Lang::get('Reset your password')`, which `lang/ms.json` has; the test sends the
+  mail for real and checks "Tetapkan semula kata laluan anda". No change needed.
+- **Tests:** shared-browser cookie never saved, B's pages + password-changed email in the default; `GET
+  /privacy?lang=en` saves nothing; switches never block pay; form switch saves and returns; forced-change member can
+  switch; admin notice in a Malay request stays English; reset email ignores the page / cookie. VM (PHP 8.4.28):
+  SQLite 1115 passed (each new commit green on its own); MariaDB 10.11 (cp_test) 1114 passed, 1 skipped; `tsc` and
+  `npm run build` pass.
+- **Browser** (Kali Selenium, throwaway copy on :8099, e2e seed): A switches EN in the app (saved), signs out
+  (browser holds `cp_lang=en`, `cp-lang=en`); B signs in: Malay on the app, change-password and `/privacy?lang=en`,
+  `saved=false` throughout, B's password-changed email in the mail log is Malay; A's fresh unsent marker, B's
+  25-hour-old one and an old-format one are ignored and nothing saved; offline (Chrome network emulation) B's EN
+  switch shows at once and is kept with a time, and after going online (`online` event dispatched by the script)
+  it is sent and saved; the change-password BM form saves `ms` and returns to the page. No console errors.
+- **Found on master (v2.0.1), not fixed here:** because plain throttles share one counter, an admin who loads 20
+  attachment thumbnails (`throttle:300,1`) gets 429 on the next admin write (`throttle:20,1`); a member who opens 10
+  slips (`throttle:60,1`) gets 429 on pay (`throttle:10,1`).
