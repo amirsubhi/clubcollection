@@ -66,9 +66,6 @@
             margin-bottom: 0.75rem;
         }
         .req-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             padding: 0.5rem 0;
             border-bottom: 1px solid #f1f3f5;
             font-size: 0.875rem;
@@ -116,21 +113,26 @@
         {{-- ── System Requirements ─────────────────────────────── --}}
         <p class="section-title"><i class="bi bi-cpu me-1"></i>System Requirements</p>
         <div class="card border-0 bg-light rounded-3 mb-4 px-3">
-            @foreach(['php', 'database', 'storage', 'env'] as $key)
+            @foreach($requirements['rows'] as $req)
                 <div class="req-item">
-                    <span class="req-label">{{ $requirements[$key]['label'] }}</span>
-                    <span class="d-flex align-items-center gap-2">
-                        <span class="req-value text-muted">{{ $requirements[$key]['value'] }}</span>
-                        @if($requirements[$key]['pass'])
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                <i class="bi bi-check-lg"></i> Pass
-                            </span>
-                        @else
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                <i class="bi bi-x-lg"></i> Fail
-                            </span>
-                        @endif
-                    </span>
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <span class="req-label">{{ $req['label'] }}</span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="req-value text-muted">{{ $req['value'] }}</span>
+                            @if($req['pass'])
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="bi bi-check-lg"></i> Pass
+                                </span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                    <i class="bi bi-x-lg"></i> Fail
+                                </span>
+                            @endif
+                        </span>
+                    </div>
+                    @unless($req['pass'])
+                        <div class="req-fix text-danger-emphasis small mt-1">{{ $req['fix'] }}</div>
+                    @endunless
                 </div>
             @endforeach
         </div>
@@ -138,7 +140,7 @@
         @if(! $requirements['all_pass'])
             <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
                 <i class="bi bi-exclamation-triangle-fill"></i>
-                Please fix the failing requirements before continuing.
+                Fix each row marked Fail as its line says, then reload this page. Installing stays blocked until every row passes.
             </div>
         @endif
 

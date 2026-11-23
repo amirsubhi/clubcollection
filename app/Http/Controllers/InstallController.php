@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\Doctor\HostProbe;
+use App\Support\Requirements;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -14,12 +16,6 @@ class InstallController extends Controller
 {
     /** Shortest install token accepted. */
     public const MIN_TOKEN_LENGTH = 16;
-
-    /** Lowest PHP the app runs on: composer.lock (Laravel 13's dependencies) needs 8.4. */
-    public const MIN_PHP = '8.4.0';
-
-    /** The PHP version the requirement check uses; tests on an older local PHP lower it. */
-    public static string $minimumPhp = self::MIN_PHP;
 
     public function index()
     {
@@ -140,30 +136,50 @@ class InstallController extends Controller
             ->with('success', 'Installation complete! You can now log in.'.($https ? '' : ' Your URL is not https, so session cookies are not marked secure: switch to https before going live.'));
     }
 
+    /**
+     * The server checks of `app:doctor` that matter before install, from bootstrap/requirements.php
+     * (App\Support\Requirements): PHP version, every extension, writable folders and .env. One row per
+     * check with a one-line fix; install is refused while any row fails.
+     *
+     * @return array{rows: list<array{label: string, pass: bool, value: string, fix: string}>, all_pass: bool}
+     */
     private function checkRequirements(): array
     {
-        // composer.json and composer.lock need PHP 8.4.
-        $minPhp     = self::$minimumPhp;
-        $phpOk      = version_compare(PHP_VERSION, $minPhp, '>=');
-        // Only the PDO driver of the configured connection (DB_CONNECTION) is needed.
-        $driver     = (string) config('database.connections.'.config('database.default').'.driver');
-        [$pdo, $pdoName] = match ($driver) {
-            'mysql', 'mariadb' => ['pdo_mysql', 'PDO MySQL / MariaDB'],
-            'pgsql'  => ['pdo_pgsql', 'PDO PostgreSQL'],
-            'sqlsrv' => ['pdo_sqlsrv', 'PDO SQL Server'],
-            default  => ['pdo_sqlite', 'PDO SQLite'],
+        $probe = app(HostProbe::class);
+        $series = Requirements::phpSeries();
+        $rows = [];
+        $row = function (string $label, bool $pass, string $value, string $fix) use (&$rows) {
+            $rows[] = ['label' => $label, 'pass' => $pass, 'value' => $value, 'fix' => $pass ? '' : $fix];
         };
-        $dbOk       = extension_loaded($pdo);
-        $storageOk  = is_writable(storage_path('app'));
-        $envOk      = file_exists(base_path('.env')) && is_writable(base_path('.env'));
 
-        return [
-            'php'      => ['pass' => $phpOk,     'label' => 'PHP >= '.preg_replace('/\.0$/', '', $minPhp), 'value' => PHP_VERSION],
-            'database' => ['pass' => $dbOk,      'label' => $pdoName.' Extension', 'value' => $dbOk ? 'Enabled' : 'Missing'],
-            'storage'  => ['pass' => $storageOk, 'label' => 'Storage Writable',     'value' => $storageOk ? 'Writable' : 'Not writable'],
-            'env'      => ['pass' => $envOk,     'label' => '.env File Writable',   'value' => $envOk ? 'Writable' : 'Missing or not writable'],
-            'all_pass' => $phpOk && $dbOk && $storageOk && $envOk,
-        ];
+        $version = $probe->phpVersion();
+        $row('PHP '.Requirements::php().' or newer', version_compare($version, Requirements::php(), '>='), $version,
+            "Choose PHP {$series} in cPanel → MultiPHP Manager (or Select PHP Version), then reload this page.");
+
+        // Every extension app:doctor checks, plus the PDO extension of the configured database (DB_CONNECTION).
+        $driver = (string) config('database.connections.'.config('database.default').'.driver');
+        $pdo = Requirements::pdoExtension($driver);
+        foreach ([...Requirements::extensions(), $pdo] as $ext) {
+            $loaded = $probe->extensionLoaded($ext);
+            $row($ext === $pdo ? "{$ext} extension (database: {$driver})" : "{$ext} extension", $loaded, $loaded ? 'Enabled' : 'Missing',
+                "Enable the {$ext} extension in cPanel → Select PHP Version → Extensions (for PHP {$series}), then reload this page.");
+        }
+
+        $chmod = 'Run chmod -R 775 storage bootstrap/cache in the app folder (or set the permissions in cPanel File Manager), then reload this page.';
+        foreach (['storage' => 'storage/ writable', 'bootstrap/cache' => 'bootstrap/cache writable'] as $prefix => $label) {
+            $blocked = array_values(array_filter(Requirements::writable(),
+                fn (string $dir) => str_starts_with($dir, $prefix) && ! is_writable(base_path($dir))));
+            $row($label, $blocked === [], $blocked === [] ? 'Writable' : 'Not writable: '.implode(', ', $blocked), $chmod);
+        }
+
+        $envPath = base_path('.env');
+        $envOk = is_file($envPath) && is_writable($envPath);
+        $row('.env file writable', $envOk, $envOk ? 'Writable' : (is_file($envPath) ? 'Not writable' : 'Missing'),
+            is_file($envPath)
+                ? 'Make .env writable by PHP (e.g. chmod 664 .env, or File Manager → Permissions), then reload this page.'
+                : 'Create it: cp .env.example .env, then php artisan key:generate (docs/INSTALL.md step 5), then reload this page.');
+
+        return ['rows' => $rows, 'all_pass' => ! in_array(false, array_column($rows, 'pass'), true)];
     }
 
     private function updateEnv(array $values): void

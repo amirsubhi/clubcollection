@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Club;
 use App\Support\Doctor\HostProbe;
 use App\Support\Payments\WebhookSecret;
+use App\Support\Requirements;
 use App\Support\SchedulerHeartbeat;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -31,9 +32,6 @@ class AppDoctor extends Command
     public const WARN = 'WARN';
 
     public const FAIL = 'FAIL';
-
-    /** PHP extensions the app needs (the database driver's PDO extension is added). */
-    public const EXTENSIONS = ['ctype', 'curl', 'dom', 'fileinfo', 'filter', 'gd', 'mbstring', 'openssl', 'pdo', 'tokenizer', 'xml', 'zip'];
 
     /** @var list<array{status: string, check: string, result: string, fix: string}> */
     private array $rows = [];
@@ -101,20 +99,17 @@ class AppDoctor extends Command
     private function checkPhp(HostProbe $probe): void
     {
         $version = $probe->phpVersion();
-        $this->add('PHP version', version_compare($version, '8.4.0', '>='), $version,
-            'Choose PHP 8.4 in cPanel MultiPHP Manager; in the Terminal and the cron job use the 8.4 binary (e.g. /usr/local/bin/ea-php84).');
+        // The requirements (PHP version, extensions) are in bootstrap/requirements.php, shared with /install.
+        $series = Requirements::phpSeries();
+        $this->add('PHP version', version_compare($version, Requirements::php(), '>='), $version.' (needs '.Requirements::php().' or newer)',
+            "Choose PHP {$series} in cPanel MultiPHP Manager; in the Terminal and the cron job use the {$series} binary (e.g. /usr/local/bin/ea-php".str_replace('.', '', $series).').');
 
         $driver = (string) config('database.connections.'.config('database.default').'.driver');
-        $pdo = match ($driver) {
-            'mysql', 'mariadb' => 'pdo_mysql',
-            'pgsql' => 'pdo_pgsql',
-            'sqlsrv' => 'pdo_sqlsrv',
-            default => 'pdo_sqlite',
-        };
-        $needed = [...self::EXTENSIONS, $pdo];
+        $pdo = Requirements::pdoExtension($driver);
+        $needed = [...Requirements::extensions(), $pdo];
         $missing = array_values(array_filter($needed, fn ($ext) => ! $probe->extensionLoaded($ext)));
         $this->add('PHP extensions', $missing === [], $missing === [] ? 'all present ('.$pdo.' for '.$driver.')' : 'missing: '.implode(', ', $missing),
-            'Enable them in cPanel → Select PHP Version → Extensions (for PHP 8.4).');
+            "Enable them in cPanel → Select PHP Version → Extensions (for PHP {$series}).");
     }
 
     private function checkAppSettings(): void
