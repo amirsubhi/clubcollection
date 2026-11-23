@@ -10,6 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
+/** The new member's sign-in details, in their language (User::preferredLocale(); send it with Mail::to($user)). */
 class MemberWelcome extends Mailable
 {
     use Queueable, SerializesModels;
@@ -22,8 +23,9 @@ class MemberWelcome extends Mailable
 
     public function envelope(): Envelope
     {
+        // Built here, at send time: Laravel calls envelope() under the recipient's locale (not the constructor).
         return new Envelope(
-            subject: "Welcome to {$this->club->name} — Your Account Details",
+            subject: __('Welcome to :club — Your Account Details', ['club' => $this->club->name]),
         );
     }
 

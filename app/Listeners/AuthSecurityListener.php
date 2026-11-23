@@ -54,7 +54,7 @@ class AuthSecurityListener
         // turn it into a mail flood.
         if ($user && \Illuminate\Support\Facades\Cache::add('sign-in-paused-mail:'.$user->id, true, now()->addHour())) {
             AfterResponse::run(
-                fn () => Mail::to($user->email)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_SIGN_IN_PAUSED, $event->minutes)),
+                fn () => Mail::to($user)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_SIGN_IN_PAUSED, $event->minutes)),
                 'sign-in paused email',
             );
         }
@@ -74,7 +74,7 @@ class AuthSecurityListener
         AuditService::logAccount($user, 'auth.password_reset', "Password for '{$user->name}' reset with an emailed link.");
 
         AfterResponse::run(
-            fn () => Mail::to($user->email)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED)),
+            fn () => Mail::to($user)->send(new AccountSecurityNotice($user, AccountSecurityNotice::KIND_PASSWORD_CHANGED)),
             'password changed email',
         );
     }

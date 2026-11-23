@@ -739,7 +739,7 @@ class PaymentCancellationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('cancellation', null));
     }
 
-    public function test_the_email_is_in_bm_and_en_worded_by_reason_and_never_carries_the_note(): void
+    public function test_the_email_is_in_the_members_language_worded_by_reason_and_never_carries_the_note(): void
     {
         $expect = [
             'slip_not_genuine' => ['Kami tidak dapat mengesahkan bayaran ini', 'We could not confirm this payment'],
@@ -754,16 +754,26 @@ class PaymentCancellationTest extends TestCase
             $row = new PaymentCancellation;
             $row->forceFill(['club_id' => $this->club->id, 'payment_id' => $fee->id, 'event_key' => (string) Str::uuid(),
                 'receipt_no' => 'RCP-2026-0001', 'amount_sen' => 1000, 'reason_code' => $reason, 'note' => 'SECRET-NOTE', 'created_at' => now()]);
-            $html = (new PaymentCancelled($fee->fresh()->load(['user', 'club']), collect([$fee->fresh()]), $row))->render();
-            $this->assertStringContainsString($bm, $html, $reason);
-            $this->assertStringContainsString($en, $html, $reason);
-            $this->assertStringContainsString('Resit <strong>RCP-2026-0001</strong> telah dibatalkan pada 10 Mar 2026', $html);
-            $this->assertStringContainsString('belum dibayar', $html);
-            $this->assertStringContainsString('unpaid', $html);
-            $this->assertStringNotContainsString('SECRET-NOTE', $html);
+            $mail = fn () => new PaymentCancelled($fee->fresh()->load(['user', 'club']), collect([$fee->fresh()]), $row);
+            $msHtml = $mail()->locale('ms')->render();
+            $this->assertStringContainsString($bm, $msHtml, $reason);
+            $this->assertStringNotContainsString($en, $msHtml, $reason);
+            $this->assertStringContainsString('Resit <strong>RCP-2026-0001</strong> telah dibatalkan pada 10 Mac 2026', $msHtml);
+            $this->assertStringContainsString('belum dibayar', $msHtml);
+            $this->assertStringNotContainsString('SECRET-NOTE', $msHtml);
+
+            $enHtml = $mail()->locale('en')->render();
+            $this->assertStringContainsString($en, $enHtml, $reason);
+            $this->assertStringNotContainsString($bm, $enHtml, $reason);
+            $this->assertStringContainsString('Receipt <strong>RCP-2026-0001</strong> was cancelled on 10 Mar 2026', $enHtml);
+            $this->assertStringContainsString('<strong>unpaid</strong>', $enHtml);
+            $this->assertStringNotContainsString('belum dibayar', $enHtml);
+            $this->assertStringNotContainsString('SECRET-NOTE', $enHtml);
         }
+        // The subject is built at send time, in the recipient's language.
         $mail = new PaymentCancelled($fee->fresh()->load(['user', 'club']), collect([$fee->fresh()]), $row);
-        $this->assertSame('Bayaran dibatalkan / Payment cancelled – Kelab Contoh', $mail->envelope()->subject);
+        $this->assertSame('Payment cancelled – Kelab Contoh', $mail->envelope()->subject);
+        $this->assertSame('Bayaran dibatalkan – Kelab Contoh', $mail->withLocale('ms', fn () => $mail->envelope()->subject));
     }
 
     public function test_a_mail_failure_does_not_undo_the_cancel(): void

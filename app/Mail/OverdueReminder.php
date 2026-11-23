@@ -9,6 +9,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
+/** An overdue fee, in the member's language (User::preferredLocale(); send it with Mail::to($payment->user)). */
 class OverdueReminder extends Mailable
 {
     use Queueable, SerializesModels;
@@ -17,8 +18,9 @@ class OverdueReminder extends Mailable
 
     public function envelope(): Envelope
     {
+        // Built here, at send time: Laravel calls envelope() under the recipient's locale (not the constructor).
         return new Envelope(
-            subject: "Action Required: Overdue Club Fee — {$this->payment->club->name}",
+            subject: __('Action Required: Overdue Club Fee — :club', ['club' => $this->payment->club->name]),
         );
     }
 

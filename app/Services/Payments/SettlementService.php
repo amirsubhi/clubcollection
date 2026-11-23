@@ -153,7 +153,7 @@ class SettlementService
                 $this->auditReconciled($lead, $bill, $result, $source, $fees->pluck('id')->all());
             }
             try {
-                Mail::to($lead->user->email)->send(new PaymentConfirmation($lead, $fees, $bill->fresh() ?? $bill));
+                Mail::to($lead->user)->send(new PaymentConfirmation($lead, $fees, $bill->fresh() ?? $bill));
             } catch (\Exception $e) {
                 Log::error('Payment confirmation email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
             }
@@ -171,7 +171,7 @@ class SettlementService
             $this->auditReconciled($payment, $bill, $result, $source, [$payment->id]);
         }
         try {
-            Mail::to($payment->user->email)->send(new PaymentConfirmation($payment));
+            Mail::to($payment->user)->send(new PaymentConfirmation($payment));
         } catch (\Exception $e) {
             Log::error('Payment confirmation email failed', [
                 'payment_id' => $payment->id,

@@ -73,15 +73,16 @@ class PaymentCancellationService
     ];
 
     /**
-     * What the member is told, per reason (BM, EN): neutral wording, never the admin's note. The member pages use
-     * the same sentences (resources/js/lib/i18n.ts cancelReason_*).
+     * What the member is told in the PaymentCancelled email, per reason: neutral wording, never the admin's note. In
+     * English; each sentence is a key of lang/<code>.json (the Malay is in lang/ms.json). The member pages use the
+     * same sentences (lang/member/*.json cancelReason_*).
      */
     public const MEMBER_WORDING = [
-        'slip_not_genuine' => ['Kami tidak dapat mengesahkan bayaran ini.', 'We could not confirm this payment.'],
-        'money_not_received' => ['Kami tidak dapat mengesahkan bayaran ini.', 'We could not confirm this payment.'],
-        'recorded_by_mistake' => ['Bayaran ini telah direkodkan secara tersilap.', 'This payment was recorded by mistake.'],
-        'refunded' => ['Bayaran ini telah dikembalikan kepada anda.', 'This payment was refunded to you.'],
-        'other' => ['Hubungi bendahari kelab untuk maklumat lanjut.', 'Contact the club treasurer for details.'],
+        'slip_not_genuine' => 'We could not confirm this payment.',
+        'money_not_received' => 'We could not confirm this payment.',
+        'recorded_by_mistake' => 'This payment was recorded by mistake.',
+        'refunded' => 'This payment was refunded to you.',
+        'other' => 'Contact the club treasurer for details.',
     ];
 
     public const METHOD_LABELS = [
@@ -320,7 +321,7 @@ class PaymentCancellationService
             return;
         }
         try {
-            Mail::to($lead->user->email)->send(new PaymentCancelled($lead, $fees, $rows->first(), $bill));
+            Mail::to($lead->user)->send(new PaymentCancelled($lead, $fees, $rows->first(), $bill));
         } catch (\Throwable $e) {
             Log::error('Payment cancelled email failed', ['payment_id' => $lead->id, 'error' => $e->getMessage()]);
         }
