@@ -145,6 +145,39 @@ class AuthPagesTest extends TestCase
             ->assertSee("localStorage.setItem('cp-lang', \"en\")", false);
     }
 
+    /**
+     * Inside the app Malay is "ms"; "bm" (what the cookie, cp-lang and ?lang= have always carried) is still read and
+     * still written, so a page or member app tab from before the language files keeps understanding it.
+     */
+    public function test_malay_is_read_as_bm_or_ms_and_still_written_as_bm(): void
+    {
+        $this->get('/login?lang=en')->assertCookie(AuthPageLocale::COOKIE, 'en', false);
+
+        foreach (['bm', 'ms'] as $asked) {
+            $this->get("/login?lang={$asked}")
+                ->assertOk()
+                ->assertSee('<html lang="ms">', false)
+                ->assertSee('Kata laluan')
+                ->assertCookie(AuthPageLocale::COOKIE, 'bm', false)
+                ->assertSee("localStorage.setItem('cp-lang', \"bm\")", false);
+        }
+
+        foreach (['bm', 'ms'] as $saved) {
+            $this->withUnencryptedCookie(AuthPageLocale::COOKIE, $saved)
+                ->get('/password/reset')
+                ->assertSee('<html lang="ms">', false)
+                ->assertSee('Hantar pautan')
+                ->assertSee("localStorage.setItem('cp-lang', \"bm\")", false);
+        }
+
+        // The BM/EN switch links keep the old ?lang= values.
+        $this->get('/login?lang=en')
+            ->assertSee('lang=bm', false)
+            ->assertSee('hreflang="ms"', false)
+            ->assertSee('hreflang="en"', false)
+            ->assertDontSee('lang=ms', false);
+    }
+
     public function test_too_many_sign_in_attempts_page_is_translated_and_styled(): void
     {
         for ($i = 0; $i < 5; $i++) {

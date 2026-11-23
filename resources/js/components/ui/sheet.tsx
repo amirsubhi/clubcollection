@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { usePageLang } from "@/lib/i18n";
+import { textIn, usePageLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export const Sheet = SheetPrimitive.Root;
@@ -28,7 +28,7 @@ export const SheetContent = React.forwardRef<
         {children}
         <SheetPrimitive.Close className="absolute right-2 top-2 inline-flex h-10 w-10 items-center justify-center rounded-md opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <X className="h-4 w-4" aria-hidden />
-          <span className="sr-only">{closeLabel ?? (pageLang === "ms" ? "Tutup" : "Close")}</span>
+          <span className="sr-only">{closeLabel ?? textIn("close", pageLang)}</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPrimitive.Portal>

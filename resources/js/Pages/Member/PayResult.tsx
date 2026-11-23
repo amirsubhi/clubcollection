@@ -9,7 +9,7 @@ import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate } from "@/lib/format";
-import { fill, useLang, useT } from "@/lib/i18n";
+import { fill, localeTag, useLang, useT } from "@/lib/i18n";
 import type { GroupReceipt, MemberPaymentRow, MemberReceipt, PaymentCancellationInfo, PaymentContext, PaymentGroup, TransferVerification } from "@/types/member";
 
 /** "verifying": a "Bayar semua" slip the treasurer is still checking. "cancelled": its receipt was cancelled by an admin. */
@@ -381,7 +381,7 @@ export default function PayResult({ outcome, cancellation, payment, group, recei
         </Button>
         {poll.checkedAt && (
           <p className="text-center text-sm text-muted-foreground" aria-live="polite">
-            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString(lang === "bm" ? "ms-MY" : "en-MY", { hour: "numeric", minute: "2-digit", second: "2-digit" })}
+            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString(localeTag(lang), { hour: "numeric", minute: "2-digit", second: "2-digit" })}
           </p>
         )}
         <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">

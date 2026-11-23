@@ -3,7 +3,7 @@ import { Camera, FileText, ImageIcon, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { attachmentKinds } from "@/lib/fund-meta";
-import { usePageLang } from "@/lib/i18n";
+import { fill, textsIn, usePageLang, type Lang } from "@/lib/i18n";
 import type { AttachmentKind } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
@@ -32,28 +32,19 @@ export interface UploaderText {
 }
 
 /** Defaults in the page's language (admin pages are English; member pages normally pass their own copy). */
-const defaultText = (maxFiles: number, lang: "ms" | "en"): UploaderText =>
-  lang === "ms"
-    ? {
-        dropPrefix: "Seret fail ke sini atau",
-        browse: "pilih fail",
-        limits: `PDF, JPG, PNG atau WebP · sehingga 10 MB setiap satu · maksimum ${maxFiles} fail`,
-        takePhoto: "Ambil gambar",
-        cameraHint: "Pada telefon, ini membuka kamera.",
-        chooseFile: "Pilih fail",
-        remove: (name) => `Buang ${name}`,
-        tooLarge: (names, mb) => `${names}: melebihi ${mb} MB, jadi tidak ditambah. Pilih fail yang lebih kecil.`,
-      }
-    : {
-        dropPrefix: "Drag files here or",
-        browse: "browse",
-        limits: `PDF, JPG, PNG or WebP · up to 10 MB each · max ${maxFiles} files`,
-        takePhoto: "Take photo",
-        cameraHint: "On a phone this opens the camera.",
-        chooseFile: "Choose a file",
-        remove: (name) => `Remove ${name}`,
-        tooLarge: (names, mb) => `${names}: larger than ${mb} MB, so not added. Choose a smaller file.`,
-      };
+const defaultText = (maxFiles: number, lang: Lang): UploaderText => {
+  const t = textsIn(lang);
+  return {
+    dropPrefix: t("uploaderDropPrefix"),
+    browse: t("uploaderBrowse"),
+    limits: fill(t("uploaderLimits"), { n: maxFiles }),
+    takePhoto: t("uploaderTakePhoto"),
+    cameraHint: t("uploaderCameraHint"),
+    chooseFile: t("uploaderChooseFile"),
+    remove: (name) => fill(t("uploaderRemove"), { name }),
+    tooLarge: (names, mb) => fill(t("uploaderTooLarge"), { names, mb }),
+  };
+};
 
 export interface FileUploaderProps {
   files: UploadItem[];

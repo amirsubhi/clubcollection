@@ -147,7 +147,7 @@ function BalanceHint({ ledger }: { ledger: string }) {
 }
 
 export default function AdminDashboard({ nav, greetingName, year, yearLabel, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
-  const slices = toSlices(categories, { bm: "Lain-lain", en: "Others" });
+  const slices = toSlices(categories);
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
   return (
     <AdminLayout nav={nav} active="dashboard" title="Dashboard">

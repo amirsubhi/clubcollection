@@ -3,7 +3,7 @@ import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { setNonce } from "get-nonce";
-import { LangContext, PageLangContext, type Lang } from "@/lib/i18n";
+import { LangContext, PageLangContext, langFromLocale, normaliseLang, storedLang, type Lang } from "@/lib/i18n";
 import { captureInstallPrompt, registerServiceWorker } from "@/lib/pwa";
 import { readPref, writePref } from "@/lib/storage";
 import { bootTheme, ThemeProvider } from "@/lib/theme";
@@ -20,23 +20,20 @@ bootTheme();
 registerServiceWorker();
 captureInstallPrompt();
 
-/** Laravel locale ("ms", "en", ...) to the UI language; a saved choice wins. */
+/** Laravel locale ("ms", "en", ...) to the UI language; a saved choice wins (an unknown value means Malay). */
 function initialLang(locale: unknown): Lang {
-  const saved = readPref("cp-lang");
-  if (saved === "bm" || saved === "en") return saved;
-  return typeof locale === "string" && locale.toLowerCase().startsWith("en") ? "en" : "bm";
+  return normaliseLang(readPref("cp-lang")) ?? langFromLocale(locale);
 }
 
 /** Member pages follow the BM/EN toggle; admin (English) and other pages follow the server locale. */
-function htmlLang(component: string, locale: unknown, lang: Lang): "ms" | "en" {
-  if (component.startsWith("Member/")) return lang === "en" ? "en" : "ms";
-  return typeof locale === "string" && locale.toLowerCase().startsWith("en") ? "en" : "ms";
+function htmlLang(component: string, locale: unknown, lang: Lang): Lang {
+  return component.startsWith("Member/") ? lang : langFromLocale(locale);
 }
 
 /** Shared with the sign-in pages (AuthPageLocale reads it), so they open in the language last chosen here. */
 function writeLangCookie(l: Lang) {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `cp_lang=${l}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+  document.cookie = `cp_lang=${storedLang(l)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
 }
 
 function Providers({ locale, component, children }: { locale: unknown; component: string; children: ReactNode }) {
@@ -44,7 +41,7 @@ function Providers({ locale, component, children }: { locale: unknown; component
   const [page, setPage] = useState({ component, locale });
   const setLang = (l: Lang) => {
     setLangState(l);
-    writePref("cp-lang", l);
+    writePref("cp-lang", storedLang(l));
     writeLangCookie(l);
   };
   // Track the current page so <html lang> matches what is on screen after Inertia visits.
@@ -55,8 +52,8 @@ function Providers({ locale, component, children }: { locale: unknown; component
   }, [pageLang]);
   // A choice saved before the cookie existed: share it once on load.
   useEffect(() => {
-    const saved = readPref("cp-lang");
-    if (saved === "bm" || saved === "en") writeLangCookie(saved);
+    const saved = normaliseLang(readPref("cp-lang"));
+    if (saved) writeLangCookie(saved);
   }, []);
   return (
     <ThemeProvider>

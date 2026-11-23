@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, Home, Landmark, PieChart, UserRound } from "lucide-react";
 import { Link } from "@inertiajs/react";
-import { useLang, useT, type DictKey } from "@/lib/i18n";
+import { LANG_LABELS, LANGS, useLang, useT, type DictKey } from "@/lib/i18n";
 import { SegmentedRadio } from "@/components/ui/segmented-radio";
 import { cn } from "@/lib/utils";
 import { useStickyFit } from "@/lib/useStickyFit";
@@ -23,7 +23,7 @@ export function LangToggle() {
       value={lang}
       onChange={setLang}
       className="inline-flex rounded-full border bg-card p-0.5 text-sm font-bold"
-      options={(["bm", "en"] as const).map((l) => ({ value: l, label: l.toUpperCase() }))}
+      options={LANGS.map((l) => ({ value: l, label: LANG_LABELS[l] }))}
       itemClassName={(on) =>
         cn("inline-flex h-11 min-w-[44px] items-center justify-center rounded-full px-2", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
       }

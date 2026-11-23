@@ -19,7 +19,7 @@ interface Props {
 export default function Fund({ club, fund, dashboardUrl }: Props) {
   const t = useT();
   const { lang } = useLang();
-  const slices = toSlices(fund.categories, { bm: "Lain-lain", en: "Others" });
+  const slices = toSlices(fund.categories);
   const fy = (club.fyStartMonth ?? 1) > 1;
   return (
     <MemberShell tab="home" navHrefs={{ home: dashboardUrl, payments: club.paymentsUrl }} clubName={club.name} title={t("moneyGoes")} backHref={dashboardUrl}>

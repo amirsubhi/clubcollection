@@ -29,10 +29,10 @@ const sampleMonths: MonthPoint[] = [
 ];
 
 const sampleSlices: CategorySlice[] = [
-  { key: "events", bm: "Majlis", en: "Events", amount: 420000, colorVar: "--chart-1", onVar: "--on-chart-1" },
-  { key: "welfare", bm: "Kebajikan", en: "Welfare", amount: 300000, colorVar: "--chart-2", onVar: "--on-chart-2" },
-  { key: "sports", bm: "Sukan", en: "Sports", amount: 180000, colorVar: "--chart-3", onVar: "--on-chart-3" },
-  { key: "other", bm: "Lain-lain", en: "Other", amount: 90000, colorVar: "--chart-4", onVar: "--on-chart-4" },
+  { key: "events", names: { ms: "Majlis", en: "Events" }, amount: 420000, colorVar: "--chart-1", onVar: "--on-chart-1" },
+  { key: "welfare", names: { ms: "Kebajikan", en: "Welfare" }, amount: 300000, colorVar: "--chart-2", onVar: "--on-chart-2" },
+  { key: "sports", names: { ms: "Sukan", en: "Sports" }, amount: 180000, colorVar: "--chart-3", onVar: "--on-chart-3" },
+  { key: "other", names: { ms: "Lain-lain", en: "Other" }, amount: 90000, colorVar: "--chart-4", onVar: "--on-chart-4" },
 ];
 
 export default function UiKit() {

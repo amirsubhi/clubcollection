@@ -10,7 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { fmtDate, rm } from "@/lib/format";
-import { fill, useLang, useT } from "@/lib/i18n";
+import { fill, localeTag, useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useStickyFit } from "@/lib/useStickyFit";
 import type { MemberPaymentRow, PaymentContext, PaymentGroup, TransferOption, TransferVerification } from "@/types/member";
@@ -249,7 +249,7 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
               max={transfer.today}
               required
               invalid={!!err("transfer_date")}
-              lang={lang === "bm" ? "ms-MY" : "en-MY"}
+              lang={localeTag(lang)}
               aria-describedby="transfer_date_hint"
               onChange={(e) => form.setData("transfer_date", e.target.value)}
             />
