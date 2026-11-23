@@ -19,8 +19,8 @@ export interface SharedProps {
   auth: { user: AuthUser | null };
   flash: { success: string | null; error: string | null };
   /**
-   * Members and guests: their member-side language (App\Support\UserLocale: saved on the account, else the browser's
-   * cp_lang, else the portal default). Admins: the app locale (e.g. "en").
+   * Members: their member-side language (App\Support\UserLocale: saved on the account, else the portal default; never
+   * the browser's cp_lang). Guests: the browser's cp_lang, else the portal default. Admins: the app locale (e.g. "en").
    */
   locale: string;
   /**
