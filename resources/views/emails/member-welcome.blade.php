@@ -26,7 +26,7 @@
     <p style="margin:6px 0 0;opacity:0.85">{{ __('Your account has been created') }}</p>
   </div>
   <div class="body">
-    <p>{{ \App\Support\MailText::bold('Hi **:name**,', ['name' => $member->name]) }}</p>
+    <p>{{ \App\Support\MailText::greeting('Hi **:name**,', $member->name) }}</p>
     <p>{{ \App\Support\MailText::bold('An administrator has created your account on **:portal**. You can now log in and manage your club membership fees.', ['portal' => config('app.name')]) }}</p>
 
     <div class="creds">

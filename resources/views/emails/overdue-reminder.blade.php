@@ -33,7 +33,7 @@
     <p style="margin:8px 0 0;opacity:0.9">{{ $payment->club->name }}</p>
   </div>
   <div class="body">
-    <p>{{ \App\Support\MailText::bold('Dear **:name**,', ['name' => $payment->user->name]) }}</p>
+    <p>{{ \App\Support\MailText::greeting('Dear **:name**,', $payment->user->name) }}</p>
     <p>{{ \App\Support\MailText::bold('Your club membership fee payment is **overdue**. Please settle it as soon as possible to avoid any disruption to your membership.') }}</p>
 
     <div class="amount">RM {{ number_format($payment->amount, 2) }}</div>

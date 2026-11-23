@@ -26,7 +26,7 @@
     <p style="margin:8px 0 0;opacity:0.85">{{ $payment->club->name }}</p>
   </div>
   <div class="body">
-    <p>{{ \App\Support\MailText::bold('Dear **:name**,', ['name' => $payment->user->name]) }}</p>
+    <p>{{ \App\Support\MailText::greeting('Dear **:name**,', $payment->user->name) }}</p>
     <p>{{ __('Your payment has been received and confirmed. Thank you!') }}</p>
 
     @if($fees)

@@ -151,6 +151,60 @@ class MemberEmailLanguageTest extends TestCase
         $this->assertSame($localeBefore, app()->getLocale());
     }
 
+    /**
+     * Malay emails open by the Malaysia time they are written ("Selamat pagi" 05:00-11:59, "Selamat petang"
+     * 12:00-18:59, "Selamat malam" 19:00-04:59), whatever APP_TIMEZONE says; English keeps its own opener.
+     *
+     * @return iterable<string, array{int, int, string}>
+     */
+    public static function times(): iterable
+    {
+        yield '04:59 still night' => [4, 59, 'Selamat malam'];
+        yield '05:00 morning' => [5, 0, 'Selamat pagi'];
+        yield '11:59 morning' => [11, 59, 'Selamat pagi'];
+        yield '12:00 afternoon' => [12, 0, 'Selamat petang'];
+        yield '18:59 afternoon' => [18, 59, 'Selamat petang'];
+        yield '19:00 night' => [19, 0, 'Selamat malam'];
+        yield '23:30 night' => [23, 30, 'Selamat malam'];
+    }
+
+    /**
+     * @param  \Closure(self, User): Mailable  $make
+     */
+    #[DataProvider('emails')]
+    public function test_malay_emails_greet_by_the_malaysia_time_of_day(\Closure $make): void
+    {
+        foreach (self::times() as [$hour, $minute, $greeting]) {
+            $this->travelTo(Carbon::create(2026, 8, 20, $hour, $minute, 0, 'Asia/Kuala_Lumpur')->utc());
+            $malay = $this->member('ms');
+            $english = $this->member('en');
+            Mail::to($malay)->send($make($this, $malay));
+            Mail::to($english)->send($make($this, $english));
+
+            $ms = $this->sentTo($malay)->getHtmlBody();
+            $this->assertStringContainsString($greeting.' <strong>Aminah Test</strong>,', $ms, sprintf('%02d:%02d', $hour, $minute));
+            $this->assertStringNotContainsString('Salam <strong>', $ms);
+
+            $en = $this->sentTo($english)->getHtmlBody();
+            $this->assertMatchesRegularExpression('/(Hi|Dear|Hello) <strong>Aminah Test<\/strong>,/', $en);
+            $this->assertStringNotContainsString('Selamat ', $en);
+        }
+    }
+
+    #[DataProvider('times')]
+    public function test_the_malay_password_reset_email_greets_by_the_time_of_day(int $hour, int $minute, string $greeting): void
+    {
+        $this->travelTo(Carbon::create(2026, 8, 20, $hour, $minute, 0, 'Asia/Kuala_Lumpur')->utc());
+        $malay = $this->member('ms');
+        $english = $this->member('en');
+        $this->post('/password/email', ['email' => $malay->email])->assertRedirect();
+        $this->post('/password/email', ['email' => $english->email])->assertRedirect();
+
+        $this->assertStringContainsString($greeting.'!', $this->sentTo($malay)->getHtmlBody());
+        $this->assertStringNotContainsString('Salam!', $this->sentTo($malay)->getHtmlBody());
+        $this->assertStringContainsString('Hello!', $this->sentTo($english)->getHtmlBody());
+    }
+
     public function test_dates_use_the_member_app_month_names(): void
     {
         $malay = $this->member('ms');
@@ -293,6 +347,9 @@ class MemberEmailLanguageTest extends TestCase
         $keys = array_merge($keys, array_values(PaymentCancellationService::MEMBER_WORDING), [
             // Laravel's ResetPassword notification and mail layout.
             'Reset your password', 'Reset Password', 'Hello!', 'Regards,', 'All rights reserved.',
+            // MailText::greeting / plainGreeting: the Malay opener by the time of day.
+            'Good morning **:name**,', 'Good afternoon **:name**,', 'Good evening **:name**,',
+            'Good morning!', 'Good afternoon!', 'Good evening!',
             'You are receiving this email because we received a password reset request for your account.',
             'This password reset link will expire in :count minutes.',
             'If you did not request a password reset, no further action is required.',

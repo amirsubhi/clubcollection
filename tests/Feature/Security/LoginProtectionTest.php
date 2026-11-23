@@ -6,7 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Mail\AccountSecurityNotice;
 use App\Models\AuditLog;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPassword;
 use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;

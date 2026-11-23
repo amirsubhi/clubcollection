@@ -27,7 +27,7 @@
     <p style="margin:8px 0 0;opacity:0.9">{{ $payment->club->name }}</p>
   </div>
   <div class="body">
-    <p>{{ \App\Support\MailText::bold('Hello **:name**,', ['name' => $payment->user->name]) }}</p>
+    <p>{{ \App\Support\MailText::greeting('Hello **:name**,', $payment->user->name) }}</p>
     <p>{{ \App\Support\MailText::bold('The treasurer checked your transfer slip for this fee but could not confirm it yet, so the fee is still **unpaid**.') }}</p>
 
     {{-- The admin's reason, as typed (any language). --}}

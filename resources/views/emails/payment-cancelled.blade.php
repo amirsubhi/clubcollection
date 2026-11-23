@@ -32,7 +32,7 @@
     <p style="margin:8px 0 0;opacity:0.9">{{ $payment->club->name }}</p>
   </div>
   <div class="body">
-    <p>{{ \App\Support\MailText::bold('Hello **:name**,', ['name' => $payment->user->name]) }}</p>
+    <p>{{ \App\Support\MailText::greeting('Hello **:name**,', $payment->user->name) }}</p>
     <p>{{ \App\Support\MailText::bold('Receipt **:no** was cancelled on :date.', ['no' => $receiptNo, 'date' => (string) $cancelledOn]) }}
       {{ __($reasonText) }}
       @if($slipPending)

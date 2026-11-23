@@ -24,7 +24,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   list is every language with a `lang/member/<code>.json` file. Admin pages and admin emails stay in English.
   Accounts with an admin role (club admins and the super admin) always get English emails and never have a language
   saved, even when they pay their own fees in the member app.
-- `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, for review.
+- `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, approved by the owner.
+- **Malay emails greet by the time of day**: "Selamat pagi" (05:00–11:59), "Selamat petang" (12:00–18:59) or
+  "Selamat malam" (19:00–04:59), Malaysia time when the email is sent, instead of "Salam" (the password reset's
+  "Hello!" too, via `App\Notifications\ResetPassword`). Other languages keep their opener. Also from the owner's
+  Malay review: "Pegawai perlindungan data" on the privacy notice and "Bayaran tertunggak" as the overdue heading.
 
 ### Changed
 - **Member emails are in one language, the member's** (their saved choice, else the portal default): welcome,
