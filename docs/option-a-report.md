@@ -666,3 +666,38 @@ inside), the LAN test bed was upgraded from it by `docs/RELEASE.md` §2 (app:doc
 first install from it on an empty MariaDB database was walked end to end (installer, forced admin 2FA, club, fee rate,
 members, Generate fees twice, a member's first sign-in with the emailed temporary password and forced change).
 Still open for go-live: the real-host ToyyibPay / Billplz sandbox run (go-live checklist).
+
+## Installer checks (branch `installer-checks`)
+
+No separate `installer.php`. `bootstrap/requirements.php` is the one list (PHP 8.4.1, the twelve extensions, the PDO
+extension per driver, writable folders) read by `app:doctor`, `/install` and a guard at the top of `public/index.php`
+(`bootstrap/preflight.php`, before the autoloader, old-PHP syntax).
+
+Checked first on the test VM (PHP 8.4.28, scratch checkout, `php -n` with every shared extension but the ones left
+out, `/install` not installed, file sessions to isolate the extension):
+- Missing `ctype`, `curl`, `dom`, `fileinfo`, `gd`, `mbstring`, `tokenizer`, `xml` (with `dom`, `simplexml`,
+  `xmlreader`, `xmlwriter`), `zip` or `iconv`: `/install` still renders (Symfony polyfills), so they are `/install`
+  rows only. Missing `pdo`: HTTP 500 (`Class "PDO" not found`). With the default database sessions and a migrated
+  SQLite database, a missing `pdo_sqlite` is a 500 too (`could not find driver`). `openssl`, `filter`, `hash`,
+  `session`, `json` are compiled into this PHP and could not be left out: `openssl` is in the guard on reasoning
+  (cookie encryption), not tested.
+- An unwritable `storage/framework/views` (no compiled views yet) or `bootstrap/cache` (no package manifest yet): 500
+  (`tempnam()` falling back to the temp folder). Both are in the guard before install.
+- The minimum version: `vendor/composer/platform_check.php` refuses below `PHP_VERSION_ID 80401`, so 8.4.1 (the
+  installer and `app:doctor` said 8.4.0). `release.json` now says `>=8.4.1`, and the build refuses a zip whose
+  platform check disagrees.
+- `/install` before `php artisan migrate`, `SESSION_DRIVER=database` (the `.env.example` default): HTTP 500
+  `no such table: sessions`, and with no `database/database.sqlite` yet a 500 "Database file ... does not exist".
+  With `.env.example`'s `APP_DEBUG=true` that 500 is Laravel's full debug page (paths, PHP version, the query).
+  INSTALL.md step 6 tells people to migrate first; making `/install` work before the tables exist is a separate,
+  open item (not changed here).
+- No step in `docs/INSTALL.md` or `docs/RELEASE.md` copies or edits `public/index.php`, so the guard ships with the
+  release as is (the release zip carries both new files; checked).
+
+Results: the guard on the local PHP 8.3.6 (copy of `public/` + `bootstrap/` with Composer's real platform check)
+answers 503 "This portal needs PHP 8.4.1 or newer ... choose PHP 8.4" with `no-store`, `nosniff`, `noindex`, where
+`master` gives Composer's 500. On the VM: missing `pdo_sqlite` or `pdo` → the 503 page naming them; unwritable
+views → the 503 page; missing `zip` or `mbstring` → `/install` 200 with the failing row, its fix and the button
+disabled. PHPUnit on the VM: 1048 tests pass (new `PreflightTest`, `RequirementsTest`, extended `InstallationTest`).
+Not proven: `php -l` under an old PHP (no Docker or old PHP on this machine or the VM); a token scan in
+`PreflightTest` covers it, and a CI job lints the three files on PHP 5.6 and 7.4 once a PR runs.
