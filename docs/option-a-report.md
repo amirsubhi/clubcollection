@@ -974,6 +974,10 @@ here (`docs/i18n-translator-brief.md`). Owner rule recorded there and in CLAUDE.
   - **0 differences** besides the bundle file name in the known "Unable to encrypt history" error on Security
     (plain http).
   - Admin pages were not captured: the e2e admins must set up 2FA first.
+  - After the merge of #38's review fixes, the comparison ran again: base `origin/i18n-saved-language` at 6fc4d71,
+    branch at the merge. Again 48 captures and 0 differences.
+  - The signed-in change-password picker lists both languages as buttons. "English" saves `en` and comes back as
+    an English page, with no console errors.
 - **No code to add a language.** A build of the branch with only `lang/member/zh.json` added (`zh-Hans`, beta,
   `{y}年{m}{d}日`, `N月`):
   - both pickers list "简体中文 (beta)";
