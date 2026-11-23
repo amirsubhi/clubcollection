@@ -19,14 +19,15 @@ Please don't test against a club's live site or real member data. Use a local in
 
 ## Supported versions
 
-`v2.0.0` is the current supported release. Security fixes go to the default branch, `master`, and ship in the next
+`v2.0.1` is the current supported release. Security fixes go to the default branch, `master`, and ship in the next
 release tag built from it. Older builds, including the March 2026 `v1.0.0` GitHub release (`v0.0.1` in the
 changelog), are not patched.
 Upgrade with the steps in [docs/RELEASE.md](docs/RELEASE.md).
 
 | Version | Supported |
 |---|---|
-| `v2.0.0` (current release) | Yes |
+| `v2.0.1` (current release) | Yes |
+| `v2.0.0` | Upgrade to `v2.0.1` (no database changes) |
 | `master` (fixes land here first) | Yes |
 | `v1.0.0` (March 2026) and any other older build | No |
 

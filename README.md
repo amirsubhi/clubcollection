@@ -7,7 +7,7 @@ free bank / DuitNow transfer with a slip, and get a receipt. Committee members r
 documents, and a second admin has to approve it before it counts. It runs on ordinary cPanel PHP hosting: no Node
 process on the server.
 
-**Current release:** [v2.0.0](https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.0) (23 November 2026), a fresh install (it does not upgrade the old `v1.0.0`).
+**Current release:** [v2.0.1](https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.1) (23 November 2026). Upgrade a v2.0.0 site with [docs/RELEASE.md](docs/RELEASE.md); a new site installs fresh (the old `v1.0.0` can't be upgraded).
 
 **Status:** in active development and not yet live with real payments. Before using it for real money, work through
 the [before-go-live checklist](docs/option-a-report.md#before-go-live-checklist), starting with a ToyyibPay or
