@@ -2,6 +2,7 @@ import { Ban, CheckCircle2, Clock, PencilLine, Undo2, type LucideIcon } from "lu
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StatusChip, type ChipTone } from "@/components/app/StatusBadges";
 import { statusMeta } from "@/lib/fund-meta";
+import { textIn } from "@/lib/i18n";
 import type { FundStatus } from "@/types/domain";
 
 // Admin only: kept out of StatusBadges so member pages never load the Radix tooltip (needs the TooltipProvider in AdminShell).
@@ -16,7 +17,8 @@ export function FundStatusBadge({ status, returned = false }: { status: FundStat
   const m = statusMeta[status];
   const { Icon, tone } = returned ? { Icon: Undo2, tone: "warning" as const } : fundIcon[status];
   const label = returned ? "Returned" : m.label;
-  const bm = returned ? "Dikembalikan" : m.bm;
+  // Always the Malay wording, whatever the admin page shows.
+  const memberText = textIn(returned ? "fundStatus_returned" : `fundStatus_${status}`, "ms");
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -26,7 +28,7 @@ export function FundStatusBadge({ status, returned = false }: { status: FundStat
           </StatusChip>
         </span>
       </TooltipTrigger>
-      <TooltipContent>Members see: <span lang="ms">{bm}</span></TooltipContent>
+      <TooltipContent>Members see: <span lang="ms">{memberText}</span></TooltipContent>
     </Tooltip>
   );
 }

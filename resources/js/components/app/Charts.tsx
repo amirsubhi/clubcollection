@@ -4,6 +4,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { TableView } from "./Kpi";
 import type { MonthPoint } from "@/types/domain";
 import { rm } from "@/lib/format";
+import { fill, localText, textsIn, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /* ---------- Collected vs spent: grouped bars from zero ---------- */
@@ -63,18 +64,19 @@ export function CollectedSpentChart({
   windowLabel?: string;
   /** Series names; default Collected / Spent. */
   labels?: { collected: string; spent: string };
-  lang?: "bm" | "en";
+  lang?: Lang;
   height?: number;
   showTable?: boolean;
   className?: string;
 }) {
+  const t = textsIn(lang);
   const config: ChartConfig = {
-    collected: { label: labels?.collected ?? (lang === "bm" ? "Dikutip" : "Collected"), color: "rgb(var(--chart-1-stroke))" },
-    spent: { label: labels?.spent ?? (lang === "bm" ? "Dibelanjakan" : "Spent"), color: "rgb(var(--chart-4-stroke))" },
+    collected: { label: labels?.collected ?? t("collected"), color: "rgb(var(--chart-1-stroke))" },
+    spent: { label: labels?.spent ?? t("spent"), color: "rgb(var(--chart-4-stroke))" },
   };
   const data = monthly.map((m) => ({
-    month: lang === "bm" ? m.month : m.monthEn,
-    full: `${lang === "bm" ? m.month : m.monthEn}${m.year ? ` ${m.year}` : year ? ` ${year}` : ""}`,
+    month: localText(lang, { ms: m.month, en: m.monthEn }),
+    full: `${localText(lang, { ms: m.month, en: m.monthEn })}${m.year ? ` ${m.year}` : year ? ` ${year}` : ""}`,
     collected: m.collected,
     spent: m.spent,
   }));
@@ -84,9 +86,7 @@ export function CollectedSpentChart({
   const range = windowLabel ?? (data.length ? `${data[0].full}–${data[last].full}` : "");
   const summary =
     summaryProp ??
-    (lang === "bm"
-      ? `${range}: dikutip ${rm(totalIn)}, dibelanjakan ${rm(totalOut)}.`
-      : `${range}: ${config.collected.label.toLowerCase()} ${rm(totalIn)}, ${config.spent.label.toLowerCase()} ${rm(totalOut)}.`);
+    fill(t("chartSummary"), { range, collected: config.collected.label.toLowerCase(), in: rm(totalIn), spent: config.spent.label.toLowerCase(), out: rm(totalOut) });
   // On a phone, label every other month counted back from the latest, so the
   // labels are evenly spaced and the current month is always named.
   const narrow = useNarrow();
@@ -127,13 +127,13 @@ export function CollectedSpentChart({
       <figcaption className="text-sm text-muted-foreground">{summary}</figcaption>
       {showTable && (
         <TableView
-          label={lang === "bm" ? "Lihat sebagai jadual" : "Show as table"}
-          regionLabel={lang === "bm" ? `Jadual ${config.collected.label} dan ${config.spent.label} mengikut bulan` : `${config.collected.label} and ${config.spent.label} by month, table`}
+          label={t("chartShowTable")}
+          regionLabel={fill(t("chartTableRegion"), { collected: config.collected.label, spent: config.spent.label })}
         >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
-                <th className="py-1.5 font-semibold">{lang === "bm" ? "Bulan" : "Month"}</th>
+                <th className="py-1.5 font-semibold">{t("chartMonth")}</th>
                 <th className="py-1.5 text-right font-semibold">{config.collected.label}</th>
                 <th className="py-1.5 text-right font-semibold">{config.spent.label}</th>
               </tr>
@@ -149,7 +149,7 @@ export function CollectedSpentChart({
             </tbody>
             <tfoot>
               <tr className="border-t font-semibold">
-                <td className="py-1.5">{lang === "bm" ? "Jumlah" : "Total"}</td>
+                <td className="py-1.5">{t("total")}</td>
                 <td className="money py-1.5 text-right">+{rm(totalIn)}</td>
                 <td className="money py-1.5 text-right">−{rm(totalOut)}</td>
               </tr>

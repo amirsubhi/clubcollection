@@ -1,3 +1,5 @@
+import type { LocalText } from "@/lib/i18n";
+
 /** All money values are integer sen (RM 1.00 = 100). Dates are ISO yyyy-mm-dd. */
 export type Sen = number;
 
@@ -122,8 +124,8 @@ export interface MonthPoint {
 /** One spending group for the 100% split bar. */
 export interface CategorySlice {
   key: string;
-  bm: string;
-  en: string;
+  /** The slice's name per language (English always there; CategoryBar falls back to it). */
+  names: LocalText;
   amount: Sen;
   colorVar: string;
   /** Token for a label printed inside the fill (white or near-black by the fill's luminance). */

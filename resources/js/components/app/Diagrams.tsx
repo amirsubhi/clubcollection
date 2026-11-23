@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type { Sen } from "@/types/domain";
 import { rm } from "@/lib/format";
+import { fill, textsIn, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const rmShort = (sen: number) => `RM ${Math.round(sen / 100).toLocaleString("en-MY")}`;
@@ -23,7 +24,7 @@ export function MoneyFlowDiagram({
   spending,
   welfare: totalWelfare,
   welfareCount,
-  lang = "bm",
+  lang = "ms",
   className,
 }: {
   /** Member fees and special collection drives. */
@@ -33,21 +34,19 @@ export function MoneyFlowDiagram({
   spending: Sen;
   welfare: Sen;
   welfareCount: number;
-  lang?: "bm" | "en";
+  lang?: Lang;
   className?: string;
 }) {
   const id = useId().replace(/:/g, "");
-  const bm = lang === "bm";
+  const t = textsIn(lang);
   const totalReceipts = fees + otherIncome;
   const kept = totalReceipts - spending - totalWelfare;
   const w = (sen: number) => Math.max(2, Math.round((totalReceipts > 0 ? Math.max(0, sen) / totalReceipts : 0) * 14));
-  const claim = bm
-    ? `Yuran & kutipan khas ${rm(fees)} dan pendapatan lain ${rm(otherIncome)} masuk ke dana kelab. Daripada dana: perbelanjaan ${rm(spending)}, kebajikan ${rm(totalWelfare)}, baki ${rm(kept)} kekal dalam dana.`
-    : `Fees & special drives ${rm(fees)} and other income ${rm(otherIncome)} go into the club fund. From the fund: spending ${rm(spending)}, welfare ${rm(totalWelfare)}, and ${rm(kept)} stays in the fund.`;
+  const claim = fill(t("flowClaim"), { fees: rm(fees), other: rm(otherIncome), spending: rm(spending), welfare: rm(totalWelfare), kept: rm(kept) });
   const outs = [
-    { x: 6, label: bm ? "Perbelanjaan" : "Spending", sub: bm ? "majlis, sukan, caj" : "events, sports, fees", amt: spending, verb: bm ? "dibelanjakan" : "spent" },
-    { x: 120, label: bm ? "Kebajikan" : "Welfare", sub: bm ? `${welfareCount} kes dibantu` : `${welfareCount} ${welfareCount === 1 ? "case" : "cases"} helped`, amt: totalWelfare, verb: bm ? "dibayar" : "paid" },
-    { x: 234, label: bm ? "Kekal" : "Kept", sub: bm ? "baki dana" : "fund balance", amt: kept, verb: bm ? "disimpan" : "saved" },
+    { x: 6, label: t("flowSpending"), sub: t("flowSpendingSub"), amt: spending },
+    { x: 120, label: t("welfare"), sub: fill(t(welfareCount === 1 ? "flowWelfareSubOne" : "flowWelfareSub"), { n: welfareCount }), amt: totalWelfare },
+    { x: 234, label: t("flowKept"), sub: t("flowKeptSub"), amt: kept },
   ];
   return (
     <figure className={cn("flex flex-col gap-2", className)}>
@@ -58,10 +57,10 @@ export function MoneyFlowDiagram({
         {/* inputs */}
         <g>
           <rect x="6" y="6" width="160" height="54" rx="12" className="fill-card stroke-border" strokeWidth="1.5" />
-          <text x="86" y="28" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="currentColor">{bm ? "Yuran & kutipan khas" : "Fees & special drives"}</text>
+          <text x="86" y="28" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="currentColor">{t("flowFeesIn")}</text>
           <text x="86" y="47" textAnchor="middle" fontSize="12.5" fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>{rmShort(fees)}</text>
           <rect x="174" y="6" width="160" height="54" rx="12" className="fill-card stroke-border" strokeWidth="1.5" />
-          <text x="254" y="28" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="currentColor">{bm ? "Pendapatan lain" : "Other income"}</text>
+          <text x="254" y="28" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="currentColor">{t("flowOtherIncome")}</text>
           <text x="254" y="47" textAnchor="middle" fontSize="12.5" fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>{rmShort(otherIncome)}</text>
         </g>
         {/* in-arrows */}
@@ -69,11 +68,11 @@ export function MoneyFlowDiagram({
           <path d="M86 62 C86 84 130 84 132 104" strokeWidth={w(fees)} markerEnd={`url(#${id}-a)`} />
           <path d="M254 62 C254 84 210 84 208 104" strokeWidth={w(otherIncome)} markerEnd={`url(#${id}-a)`} />
         </g>
-        <text x="170" y="86" textAnchor="middle" fontSize="12" fill="currentColor" className="opacity-80">{bm ? "dikutip" : "collected"}</text>
+        <text x="170" y="86" textAnchor="middle" fontSize="12" fill="currentColor" className="opacity-80">{t("flowCollected")}</text>
         {/* fund */}
         <rect x="70" y="110" width="200" height="62" rx="14" className="fill-deep stroke-primary/40" strokeWidth="1.5" />
-        <text x="170" y="134" textAnchor="middle" fontSize="13.5" fontWeight="800" className="fill-deep-foreground" style={{ fontFamily: '"Bricolage Grotesque", system-ui, sans-serif' }}>{bm ? "Dana kelab" : "Club fund"}</text>
-        <text x="170" y="156" textAnchor="middle" fontSize="12.5" fontWeight="600" className="fill-deep-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>{bm ? "Masuk " : "In "}{rmShort(totalReceipts)}</text>
+        <text x="170" y="134" textAnchor="middle" fontSize="13.5" fontWeight="800" className="fill-deep-foreground" style={{ fontFamily: '"Bricolage Grotesque", system-ui, sans-serif' }}>{t("flowFund")}</text>
+        <text x="170" y="156" textAnchor="middle" fontSize="12.5" fontWeight="600" className="fill-deep-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>{fill(t("flowIn"), { amount: rmShort(totalReceipts) })}</text>
         {/* out-arrows */}
         <g className="text-primary" stroke="currentColor" fill="none" strokeLinecap="round">
           {outs.map((o) => {

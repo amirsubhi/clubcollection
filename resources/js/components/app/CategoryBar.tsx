@@ -1,5 +1,6 @@
 import type { CategorySlice, Sen } from "@/types/domain";
 import { rm } from "@/lib/format";
+import { localText, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /* Kept apart from Charts.tsx so pages that only need this bar don't pull in recharts. */
@@ -14,14 +15,14 @@ export function CategoryBar({
   wideLegend = false,
 }: {
   slices: CategorySlice[];
-  lang?: "bm" | "en";
+  lang?: Lang;
   total?: Sen;
   interactive?: boolean;
   wideLegend?: boolean;
 }) {
   const total = totalProp ?? spendSlices.reduce((s, c) => s + c.amount, 0);
   const pct = (a: number) => (total > 0 ? (a / total) * 100 : 0);
-  const name = (c: (typeof spendSlices)[number]) => (lang === "bm" ? c.bm : c.en);
+  const name = (c: (typeof spendSlices)[number]) => localText(lang, c.names);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex h-7 w-full gap-[2px]" role="img" aria-label={spendSlices.map((c) => `${name(c)} ${rm(c.amount)} (${Math.round(pct(c.amount))}%)`).join("; ")}>

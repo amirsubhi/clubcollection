@@ -4,7 +4,7 @@ import { Money } from "./Money";
 import type { Sen } from "@/types/domain";
 import type { ReceiptIssuer } from "@/types/member";
 import { fmtDateTime } from "@/lib/format";
-import { useLang, useT } from "@/lib/i18n";
+import { localText, useLang, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /** Official receipt as a light paper slip (stays light in dark mode so it prints and shares well). */
@@ -102,7 +102,7 @@ export function ReceiptCard({
             {r.items.map((p) => (
               <tr key={p.id} className="border-t border-dashed">
                 <td className="py-2 pr-2">
-                  {lang === "bm" ? (p.descriptionBm ?? p.description) : p.description}
+                  {localText(lang, { ms: p.descriptionBm, en: p.description })}
                   {p.note && <span className="block font-mono text-xs text-muted-foreground">{p.note}</span>}
                 </td>
                 <td className="py-2 text-right">

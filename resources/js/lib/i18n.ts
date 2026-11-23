@@ -1,485 +1,111 @@
 import { createContext, useContext } from "react";
+import en from "../../../lang/member/en.json";
+import ms from "../../../lang/member/ms.json";
 
-export type Lang = "bm" | "en";
+/*
+ * The member app's text, one JSON file per language in lang/member/ (bundled by Vite: no fetch, so the service
+ * worker and the CSP need nothing). Keys are short names, not sentences: they must never go through Laravel's __(),
+ * which shows the raw key when a JSON file lacks it. English is the reference file: it has every key (DictKey comes
+ * from it, so tsc catches a wrong key) and a key missing from another language falls back to it.
+ * tests/Feature/MemberLangFilesTest.php checks that every file has the same keys and {placeholders} as en.json.
+ *
+ * To add a language: lang/member/<code>.json, an import and an entry in FILES below, its LABELS and LOCALE_TAGS
+ * entry (tsc asks for both), plus Laravel's lang/<code>.json and lang/<code>/{auth,passwords,validation}.php.
+ */
 
-const dict = {
-  navHome: { bm: "Utama", en: "Home" },
-  navPayments: { bm: "Bayaran", en: "Payments" },
-  navFund: { bm: "Dana", en: "Fund" },
-  navAccount: { bm: "Akaun", en: "Account" },
-  amountDue: { bm: "Jumlah perlu dibayar", en: "Amount due" },
-  payNow: { bm: "Bayar", en: "Pay" },
-  upcoming: { bm: "Akan datang", en: "Upcoming" },
-  due: { bm: "Tarikh akhir", en: "Due" },
-  viewAll: { bm: "Lihat semua", en: "View all" },
-  moneyGoes: { bm: "Ke mana wang anda pergi", en: "Where your money goes" },
-  moneyGoesLink: { bm: "Kutipan dan perbelanjaan kelab tahun ini", en: "What the club collected and spent this year" },
-  moneyGoesLinkFy: { bm: "Kutipan dan perbelanjaan kelab tahun kewangan ini", en: "What the club collected and spent this financial year" },
-  noSpendingFy: { bm: "Belum ada perbelanjaan direkodkan tahun kewangan ini.", en: "No spending recorded this financial year yet." },
-  /** {m}: a month name (monthName()). */
-  fyStarts: { bm: "Tahun kewangan kelab bermula {m}.", en: "The club's financial year starts in {m}." },
-  regNo: { bm: "No. pendaftaran", en: "Registration no." },
-  collected: { bm: "Dikutip", en: "Collected" },
-  spent: { bm: "Dibelanjakan", en: "Spent" },
-  balance: { bm: "Baki", en: "Balance" },
-  welfare: { bm: "Kebajikan", en: "Welfare" },
-  aggregatesOnly: {
-    bm: "Hanya jumlah keseluruhan dipaparkan. Dokumen dan nama penerima tidak dikongsi.",
-    en: "Totals only. Documents and recipient names are not shared.",
-  },
-  invoice: { bm: "Invois", en: "Invoice" },
-  reviewPay: { bm: "Semak & bayar", en: "Review & pay" },
-  billedTo: { bm: "Dibilkan kepada", en: "Billed to" },
-  item: { bm: "Butiran", en: "Item" },
-  amount: { bm: "Amaun", en: "Amount" },
-  total: { bm: "Jumlah", en: "Total" },
-  payWith: { bm: "Kaedah bayaran", en: "Payment method" },
-  successTitle: { bm: "Bayaran berjaya", en: "Payment successful" },
-  receiptNo: { bm: "No. resit", en: "Receipt no." },
-  paidOn: { bm: "Dibayar pada", en: "Paid on" },
-  bank: { bm: "Bank", en: "Bank" },
-  reference: { bm: "Rujukan", en: "Reference" },
-  skipToContent: { bm: "Langkau ke kandungan", en: "Skip to content" },
-  backHome: { bm: "Kembali ke Utama", en: "Back to Home" },
-  pendingTitle: { bm: "Kami sedang mengesahkan bayaran anda…", en: "We're confirming your payment…" },
-  pendingBody: {
-    bm: "Bank belum memberi jawapan muktamad. Ini biasanya mengambil masa beberapa minit.",
-    en: "Your bank hasn't given a final answer yet. This usually takes a few minutes.",
-  },
-  dontPayAgain: { bm: "Jangan bayar sekali lagi.", en: "Don't pay again." },
-  pendingHint: {
-    bm: "Kami akan kemas kini status dan menghantar resit secara automatik.",
-    en: "We'll update the status and email your receipt automatically.",
-  },
-  checkAgain: { bm: "Semak status semula", en: "Check status again" },
-  failedTitle: { bm: "Bayaran tidak berjaya", en: "Payment not completed" },
-  tryAgain: { bm: "Cuba lagi", en: "Try again" },
-  history: { bm: "Sejarah bayaran", en: "Payment history" },
-  historySub: { bm: "Semua bayaran anda bagi 2026", en: "All your 2026 payments" },
-  paid: { bm: "Dibayar", en: "Paid" },
-  pending: { bm: "Belum dibayar", en: "Pending" },
-  receipt: { bm: "Resit rasmi", en: "Official receipt" },
-  receivedFrom: { bm: "Diterima daripada", en: "Received from" },
-  method: { bm: "Kaedah", en: "Method" },
-  receiptFoot: {
-    bm: "Resit ini dijana oleh komputer dan tidak memerlukan tandatangan.",
-    en: "This is a computer-generated receipt; no signature is required.",
-  },
-  account: { bm: "Akaun saya", en: "My account" },
-  email: { bm: "E-mel", en: "Email" },
-  recent: { bm: "Aktiviti terkini", en: "Recent activity" },
-  helpTitle: { bm: "Perlu bantuan?", en: "Need help?" },
-  viewInvoice: { bm: "Invois", en: "Invoice" },
-  change: { bm: "Tukar", en: "Change" },
-  paidFor: { bm: "Untuk", en: "For" },
-  member: { bm: "Ahli", en: "Member" },
-  payee: { bm: "Dibayar kepada", en: "Paid to" },
-  fpxTxn: { bm: "ID transaksi FPX", en: "FPX transaction ID" },
-  whatsNext: { bm: "Apa seterusnya", en: "What happens next" },
-  whatsNextBody: {
-    bm: "Status yuran anda sudah dikemas kini. Simpan atau kongsi resit di atas jika perlu. Tiada apa-apa lagi perlu dibuat.",
-    en: "Your fee status is already updated. Save or share the receipt above if you need it. Nothing else to do.",
-  },
-  failedReason: {
-    bm: "Bank tidak mengesahkan bayaran ini. Mungkin ia dibatalkan, ditolak oleh bank, atau sesi tamat masa.",
-    en: "The bank didn't confirm this payment. It may have been cancelled, declined by the bank, or the session timed out.",
-  },
-  theme: { bm: "Tema", en: "Theme" },
-  monthlyTitle: { bm: "Kutipan & belanja bulanan", en: "Monthly collected & spent" },
-  checkedAt: { bm: "Disemak", en: "Checked" },
-  back: { bm: "Kembali", en: "Back" },
-  memberNav: { bm: "Navigasi ahli", en: "Member navigation" },
-  overdueBadge: { bm: "Lewat", en: "Overdue" },
-  statusDue: { bm: "Perlu dibayar", en: "Due" },
-  needToPay: { bm: "Perlu dibayar", en: "Due now" },
-  lateAfter: { bm: "Lewat selepas {d}", en: "Overdue after {d}" },
-  statusProcessing: { bm: "Dalam proses", en: "In progress" },
-  // ── Member pay flow (A2) ── "{x}" placeholders are filled with fill().
-  hi: { bm: "Hai", en: "Hi" },
-  allPaid: { bm: "Semua yuran telah dibayar", en: "All fees are paid" },
-  allPaidBody: { bm: "Terima kasih. Tiada apa-apa perlu dibayar sekarang.", en: "Thank you. Nothing to pay right now." },
-  lateN: { bm: "{n} lewat", en: "{n} overdue" },
-  processingN: { bm: "{n} dalam proses", en: "{n} in progress" },
-  heroProcessingTitle: { bm: "Bayaran dalam proses", en: "Payment in progress" },
-  heroProcessingBody: {
-    bm: "Anda telah memulakan bayaran FPX. Bank belum mengesahkannya. Semak status dahulu sebelum bayar lagi.",
-    en: "You started an FPX payment. The bank hasn't confirmed it yet. Check its status before paying again.",
-  },
-  checkPaymentStatus: { bm: "Semak status bayaran", en: "Check payment status" },
-  payAgain: { bm: "Bayar sekali lagi", en: "Pay again" },
-  processingRow: { bm: "Bayaran FPX belum disahkan", en: "FPX payment not confirmed yet" },
-  processingGroup: { bm: "Dalam proses", en: "In progress" },
-  processingGroupNote: {
-    bm: "Anda telah memulakan bayaran FPX untuk yuran ini. Status dikemas kini sendiri apabila bank mengesahkannya.",
-    en: "You started an FPX payment for these fees. The status updates by itself once the bank confirms it.",
-  },
-  processingWarnTitle: { bm: "Bayaran FPX anda sedang diproses", en: "Your FPX payment is in progress" },
-  processingWarnBody: {
-    bm: "Jika wang telah keluar dari akaun anda, jangan bayar lagi. Semak status bayaran dahulu: ia dikemas kini sendiri apabila bank mengesahkannya.",
-    en: "If money already left your account, don't pay again. Check the payment status first: it updates by itself once the bank confirms it.",
-  },
-  payAgainWarn: {
-    bm: "Bayar sekali lagi hanya jika anda pasti bayaran tadi tidak berjaya.",
-    en: "Pay again only if you're sure the earlier payment didn't go through.",
-  },
-  openN: { bm: "{n} yuran belum dibayar", en: "{n} fees to pay" },
-  payOldestFirst: { bm: "Bayar satu per satu, bermula dengan yang paling lama.", en: "Pay one at a time, oldest first." },
-  membershipFee: { bm: "Yuran keahlian", en: "Membership fee" },
-  freq_monthly: { bm: "Bulanan", en: "Monthly" },
-  freq_quarterly: { bm: "Suku tahunan", en: "Quarterly" },
-  freq_yearly: { bm: "Tahunan", en: "Yearly" },
-  nothingDue: { bm: "Tiada yuran perlu dibayar.", en: "Nothing due." },
-  nothingUpcoming: { bm: "Tiada yuran lain akan datang.", en: "No other fees coming up." },
-  noRecent: { bm: "Belum ada bayaran.", en: "No payments yet." },
-  moneyGoesWindow: { bm: "{from} hingga {to}: item yang diluluskan dan caj bank", en: "{from} to {to}: approved items and bank charges" },
-  spentSplit: { bm: "Perbelanjaan {a} + Kebajikan {b} + Caj bank {c}", en: "Expenses {a} + Welfare {b} + Bank charges {c}" },
-  fromReserves: {
-    bm: "Perbelanjaan melebihi kutipan sebanyak {x}. Bezanya dibayar daripada baki dana kelab; baki dana kini {b}.",
-    en: "Spending is {x} more than was collected. The difference was paid from the club's fund balance, which now stands at {b}.",
-  },
-  fundBalance: { bm: "Baki dana", en: "Fund balance" },
-  fundBalanceAsOf: { bm: "Setakat {d}", en: "As of {d}" },
-  noSpending: { bm: "Belum ada perbelanjaan direkodkan tahun ini.", en: "No spending recorded this year yet." },
-  others: { bm: "Lain-lain", en: "Others" },
-  viewPayments: { bm: "Lihat bayaran", en: "View payments" },
-  myClubs: { bm: "Kelab saya", en: "My clubs" },
-  clubsN: { bm: "{n} kelab", en: "{n} clubs" },
-  noClubs: { bm: "Anda belum menjadi ahli mana-mana kelab.", en: "You're not a member of any club yet." },
-  signOut: { bm: "Log keluar", en: "Sign out" },
-  security: { bm: "Keselamatan & 2FA", en: "Security & 2FA" },
-  adminPortal: { bm: "Portal pentadbir", en: "Admin portal" },
-  privacyNotice: { bm: "Notis privasi", en: "Privacy notice" },
-  year: { bm: "Tahun", en: "Year" },
-  paidGroup: { bm: "Sudah dibayar", en: "Paid" },
-  noPaymentsYear: { bm: "Tiada bayaran untuk {y}.", en: "No payments for {y}." },
-  paidInYear: { bm: "Dibayar {y}", en: "Paid {y}" },
-  owingInYear: { bm: "Belum dibayar {y}", en: "To pay {y}" },
-  futureTitle: { bm: "Bayar lebih awal", en: "Pay ahead" },
-  futureBody: { bm: "Pilih tempoh dan bayar sekali gus untuk bulan akan datang.", en: "Choose a period and pay for coming months in one go." },
-  futureStart: { bm: "Bulan mula", en: "Start month" },
-  futureSubmitAmt: { bm: "Teruskan · {x}", en: "Continue · {x}" },
-  futurePlan: { bm: "Tempoh", en: "Period" },
-  months_1: { bm: "1 bulan", en: "1 month" },
-  months_3: { bm: "3 bulan", en: "3 months" },
-  months_12: { bm: "12 bulan", en: "12 months" },
-  planWord_quarterly: { bm: "suku tahunan", en: "quarterly" },
-  planWord_yearly: { bm: "tahunan", en: "yearly" },
-  recommended: { bm: "Disyorkan", en: "Recommended" },
-  saveVsMonthly: { bm: "Bayar {plan}: jimat {x} caj berbanding bulanan", en: "Pay {plan}: save {x} in charges vs monthly" },
-  helpsClubSave: { bm: "Membantu kelab jimat caj", en: "Helps the club save on charges" },
-  plusCharge: { bm: "+ caj {x}", en: "+ {x} charge" },
-  paidUpTo: { bm: "Anda sudah bayar hingga {d}. Tiada bulan lagi untuk dibayar awal buat masa ini.", en: "You've paid up to {d}. There are no more months to pay ahead for now." },
-  beyondCap: { bm: "Melebihi had 12 bulan", en: "Beyond the 12-month limit" },
-  noFeeRateYet: { bm: "Kadar yuran anda belum ditetapkan. Hubungi bendahari.", en: "Your fee rate isn't set yet. Contact the treasurer." },
-  gatewayCharge: { bm: "Caj bayaran dalam talian", en: "Online payment charge" },
-  chargeByMember: { bm: "Kelab anda menetapkan caj gateway dibayar oleh ahli.", en: "Your club has members pay the gateway charge." },
-  prevPage: { bm: "Sebelum", en: "Previous" },
-  nextPage: { bm: "Seterusnya", en: "Next" },
-  pageOf: { bm: "Halaman {a} daripada {b}", en: "Page {a} of {b}" },
-  issuedOn: { bm: "Tarikh invois", en: "Invoice date" },
-  discount: { bm: "Diskaun", en: "Discount" },
-  print: { bm: "Cetak", en: "Print" },
-  shareReceipt: { bm: "Kongsi", en: "Share" },
-  shareReceiptTitle: { bm: "Resit {no}", en: "Receipt {no}" },
-  shareReceiptText: { bm: "Resit {no}: {amount} kepada {club}, dibayar {date}.", en: "Receipt {no}: {amount} to {club}, paid {date}." },
-  receiptLinkCopied: { bm: "Butiran dan pautan resit disalin. Tampal di mana-mana untuk berkongsi.", en: "Receipt details and link copied. Paste them anywhere to share." },
-  receiptLinkManual: { bm: "Salin ini untuk berkongsi:", en: "Copy this to share:" },
-  securedGw: { bm: "Dilindungi oleh FPX melalui {gw}", en: "Secured by FPX via {gw}" },
-  handoffGw: {
-    bm: "Anda akan dibawa ke {gw} untuk memilih bank (FPX), kemudian ke laman bank anda. Jangan tutup tetingkap sehingga selesai.",
-    en: "You will go to {gw} to choose your bank (FPX), then to your bank's page. Don't close the window until it finishes.",
-  },
-  redirectingGw: { bm: "Membawa anda ke {gw}…", en: "Taking you to {gw}…" },
-  gatewayUnavailable: {
-    bm: "Bayaran dalam talian belum tersedia untuk kelab ini. Sila hubungi pentadbir kelab.",
-    en: "Online payment isn't available for this club yet. Please contact the club administrator.",
-  },
-  openBillWarn: {
-    bm: "Anda pernah memulakan bayaran ini. Jika wang telah keluar dari akaun anda, jangan bayar lagi. Status akan dikemas kini secara automatik.",
-    en: "You started this payment before. If money already left your account, don't pay again. The status updates automatically.",
-  },
-  processing: { bm: "Dalam proses", en: "Processing" },
-  failedChip: { bm: "Gagal", en: "Failed" },
-  stillWaiting: {
-    bm: "Bank masih belum mengesahkan. Kami akan menghantar e-mel kepada anda sebaik sahaja bayaran disahkan.",
-    en: "The bank hasn't confirmed yet. We'll email you as soon as the payment is confirmed.",
-  },
-  checking: { bm: "Menyemak status…", en: "Checking status…" },
-  recordedByTreasurer: { bm: "Direkod oleh bendahari", en: "Recorded by the treasurer" },
-  helpAdmin: { bm: "Hubungi pentadbir kelab", en: "Contact the club administrator" },
-  helpWhatsApp: { bm: "WhatsApp kelab", en: "WhatsApp the club" },
-  helpOpensWhatsApp: { bm: "(dibuka dalam WhatsApp)", en: "(opens in WhatsApp)" },
-  /** The prefilled WhatsApp message: always BM (the treasurer reads it); only the member's own fee and reference. */
-  waHelloMsg: { bm: "Salam. Saya perlukan bantuan tentang bayaran kepada {club}.", en: "Salam. Saya perlukan bantuan tentang bayaran kepada {club}." },
-  waFeeMsg: { bm: "Yuran: {fee}", en: "Yuran: {fee}" },
-  waRefMsg: { bm: "Rujukan: {ref}", en: "Rujukan: {ref}" },
-  receiptEmailed: { bm: "Resit akan dihantar ke e-mel anda.", en: "A receipt will be emailed to you." },
-  notReceivedTitle: { bm: "Bayaran belum diterima", en: "Payment not received yet" },
-  failedMoneyLeftAdvice: {
-    bm: "Jika wang telah keluar dari akaun anda, jangan bayar lagi — hubungi bendahari dengan rujukan di bawah.",
-    en: "If money left your account, don't pay again — contact the treasurer with the reference below.",
-  },
-  flash_already_paid: { bm: "Yuran ini telah dibayar.", en: "This fee has already been paid." },
-  flash_gateway_unavailable: {
-    bm: "Bayaran dalam talian belum tersedia untuk kelab ini. Sila hubungi pentadbir kelab.",
-    en: "Online payment isn't available for this club yet. Please contact the club administrator.",
-  },
-  flash_bill_failed: { bm: "Bil bayaran tidak dapat dicipta. Sila cuba lagi.", en: "We couldn't create the payment bill. Please try again." },
-  flash_no_fee_rate: { bm: "Tiada kadar yuran ditetapkan untuk tahap jawatan anda.", en: "No fee rate is set for your job level." },
-  flash_waived_period: { bm: "Tiada yuran untuk tempoh ini (kadar RM 0).", en: "There is nothing to pay for this period (the rate is RM 0)." },
-  flash_period_exists: { bm: "Rekod bayaran untuk tempoh ini sudah wujud.", en: "A payment record already exists for this period." },
-  flash_plan_not_allowed: { bm: "Tempoh bayaran ini tidak ditawarkan oleh kelab.", en: "Your club doesn't offer this payment period." },
-  flash_too_far_ahead: { bm: "Bayaran awal hanya boleh bermula dalam tempoh 12 bulan.", en: "Paying ahead can start at most 12 months from now." },
-  flash_start_next_month: { bm: "Bayaran awal mesti bermula bulan depan atau selepasnya.", en: "Paying ahead must start next month or later." },
-  flash_try_again: { bm: "Sila cuba lagi sebentar.", en: "Please try again in a moment." },
-  flash_period_overlaps: { bm: "Anda sudah ada bayaran untuk sebahagian tempoh ini.", en: "You already have a payment covering part of this period." },
-  flash_future_created: { bm: "Invois baharu dicipta. Teruskan untuk membayar.", en: "New invoice created. Continue to pay." },
-  // ── Manual bank / DuitNow transfer (P2) ──
-  verifying: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
-  // Short chip for list rows; the invoice uses the full "verifying" label.
-  verifyingBadge: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
-  slipBeingChecked: { bm: "Slip dihantar", en: "Slip sent" },
-  chooseMethod: { bm: "Pilih cara bayar", en: "Choose how to pay" },
-  methodFpx: { bm: "FPX (perbankan dalam talian)", en: "FPX (online banking)" },
-  methodFpxSub: { bm: "Bayar terus dari bank anda melalui {gw}", en: "Pay straight from your bank via {gw}" },
-  methodTransfer: { bm: "Pindahan bank / DuitNow", en: "Bank transfer / DuitNow" },
-  methodTransferSub: { bm: "Pindah sendiri, kemudian hantar slip", en: "Transfer yourself, then send the slip" },
-  noCharge: { bm: "Tiada caj", en: "No fee" },
-  plusChargeShort: { bm: "+ caj {x}", en: "+ {x} fee" },
-  transferStep1: { bm: "Pindahkan {x} ke akaun ini", en: "Transfer {x} to this account" },
-  accountName: { bm: "Nama akaun", en: "Account name" },
-  accountNo: { bm: "No. akaun", en: "Account no." },
-  duitnowId: { bm: "DuitNow ID", en: "DuitNow ID" },
-  transferRefLbl: { bm: "Rujukan (taip dalam pindahan)", en: "Reference (type it in your transfer)" },
-  refHint: {
-    bm: "Taip rujukan ini di ruangan rujukan atau catatan bank supaya bendahari kenal bayaran anda.",
-    en: "Type this reference in your bank's reference or note field so the treasurer can match your payment.",
-  },
-  copy: { bm: "Salin", en: "Copy" },
-  copied: { bm: "Disalin", en: "Copied" },
-  copyLabel: { bm: "Salin {x}", en: "Copy {x}" },
-  transferStep2: { bm: "Hantar slip pindahan", en: "Send the transfer slip" },
-  slipLimits: { bm: "Gambar atau PDF · maksimum {n} fail · {mb} MB setiap satu", en: "Photo or PDF · up to {n} files · {mb} MB each" },
-  dropPrefix: { bm: "Seret fail ke sini atau", en: "Drag files here or" },
-  browse: { bm: "pilih fail", en: "browse" },
-  cameraHint: { bm: "Di telefon, ini membuka kamera.", en: "On a phone this opens the camera." },
-  takePhotoSlip: { bm: "Ambil gambar slip", en: "Take a photo of the slip" },
-  chooseFile: { bm: "Pilih gambar atau PDF", en: "Choose a photo or PDF" },
-  slipNeeded: { bm: "Tambah gambar atau PDF slip dahulu.", en: "Add a photo or PDF of the slip first." },
-  paymentStatus: { bm: "Status bayaran", en: "Payment status" },
-  fpxUnavailableShort: { bm: "Belum tersedia untuk kelab ini. Guna pindahan bank.", en: "Not available for this club yet. Use a bank transfer." },
-  removeFile: { bm: "Buang {f}", en: "Remove {f}" },
-  transferDateLbl: { bm: "Tarikh pindahan", en: "Transfer date" },
-  bankRefLbl: { bm: "No. rujukan bank (pilihan)", en: "Bank reference no. (optional)" },
-  bankRefHint: { bm: "Nombor pada slip atau resit bank anda.", en: "The number on your bank slip or receipt." },
-  submitSlip: { bm: "Hantar slip", en: "Send slip" },
-  sendingSlip: { bm: "Menghantar…", en: "Sending…" },
-  slipNote: {
-    bm: "Bendahari akan menyemak slip anda. Yuran dikira dibayar selepas disahkan, dan resit dihantar ke e-mel anda.",
-    en: "The treasurer will check your slip. The fee counts as paid once confirmed, and the receipt is emailed to you.",
-  },
-  tooManyFiles: { bm: "Maksimum {n} fail.", en: "Up to {n} files only." },
-  fileTooLarge: {
-    bm: "{f}: melebihi {mb} MB, jadi tidak ditambah. Pilih fail yang lebih kecil.",
-    en: "{f}: larger than {mb} MB, so not added. Choose a smaller file.",
-  },
-  openBillTransferWarn: {
-    bm: "Anda pernah memulakan bayaran dalam talian untuk yuran ini. Jika wang telah keluar dari akaun anda, jangan buat pindahan juga: status akan dikemas kini secara automatik.",
-    en: "You started an online payment for this fee before. If money already left your account, don't transfer as well: the status updates automatically.",
-  },
-  verifyingTitle: { bm: "Slip dihantar", en: "Slip sent" },
-  verifyingBody: {
-    bm: "Bendahari sedang menyemak slip anda. Resit akan dihantar ke e-mel anda selepas disahkan. Jangan bayar sekali lagi.",
-    en: "The treasurer is checking your slip. Your receipt is emailed once it's confirmed. Don't pay again.",
-  },
-  slipSentOn: { bm: "Dihantar pada", en: "Sent on" },
-  yourSlips: { bm: "Slip anda", en: "Your slips" },
-  openFile: { bm: "Buka {f}", en: "Open {f}" },
-  rejectedTitle: { bm: "Slip anda belum diterima", en: "Your slip wasn't accepted" },
-  rejectedBody: { bm: "Sila hantar slip yang betul, atau bayar dalam talian.", en: "Please send the right slip, or pay online." },
-  reason: { bm: "Sebab", en: "Reason" },
-  verifyingN: { bm: "{n} menunggu pengesahan", en: "{n} awaiting verification" },
-  heroVerifyingTitle: { bm: "Menunggu pengesahan", en: "Awaiting verification" },
-  heroVerifyingBody: {
-    bm: "Slip pindahan anda sedang disemak bendahari. Tiada apa-apa perlu dibayar sekarang.",
-    en: "The treasurer is checking your transfer slip. Nothing to pay right now.",
-  },
-  methodTransferReceipt: { bm: "Pindahan bank / DuitNow", en: "Bank transfer / DuitNow" },
-  flash_slip_sent: { bm: "Slip dihantar. Bendahari akan menyemaknya.", en: "Slip sent. The treasurer will check it." },
-  flash_verifying: { bm: "Slip anda sedang disemak. Jangan bayar sekali lagi.", en: "Your slip is being checked. Don't pay again." },
-  flash_slip_required: { bm: "Muat naik sekurang-kurangnya satu slip.", en: "Upload at least one slip." },
-  flash_slip_count: { bm: "Muat naik 1 hingga 3 fail sahaja.", en: "Upload 1 to 3 files only." },
-  flash_slip_type: { bm: "Slip mesti PDF, JPG, PNG atau WebP.", en: "The slip must be a PDF, JPG, PNG or WebP." },
-  flash_slip_size: { bm: "Setiap fail mesti 10 MB atau kurang.", en: "Each file must be 10 MB or smaller." },
-  flash_transfer_date_required: { bm: "Masukkan tarikh pindahan.", en: "Enter the transfer date." },
-  flash_transfer_date_invalid: {
-    bm: "Tarikh pindahan mesti hari ini atau dalam setahun yang lalu.",
-    en: "The transfer date must be today or within the last year.",
-  },
-  flash_transfer_ref_long: { bm: "Rujukan bank terlalu panjang (maksimum 60 aksara).", en: "The bank reference is too long (60 characters max)." },
-  flash_slip_limit: {
-    bm: "Terlalu banyak slip untuk yuran ini. Sila hubungi bendahari.",
-    en: "Too many slips for this fee. Please contact the treasurer.",
-  },
-  flash_transfer_unavailable: { bm: "Kelab ini belum menerima pindahan bank.", en: "This club doesn't take bank transfers yet." },
-  flash_post_too_large: {
-    bm: "Fail yang dihantar terlalu besar. Setiap fail mesti 10 MB atau kurang; cuba lagi dengan fail yang lebih kecil.",
-    en: "What you sent was too large. Each file must be 10 MB or smaller; try again with smaller files.",
-  },
-  // ── "Bayar semua": every open fee with one bill or one slip (R1b) ──
-  payAllAmt: { bm: "Bayar semua {x}", en: "Pay all {x}" },
-  payOneOldest: { bm: "Bayar satu sahaja (yang paling lama)", en: "Pay just one (the oldest)" },
-  payAllHint: { bm: "Bayar {n} yuran dengan satu bayaran.", en: "Pay all {n} fees in one go." },
-  payAllInClub: { bm: "Untuk {c}", en: "For {c}" },
-  reviewPayAll: { bm: "Semak & bayar semua", en: "Review & pay all" },
-  feesN: { bm: "{n} yuran", en: "{n} fees" },
-  subtotal: { bm: "Jumlah yuran", en: "Fees total" },
-  payAllOneCharge: { bm: "Satu caj untuk semua yuran", en: "One charge for all the fees" },
-  payAllTransferNote: {
-    bm: "Satu pindahan dan satu slip untuk semua yuran di atas. Bendahari akan mengesahkan semuanya sekali.",
-    en: "One transfer and one slip for all the fees above. The treasurer confirms them all at once.",
-  },
-  paidTogether: { bm: "{n} yuran dibayar sekali gus", en: "{n} fees paid together" },
-  sentTogether: { bm: "{n} yuran dalam satu slip", en: "{n} fees in one slip" },
-  paidOnlineInstead: { bm: "dibayar dalam talian", en: "paid online" },
-  paidOnlineNote: {
-    bm: "Yuran ini termasuk dalam slip tetapi telah dibayar dalam talian, jadi ia tidak termasuk dalam resit ini:",
-    en: "These fees were in the slip but were paid online, so they are not on this receipt:",
-  },
-  checkEarlierPayment: { bm: "Semak status bayaran tadi", en: "Check that payment's status" },
-  feesInSet: { bm: "Yuran yang dibayar", en: "Fees being paid" },
-  flash_check_status_first: {
-    bm: "Satu bayaran FPX untuk yuran ini masih dalam proses. Semak status bayaran itu dahulu sebelum bayar lagi.",
-    en: "An FPX payment for one of these fees is still in progress. Check that payment's status before paying again.",
-  },
-  staleBillHint: {
-    bm: "Jika bayaran berjaya tetapi status belum berubah, hubungi bendahari.",
-    en: "If you paid but the status hasn't changed, contact the treasurer.",
-  },
-  flash_set_changed: {
-    bm: "Senarai yuran anda telah berubah. Sila semak jumlah baharu sebelum membayar.",
-    en: "Your list of fees has changed. Please check the new total before paying.",
-  },
-  flash_nothing_to_pay: { bm: "Tiada yuran perlu dibayar sekarang.", en: "Nothing to pay right now." },
-  installTitle: { bm: "Pasang di skrin utama", en: "Add to home screen" },
-  installBody: {
-    bm: "Buka Club Portal terus dari skrin telefon anda, seperti aplikasi.",
-    en: "Open Club Portal straight from your phone's home screen, like an app.",
-  },
-  installAction: { bm: "Pasang", en: "Install" },
-  installIosStep1: { bm: "Tekan butang Kongsi", en: "Tap the Share button" },
-  installIosStep2: { bm: "Pilih “Tambah ke Skrin Utama”", en: "Choose “Add to Home Screen”" },
-  installLater: { bm: "Bukan sekarang", en: "Not now" },
-  installClose: { bm: "Tutup cadangan pasang", en: "Close install suggestion" },
-  secTitle: { bm: "Keselamatan & 2FA", en: "Security & 2FA" },
-  secWhatTitle: { bm: "Apa itu 2FA?", en: "What is 2FA?" },
-  secWhatBody: {
-    bm: "Pengesahan dua langkah (2FA) melindungi akaun anda. Selepas kata laluan, anda masukkan kod 6 digit daripada aplikasi pengesah di telefon. Orang lain tidak boleh masuk walaupun mereka tahu kata laluan anda.",
-    en: "Two-step sign-in (2FA) protects your account. After your password, you type a 6-digit code from an authenticator app on your phone. Others can't sign in even if they know your password.",
-  },
-  secAppHint: {
-    bm: "Contoh aplikasi pengesah: Google Authenticator, Microsoft Authenticator atau Authy (percuma).",
-    en: "Example authenticator apps: Google Authenticator, Microsoft Authenticator or Authy (free).",
-  },
-  secStatusOn: { bm: "2FA dihidupkan", en: "2FA is on" },
-  secStatusOff: { bm: "2FA belum dihidupkan", en: "2FA is off" },
-  secOnBody: {
-    bm: "Setiap kali log masuk, anda perlu kod 6 digit daripada aplikasi pengesah.",
-    en: "Each time you sign in, you'll need the 6-digit code from your authenticator app.",
-  },
-  secOffBody: { bm: "Akaun anda dilindungi oleh kata laluan sahaja.", en: "Your account is protected by your password only." },
-  secPassword: { bm: "Kata laluan anda", en: "Your password" },
-  secPasswordStartHint: { bm: "Untuk memastikan ini memang anda.", en: "To make sure it's really you." },
-  secStart: { bm: "Hidupkan 2FA", en: "Turn on 2FA" },
-  secStep1: { bm: "Imbas kod QR ini dengan aplikasi pengesah", en: "Scan this QR code with your authenticator app" },
-  secQrAlt: { bm: "Kod QR untuk aplikasi pengesah", en: "QR code for the authenticator app" },
-  secManual: { bm: "Tidak boleh imbas? Masukkan kunci ini dalam aplikasi:", en: "Can't scan? Type this key into the app:" },
-  secKey: { bm: "kunci", en: "key" },
-  secStep2: { bm: "Masukkan kod 6 digit yang dipaparkan dalam aplikasi", en: "Type the 6-digit code shown in the app" },
-  secCode: { bm: "Kod 6 digit", en: "6-digit code" },
-  secConfirm: { bm: "Sahkan dan hidupkan", en: "Confirm and turn on" },
-  secCodesTitle: { bm: "Simpan kod pemulihan anda sekarang", en: "Save your recovery codes now" },
-  secCodesBody: {
-    bm: "Jika telefon anda hilang, guna satu kod ini untuk log masuk. Setiap kod boleh digunakan sekali sahaja. Kod ini tidak akan dipaparkan lagi.",
-    en: "If you lose your phone, use one of these codes to sign in. Each code works once. They won't be shown again.",
-  },
-  secCodesLabel: { bm: "Kod pemulihan", en: "Recovery codes" },
-  secCopyCodes: { bm: "Salin kod", en: "Copy codes" },
-  secDownloadCodes: { bm: "Muat turun", en: "Download" },
-  secTurnOff: { bm: "Matikan 2FA", en: "Turn off 2FA" },
-  secTurnOffHint: { bm: "Masukkan kata laluan untuk mematikan 2FA.", en: "Enter your password to turn off 2FA." },
-  secTurnOffCode: { bm: "Kod daripada aplikasi pengesah, atau kod pemulihan", en: "Code from the authenticator app, or a recovery code" },
-  secTurnOffCodeHint: {
-    bm: "Taip 6 digit daripada aplikasi. Tiada telefon? Guna salah satu kod pemulihan anda.",
-    en: "Type the 6 digits from the app. No phone? Use one of your recovery codes.",
-  },
-  secCodesSaved: { bm: "Saya sudah simpan", en: "I've saved them" },
-  flash_2fa_password_invalid: { bm: "Kata laluan tidak betul.", en: "That password isn't right." },
-  flash_2fa_code_invalid: { bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi dan cuba lagi.", en: "That code isn't right. Type the 6 digits from the app and try again." },
-  flash_2fa_enabled: { bm: "2FA dihidupkan. Simpan kod pemulihan anda.", en: "2FA is on. Save your recovery codes." },
-  flash_2fa_disable_code_invalid: {
-    bm: "Kod tidak betul. Masukkan 6 digit daripada aplikasi pengesah, atau salah satu kod pemulihan anda.",
-    en: "That code isn't right. Type the 6 digits from the authenticator app, or one of your recovery codes.",
-  },
-  receiptPartOf: {
-    bm: "Yuran ini sebahagian daripada resit {no}: {n} yuran, jumlah {total}.",
-    en: "This fee is part of receipt {no}: {n} fees, {total} in total.",
-  },
-  receiptPartOfLink: { bm: "Lihat resit penuh", en: "See the full receipt" },
-  /** "Cancel payment" (an admin took a paid fee back): {no} receipt no., {date} when, {why} cancelReason_* below. */
-  cancelledBanner: {
-    bm: "Resit {no} telah dibatalkan pada {date}. {why}. Yuran ini belum dibayar.",
-    en: "Receipt {no} was cancelled on {date}. {why}. This fee is unpaid.",
-  },
-  cancelledBannerVerifying: {
-    bm: "Resit {no} telah dibatalkan pada {date}. {why}. Slip pindahan anda masih disemak; jangan bayar sekali lagi.",
-    en: "Receipt {no} was cancelled on {date}. {why}. Your transfer slip is still being checked; don't pay again.",
-  },
-  cancelledTitle: { bm: "Resit {no} dibatalkan", en: "Receipt {no} cancelled" },
-  cancelledSetBody: {
-    bm: "Dibatalkan pada {date}. {why}. Yuran di bawah belum dibayar; anda boleh membayarnya semula.",
-    en: "Cancelled on {date}. {why}. The fees below are unpaid; you can pay them again.",
-  },
-  cancelledEarlier: { bm: "Resit terdahulu {no} dibatalkan.", en: "Earlier receipt {no} was cancelled." },
-  cancelReason_slip_not_genuine: { bm: "Kami tidak dapat mengesahkan bayaran ini", en: "We could not confirm this payment" },
-  cancelReason_money_not_received: { bm: "Kami tidak dapat mengesahkan bayaran ini", en: "We could not confirm this payment" },
-  cancelReason_recorded_by_mistake: { bm: "Bayaran ini telah direkodkan secara tersilap", en: "This payment was recorded by mistake" },
-  cancelReason_refunded: { bm: "Bayaran ini telah dikembalikan kepada anda", en: "This payment was refunded to you" },
-  cancelReason_other: { bm: "Hubungi bendahari kelab untuk maklumat lanjut", en: "Contact the club treasurer for details" },
-  flash_2fa_disable_locked: {
-    bm: "Terlalu banyak kod salah. Cuba lagi dalam 15 minit.",
-    en: "Too many wrong codes. Try again in 15 minutes.",
-  },
-  flash_2fa_disabled: { bm: "2FA telah dimatikan.", en: "2FA has been turned off." },
-  flash_2fa_already_on: { bm: "2FA sudah dihidupkan.", en: "2FA is already on." },
-  flash_2fa_not_started: { bm: "Mula semula dengan menekan Hidupkan 2FA.", en: "Start again by tapping Turn on 2FA." },
-} as const;
+/** English holds every key; this is the type of a key. */
+export type DictKey = keyof typeof en;
+type Strings = Record<DictKey, string>;
 
-export type DictKey = keyof typeof dict;
+const FILES = { ms, en } satisfies Record<string, Partial<Strings>>;
+
+/** A member app language: its code is the file name and the <html lang> value. */
+export type Lang = keyof typeof FILES;
+export const LANGS = Object.keys(FILES) as Lang[];
+/** Malay unless the member chose otherwise. */
+export const DEFAULT_LANG: Lang = "ms";
+
+/** Each language merged over English, so a missing key shows the English text rather than nothing. */
+const DICTS = Object.fromEntries(LANGS.map((l) => [l, { ...en, ...FILES[l] }])) as Record<Lang, Strings>;
+
+/** What the BM/EN switch shows for each language. */
+export const LANG_LABELS: Record<Lang, string> = { ms: "BM", en: "EN" };
+
+/** BCP 47 tag for the browser's own formatting (date inputs, times). */
+const LOCALE_TAGS: Record<Lang, string> = { ms: "ms-MY", en: "en-MY" };
+
+export function localeTag(lang: Lang): string {
+  return LOCALE_TAGS[lang];
+}
+
+/**
+ * Any language value from outside (cookie cp_lang, localStorage cp-lang, ?lang=, a server locale) to a Lang, or null
+ * when it isn't one. "bm" is the older code for Malay and is still what gets stored (see storedLang).
+ */
+export function normaliseLang(value: unknown): Lang | null {
+  if (typeof value !== "string") return null;
+  const code = value === "bm" ? "ms" : value;
+  return (LANGS as string[]).includes(code) ? (code as Lang) : null;
+}
+
+/**
+ * The value written to cp_lang / cp-lang. Malay is still stored as "bm", the code that pages and sign-in screens
+ * from before the language files only know (AuthPageLocale writes the same), so a tab left open keeps working.
+ */
+export function storedLang(lang: Lang): string {
+  return lang === "ms" ? "bm" : lang;
+}
+
+/** A Laravel locale ("ms", "en", "en_US", ...) to the UI language: English when it is English, else Malay. */
+export function langFromLocale(locale: unknown): Lang {
+  return typeof locale === "string" && locale.toLowerCase().startsWith("en") ? "en" : DEFAULT_LANG;
+}
 
 export const LangContext = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({
-  lang: "bm",
+  lang: DEFAULT_LANG,
   setLang: () => undefined,
 });
 
-export function useT() {
-  const { lang } = useContext(LangContext);
-  return (key: DictKey) => dict[key][lang];
-}
-
 /** A dictionary entry in a given language, whatever the page shows (e.g. the BM WhatsApp help message). */
 export function textIn(key: DictKey, lang: Lang): string {
-  return dict[key][lang];
+  return DICTS[lang][key];
 }
 
-const MONTHS: Record<Lang, string[]> = {
-  bm: ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"],
-  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-};
+/** A lookup bound to one language, for components that take a `lang` prop. */
+export function textsIn(lang: Lang): (key: DictKey) => string {
+  return (key) => DICTS[lang][key];
+}
+
+export function useT() {
+  const { lang } = useContext(LangContext);
+  return textsIn(lang);
+}
+
+/** A dictionary entry in every language, for text built outside a component (e.g. the "Others" slice). */
+export function allLangs(key: DictKey): Record<Lang, string> {
+  return Object.fromEntries(LANGS.map((l) => [l, DICTS[l][key]])) as Record<Lang, string>;
+}
+
+/** Text that comes with the data in some languages: English always, the others when known. */
+export type LocalText = { en: string } & Partial<Record<Lang, string | null | undefined>>;
+
+/**
+ * Text that comes with the data in fixed languages (a category's Malay and English names, a fee's BM description):
+ * the one for `lang`, else the English.
+ */
+export function localText(lang: Lang, texts: LocalText): string {
+  return texts[lang] ?? texts.en;
+}
 
 /** A month's name (1 = January) in the member's language. */
 export function monthName(month: number, lang: Lang): string {
-  return MONTHS[lang][month - 1] ?? MONTHS[lang][0];
+  const key = `month_${month}`;
+  return isDictKey(key) ? DICTS[lang][key] : DICTS[lang].month_1;
+}
+
+/** A month's short name (1 = Jan) for dates such as "5 Okt 2026". */
+export function monthShort(month: number, lang: Lang): string {
+  return DICTS[lang][`monthShort_${month}` as DictKey];
 }
 
 /** Replace "{name}" placeholders in a translated string. */
@@ -488,14 +114,14 @@ export function fill(text: string, vars: Record<string, string | number>): strin
 }
 
 export function isDictKey(key: string): key is DictKey {
-  return Object.prototype.hasOwnProperty.call(dict, key);
+  return Object.prototype.hasOwnProperty.call(en, key);
 }
 
 /**
- * The language of the page on screen ("ms" or "en"), as set on <html lang>: member pages follow the BM/EN toggle,
- * admin pages the server locale. Shared UI parts (dialog "Close", uploader defaults) read it so they match the page.
+ * The language of the page on screen, as set on <html lang>: member pages follow the BM/EN toggle, admin pages the
+ * server locale. Shared UI parts (dialog "Close", uploader defaults) read it so they match the page.
  */
-export const PageLangContext = createContext<"ms" | "en">("en");
+export const PageLangContext = createContext<Lang>("en");
 
 export function usePageLang() {
   return useContext(PageLangContext);

@@ -6,7 +6,7 @@ import { PaymentStatusBadge } from "./StatusBadges";
 import { IconBubble } from "./Visuals";
 import { Alert } from "@/components/ui/alert";
 import { fmtDate, fmtPeriod } from "@/lib/format";
-import { fill, isDictKey, textIn, useLang, useT, type DictKey } from "@/lib/i18n";
+import { allLangs, fill, isDictKey, textIn, useLang, useT, type DictKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { CategorySlice, PaymentStatus } from "@/types/domain";
 import type { FundCategory, MemberPaymentRow, PaymentCancellationInfo } from "@/types/member";
@@ -164,16 +164,16 @@ const sliceTokens = ["--chart-1", "--chart-2", "--chart-3", "--chart-4"];
  * neutral "Others". Welfare and bank / gateway charges always keep their own slice; expense categories share the
  * colours left, the smallest folded into "Others" when they don't fit.
  */
-export function toSlices(categories: FundCategory[], othersLabel: { bm: string; en: string }): CategorySlice[] {
+export function toSlices(categories: FundCategory[]): CategorySlice[] {
   const isFixed = (c: FundCategory) => c.kind === "welfare" || c.kind === "charges";
   const fixed = categories.filter(isFixed);
   const expenses = categories.filter((c) => !isFixed(c)).sort((a, b) => b.amount - a.amount);
   const room = sliceTokens.length - fixed.length;
   const shown = [...expenses.slice(0, room), ...fixed]
     .sort((a, b) => b.amount - a.amount)
-    .map((c, i) => ({ key: c.kind === "welfare" || c.kind === "charges" ? c.kind : `c${i}`, bm: c.nameMs ?? c.name, en: c.name, amount: c.amount, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
+    .map((c, i) => ({ key: c.kind === "welfare" || c.kind === "charges" ? c.kind : `c${i}`, names: { ms: c.nameMs, en: c.name }, amount: c.amount, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
   const rest = expenses.slice(room).reduce((s, c) => s + c.amount, 0);
-  if (rest > 0) shown.push({ key: "others", ...othersLabel, amount: rest, colorVar: "--chart-other", onVar: "--on-chart-other" });
+  if (rest > 0) shown.push({ key: "others", names: allLangs("sliceOthers"), amount: rest, colorVar: "--chart-other", onVar: "--on-chart-other" });
   return shown;
 }
 
@@ -190,9 +190,9 @@ export interface HelpContact {
  * member's own reference go in (no name, email or phone).
  */
 export function whatsAppHelpHref(digits: string, club: string, about?: { fee?: Pick<MemberPaymentRow, "periodStart" | "periodEnd"> | null; reference?: string | null }) {
-  const lines = [fill(textIn("waHelloMsg", "bm"), { club })];
-  if (about?.fee) lines.push(fill(textIn("waFeeMsg", "bm"), { fee: `${textIn("membershipFee", "bm")} ${fmtPeriod(about.fee.periodStart, about.fee.periodEnd, "bm")}` }));
-  if (about?.reference) lines.push(fill(textIn("waRefMsg", "bm"), { ref: about.reference }));
+  const lines = [fill(textIn("waHelloMsg", "ms"), { club })];
+  if (about?.fee) lines.push(fill(textIn("waFeeMsg", "ms"), { fee: `${textIn("membershipFee", "ms")} ${fmtPeriod(about.fee.periodStart, about.fee.periodEnd, "ms")}` }));
+  if (about?.reference) lines.push(fill(textIn("waRefMsg", "ms"), { ref: about.reference }));
   return `https://wa.me/${digits.replace(/\D/g, "")}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 

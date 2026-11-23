@@ -75,8 +75,8 @@ class OverdueWordingTest extends TestCase
 
     public function test_one_bm_word_for_overdue(): void
     {
-        $i18n = file_get_contents(resource_path('js/lib/i18n.ts'));
-        $this->assertStringNotContainsString('Tertunggak', $i18n);
-        $this->assertStringContainsString('lateAfter: { bm: "Lewat selepas {d}"', $i18n);
+        $ms = file_get_contents(lang_path('member/ms.json'));
+        $this->assertStringNotContainsString('Tertunggak', $ms);
+        $this->assertSame('Lewat selepas {d}', json_decode($ms, true)['lateAfter']);
     }
 }

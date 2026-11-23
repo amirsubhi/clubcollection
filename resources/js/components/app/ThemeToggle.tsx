@@ -1,25 +1,27 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import { SegmentedRadio } from "@/components/ui/segmented-radio";
+import { textsIn, type DictKey, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const opts: { value: ThemePref; label: string; bm: string; Icon: typeof Sun }[] = [
-  { value: "system", label: "System", bm: "Sistem", Icon: Monitor },
-  { value: "light", label: "Light", bm: "Cerah", Icon: Sun },
-  { value: "dark", label: "Dark", bm: "Gelap", Icon: Moon },
+const opts: { value: ThemePref; label: DictKey; Icon: typeof Sun }[] = [
+  { value: "system", label: "themeSystem", Icon: Monitor },
+  { value: "light", label: "themeLight", Icon: Sun },
+  { value: "dark", label: "themeDark", Icon: Moon },
 ];
 
 /** Three-way theme switch. `size="lg"` gives 44px targets for member screens; `withLabels` shows the words. */
-export function ThemeToggle({ size = "sm", withLabels = false, lang = "en", className }: { size?: "sm" | "lg"; withLabels?: boolean; lang?: "bm" | "en"; className?: string }) {
+export function ThemeToggle({ size = "sm", withLabels = false, lang = "en", className }: { size?: "sm" | "lg"; withLabels?: boolean; lang?: Lang; className?: string }) {
   const { theme, setTheme } = useTheme();
+  const t = textsIn(lang);
   return (
     <SegmentedRadio<ThemePref>
-      ariaLabel={lang === "bm" ? "Tema" : "Theme"}
+      ariaLabel={t("themeLabel")}
       value={theme}
       onChange={setTheme}
       className={cn("inline-flex max-w-full flex-wrap rounded-full border bg-card p-0.5", className)}
-      options={opts.map(({ value, label, bm, Icon }) => {
-        const text = lang === "bm" ? bm : label;
+      options={opts.map(({ value, label, Icon }) => {
+        const text = t(label);
         return {
           value,
           title: text,
