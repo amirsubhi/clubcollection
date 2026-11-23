@@ -129,7 +129,8 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
             <>
               <fieldset className="flex flex-col gap-2">
                 <legend className="mb-1.5 text-base font-medium">{t("futurePlan")}</legend>
-                <div className={`grid gap-2 ${plans.length === 3 ? "grid-cols-3" : plans.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+                {/* One card per row below 22.5em (360 px): three columns of about 77 px broke longer words and the price. */}
+                <div className={`grid grid-cols-1 gap-2 ${plans.length === 3 ? "min-[22.5em]:grid-cols-3" : plans.length === 2 ? "min-[22.5em]:grid-cols-2" : ""}`}>
                   {plans.map((p) => {
                     const checked = form.data.frequency === p;
                     const disabled = !fits(p);
@@ -143,7 +144,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                       >
                         <input type="radio" name="frequency" value={p} checked={checked} disabled={disabled} onChange={() => form.setData("frequency", p)} className="sr-only" />
                         {p === defaultPlan && (
-                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">{t("recommended")}</span>
+                          <span className="absolute -top-2.5 left-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground" title={t("recommended")}>{t("recommended")}</span>
                         )}
                         <span className="text-base font-semibold">{t(`months_${PLAN_MONTHS[p]}`)}</span>
                         <span className="text-xs text-muted-foreground">{t(`freq_${p}`)}</span>
