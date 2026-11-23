@@ -8,7 +8,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+> **Upgrade:** one new migration (`users.locale`, nullable). Run `php artisan migrate --force` as in
+> `docs/RELEASE.md` §2.
+
+### Added
+- **Each member's language is remembered.** The member app's BM / EN switch saves the choice on the account in the
+  background (`POST /my/language`, throttled); the switch still changes the page at once, and a choice made offline
+  is sent when the connection is back. The saved language follows the member to another phone or browser, the
+  sign-in pages and their emails. Members who had already switched (the `cp_lang` cookie) get that choice saved the
+  first time they open the portal signed in, so nobody who chose English is moved to Malay.
+- **Default language** on Portal settings (super admin, audited, "Saved: default language."): the language of the
+  member app, sign-in pages and member emails for members who have not chosen one. Bahasa Melayu unless changed. The
+  list is every language with a `lang/member/<code>.json` file. Admin pages and admin emails stay in English.
+- `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, for review.
+
 ### Changed
+- **Member emails are in one language, the member's** (their saved choice, else the portal default): welcome,
+  payment confirmation, overdue reminder, transfer slip rejected, payment cancelled, the sign-in and password-change
+  security notices, and the password reset link (whose Malay is new; with no saved choice it follows the sign-in
+  page it was asked from). **Members with no saved choice now get the confirmation, reminder and welcome emails in
+  Malay, which were English before**; the three emails that carried BM and EN together now carry one of them. Dates
+  in emails use the member app's month names ("5 Ogo 2026"). The welcome email to a new admin account stays English.
+- One rule decides the member-side language everywhere (`App\Support\UserLocale`): the account's saved language,
+  else the browser's choice (`?lang=` / `cp_lang`), else the portal default. A signed-in member's app opens in the
+  saved language even if this browser last showed the other one.
 - Member app text moved from the dictionary inside `resources/js/lib/i18n.ts` to one file per language,
   `lang/member/ms.json` and `lang/member/en.json` (bundled, English is the reference), so a later release can add a
   language by adding a file. Every BM/EN choice in the React components now goes through the i18n module. Malay is

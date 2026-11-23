@@ -12,6 +12,7 @@ use App\Models\Club;
 use App\Models\Payment;
 use App\Models\PaymentCancellation;
 use App\Models\User;
+use App\Services\Payments\PaymentCancellationService;
 use App\Support\Portal\PortalSettings;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Carbon;
@@ -261,7 +262,7 @@ class MemberEmailLanguageTest extends TestCase
                 $keys[] = stripslashes($match[2] ?? '' ?: $match[1]);
             }
         }
-        $keys = array_merge($keys, array_values(\App\Services\Payments\PaymentCancellationService::MEMBER_WORDING), [
+        $keys = array_merge($keys, array_values(PaymentCancellationService::MEMBER_WORDING), [
             // Laravel's ResetPassword notification and mail layout.
             'Reset your password', 'Reset Password', 'Hello!', 'Regards,', 'All rights reserved.',
             'You are receiving this email because we received a password reset request for your account.',

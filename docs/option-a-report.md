@@ -765,3 +765,76 @@ A move with no visible change, so later languages are a file each. Member side o
 (`tsc` asks for the last two), add the code to `App\Support\UiLang` (`CODES`, `LABELS`, `NAMES`), and Laravel's
 `lang/<code>.json` plus `lang/<code>/{auth,passwords,validation}.php` for the sign-in pages and messages. Still to do
 before that: the BM/EN toggle UI for more than two, emails, a saved per-user language, PHP strings.
+
+## Language phase 2: saved language, member emails (branch `i18n-saved-language`, 23 Nov 2026)
+
+Owner decisions: member side only (admin pages and admin emails stay English); Malay is the portal default and the
+super admin can change it; each member can switch and keep the choice; emails go out in each member's language.
+
+- **Saved choice.** `users.locale` (nullable, additive migration with `down()`), written only by
+  `UserLocale::save()`: the member app's switch (`POST /my/language`, `member.language.update`, member group,
+  CSRF, `throttle:20,1`, `Rule::in(UiLang::available())`, 204), and `?lang=` on a sign-in page while signed in
+  (the change-password page). Not audited (a display preference, like the theme).
+- **One rule** (`App\Support\UserLocale::resolve($user, $request)`): saved → browser choice (`?lang=`, else
+  `cp_lang`) → `PortalSettings::defaultLocale()`. Used by `AuthPageLocale`, `HandleInertiaRequests::locale()`
+  (members, guests; admins keep the app locale), app.tsx and mail. Error pages fall back to the portal default too.
+- **Member app.** For a signed-in member (`props.langSaveUrl`, members only) app.tsx opens in the server's answer,
+  so a choice saved on another device wins over an old `cp-lang`; then it rewrites `cp-lang` and `cp_lang` to match.
+  The switch is instant: state + storage + cookie at once, the POST in the background (`lib/langSave.ts`, one at a
+  time, in order). Until the server confirms, `cp-lang-unsaved` = `<user id>:<code>` is kept; it wins on the next
+  load and is sent again on load and on the `online` event (another member signing in on that browser ignores it).
+  A redirect (signed out) or network error counts as not saved; a 422 is final.
+- **Adoption.** `AdoptBrowserLanguage` (`adopt_lang`, last in the signed-in group): an account with nothing saved and
+  a valid `cp_lang` gets it saved, once. Without a cookie nothing is saved (the account follows the default).
+- **Portal default.** `default_locale` in `PortalSettings` (only a non-Malay code stored; no row, an old cache, a code
+  whose file is gone, a down database = `ms`); a select on Portal settings listing `UiLang::available()` (the
+  `lang/member/*.json` files, default first) by `UiLang::NAMES`; flash "Saved: default language.", audit
+  "Portal settings updated (default language: English)."
+- **Mail locale, checked in the framework (VM vendor, Laravel 13).** `PendingMail::to($users)` calls
+  `preferredLocale()` only when `$users instanceof HasLocalePreference`, so a plain email string gets no locale.
+  `Mailable::send()` / `render()` wrap `prepareMailableForDelivery()` (which calls `envelope()` and `content()`) in
+  `withLocale($this->locale)`, restoring the previous locale in `finally`; the constructor runs before, at the call
+  site. `NotificationSender` uses `$notification->locale ?? … ?? $notifiable->preferredLocale()`. So `User` implements
+  `HasLocalePreference` (`preferredLocale()` = saved → portal default) and every member send site passes the model:
+  `SendOverdueReminders`, `TransferVerificationService` (approve and reject, single and group: 4),
+  `SettlementService` (single and group: 2), `PaymentCancellationService`, `MemberController` (create, CSV import),
+  `AuthSecurityListener` (sign-in paused, password reset), `ChangePasswordController`. `AdminUserController` sends
+  the new admin's welcome with `->locale('en')`. `ClubAdminNotice` (`Club::notifyAdmins`, by email string, English
+  template) is unchanged. A test scans `app/` and fails on any other `Mail::to(...)`.
+- **Reset link.** Laravel's `ResetPassword` notification (`Lang::get()` lines + the markdown layout's "Hello!",
+  "Regards,", the trouble-clicking line, "All rights reserved."): Malay added to `lang/ms.json`; it was English for
+  everyone before. `User::sendPasswordResetNotification()` sets the locale from the rule with the request (saved,
+  else the page's `?lang=` / cookie), since it is asked for from a sign-in page.
+- **Templates.** All six member templates are one language: `__('English sentence')` (keys in `lang/ms.json`, no
+  `lang/en.json` needed: a missing key prints the English key), bold words as `**…**` through `MailText::bold()`
+  (escaped first), subjects in `envelope()`, `<html lang>` from the locale. `PaymentCancelled` keeps only the English
+  reason key (`MEMBER_WORDING` is English now) and translates it in the view. Dates: `UiLang::date()` reads
+  `monthShort_N` from `lang/member/<code>.json` ("5 Ogo 2026"; Carbon's Malay has "Ogs", and `format('M')` is
+  always English). The overdue line "3 days ago" (Carbon `diffForHumans`) is now "N days overdue" / "Lewat N hari".
+- **New wording**: `docs/i18n-new-wording.md`, 42 strings to approve (40 new Malay, 2 new English for emails that
+  were Malay-first) and 45 reused unchanged; 87 entries added to `lang/ms.json`.
+- **Tests (new):** `MemberEmailLanguageTest` (each of the 7 member emails sent through the array mailer to a Malay
+  and an English member: subject + one body line + `<html lang>`, the other language absent, locale restored; month
+  names; null locale follows the default and a changed default; one overdue run with an ms and an en member in both
+  orders; the reset email by saved language, by page language, by default; the admin welcome stays English; every
+  email key has its Malay with the same `:placeholders` and `**` pairs; the send-site scan), `MemberLanguageTest`
+  (the rule, `preferredLocale()` ignoring the request, Inertia `locale` / `langSaveUrl`, sign-in pages, the signed-in
+  switch saving, the route: save / validation / guests / throttle, adoption once / not without a valid cookie / `bm`),
+  `DefaultLanguageSettingTest` (missing = ms, list, audited both ways, validation, field absent = unchanged, super
+  admin only), `UiLangTest` (`available()` = `FILES` in i18n.ts, dates). Updated: three tests that read the old
+  bilingual emails. Mutation check: sending the reminder to `->email` again fails 3 tests.
+- **Results on the VM (PHP 8.4.28):** SQLite 1109 passed; MariaDB 10.11 (cp_test) 1108 passed, 1 skipped; the new
+  migration fresh / rollback / migrate on cp_mig. `tsc --noEmit` and `npm run build` pass.
+- **Browser (Kali Selenium against a scratch copy on :8099, e2e seed).** Member opens in BM (default); EN switches
+  at once and the account says `en`; a fresh browser opens in EN; a stale `cp-lang=bm` + reload stays EN; offline,
+  BM switches at once with `cp-lang-unsaved=1:bm`, the POST fails, and when the network is back the account is `ms`
+  before any reload; a third fresh browser opens in BM. Database checked: `locale = ms`.
+- **Not proven:** real SMTP delivery (array / log mailer only); the `online` retry on a real phone; the emails'
+  look in mail clients (rendered HTML checked, not a client); a member's choice between two tabs open at once (the
+  later switch wins on the server, the other tab keeps its own until reloaded).
+
+**Adding a language now (phase 3):** `lang/member/<code>.json`, its import + `FILES` + `LANG_LABELS` + `LOCALE_TAGS`
+in `resources/js/lib/i18n.ts`, `UiLang::LABELS` / `NAMES` (UiLangTest asks), and `lang/<code>.json` with every email
+and sign-in sentence (copy the keys of `lang/ms.json`) plus `lang/<code>/{auth,passwords,validation}.php`. The PHP
+list, the Portal settings select and the save route follow the files by themselves. The BM/EN switch (and the
+sign-in pages' switch, from `UiLang::LABELS`) still shows every language side by side: the picker is phase 3.

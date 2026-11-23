@@ -20,10 +20,11 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
   - **Inertia 2 + React 18 + TypeScript + Tailwind 3** (Vite) for member pages and the admin Dashboard, Fund Usage and
     Verifications. Root view `resources/views/app.blade.php`, pages in `resources/js/Pages/{Member,Admin}`, shared
     components in `resources/js/components/{app,ui}`, member strings in `lang/member/<code>.json` (short keys,
-    English is the reference; never through `__()`), loaded and typed by `resources/js/lib/i18n.ts` (members default
-    to `ms`; every language choice goes through its helpers, never `lang === "…"` in a component, see
-    `tests/Unit/MemberLangFilesTest.php`; Malay is still stored as `bm` in `cp_lang` / `cp-lang` / `?lang=`, read
-    through `normaliseLang` and `App\Support\UiLang`), theme in `resources/js/lib/theme.tsx`. Props are shared by `HandleInertiaRequests`.
+    English is the reference; never through `__()`), loaded and typed by `resources/js/lib/i18n.ts` (every language
+    choice goes through its helpers, never `lang === "…"` in a component, see `tests/Unit/MemberLangFilesTest.php`;
+    Malay is still stored as `bm` in `cp_lang` / `cp-lang` / `?lang=`, read through `normaliseLang` and
+    `App\Support\UiLang`, whose `available()` is the list of `lang/member/*.json` files), theme in
+    `resources/js/lib/theme.tsx`. Which language a member gets: see "Member language" under Domain rules. Props are shared by `HandleInertiaRequests`.
   - **Blade + Tailwind** (same tokens, `resources/css/app.css` `.auth-*`, layout `layouts/auth.blade.php`) for the
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
     2FA challenge and password pages.
@@ -48,7 +49,7 @@ app/Models/                    User, Club, Payment, PaymentBill, PaymentCancella
 app/Services/                  AuditService, AttachmentService, LogoService, FundUsageService, TransferVerificationService,
                                Payments/{SettlementService, FeeBillService, PaymentCancellationService, MonthlyFeeGenerator},
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
-app/Support/                   Portal/{PortalSettings (portal name, logo, brand key, breach_check: only "off" stored), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
+app/Support/                   Portal/{PortalSettings (portal name, logo, brand key, breach_check: only "off" stored, default_locale: only a non-Malay code), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, UiLang + UserLocale + MailText (member language, see Domain rules), presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                FeeRates, WebhookSecret, BillplzSignature, ...), Export/CsvSafe, Auth/AccountLoginBlock,
                                Doctor/HostProbe (app:doctor, /install), Requirements, ReleaseInfo, SchedulerHeartbeat, FrontendAssets
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
@@ -193,6 +194,22 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 - **App icons** (`AppIcons`): GD-made from the portal logo at `portal/icons/{hash}-*.png` (hash = logo path + preset +
   `VERSION`), made only on Portal settings save / open; pages and the manifest fall back to `public/icons` when the
   set is missing. Old icon files are kept.
+- **Member language** (member side only; admin pages and admin emails stay English): one rule,
+  `App\Support\UserLocale::resolve($user, $request)`: `users.locale` (saved; not fillable, `UserLocale::save()`) →
+  the browser's choice (`?lang=`, else the `cp_lang` cookie) → `PortalSettings::defaultLocale()` (Portal settings
+  `default_locale`, only a non-Malay code stored; missing/unreadable = `ms`). Used by `AuthPageLocale`,
+  `HandleInertiaRequests::locale()` (members and guests; admins get the app locale), app.tsx (a signed-in member
+  opens in the server's answer, except a choice not yet saved: `lib/langSave.ts`, `cp-lang-unsaved`) and emails.
+  The switch saves with `POST /my/language` (`member.language.update`, throttle:20,1); `?lang=` on a sign-in page
+  while signed in saves too; `AdoptBrowserLanguage` (`adopt_lang`, end of the auth group) saves a valid `cp_lang`
+  once for an account with nothing saved. **Emails**: `User` implements `HasLocalePreference` (`preferredLocale()`
+  = saved → portal default, no request), which Laravel applies only when `Mail::to()` gets the **model**: always pass
+  the User (`MemberEmailLanguageTest` scans `app/` for `Mail::to(...->email)`; only `ClubAdminNotice` in
+  `Club::notifyAdmins` is addressed by string, English). The reset link (`sendPasswordResetNotification`) uses the
+  rule with the request. Subjects are built in `envelope()` (runs under the recipient's locale), never in the
+  constructor. Email text: `__('English sentence')` with the Malay in `lang/ms.json` (bold words as `**…**` via
+  `App\Support\MailText::bold()`), dates with `UiLang::date()` (the member app's month names, not Carbon's). Every
+  key needs its `lang/ms.json` entry (the test checks); new Malay goes in `docs/i18n-new-wording.md` for the owner.
 - **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and
   `users.two_factor_secret` / recovery codes (manual `encrypt`/`decrypt`; use `User::getTwoFactorSecret()`).
 
