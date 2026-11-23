@@ -50,7 +50,10 @@ class PortalSettingsController extends Controller
             'brand' => ['sometimes', 'string', Rule::in(BrandPalette::keys())],
             // Only changed when the form sends it (hidden 0 + checkbox 1), so another form never turns it off.
             'breach_check' => 'sometimes|boolean',
-        ], LogoService::messages() + ['brand.in' => 'Choose one of the listed colours.'], ['name' => 'portal name', 'brand' => 'brand colour']);
+        ], LogoService::messages() + [
+            'brand.in' => 'Choose one of the listed colours.',
+            'name.not_regex' => 'The portal name can\'t contain tabs, line breaks or other hidden characters.',
+        ], ['name' => 'portal name', 'brand' => 'brand colour']);
 
         $old = ['name' => PortalSettings::get('name'), 'logo' => PortalSettings::get('logo'), 'brand' => PortalSettings::get('brand'), 'breach_check' => PortalSettings::get('breach_check')];
         $name = trim((string) ($data['name'] ?? ''));
@@ -81,17 +84,30 @@ class PortalSettingsController extends Controller
         // the built-in icons stay in use.
         AppIcons::ensure();
 
+        $what = implode(', ', array_map(fn ($key) => match ($key) {
+            'name' => 'portal name',
+            'logo' => 'logo',
+            'brand' => 'brand colour',
+            'breach_check' => 'breached-password check turned '.($new['breach_check'] === null ? 'on' : 'off'),
+        }, $changed));
+
         AuditService::log(
             'portal.settings_updated',
-            'Portal settings updated ('.implode(', ', array_map(fn ($key) => $key === 'breach_check'
-                ? 'breached-password check turned '.($new['breach_check'] === null ? 'on' : 'off')
-                : $key, $changed)).').',
+            'Portal settings updated ('.$what.').',
             null,
             null,
             array_intersect_key($old, array_flip($changed)),
             array_intersect_key($new, array_flip($changed))
         );
 
-        return redirect()->route('admin.portal-settings.edit')->with('success', 'Portal settings saved.');
+        // Whole sentences (no pieces joined around a word), so each one can become one translation later.
+        $saved = array_values(array_map(fn ($key) => ['name' => 'portal name', 'logo' => 'logo', 'brand' => 'brand colour'][$key],
+            array_diff($changed, ['breach_check'])));
+        $flash = $saved === [] ? ['Saved.'] : ['Saved: '.implode(', ', $saved).'.'];
+        if (in_array('breach_check', $changed, true)) {
+            $flash[] = $new['breach_check'] === null ? 'Breached-password check turned on.' : 'Breached-password check turned off.';
+        }
+
+        return redirect()->route('admin.portal-settings.edit')->with('success', implode(' ', $flash));
     }
 }

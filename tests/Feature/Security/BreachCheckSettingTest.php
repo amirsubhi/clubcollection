@@ -117,7 +117,8 @@ class BreachCheckSettingTest extends TestCase
         $this->switchTo(false);
 
         // Another form (or an old page) posting only the name never turns the check back on or off.
-        $this->put(route('admin.portal-settings.update'), ['name' => 'Portal Kelab'])->assertRedirect();
+        $this->put(route('admin.portal-settings.update'), ['name' => 'Portal Kelab'])->assertRedirect()
+            ->assertSessionHas('success', 'Saved: portal name.');
         $this->assertFalse(PortalSettings::breachCheckOn());
     }
 
@@ -148,6 +149,26 @@ class BreachCheckSettingTest extends TestCase
         $this->switchTo(false);
         preg_match($box, $this->get(route('admin.portal-settings.edit'))->getContent(), $off);
         $this->assertStringNotContainsString('checked', $off[0]);
+    }
+
+    public function test_the_flash_says_what_changed_and_the_off_warning_is_in_the_page(): void
+    {
+        $this->actingAsSuperAdmin();
+        $this->switchTo(false)->assertSessionHas('success', 'Saved. Breached-password check turned off.');
+        $this->get(route('admin.portal-settings.edit'))->assertOk()
+            ->assertSee('data-testid="breach-check-off"', false)
+            ->assertSee('How it works');
+    }
+
+    public function test_a_field_error_shows_once_under_its_field_with_a_plain_message(): void
+    {
+        $this->actingAsSuperAdmin();
+        $html = $this->followingRedirects()->from(route('admin.portal-settings.edit'))
+            ->put(route('admin.portal-settings.update'), ['name' => "Kelab\x07Staf"])
+            ->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'The portal name can&#039;t contain tabs, line breaks or other hidden characters.'), $html);
+        $this->assertStringNotContainsString('alert alert-danger', $html);
     }
 
     public function test_a_settings_cache_from_before_this_setting_reads_as_on(): void
