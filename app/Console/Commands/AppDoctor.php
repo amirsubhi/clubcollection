@@ -40,6 +40,8 @@ class AppDoctor extends Command
 
     public function handle(HostProbe $probe): int
     {
+        // Artisan keeps one instance of the command: start each run with no rows.
+        $this->rows = [];
         $this->production = app()->environment('production');
 
         $this->checkPhp($probe);

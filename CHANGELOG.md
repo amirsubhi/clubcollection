@@ -8,6 +8,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- A guard at the top of `public/index.php` (`bootstrap/preflight.php`, before the Composer autoloader): on PHP older
+  than 8.4.1 every page is a short "Server setup needed" page (HTTP 503, `Cache-Control: no-store`, `noindex`) that
+  says to choose PHP 8.4 in cPanel, instead of Composer's platform-check error (HTTP 500). Before the install it also
+  names a missing `pdo` / `openssl` / database PDO extension or an unwritable `storage/framework/views` or
+  `bootstrap/cache`, which made `/install` itself fail with a 500. Written so an old PHP can parse it; CI lints it on
+  PHP 5.6 and 7.4.
+- `bootstrap/requirements.php`: one list of the server requirements (lowest PHP, extensions, PDO extension per
+  database, writable folders) read by `app:doctor`, `/install` and the guard; a test checks it against Composer's
+  platform check.
+
+### Changed
+- `/install` checks everything `app:doctor` checks about the server: the PHP version, every required extension and
+  the database's PDO extension, writable `storage/` and `bootstrap/cache`, and `.env`. Each failed row has a one-line
+  fix (e.g. "Enable the zip extension in cPanel → Select PHP Version → Extensions"); **Install Application** stays
+  disabled while any row fails.
+- The minimum PHP is 8.4.1 everywhere (`/install`, `app:doctor`, `release.json`'s `php_requirement`), what the
+  locked dependencies need; it was 8.4.0 in the installer and `app:doctor`. The release build refuses a zip whose
+  Composer platform check disagrees with `bootstrap/requirements.php`.
+- `app:doctor` starts each run with no rows (a second run in the same process repeated the first one's rows).
+
 ### Documentation
 - `docs/INSTALL.md`: `composer.json` requires PHP `^8.4` too (the "still says ^8.3" note is gone); the extension
   table lists `curl`, `xml` and `zip` (required by `app:doctor`; the backup uses `ZipArchive`); the `app:doctor`

@@ -53,7 +53,7 @@ if (! function_exists('clubportal_preflight')) {
         // The PDO extension of the database in .env (DB_CONNECTION; Laravel's default is sqlite).
         $needed = $req['boot_extensions'];
         $connection = 'sqlite';
-        $env = @file_get_contents($basePath.'/.env');
+        $env = is_file($basePath.'/.env') ? @file_get_contents($basePath.'/.env') : false;
         if (is_string($env) && preg_match('/^[ \t]*DB_CONNECTION[ \t]*=[ \t]*["\']?([A-Za-z0-9_]+)/m', $env, $m)) {
             $connection = strtolower($m[1]);
         }

@@ -21,9 +21,11 @@ because a few `php artisan` commands have to be run on the server.
 
 ### On the server
 
-- **PHP 8.4 or newer.** `composer.json` and the locked dependencies (`composer.lock`, Laravel 13's Symfony 8
-  components) need 8.4, and the installer refuses anything older. In cPanel choose it under
-  **MultiPHP Manager** (or **Select PHP Version**).
+- **PHP 8.4 or newer** (8.4.1 at least). `composer.json` and the locked dependencies (`composer.lock`, Laravel 13's
+  Symfony 8 components) need it, and the installer refuses anything older. In cPanel choose it under
+  **MultiPHP Manager** (or **Select PHP Version**). On an older PHP every page shows a short "Server setup needed"
+  page (HTTP 503) that says which PHP to choose, instead of the app. The minimum version and the extension list
+  below are kept in one file, `bootstrap/requirements.php`, which the installer, `app:doctor` and that page read.
 - **PHP extensions.** Most hosts enable these by default; check with `php -m` in the Terminal, or in cPanel under
   **Select PHP Version → Extensions**:
 
@@ -185,8 +187,18 @@ on cPanel EasyApache (check with `php -v`).
 Straight away, open `https://club.example.com/install`. Without `INSTALL_TOKEN` the installer is disabled; with it,
 whoever reaches the page first still needs the token.
 
-1. **Club Portal Setup** checks the PHP version, the PDO extension of your database (`pdo_mysql` or `pdo_sqlite`), and that `storage/` and `.env` are
-   writable. Fix anything marked red, then reload.
+1. **Club Portal Setup** checks the same server requirements as `app:doctor` (step 13): the PHP version, every
+   extension of [section 1](#1-what-you-need) that `app:doctor` checks (`ctype`, `curl`, `dom`, `fileinfo`, `filter`,
+   `gd`, `mbstring`, `openssl`, `pdo`, `tokenizer`, `xml`, `zip`) plus the PDO extension of your database
+   (`pdo_mysql` or `pdo_sqlite`), that `storage/` and `bootstrap/cache` are writable, and that `.env` exists and is
+   writable. Each row marked **Fail** says how to fix it (for example "Enable the zip extension in cPanel → Select
+   PHP Version → Extensions (for PHP 8.4)"). **Install Application** stays disabled until every row passes; fix
+   them, then reload.
+
+   A few problems stop the app before this page can show: PHP older than 8.4.1, and before the install a missing
+   `pdo` / `openssl` / database PDO extension or a `storage/framework/views` or `bootstrap/cache` folder PHP can't
+   write to. Then every page shows a short **Server setup needed** page (HTTP 503) naming what to change; fix it and
+   reload.
 2. Enter the **install token**, the application name and URL (the same `https://` address as `APP_URL`), and the
    super admin's name, email and password (12+ characters with upper and lower case, numbers and symbols).
 3. **Install Application** runs the migrations, creates the super admin, writes `APP_ENV=production`,
@@ -277,7 +289,7 @@ The last step, and again after any change to the server or `.env`:
 php artisan app:doctor
 ```
 
-It changes nothing. It prints one row per check (PHP 8.4 and its extensions, `APP_KEY`, `APP_ENV` / `APP_DEBUG` /
+It changes nothing. It prints one row per check (PHP 8.4.1+ and its extensions, `APP_KEY`, `APP_ENV` / `APP_DEBUG` /
 `APP_URL` / `SESSION_SECURE_COOKIE` / `APP_TIMEZONE`, the cache store, upload and memory limits, the private files
 folder, `storage:link`, the front-end build, no Vite dev-server file (`public/hot`), the database connection, webhook
 secrets, ToyyibPay sandbox mode, email, the cron job and the latest
@@ -438,6 +450,13 @@ Look in `storage/logs/laravel.log` first: it usually names the problem.
 The database tables don't exist yet. Run `php artisan migrate --force` (step 6), then reload. Also check that
 `storage/` and `bootstrap/cache` are writable (step 4) and that `APP_KEY` is set.
 
+### Every page shows "Server setup needed" (503)
+
+The server can't run the app at all, and the page says why: PHP older than 8.4.1 (choose PHP 8.4 in cPanel →
+**MultiPHP Manager** for the domain; after an upload cPanel may need it chosen again, see step 2), or, before the
+install, a missing PHP extension (cPanel → **Select PHP Version** → **Extensions**) or a folder PHP can't write to
+(`chmod -R 775 storage bootstrap/cache`). Reload once it's fixed.
+
 ### Every page shows "Bad Request" (400)
 
 The **`APP_URL` host is wrong** (or the site is opened at another address). In production the app answers only to
@@ -448,7 +467,8 @@ not written to the log. Fix `APP_URL` to the exact address in the browser bar (w
 ### Every page shows a server error (500)
 
 - A cached configuration from before an `.env` change: run `php artisan config:cache` again.
-- PHP older than 8.4, or a missing extension: see [section 1](#1-what-you-need).
+- A missing extension: see [section 1](#1-what-you-need) (PHP older than 8.4.1 shows "Server setup needed"
+  instead).
 
 ### "Page expired" (419) after submitting a form
 

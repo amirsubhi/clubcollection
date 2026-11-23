@@ -42,8 +42,10 @@ The script exports the git ref with `git archive` into a temporary folder (never
   `vite.config.ts`, `package.json`...) stay too: they are small, not reachable from the web, and show what the bundle
   was built from.
 
-It writes `release.json` (`version`, `commit`, `built_at`, `php_requirement`) into the app folder, which
-`php artisan app:doctor` shows as **Version** (`config('app.version')`; a git checkout shows `dev`). The result is
+It writes `release.json` (`version`, `commit`, `built_at`, `php_requirement`: the lowest PHP from
+`bootstrap/requirements.php`, e.g. `>=8.4.1`) into the app folder, and refuses to build when Composer's platform
+check (`vendor/composer/platform_check.php`) needs another PHP than that file says. `release.json`
+is what `php artisan app:doctor` shows as **Version** (`config('app.version')`; a git checkout shows `dev`). The result is
 `dist/clubportal-<version>.zip` (one top-level folder `clubportal-<version>/`) and its `.sha256`; the script refuses a
 zip that contains `.env`, `tests/`, `node_modules/`, a `.sqlite` file or `storage/` contents. `dist/` is git-ignored.
 If PHP on the build machine is older than 8.4, `COMPOSER_FLAGS=--ignore-platform-req=php scripts/build-release.sh ...`
@@ -105,7 +107,7 @@ retries its callback per its own retry policy. Upload the zip (step 1) *before* 
    - `diff ~/htaccess-before-<version> ~/clubportal/public/.htaccess`. If the old file had cPanel's lines (a block
      starting `# php -- BEGIN cPanel-generated handler`), copy that block back into the new `public/.htaccess`, or
      choose PHP 8.4 for the domain again in cPanel → **MultiPHP Manager**. Without it the site may run on the host's
-     default (older) PHP.
+     default (older) PHP, and every page shows "Server setup needed" (HTTP 503) until PHP 8.4 is chosen.
    - Delete every file the release's CHANGELOG entry lists as **removed**, in particular anything under
      `app/Console/Commands/` (an old command class left behind is still loaded and scheduled). `cp -a` never deletes.
 5. **Database and caches:**

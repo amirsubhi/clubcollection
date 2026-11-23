@@ -27,22 +27,23 @@ class PreflightTest extends TestCase
 
     protected function tearDown(): void
     {
-        @unlink($this->base.'/bootstrap/requirements.php');
-        @unlink($this->base.'/storage/app/.installed');
-        @unlink($this->base.'/.env');
-        @rmdir($this->base.'/storage/app');
-        @rmdir($this->base.'/storage');
-        @rmdir($this->base.'/bootstrap');
-        @rmdir($this->base);
+        foreach (['bootstrap/requirements.php', 'storage/app/.installed', '.env'] as $file) {
+            if (is_file($this->base.'/'.$file)) {
+                unlink($this->base.'/'.$file);
+            }
+        }
+        foreach (['storage/app', 'storage', 'bootstrap', ''] as $dir) {
+            rmdir(rtrim($this->base.'/'.$dir, '/'));
+        }
         parent::tearDown();
     }
 
-    private static function all(): \Closure
+    private static function yes(): \Closure
     {
         return fn () => true;
     }
 
-    private static function never(string $what): \Closure
+    private static function mustNotCheck(string $what): \Closure
     {
         return function () use ($what) {
             throw new \LogicException("{$what} must not be checked once installed");
@@ -51,7 +52,7 @@ class PreflightTest extends TestCase
 
     public function test_an_old_php_gets_the_friendly_503_page(): void
     {
-        $page = clubportal_preflight($this->base, '8.3.6', self::all(), self::all());
+        $page = clubportal_preflight($this->base, '8.3.6', self::yes(), self::yes());
 
         $this->assertIsArray($page);
         $this->assertSame(503, $page['status']);
@@ -71,20 +72,20 @@ class PreflightTest extends TestCase
     {
         touch($this->base.'/storage/app/.installed');
 
-        $this->assertSame(503, clubportal_preflight($this->base, '8.4.0', self::all(), self::all())['status']);
+        $this->assertSame(503, clubportal_preflight($this->base, '8.4.0', self::yes(), self::yes())['status']);
     }
 
     public function test_a_new_enough_php_passes(): void
     {
-        $this->assertNull(clubportal_preflight($this->base, $this->req['php'], self::all(), self::all()));
-        $this->assertNull(clubportal_preflight($this->base, '8.5.0', self::all(), self::all()));
+        $this->assertNull(clubportal_preflight($this->base, $this->req['php'], self::yes(), self::yes()));
+        $this->assertNull(clubportal_preflight($this->base, '8.5.0', self::yes(), self::yes()));
     }
 
     public function test_once_installed_only_the_version_is_checked(): void
     {
         touch($this->base.'/storage/app/.installed');
 
-        $this->assertNull(clubportal_preflight($this->base, '8.4.12', self::never('an extension'), self::never('a folder')));
+        $this->assertNull(clubportal_preflight($this->base, '8.4.12', self::mustNotCheck('an extension'), self::mustNotCheck('a folder')));
     }
 
     public function test_the_real_php_passes_with_the_defaults_when_installed(): void
@@ -102,7 +103,7 @@ class PreflightTest extends TestCase
         file_put_contents($this->base.'/.env', "APP_NAME=x\nDB_CONNECTION=mariadb\n");
         $loaded = fn (string $ext) => $ext !== 'pdo_mysql';
 
-        $page = clubportal_preflight($this->base, '8.4.12', $loaded, self::all());
+        $page = clubportal_preflight($this->base, '8.4.12', $loaded, self::yes());
 
         $this->assertSame(503, $page['status']);
         $this->assertStringContainsString('This portal needs the PHP extension pdo_mysql.', $page['body']);
@@ -110,24 +111,24 @@ class PreflightTest extends TestCase
 
         // The sqlite default (no .env) needs pdo_sqlite instead, which is there.
         unlink($this->base.'/.env');
-        $this->assertNull(clubportal_preflight($this->base, '8.4.12', $loaded, self::all()));
+        $this->assertNull(clubportal_preflight($this->base, '8.4.12', $loaded, self::yes()));
     }
 
     public function test_before_install_pdo_and_openssl_are_needed(): void
     {
-        $page = clubportal_preflight($this->base, '8.4.12', fn (string $ext) => ! in_array($ext, ['pdo', 'openssl'], true), self::all());
+        $page = clubportal_preflight($this->base, '8.4.12', fn (string $ext) => ! in_array($ext, ['pdo', 'openssl'], true), self::yes());
 
         $this->assertStringContainsString('the PHP extensions openssl, pdo.', $page['body']);
     }
 
     public function test_extensions_with_a_polyfill_are_left_to_the_install_page(): void
     {
-        $this->assertNull(clubportal_preflight($this->base, '8.4.12', fn (string $ext) => ! in_array($ext, ['mbstring', 'zip', 'gd'], true), self::all()));
+        $this->assertNull(clubportal_preflight($this->base, '8.4.12', fn (string $ext) => ! in_array($ext, ['mbstring', 'zip', 'gd'], true), self::yes()));
     }
 
     public function test_before_install_an_unwritable_views_or_cache_folder_is_named(): void
     {
-        $page = clubportal_preflight($this->base, '8.4.12', self::all(), fn (string $path) => ! str_ends_with($path, '/bootstrap/cache'));
+        $page = clubportal_preflight($this->base, '8.4.12', self::yes(), fn (string $path) => ! str_ends_with($path, '/bootstrap/cache'));
 
         $this->assertSame(503, $page['status']);
         $this->assertStringContainsString('PHP cannot write to the folder bootstrap/cache.', $page['body']);
@@ -149,13 +150,13 @@ class PreflightTest extends TestCase
             }
             $this->assertDoesNotMatchRegularExpression('/function\s*\w*\s*\([^)]*\)\s*:/', $code, "{$file}: no return types");
             $this->assertDoesNotMatchRegularExpression('/function\s*\w*\s*\(\s*\??[\w\\\\]+\s+&?\$/', $code, "{$file}: no parameter types");
-            $this->assertStringNotContainsString('::class', $code, $file);
+            $this->assertDoesNotMatchRegularExpression('/\$\w+\s*::\s*class\b/', $code, "{$file}: no ::class on an object");
         }
     }
 
     public function test_the_page_is_sent_with_its_headers(): void
     {
-        $page = clubportal_preflight($this->base, '7.4.33', self::all(), self::all());
+        $page = clubportal_preflight($this->base, '7.4.33', self::yes(), self::yes());
 
         ob_start();
         clubportal_preflight_send($page);
