@@ -20,6 +20,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Default language** on Portal settings (super admin, audited, "Saved: default language."): the language of the
   member app, sign-in pages and member emails for members who have not chosen one. Bahasa Melayu unless changed. The
   list is every language with a `lang/member/<code>.json` file. Admin pages and admin emails stay in English.
+  Accounts with an admin role (club admins and the super admin) always get English emails and never have a language
+  saved, even when they pay their own fees in the member app.
 - `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, for review.
 
 ### Changed

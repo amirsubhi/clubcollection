@@ -21,6 +21,15 @@ use Illuminate\Http\Request;
  */
 final class UserLocale
 {
+    /** Admins and the super admin: the admin side, their emails included, stays English (owner's decision). */
+    public const ADMIN_LOCALE = 'en';
+
+    /** The language of email sent to this person: a member's own rule, English for anyone else. */
+    public static function forMail(User $user, ?Request $request = null): string
+    {
+        return $user->role === 'member' ? self::resolve($user, $request) : self::ADMIN_LOCALE;
+    }
+
     public static function resolve(?User $user, ?Request $request = null): string
     {
         return self::saved($user)
@@ -45,7 +54,8 @@ final class UserLocale
     public static function save(User $user, string $code): void
     {
         $code = UiLang::normalise($code);
-        if ($code === null || $user->locale === $code) {
+        // Members only: an admin's emails are English whatever the switch shows, so nothing is kept for them.
+        if ($user->role !== 'member' || $code === null || $user->locale === $code) {
             return;
         }
         // Only this column: a language choice must never write back anything else held on the model.

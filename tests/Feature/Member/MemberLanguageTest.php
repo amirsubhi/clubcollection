@@ -71,6 +71,26 @@ class MemberLanguageTest extends TestCase
         $this->assertSame('ms', $this->member('ms')->preferredLocale());
     }
 
+    public function test_admin_emails_are_english_whatever_is_saved_or_the_default(): void
+    {
+        $club = Club::factory()->create();
+        PortalSettings::put(['default_locale' => 'ms']);
+        $admin = $this->actingAsClubAdmin($club);
+        $this->assertSame('en', $admin->preferredLocale());
+        $admin->forceFill(['locale' => 'ms'])->save();
+        $this->assertSame('en', $admin->fresh()->preferredLocale());
+        $this->assertSame('en', $this->actingAsSuperAdmin()->preferredLocale());
+    }
+
+    public function test_a_language_is_never_saved_for_an_admin(): void
+    {
+        $club = Club::factory()->create();
+        $admin = $this->actingAsClubAdmin($club);
+        UserLocale::save($admin, 'ms');
+        $this->withUnencryptedCookie(AuthPageLocale::COOKIE, 'bm')->get('/home');
+        $this->assertNull($admin->fresh()->locale);
+    }
+
     // ── What the pages get ──────────────────────────────────────────────
 
     public function test_the_member_app_gets_the_saved_language_over_the_cookie(): void

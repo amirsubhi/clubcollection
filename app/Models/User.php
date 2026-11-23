@@ -48,7 +48,7 @@ class User extends Authenticatable implements HasLocalePreference
      */
     public function preferredLocale(): string
     {
-        return UserLocale::resolve($this);
+        return UserLocale::forMail($this);
     }
 
     /**
@@ -57,7 +57,7 @@ class User extends Authenticatable implements HasLocalePreference
      */
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
     {
-        $this->notify((new ResetPassword($token))->locale(UserLocale::resolve($this, request())));
+        $this->notify((new ResetPassword($token))->locale(UserLocale::forMail($this, request())));
     }
 
     // ── Two-factor authentication ──────────────────────────────────────────
