@@ -83,7 +83,9 @@ class PortalSettingsController extends Controller
 
         AuditService::log(
             'portal.settings_updated',
-            'Portal settings updated ('.implode(', ', $changed).').',
+            'Portal settings updated ('.implode(', ', array_map(fn ($key) => $key === 'breach_check'
+                ? 'breached-password check turned '.($new['breach_check'] === null ? 'on' : 'off')
+                : $key, $changed)).').',
             null,
             null,
             array_intersect_key($old, array_flip($changed)),

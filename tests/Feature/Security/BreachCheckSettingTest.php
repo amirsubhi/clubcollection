@@ -105,7 +105,8 @@ class BreachCheckSettingTest extends TestCase
 
         $logs = AuditLog::where('action', 'portal.settings_updated')->orderBy('id')->get();
         $this->assertCount(2, $logs);
-        $this->assertStringContainsString('breach_check', $logs[0]->description);
+        $this->assertSame('Portal settings updated (breached-password check turned off).', $logs[0]->description);
+        $this->assertSame('Portal settings updated (breached-password check turned on).', $logs[1]->description);
         $this->assertSame(PortalSettings::BREACH_CHECK_OFF, $logs[0]->new_values['breach_check']);
         $this->assertSame(PortalSettings::BREACH_CHECK_OFF, $logs[1]->old_values['breach_check']);
     }
@@ -139,12 +140,14 @@ class BreachCheckSettingTest extends TestCase
         $this->actingAsSuperAdmin();
         $this->get(route('admin.portal-settings.edit'))->assertOk()
             ->assertSee('Refuse new passwords that appear in known data breaches')
-            ->assertSee('id="f-breach-check"', false)
-            ->assertSee('checked', false);
+            ->assertSee('id="f-breach-check"', false);
+        $box = '/<input[^>]*id="f-breach-check"[^>]*>/';
+        preg_match($box, $this->get(route('admin.portal-settings.edit'))->getContent(), $on);
+        $this->assertStringContainsString('checked', $on[0]);
 
         $this->switchTo(false);
-        $html = $this->get(route('admin.portal-settings.edit'))->getContent();
-        $this->assertMatchesRegularExpression('/id="f-breach-check"\s+aria-describedby="f-breach-check-help"\s*>/', $html);
+        preg_match($box, $this->get(route('admin.portal-settings.edit'))->getContent(), $off);
+        $this->assertStringNotContainsString('checked', $off[0]);
     }
 
     public function test_a_settings_cache_from_before_this_setting_reads_as_on(): void
