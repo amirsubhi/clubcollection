@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 {{-- Sign-in pages (login, two-factor challenge, password reset). Language from AuthPageLocale: BM by default. --}}
 @php($lang = \App\Support\UiLang::normalise($authLang ?? null) ?? \App\Support\Portal\PortalSettings::defaultLocale())
-<html lang="{{ $lang }}">
+<html lang="{{ \App\Support\UiLang::htmlLang($lang) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -31,7 +31,11 @@
             header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
             header svg, .sr-only { display: none; }
             header img { width: 40px; height: 40px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
-            nav a { margin-left: 8px; color: {{ $brandHex }}; font-weight: 700; }
+            .auth-langs { position: relative; }
+            .auth-langs > summary { cursor: pointer; color: {{ $brandHex }}; font-weight: 700; padding: 10px; }
+            .auth-langs-menu { position: absolute; right: 0; z-index: 30; margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #DEDCEC; border-radius: 12px; min-width: 12rem; }
+            .auth-langs-menu a { display: block; padding: 10px 12px; color: {{ $brandHex }}; }
+            .auth-langs-menu a.is-active { font-weight: 700; }
             .auth-card { background: #fff; border: 1px solid #DEDCEC; border-radius: 16px; padding: 24px; margin: 32px 0; }
             label, input:not([type=checkbox]), .auth-btn { display: block; width: 100%; box-sizing: border-box; }
             input:not([type=checkbox]) { min-height: 48px; padding: 8px 12px; margin: 6px 0 16px; border: 1px solid #8A87A6; border-radius: 12px; font: inherit; }
@@ -79,15 +83,29 @@
                     @endif
                 </span>
             </div>
-            <nav aria-label="Bahasa / Language" class="inline-flex shrink-0 rounded-full border bg-card p-0.5 text-sm font-bold">
-                @foreach (\App\Support\UiLang::LABELS as $code => $label)
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
-                       hreflang="{{ $code }}"
-                       lang="{{ $code }}"
-                       @if ($lang === $code) aria-current="true" @endif
-                       class="auth-lang {{ $lang === $code ? 'is-active' : '' }}">{{ $label }}<span class="sr-only"> – {{ \App\Support\UiLang::NAMES[$code] }}</span></a>
-                @endforeach
-            </nav>
+            {{-- The language picker: a disclosure (works without JavaScript and under the CSP) showing the current
+                 language's short label; the list has every lang/member file in its own name, "(beta)" for a first
+                 translation. Each choice is a ?lang= link (Malay still "bm"), which AuthPageLocale turns into the
+                 cp_lang cookie and, when signed in, the saved language. The script at the end closes it on Escape
+                 or a click outside. --}}
+            <details class="auth-langs relative shrink-0" data-lang-picker data-testid="lang-picker">
+                {{-- The accessible name starts with the visible label ("BM – Bahasa: Bahasa Melayu"). --}}
+                <summary class="auth-langs-btn">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+                    <span>{{ \App\Support\UiLang::label($lang) }}<span class="sr-only"> – {{ __('Language') }}: {{ \App\Support\UiLang::name($lang) }}</span></span>
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+                <ul class="auth-langs-menu" aria-label="{{ __('Language') }}">
+                    @foreach (\App\Support\UiLang::available() as $code)
+                        @php($codeLang = \App\Support\UiLang::htmlLang($code))
+                        <li><a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
+                               hreflang="{{ $codeLang }}"
+                               lang="{{ $codeLang }}"
+                               @if ($lang === $code) aria-current="true" @endif
+                               class="auth-lang-option {{ $lang === $code ? 'is-active' : '' }}">{{ \App\Support\UiLang::pickerName($code) }}</a></li>
+                    @endforeach
+                </ul>
+            </details>
         </header>
 
         <main class="flex flex-1 flex-col justify-center py-8">
@@ -139,5 +157,20 @@
             @endif
         </footer>
     </div>
+    <script nonce="{{ $cspNonce ?? '' }}">
+        (function () {
+            var picker = document.querySelector('[data-lang-picker]');
+            if (!picker) return;
+            document.addEventListener('click', function (e) {
+                if (picker.open && !picker.contains(e.target)) picker.open = false;
+            });
+            picker.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && picker.open) {
+                    picker.open = false;
+                    picker.querySelector('summary').focus();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

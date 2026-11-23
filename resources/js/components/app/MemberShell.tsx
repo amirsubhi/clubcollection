@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { ArrowLeft, Home, Landmark, PieChart, UserRound } from "lucide-react";
+import { ArrowLeft, ChevronDown, Home, Landmark, Languages, PieChart, UserRound } from "lucide-react";
 import { Link } from "@inertiajs/react";
-import { LANG_LABELS, LANGS, useLang, useT, type DictKey } from "@/lib/i18n";
-import { SegmentedRadio } from "@/components/ui/segmented-radio";
+import { LANGS, langMeta, useLang, useT, type DictKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useStickyFit } from "@/lib/useStickyFit";
 
@@ -15,19 +14,39 @@ const tabs: { id: MemberTab; label: DictKey; Icon: typeof Home }[] = [
   { id: "account", label: "navAccount", Icon: UserRound },
 ];
 
+/**
+ * The language picker: a native <select> (keyboard, screen readers and phone pickers for free) drawn as a compact
+ * pill showing the current language's short label ("BM"); the options are every lang/member file, each in its own
+ * name, "(beta)" for a first translation. Its name starts with the label it shows ("BM – Bahasa"). Choosing one
+ * switches at once and saves in the background (app.tsx).
+ */
 export function LangToggle() {
+  const t = useT();
   const { lang, setLang } = useLang();
   return (
-    <SegmentedRadio
-      ariaLabel="Language / Bahasa"
-      value={lang}
-      onChange={setLang}
-      className="inline-flex rounded-full border bg-card p-0.5 text-sm font-bold"
-      options={LANGS.map((l) => ({ value: l, label: LANG_LABELS[l] }))}
-      itemClassName={(on) =>
-        cn("inline-flex h-11 min-w-[44px] items-center justify-center rounded-full px-2", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
-      }
-    />
+    <label
+      className="relative inline-flex h-11 min-w-[44px] shrink-0 cursor-pointer items-center gap-1 rounded-full border bg-card pl-2.5 pr-2 text-sm font-bold text-foreground focus-within:ring-2 focus-within:ring-ring hover:bg-muted"
+      data-testid="lang-picker"
+    >
+      <Languages className="h-4 w-4 text-muted-foreground" aria-hidden strokeWidth={2} />
+      <span aria-hidden>{langMeta(lang).label}</span>
+      <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden strokeWidth={2} />
+      <select
+        aria-label={`${langMeta(lang).label} – ${t("langPicker")}`}
+        value={lang}
+        onChange={(e) => setLang(e.target.value)}
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0"
+      >
+        {LANGS.map((l) => {
+          const meta = langMeta(l);
+          return (
+            <option key={l} value={l} lang={meta.htmlLang}>
+              {meta.beta ? `${meta.name} (beta)` : meta.name}
+            </option>
+          );
+        })}
+      </select>
+    </label>
   );
 }
 
