@@ -44,7 +44,8 @@ The script exports the git ref with `git archive` into a temporary folder (never
 
 It writes `release.json` (`version`, `commit`, `built_at`, `php_requirement`: the lowest PHP from
 `bootstrap/requirements.php`, e.g. `>=8.4.1`) into the app folder, and refuses to build when Composer's platform
-check (`vendor/composer/platform_check.php`) needs another PHP than that file says. `release.json`
+check (`vendor/composer/platform_check.php`) needs another PHP than that file says (with
+`--ignore-platform-req=php` there is no check to compare, and it only warns). `release.json`
 is what `php artisan app:doctor` shows as **Version** (`config('app.version')`; a git checkout shows `dev`). The result is
 `dist/clubportal-<version>.zip` (one top-level folder `clubportal-<version>/`) and its `.sha256`; the script refuses a
 zip that contains `.env`, `tests/`, `node_modules/`, a `.sqlite` file or `storage/` contents. `dist/` is git-ignored.

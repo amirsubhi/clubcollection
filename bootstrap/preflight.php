@@ -50,14 +50,18 @@ if (! function_exists('clubportal_preflight')) {
             $isWritable = 'is_writable';
         }
 
-        // The PDO extension of the database in .env (DB_CONNECTION; Laravel's default is sqlite).
+        // The PDO extension of the database in .env (DB_CONNECTION; Laravel's default is sqlite). Without a
+        // .env yet the database isn't chosen, so no driver is asked for (/install says .env is missing).
         $needed = $req['boot_extensions'];
-        $connection = 'sqlite';
+        $connection = null;
         $env = is_file($basePath.'/.env') ? @file_get_contents($basePath.'/.env') : false;
-        if (is_string($env) && preg_match('/^[ \t]*DB_CONNECTION[ \t]*=[ \t]*["\']?([A-Za-z0-9_]+)/m', $env, $m)) {
-            $connection = strtolower($m[1]);
+        if (is_string($env)) {
+            $connection = 'sqlite';
+            if (preg_match('/^[ \t]*DB_CONNECTION[ \t]*=[ \t]*["\']?([A-Za-z0-9_]+)/m', $env, $m)) {
+                $connection = strtolower($m[1]);
+            }
         }
-        if (isset($req['pdo_drivers'][$connection])) {
+        if ($connection !== null && isset($req['pdo_drivers'][$connection])) {
             $needed[] = $req['pdo_drivers'][$connection];
         }
         $missing = array();
@@ -136,6 +140,8 @@ p{margin:.5rem 0}
     function clubportal_preflight_send($page)
     {
         if (! headers_sent()) {
+            // The page names the required PHP only, so don't announce the running one either.
+            header_remove('X-Powered-By');
             header('HTTP/1.1 503 Service Unavailable', true, $page['status']);
             foreach ($page['headers'] as $name => $value) {
                 header($name.': '.$value, true);

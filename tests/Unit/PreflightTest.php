@@ -109,9 +109,14 @@ class PreflightTest extends TestCase
         $this->assertStringContainsString('This portal needs the PHP extension pdo_mysql.', $page['body']);
         $this->assertStringContainsString('Select PHP Version, then Extensions, tick it for PHP 8.4', $page['body']);
 
-        // The sqlite default (no .env) needs pdo_sqlite instead, which is there.
-        unlink($this->base.'/.env');
+        // A .env without DB_CONNECTION means Laravel's sqlite default: pdo_sqlite.
+        file_put_contents($this->base.'/.env', "APP_NAME=x\n");
         $this->assertNull(clubportal_preflight($this->base, '8.4.12', $loaded, self::yes()));
+        $this->assertStringContainsString('extension pdo_sqlite.', clubportal_preflight($this->base, '8.4.12', fn (string $ext) => $ext !== 'pdo_sqlite', self::yes())['body']);
+
+        // No .env yet: the database isn't chosen, so no driver is asked for.
+        unlink($this->base.'/.env');
+        $this->assertNull(clubportal_preflight($this->base, '8.4.12', fn (string $ext) => ! str_starts_with($ext, 'pdo_'), self::yes()));
     }
 
     public function test_before_install_pdo_and_openssl_are_needed(): void

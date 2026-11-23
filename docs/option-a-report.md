@@ -681,8 +681,9 @@ out, `/install` not installed, file sessions to isolate the extension):
   SQLite database, a missing `pdo_sqlite` is a 500 too (`could not find driver`). `openssl`, `filter`, `hash`,
   `session`, `json` are compiled into this PHP and could not be left out: `openssl` is in the guard on reasoning
   (cookie encryption), not tested.
-- An unwritable `storage/framework/views` (no compiled views yet) or `bootstrap/cache` (no package manifest yet): 500
-  (`tempnam()` falling back to the temp folder). Both are in the guard before install.
+- An unwritable `storage/framework/views` (no compiled views yet; the log shows `tempnam()` falling back to the temp
+  folder) or `bootstrap/cache` (no package manifest yet; cause not captured): 500. Both are in the guard before
+  install. Without a `.env` the guard asks for no PDO driver (the database isn't chosen yet).
 - The minimum version: `vendor/composer/platform_check.php` refuses below `PHP_VERSION_ID 80401`, so 8.4.1 (the
   installer and `app:doctor` said 8.4.0). `release.json` now says `>=8.4.1`, and the build refuses a zip whose
   platform check disagrees.

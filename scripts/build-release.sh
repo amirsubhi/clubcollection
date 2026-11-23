@@ -111,9 +111,11 @@ for required in vendor/autoload.php public/build/manifest.json bootstrap/require
   [[ -e "$required" ]] || { echo "Missing from the release: $required" >&2; exit 1; }
 done
 # The guard in public/index.php must refuse exactly what Composer's platform check refuses.
-PLATFORM_ID="$(grep -oE 'PHP_VERSION_ID >= [0-9]+' vendor/composer/platform_check.php | grep -oE '[0-9]+$' || true)"
+PLATFORM_ID="$(grep -soE 'PHP_VERSION_ID >= [0-9]+' vendor/composer/platform_check.php | grep -oE '[0-9]+$' || true)"
 REQ_ID="$(php -r '$r = require "bootstrap/requirements.php"; $p = explode(".", $r["php"]); echo $p[0] * 10000 + $p[1] * 100 + $p[2];')"
-if [[ "$PLATFORM_ID" != "$REQ_ID" ]]; then
+if [[ -z "$PLATFORM_ID" ]]; then
+  echo "WARNING: no PHP version in vendor/composer/platform_check.php (COMPOSER_FLAGS?); not compared with bootstrap/requirements.php." >&2
+elif [[ "$PLATFORM_ID" != "$REQ_ID" ]]; then
   echo "bootstrap/requirements.php says PHP $PHP_REQ, but Composer's platform check needs PHP_VERSION_ID >= ${PLATFORM_ID:-?}: make them match." >&2
   exit 1
 fi
