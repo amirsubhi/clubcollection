@@ -19,8 +19,11 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
 - **Two front ends side by side:**
   - **Inertia 2 + React 18 + TypeScript + Tailwind 3** (Vite) for member pages and the admin Dashboard, Fund Usage and
     Verifications. Root view `resources/views/app.blade.php`, pages in `resources/js/Pages/{Member,Admin}`, shared
-    components in `resources/js/components/{app,ui}`, BM/EN strings in `resources/js/lib/i18n.ts` (members default
-    to `ms`), theme in `resources/js/lib/theme.tsx`. Props are shared by `HandleInertiaRequests`.
+    components in `resources/js/components/{app,ui}`, member strings in `lang/member/<code>.json` (short keys,
+    English is the reference; never through `__()`), loaded and typed by `resources/js/lib/i18n.ts` (members default
+    to `ms`; every language choice goes through its helpers, never `lang === "…"` in a component, see
+    `tests/Unit/MemberLangFilesTest.php`; Malay is still stored as `bm` in `cp_lang` / `cp-lang` / `?lang=`, read
+    through `normaliseLang` and `App\Support\UiLang`), theme in `resources/js/lib/theme.tsx`. Props are shared by `HandleInertiaRequests`.
   - **Blade + Tailwind** (same tokens, `resources/css/app.css` `.auth-*`, layout `layouts/auth.blade.php`) for the
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
     2FA challenge and password pages.

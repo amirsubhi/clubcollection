@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 {{-- Sign-in pages (login, two-factor challenge, password reset). Language from AuthPageLocale: BM by default. --}}
-@php($lang = ($authLang ?? 'bm') === 'en' ? 'en' : 'bm')
-<html lang="{{ $lang === 'en' ? 'en' : 'ms' }}">
+@php($lang = \App\Support\UiLang::normalise($authLang ?? null) ?? \App\Support\UiLang::DEFAULT)
+<html lang="{{ $lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,7 +12,7 @@
                 var t = localStorage.getItem('cp-theme');
                 if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
                 @if ($authLangChosen ?? false)
-                localStorage.setItem('cp-lang', @json($lang));
+                localStorage.setItem('cp-lang', @json(\App\Support\UiLang::stored($lang)));
                 @endif
             } catch (e) {}
         })();
@@ -80,12 +80,12 @@
                 </span>
             </div>
             <nav aria-label="Bahasa / Language" class="inline-flex shrink-0 rounded-full border bg-card p-0.5 text-sm font-bold">
-                @foreach (['bm' => 'BM', 'en' => 'EN'] as $code => $label)
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => $code]) }}"
-                       hreflang="{{ $code === 'en' ? 'en' : 'ms' }}"
-                       lang="{{ $code === 'en' ? 'en' : 'ms' }}"
+                @foreach (\App\Support\UiLang::LABELS as $code => $label)
+                    <a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
+                       hreflang="{{ $code }}"
+                       lang="{{ $code }}"
                        @if ($lang === $code) aria-current="true" @endif
-                       class="auth-lang {{ $lang === $code ? 'is-active' : '' }}">{{ $label }}<span class="sr-only"> – {{ $code === 'en' ? 'English' : 'Bahasa Melayu' }}</span></a>
+                       class="auth-lang {{ $lang === $code ? 'is-active' : '' }}">{{ $label }}<span class="sr-only"> – {{ \App\Support\UiLang::NAMES[$code] }}</span></a>
                 @endforeach
             </nav>
         </header>

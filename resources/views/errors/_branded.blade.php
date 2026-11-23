@@ -8,9 +8,9 @@
     Expects: $code (int), $title, $subtitle, $body (lines, translated keys), optional $primary = [label key, url].
 --}}
 @php
-    $pick = fn ($v) => in_array($v, ['bm', 'en'], true) ? $v : null;
-    $authLang = $authLang ?? $pick(request()->query('lang')) ?? $pick(request()->cookie(\App\Http\Middleware\AuthPageLocale::COOKIE)) ?? 'bm';
-    app()->setLocale($authLang === 'en' ? 'en' : 'ms');
+    $pick = fn ($v) => \App\Support\UiLang::normalise($v);
+    $authLang = $pick($authLang ?? null) ?? $pick(request()->query('lang')) ?? $pick(request()->cookie(\App\Http\Middleware\AuthPageLocale::COOKIE)) ?? \App\Support\UiLang::DEFAULT;
+    app()->setLocale($authLang);
 
     $safeRoute = function (string $name, string $fallback) {
         try {
