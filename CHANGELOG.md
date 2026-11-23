@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- Member app text moved from the dictionary inside `resources/js/lib/i18n.ts` to one file per language,
+  `lang/member/ms.json` and `lang/member/en.json` (bundled, English is the reference), so a later release can add a
+  language by adding a file. Every BM/EN choice in the React components now goes through the i18n module. Malay is
+  still stored as `bm` in the `cp_lang` cookie and the app's saved choice, so open tabs and sign-in pages keep
+  working. Nothing on screen changes.
+
 ## [v2.0.1] — 2026-11-23
 
 > **Upgrade:** from v2.0.0 with the release zip and `docs/RELEASE.md` §2. No database changes. A patch release that

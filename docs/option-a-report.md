@@ -715,3 +715,52 @@ views → the 503 page; missing `zip` or `mbstring` → `/install` 200 with the 
 disabled. PHPUnit on the VM: 1048 tests pass (new `PreflightTest`, `RequirementsTest`, extended `InstallationTest`).
 Not proven: `php -l` under an old PHP (no Docker or old PHP on this machine or the VM); a token scan in
 `PreflightTest` covers it, and a CI job lints the three files on PHP 5.6 and 7.4 (passed on PR #35).
+
+## Language files, phase 1 (branch `i18n-language-files`, 23 Nov 2026)
+
+A move with no visible change, so later languages are a file each. Member side only; Malay stays the default.
+
+- **What moved.** The 314 `{bm, en}` entries of the `dict` in `resources/js/lib/i18n.ts` and the month names (long
+  in `i18n.ts`, short in `lib/format.ts`, keys `month_1..12` / `monthShort_1..12`) are now `lang/member/ms.json` and
+  `lang/member/en.json`, written by `scripts/i18n-extract.mjs` from master's source. Vite bundles both (no fetch; the
+  service worker and CSP need nothing). Each language is merged over English, and `DictKey` comes from `en.json`, so
+  `tsc` still catches a wrong key. 35 new keys hold the text that was inline in components: chart labels and
+  summary, money-flow diagram, theme toggle, dialog/sheet "Close", uploader defaults, the "Others" slice, and the
+  Malay fund statuses the admin tooltip shows. Every `lang === "bm"` style branch is gone from components (Charts,
+  CategoryBar, Diagrams, ThemeToggle, ReviewPay, PayResult, ReceiptCard, MemberShell, FileUploader, dialog, sheet,
+  `format.ts`, `app.tsx`); they use `textIn` / `textsIn`, `localText` (data sent in Malay and English),
+  `localeTag`, `LANG_LABELS`. Pinned Malay text (the WhatsApp message, "Members see") uses `textIn(key, "ms")`.
+  Unused `bm` fields of `attachmentKinds` and the money-flow `verb` field were dropped.
+- **Codes.** `Lang` is `"ms" | "en"` (the keys of the file map). Malay is still **written** as `bm`: the `cp_lang`
+  cookie, `cp-lang` storage and the sign-in switch links (`?lang=bm`), because master's readers accept only
+  `bm`/`en` and a tab or sign-in page left open would drop `ms`. Reading accepts `bm` and `ms` through one
+  normaliser per side: `normaliseLang` / `storedLang` in `i18n.ts`, `App\Support\UiLang` in PHP (`AuthPageLocale`,
+  `layouts/auth`, the branded and 429 error pages). An unknown value still means Malay.
+- **Laravel and short keys.** Checked on the VM (tinker): `__('navHome')` returns `navHome` under both `ms` and `en`
+  (a key missing from a JSON file shows the raw key, no fallback, and `lang/member/*.json` is not loaded by
+  Laravel). So the short keys must never go through `__()`; `lang/ms.json` (sentence keys) is unchanged.
+- **Proof.** Value identity: `node scripts/i18n-extract.mjs origin/master --check --extra-ok` compares every value
+  with master's `dict` and month arrays in both directions: 676 values identical (314 entries + 24 month names, × 2
+  languages), 0 problems. `tsc --noEmit` and `npm run build` pass (locally and on the VM). New PHPUnit tests:
+  `tests/Unit/MemberLangFilesTest.php` (every file has exactly `en.json`'s keys and `{placeholders}`, no empty text,
+  all month keys; a scan of `resources/js` that fails on any `"bm"` literal, inline `bm:` pair or comparison with
+  `"bm"`/`"ms"`/`"en"` outside the i18n module; on master the scan fails as expected), `tests/Unit/UiLangTest.php`,
+  and in `AuthPagesTest` `?lang=bm|ms` and a `bm|ms` cookie both give Malay while the cookie, `cp-lang` and switch
+  links still say `bm`. `OverdueWordingTest` reads `ms.json` now. Full suite on the VM (SQLite): 1071 passed.
+- **Visible text, master vs branch.** Same seeded SQLite database (demo + e2e seeders, copied fresh per run), each
+  ref built and served in turn on :8099, Selenium on Kali capturing body text, title, `<html lang>`, every
+  `aria-label` / `title` / `alt` / `placeholder` / `lang` attribute, console errors, and the `cp_lang` cookie and
+  `cp-lang` value after each switch. 43 captures per run: sign-in, password reset request, 2FA challenge, member
+  Home, Payments, Fund, receipt, unpaid invoice, Security, PayResult paid / pending / failed, Review & pay (FPX,
+  transfer form, after a slip: verifying, then toggled to BM and back), Pay all review, admin Dashboard and Fund
+  Usage list, in Malay and English (switch link on sign-in, BM/EN toggle in the app). **0 differences.** One console
+  error on both (Security: "Unable to encrypt history", plain http on a LAN address).
+- **Not proven in a browser:** `MoneyFlowDiagram` (no caller), the Dev UiKit page, uploader defaults in Malay (member
+  pages pass their own copy), the CollectedSpentChart in Malay (only the Dev page uses it; its summary now takes the
+  label words in both languages, identical with the default labels).
+
+**Adding a language now:** `lang/member/<code>.json` (copy `en.json`, translate every value, keep the
+`{placeholders}`), import it and add it to `FILES`, `LANG_LABELS` and `LOCALE_TAGS` in `resources/js/lib/i18n.ts`
+(`tsc` asks for the last two), add the code to `App\Support\UiLang` (`CODES`, `LABELS`, `NAMES`), and Laravel's
+`lang/<code>.json` plus `lang/<code>/{auth,passwords,validation}.php` for the sign-in pages and messages. Still to do
+before that: the BM/EN toggle UI for more than two, emails, a saved per-user language, PHP strings.
