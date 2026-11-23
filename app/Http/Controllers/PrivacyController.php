@@ -14,7 +14,8 @@ class PrivacyController extends Controller
 {
     public function show(): View
     {
-        $lang = app()->getLocale() === 'en' ? 'en' : 'bm';
+        // The notice exists in Malay and English only: Malay readers get Malay, every other language English first.
+        $lang = app()->getLocale() === 'ms' ? 'bm' : 'en';
 
         return view('privacy', ['notice' => PrivacyNotice::forLanguage($lang), 'lang' => $lang]);
     }

@@ -32,8 +32,7 @@ To change a translation: edit its value in `lang/ms.json` (keep the `:words` and
 | Overdue reminder | Dear **:name**, | Salam **:name**, |
 | Overdue reminder | Your club membership fee payment is **overdue**. Please settle it as soon as possible to avoid any disruption to your membership. | Bayaran yuran keahlian kelab anda sudah **lewat**. Sila jelaskan secepat mungkin supaya keahlian anda tidak terganggu. |
 | Overdue reminder | Originally due on **:date** | Tarikh akhir asal **:date** |
-| Overdue reminder | 1 day overdue | Lewat 1 hari |
-| Overdue reminder | :count days overdue | Lewat :count hari |
+| Overdue reminder | :count day overdue\|:count days overdue *(one key since phase 3)* | Lewat :count hari |
 | Overdue reminder | Club | Kelab |
 | Overdue reminder | Payment Type | Jenis bayaran |
 | Overdue reminder | Pay Now | Bayar sekarang |
@@ -42,7 +41,7 @@ To change a translation: edit its value in `lang/ms.json` (keep the `:words` and
 | Payment confirmation | Payment Confirmed – :club | Bayaran disahkan – :club |
 | Payment confirmation | Payment Confirmed | Bayaran disahkan |
 | Payment confirmation | Your payment has been received and confirmed. Thank you! | Bayaran anda telah diterima dan disahkan. Terima kasih! |
-| Payment confirmation | 1 fee paid together | 1 yuran dibayar sekali gus |
+| Payment confirmation | :count fee paid together\|:count fees paid together, and the same with " (:ref)" *(one key each since phase 3)* | :count yuran dibayar sekali gus (:ref) |
 | Payment confirmation | bill :code | bil :code |
 | Payment confirmation | Bank transfer / DuitNow (verified by the club) | Pindahan bank / DuitNow (disahkan oleh kelab) |
 | Payment confirmation | Bank reference | Rujukan bank |
@@ -82,7 +81,6 @@ To change a translation: edit its value in `lang/ms.json` (keep the `:words` and
 | Overdue reminder | Yearly | Tahunan |
 | Overdue reminder | Due Date | Tarikh akhir |
 | Overdue reminder | Amount | Amaun |
-| Payment confirmation | :count fees paid together | :count yuran dibayar sekali gus |
 | Payment confirmation | Receipt no. | No. resit |
 | Payment confirmation | Paid On | Dibayar pada |
 | Payment confirmation | Method | Kaedah |
@@ -109,3 +107,25 @@ To change a translation: edit its value in `lang/ms.json` (keep the `:words` and
 | Payment cancelled | You can pay again as usual and you will get a new receipt with a new number. If money already left your account and was not refunded, don't pay again: contact the treasurer. | Anda boleh membayar semula seperti biasa; resit baharu dengan nombor baharu akan dikeluarkan. Jika wang telah keluar dari akaun anda dan belum dikembalikan, jangan bayar sekali lagi: hubungi bendahari. |
 | Payment cancelled | View the fee | Lihat yuran |
 | Laravel's password reset email | Reset Password | Tetapkan semula kata laluan |
+
+## Language phase 3 (language picker; ready for more languages)
+
+New text to approve:
+
+| Where | English | Malay |
+|---|---|---|
+| Language picker label, read by screen readers (member app `langPicker`, sign-in pages `Language`) | Language | Bahasa |
+| English only: a text with a count when the number is 1 (Malay keeps one form) | "1 fee to pay", "1 club", "Pay 1 fee in one go.", "1 fee", "1 fee paid together", "1 fee in one slip", "…: 1 fee, … in total.", "up to 1 file", "Up to 1 file only.", "max 1 file" | (unchanged) |
+
+Some sentences were joined from two pieces in code. Each is now one key, and the text on screen is the same as
+before:
+- "Dalam proses, jangan bayar sekali lagi."
+- "Yuran keahlian {period}"
+- "Dibayar pada {d}"
+- "Tarikh akhir {d}"
+- "Hai, {name}"
+- "Bayar {x}", "Bayar sekali lagi {x}", "Semak & bayar {x}"
+- "Disemak {time}"
+- "Perlu bantuan? WhatsApp kelab", "Perlu bantuan? Hubungi pentadbir kelab"
+- "Bayar tahunan: jimat {x} caj berbanding bulanan", "Bayar suku tahunan: jimat {x} caj berbanding bulanan"
+- "{range}: dikutip {in}, dibelanjakan {out}."

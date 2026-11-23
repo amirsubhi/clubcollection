@@ -23,7 +23,8 @@ upgrade), `docs/USER-GUIDE.md`, `SECURITY.md`, `CREDITS.md` + generated `docs/TH
     English is the reference; never through `__()`), loaded and typed by `resources/js/lib/i18n.ts` (every language
     choice goes through its helpers, never `lang === "…"` in a component, see `tests/Unit/MemberLangFilesTest.php`;
     Malay is still stored as `bm` in `cp_lang` / `cp-lang` / `?lang=`, read through `normaliseLang` and
-    `App\Support\UiLang`, whose `available()` is the list of `lang/member/*.json` files), theme in
+    `App\Support\UiLang`, whose `available()` is the list of `lang/member/*.json` files; i18n.ts builds the same
+    list with `import.meta.glob`, so a language is files only, see "Member language"), theme in
     `resources/js/lib/theme.tsx`. Which language a member gets: see "Member language" under Domain rules. Props are shared by `HandleInertiaRequests`.
   - **Blade + Tailwind** (same tokens, `resources/css/app.css` `.auth-*`, layout `layouts/auth.blade.php`) for the
     sign-in pages: login (also served at `/`, the front page, with a "how to join: contact your admin" section),
@@ -212,6 +213,30 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   constructor. Email text: `__('English sentence')` with the Malay in `lang/ms.json` (bold words as `**…**` via
   `App\Support\MailText::bold()`), dates with `UiLang::date()` (the member app's month names, not Carbon's). Every
   key needs its `lang/ms.json` entry (the test checks); new Malay goes in `docs/i18n-new-wording.md` for the owner.
+- **Language files** (`docs/i18n-translator-brief.md` is the translator's guide and lists what each language needs):
+  - **`_meta`**: each `lang/member/<code>.json` starts with `"_meta"` (name, label, htmlLang, localeTag, beta), read
+    by `langMeta()` / `UiLang::meta()`, never English's. `<html lang>`, `lang=` and `hreflang` use `htmlLang`
+    (Chinese is `zh-Hans`), never the code.
+  - **Pickers**: the member app picker (`LangToggle` in MemberShell, a native `<select>`) and the sign-in picker
+    (`layouts/auth`, a `<details>` list of `?lang=` links) show `label` closed, and `name` plus "(beta)" when open.
+  - **Dates**: never hard-code a date order. Use `fmtDate` / `fmtMonth` / `fmtPeriod` / `fmtDateTime` and
+    `UiLang::date()`, which follow the pattern keys (`dateFormat`, `monthYearFormat`, `periodSameYear`,
+    `periodRange`, `dateTimeFormat`, `timeFormat`).
+  - **Counts**: `<base>_one` / `<base>_other` keys through `countText` / `useCountText` (`Intl.PluralRules`); in
+    emails, `trans_choice('… :count …|…')`. Never `n === 1 ? …`.
+  - **Sentences**: one key per sentence. Never join translated pieces or lowercase a translation in code.
+  - **Server text**: member flashes and errors are `member.*` codes (`useServerText`), because member routes never
+    set the locale.
+  - **Wording**: all Malay is Malaysian Malay (Bahasa Malaysia, DBP usage), never Indonesian words or spellings
+    (owner's rule). Readers are in Malaysia, so Chinese is Simplified as used in Malaysia and Tamil is Malaysian
+    usage. New Malay goes to the owner (`docs/i18n-new-wording.md`).
+  - **Pseudo-language**: `php scripts/i18n-pseudo.php` writes the made-up language `xx` (bracketed, 40% longer) into
+    a test or dev copy, to find hard-coded text. It is gitignored, never shipped, and refused under
+    `APP_ENV=production`.
+  - **Tests**: `MemberLangFilesTest` (keys, placeholders, `_meta`, pattern keys, count pairs), `LaravelLangFilesTest`
+    (every `lang/<code>.json` covers `lang/ms.json`; every member language has its Laravel files), `UiLangTest`
+    (the TS and PHP lists built the same way). `tests/Support/FakeMemberLanguages` adds a temporary third language
+    in a test.
 - **Encrypted at rest**: club gateway secrets (casts), welfare personal fields (casts), attachments, and
   `users.two_factor_secret` / recovery codes (manual `encrypt`/`decrypt`; use `User::getTwoFactorSecret()`).
 

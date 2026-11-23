@@ -23,6 +23,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Accounts with an admin role (club admins and the super admin) always get English emails and never have a language
   saved, even when they pay their own fees in the member app.
 - `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, for review.
+- **Language picker** instead of the BM / EN switch, in the member app and on the sign-in pages. It lists every
+  language by its own name, marks first translations "(beta)", and shows the short label ("BM") when closed, so it
+  stays compact on a phone. It saves the same way as the switch. The sign-in pages' picker works without
+  JavaScript.
+- Ready for more languages. A language is now files only: `lang/member/<code>.json` carries its own name, label,
+  `<html lang>` and locale (`_meta`), plus `lang/<code>.json` and `lang/<code>/{auth,passwords,validation}.php`.
+  The member app and PHP read the list from the folder. Date order, plural forms and whole sentences are keys
+  translators fill in (`docs/i18n-translator-brief.md`). Malay and English are the only languages shipped so far.
 
 ### Changed
 - **Member emails are in one language, the member's** (their saved choice, else the portal default): welcome,
@@ -39,6 +47,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   language by adding a file. Every BM/EN choice in the React components now goes through the i18n module. Malay is
   still stored as `bm` in the `cp_lang` cookie and the app's saved choice, so open tabs and sign-in pages keep
   working. Nothing on screen changes.
+- English text with a count now says "1 fee" where it said "1 fees". The forms are `_one` / `_other` keys, and
+  emails use `trans_choice`. Malay text is unchanged.
+- Pay-ahead form errors (start date, payment period) show in the member's language; they were English sentences.
 
 ## [v2.0.1] — 2026-11-23
 

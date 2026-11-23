@@ -62,6 +62,22 @@ class LanguagePickerTest extends TestCase
             ->assertSee('ZZ<span class="sr-only"> – Language: Zedish</span>', false);
     }
 
+    /** The privacy notice is written in Malay and English only: a third language reads the English. */
+    public function test_a_third_language_reads_the_english_privacy_notice(): void
+    {
+        $this->fakeMemberLanguage('zz', ['name' => 'Zedish', 'label' => 'ZZ', 'htmlLang' => 'zz-Hans', 'localeTag' => 'zz-MY', 'beta' => true]);
+        $this->withoutVite();
+        \App\Support\Portal\PrivacyNotice::put([
+            'privacy_notice_ms' => 'Kami menyimpan nama anda.',
+            'privacy_notice_en' => 'We keep your name.',
+            'privacy_contact_name' => 'Setiausaha',
+            'privacy_contact_email' => 'privasi@example.test',
+        ]);
+
+        $this->get(route('privacy', ['lang' => 'zz']))->assertOk()->assertSee('We keep your name.')->assertDontSee('Kami menyimpan');
+        $this->get(route('privacy', ['lang' => 'bm']))->assertOk()->assertSee('Kami menyimpan nama anda.');
+    }
+
     public function test_the_member_app_page_gets_the_languages_html_lang(): void
     {
         $this->fakeMemberLanguage('zz', ['name' => 'Zedish', 'label' => 'ZZ', 'htmlLang' => 'zz-Hans', 'localeTag' => 'zz-MY', 'beta' => true]);
