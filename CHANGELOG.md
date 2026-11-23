@@ -25,6 +25,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   can't be reached), with a plain message when it has been seen in a leak.
 
 ### Documentation
+- `docs/screenshots/`: all 17 screenshots retaken from the current app (per-club receipt numbers with club details and Share, the current admin menu, Billing settings with the overdue and WhatsApp sections).
+- Treasurer & Club Admin Guide **1.1** (`docs/guides/`): section 3.3 says a new club starts with one job level, "Ahli".
 - `docs/INSTALL.md`: `composer.json` requires PHP `^8.4` too (the "still says ^8.3" note is gone); the extension
   table lists `curl`, `xml` and `zip` (required by `app:doctor`; the backup uses `ZipArchive`); the `app:doctor`
   summary names the APP_KEY, Database and "No Vite dev-server file" rows; PostgreSQL is marked untested (CI covers
