@@ -1,3 +1,7 @@
 {
-    "preset": "laravel"
+    "preset": "laravel",
+    "notPath": [
+        "bootstrap/preflight.php",
+        "bootstrap/requirements.php"
+    ]
 }

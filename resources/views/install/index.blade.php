@@ -66,14 +66,13 @@
             margin-bottom: 0.75rem;
         }
         .req-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
             padding: 0.5rem 0;
             border-bottom: 1px solid #f1f3f5;
             font-size: 0.875rem;
         }
         .req-item:last-child { border-bottom: none; }
+        /* A failing check stands out from the passing ones (design critique): tinted, with a red edge. */
+        .req-item.req-fail { background: #fff5f5; border-left: 3px solid #b02a37; margin: 0 -1rem; padding: 0.625rem calc(1rem - 3px); }
         .req-label { color: #495057; }
         .req-value { font-family: monospace; font-size: 0.8rem; }
     </style>
@@ -83,7 +82,7 @@
     <div class="install-header">
         <div class="brand-icon"><i class="bi bi-gear-fill"></i></div>
         <h4>Club Portal Setup</h4>
-        <p>Complete the form below to install the application</p>
+        <p>{{ $requirements['all_pass'] ? 'Complete the form below to install the application' : 'Fix the checks marked Fail, then complete the form' }}</p>
     </div>
 
     <div class="install-body">
@@ -115,36 +114,49 @@
 
         {{-- ── System Requirements ─────────────────────────────── --}}
         <p class="section-title"><i class="bi bi-cpu me-1"></i>System Requirements</p>
+        @php
+            $failing = count(array_filter($requirements['rows'], fn ($r) => ! $r['pass']));
+        @endphp
+        @if($failing > 0)
+            {{-- Above the list (not under it), so it is the first thing seen. --}}
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="status" data-testid="requirements-failing">
+                <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                <div>
+                    <strong>{{ $failing === 1 ? '1 check needs fixing.' : $failing.' checks need fixing.' }}</strong>
+                    Fix each row marked Fail (the red line under it says how), then reload this page. You can install once every row passes.
+                </div>
+            </div>
+        @endif
         <div class="card border-0 bg-light rounded-3 mb-4 px-3">
-            @foreach(['php', 'database', 'storage', 'env'] as $key)
-                <div class="req-item">
-                    <span class="req-label">{{ $requirements[$key]['label'] }}</span>
-                    <span class="d-flex align-items-center gap-2">
-                        <span class="req-value text-muted">{{ $requirements[$key]['value'] }}</span>
-                        @if($requirements[$key]['pass'])
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                <i class="bi bi-check-lg"></i> Pass
-                            </span>
-                        @else
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                <i class="bi bi-x-lg"></i> Fail
-                            </span>
-                        @endif
-                    </span>
+            @foreach($requirements['rows'] as $req)
+                <div class="req-item {{ $req['pass'] ? '' : 'req-fail' }}">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <span class="req-label">{{ $req['label'] }}</span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="req-value text-muted">{{ $req['value'] }}</span>
+                            @if($req['pass'])
+                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                                    <i class="bi bi-check-lg"></i> Pass
+                                </span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">
+                                    <i class="bi bi-x-lg"></i> Fail
+                                </span>
+                            @endif
+                        </span>
+                    </div>
+                    @unless($req['pass'])
+                        <div class="req-fix text-danger-emphasis small mt-1">{{ $req['fix'] }}</div>
+                    @endunless
                 </div>
             @endforeach
         </div>
 
-        @if(! $requirements['all_pass'])
-            <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                Please fix the failing requirements before continuing.
-            </div>
-        @endif
-
         @if($installerEnabled)
         <form method="POST" action="{{ route('install.process') }}">
             @csrf
+            {{-- Dimmed and not fillable while a check fails, so nobody fills eight fields for a button that can't work. --}}
+            <fieldset @disabled(! $requirements['all_pass'])>
 
             <p class="section-title mt-2"><i class="bi bi-key me-1"></i>Install token</p>
             <div class="mb-3">
@@ -193,7 +205,7 @@
                        class="form-control @error('admin_password') is-invalid @enderror"
                        autocomplete="new-password" required minlength="12">
                 <div class="form-text small">
-                    Must be at least 12 characters and contain upper-case, lower-case, a number and a symbol.
+                    Must be at least 12 characters with upper-case, lower-case, a number and a symbol, and not a password known from a data leak.
                 </div>
                 @error('admin_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
@@ -204,8 +216,15 @@
                        class="form-control" autocomplete="new-password" required minlength="12">
             </div>
 
+            </fieldset>
+
+            @unless($requirements['all_pass'])
+                <p class="small text-danger-emphasis mb-2" id="install-blocked" data-testid="install-blocked">
+                    <i class="bi bi-lock-fill me-1"></i>Installing is blocked until every check above passes.
+                </p>
+            @endunless
             <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"
-                    {{ ! $requirements['all_pass'] ? 'disabled' : '' }}>
+                    @unless($requirements['all_pass']) disabled aria-describedby="install-blocked" @endunless>
                 <i class="bi bi-rocket-takeoff me-2"></i>Install Application
             </button>
         </form>

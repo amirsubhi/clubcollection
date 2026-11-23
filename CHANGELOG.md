@@ -9,9 +9,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- A guard at the top of `public/index.php` (`bootstrap/preflight.php`, before the Composer autoloader): on PHP older
+  than 8.4.1 every page is a short "Server setup needed" page (HTTP 503, `Cache-Control: no-store`, `noindex`) that
+  says to choose PHP 8.4 in cPanel, instead of Composer's platform-check error (HTTP 500). Before the install it also
+  names a missing `pdo` / `openssl` / database PDO extension or an unwritable `storage/framework/views` or
+  `bootstrap/cache`, which made `/install` itself fail with a 500. Written so an old PHP can parse it; CI lints it on
+  PHP 5.6 and 7.4.
+- `bootstrap/requirements.php`: one list of the server requirements (lowest PHP, extensions, PDO extension per
+  database, writable folders) read by `app:doctor`, `/install` and the guard; a test checks it against Composer's
+  platform check.
 - **Breached-password check switch** on Portal settings (super admin; on by default; audited): with it off, new
   passwords on reset and change need only the 12-character minimum and nothing is sent to Have I Been Pwned. A site
   upgraded from v2.0.0 keeps the check on.
+
+### Changed
+- `/install` checks everything `app:doctor` checks about the server: the PHP version, every required extension and
+  the database's PDO extension, writable `storage/` and `bootstrap/cache`, and `.env`. Each failed row has a one-line
+  fix (e.g. "Enable the zip extension in cPanel → Select PHP Version → Extensions"); **Install Application** stays
+  disabled while any row fails.
+- The minimum PHP is 8.4.1 everywhere (`/install`, `app:doctor`, `release.json`'s `php_requirement`), what the
+  locked dependencies need; it was 8.4.0 in the installer and `app:doctor`. The release build refuses a zip whose
+  Composer platform check disagrees with `bootstrap/requirements.php`.
+- `app:doctor` starts each run with no rows (a second run in the same process repeated the first one's rows).
+- **Installer:** the first super-admin password is also checked against known breaches (passes if the service
+  can't be reached), with a plain message when it has been seen in a leak.
 
 ### Changed (Portal settings, from an Impeccable review: critique 30/40, audit 18/20, 0 axe violations)
 - A field error shows once, under its field (no duplicate alert at the top); a plain message for a portal name with
@@ -19,10 +40,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Brand colours on a phone: the radio stays beside the colour name, so the list is about half as long.
 - Breached-password check: one line of help above the choice, the details under "How it works", "(recommended)" on
   the label, and a warning line while it is off. The intro text is capped at a readable width.
-
-### Changed
-- **Installer:** the first super-admin password is also checked against known breaches (passes if the service
-  can't be reached), with a plain message when it has been seen in a leak.
 
 ### Documentation
 - `docs/screenshots/`: all 17 screenshots retaken from the current app (per-club receipt numbers with club details and Share, the current admin menu, Billing settings with the overdue and WhatsApp sections).

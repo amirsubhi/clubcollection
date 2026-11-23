@@ -95,7 +95,8 @@ find vendor -name .git -prune -exec rm -rf {} +
 find storage -type f ! -name .gitignore -delete
 find bootstrap/cache -type f ! -name .gitignore -delete
 
-PHP_REQ="$(php -r '$c = json_decode(file_get_contents("composer.json"), true); echo $c["require"]["php"] ?? "";')"
+# The lowest PHP from the shared requirements list (/install, app:doctor and the public/index.php guard read it too).
+PHP_REQ="$(php -r '$r = require "bootstrap/requirements.php"; echo ">=" . $r["php"];')"
 cat > release.json <<JSON
 {
     "version": "$VERSION",
@@ -106,9 +107,18 @@ cat > release.json <<JSON
 JSON
 
 echo "==> Checking the tree"
-for required in vendor/autoload.php public/build/manifest.json artisan .env.example storage/app/private/.gitignore storage/framework/views/.gitignore bootstrap/cache/.gitignore; do
+for required in vendor/autoload.php public/build/manifest.json bootstrap/requirements.php bootstrap/preflight.php artisan .env.example storage/app/private/.gitignore storage/framework/views/.gitignore bootstrap/cache/.gitignore; do
   [[ -e "$required" ]] || { echo "Missing from the release: $required" >&2; exit 1; }
 done
+# The guard in public/index.php must refuse exactly what Composer's platform check refuses.
+PLATFORM_ID="$(grep -soE 'PHP_VERSION_ID >= [0-9]+' vendor/composer/platform_check.php | grep -oE '[0-9]+$' || true)"
+REQ_ID="$(php -r '$r = require "bootstrap/requirements.php"; $p = explode(".", $r["php"]); echo $p[0] * 10000 + $p[1] * 100 + $p[2];')"
+if [[ -z "$PLATFORM_ID" ]]; then
+  echo "WARNING: no PHP version in vendor/composer/platform_check.php (COMPOSER_FLAGS?); not compared with bootstrap/requirements.php." >&2
+elif [[ "$PLATFORM_ID" != "$REQ_ID" ]]; then
+  echo "bootstrap/requirements.php says PHP $PHP_REQ, but Composer's platform check needs PHP_VERSION_ID >= ${PLATFORM_ID:-?}: make them match." >&2
+  exit 1
+fi
 # The example .env must not carry a real key or installer token.
 if grep -qE '^(APP_KEY|INSTALL_TOKEN)=[^[:space:]#]' .env.example; then
   echo ".env.example sets APP_KEY or INSTALL_TOKEN; they must be empty in the release." >&2

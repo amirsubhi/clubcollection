@@ -47,7 +47,7 @@ app/Services/                  AuditService, AttachmentService, LogoService, Fun
                                BankDetailsChangeService, PaymentGateways/{PaymentGatewayManager,ToyyibPayGateway,BillplzGateway}
 app/Support/                   Portal/{PortalSettings (portal name, logo, brand key, breach_check: only "off" stored), BrandPalette (colour presets), AppIcons (PWA icons), PrivacyNotice}, presenters/stats (Admin, Member), Payments helpers (OwnFeeRule, GatewayFee,
                                FeeRates, WebhookSecret, BillplzSignature, ...), Export/CsvSafe, Auth/AccountLoginBlock,
-                               Doctor/HostProbe (app:doctor), ReleaseInfo, SchedulerHeartbeat, FrontendAssets
+                               Doctor/HostProbe (app:doctor, /install), Requirements, ReleaseInfo, SchedulerHeartbeat, FrontendAssets
 app/Providers/                 AppServiceProvider (rate limiters), E2eFakeGatewayServiceProvider (local + flag only)
 routes/web.php                 all HTTP routes; routes/console.php schedules overdue reminders daily 08:00 in the app timezone (APP_TIMEZONE; Asia/Kuala_Lumpur recommended = 8 am Malaysia, UTC when unset; phpunit runs UTC),
                                payments:reconcile-open-bills every 15 min, the scheduler heartbeat every minute
@@ -62,6 +62,13 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
 ## Routes and middleware
 
 - `/install` (`redirect_if_installed`, POST throttled) needs `INSTALL_TOKEN` (or `storage/app/.install-token`), 16+ chars.
+  Its requirement rows (PHP, every extension, writable folders, `.env`; reads `HostProbe`, so tests fake a host) and
+  `app:doctor` take the list from `bootstrap/requirements.php` (`App\Support\Requirements`); change requirements there only.
+- `public/index.php` first calls `clubportal_preflight()` (`bootstrap/preflight.php`, before the autoloader): a 503
+  "Server setup needed" page on PHP below the list's version, and before install for a missing boot extension / PDO
+  driver or unwritable views / `bootstrap/cache`. That file, `bootstrap/requirements.php` and `public/index.php` must
+  parse on old PHP (`array()`, no types, `fn`, `match`, `?->`, `??`): Pint skips the two bootstrap files, CI lints
+  them on PHP 5.6 / 7.4, `PreflightTest` scans their tokens. Keep the installed path to a version compare + `file_exists`.
 - `POST /webhook/toyyibpay` and `/webhook/billplz`: outside `check_installed`, no auth, `throttle:webhooks`, and
   `withoutMiddleware(PreventRequestForgery::class)`. Laravel 13's web group runs `PreventRequestForgery`; excluding
   `VerifyCsrfToken` does **not** work (tests skip CSRF, so only `WebhookCsrfExemptionTest` / e2e catch it).

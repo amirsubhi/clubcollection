@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\Doctor\HostProbe;
+use App\Support\Requirements;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Artisan;
@@ -44,16 +46,15 @@ class InstallationTest extends BaseTestCase
 
         config(['app.install_token' => self::TOKEN]);
 
-        // The app needs PHP 8.4 (InstallController::MIN_PHP); let the install
-        // flow tests run on an older local PHP too. Reset in tearDown().
-        \App\Http\Controllers\InstallController::$minimumPhp = '8.0.0';
+        // A host that meets every requirement, so the install flow tests also run on an older local PHP
+        // or one without an extension; a test changes it with fakeHost().
+        $this->fakeHost(Requirements::php());
     }
 
     private const TOKEN = 'test-install-token-0123456789';
 
     protected function tearDown(): void
     {
-        \App\Http\Controllers\InstallController::$minimumPhp = \App\Http\Controllers\InstallController::MIN_PHP;
         @unlink(storage_path('app/.installed'));
         @unlink(storage_path('app/.installed.tmp'));
 
@@ -222,12 +223,72 @@ class InstallationTest extends BaseTestCase
         ], $overrides);
     }
 
-    public function test_installer_requires_php_8_4(): void
+    /** The PHP version and the missing extensions /install sees. */
+    private function fakeHost(string $version, array $missing = []): void
     {
-        $this->assertSame('8.4.0', \App\Http\Controllers\InstallController::MIN_PHP);
+        $this->app->instance(HostProbe::class, new class($version, $missing) extends HostProbe
+        {
+            public function __construct(private string $version, private array $missing) {}
 
-        \App\Http\Controllers\InstallController::$minimumPhp = \App\Http\Controllers\InstallController::MIN_PHP;
-        $this->get('/install')->assertSee('PHP &gt;= 8.4', false);
+            public function phpVersion(): string
+            {
+                return $this->version;
+            }
+
+            public function extensionLoaded(string $name): bool
+            {
+                return ! in_array($name, $this->missing, true);
+            }
+        });
+    }
+
+    /** The opening tag of the Install Application button, whitespace collapsed. */
+    private function installButton(): string
+    {
+        preg_match('/<button type="submit"[^>]*>/s', $this->get('/install')->getContent(), $m);
+
+        return preg_replace('/\s+/', ' ', $m[0] ?? 'no button');
+    }
+
+    public function test_installer_requires_the_php_version_of_the_shared_list(): void
+    {
+        $this->assertSame('8.4.1', Requirements::php());
+        $this->get('/install')->assertSee('PHP 8.4.1 or newer')->assertDontSee('Choose PHP 8.4');
+        $this->assertStringNotContainsString('disabled', $this->installButton());
+
+        $this->fakeHost('8.4.0');
+        $this->get('/install')
+            ->assertSee('PHP 8.4.1 or newer')
+            ->assertSee('Choose PHP 8.4 in cPanel → MultiPHP Manager (or Select PHP Version), then reload this page.');
+        $this->assertStringContainsString('disabled', $this->installButton());
+    }
+
+    public function test_installer_lists_every_extension_app_doctor_checks(): void
+    {
+        $page = $this->get('/install')->assertOk();
+        foreach (Requirements::extensions() as $ext) {
+            $page->assertSee("{$ext} extension");
+        }
+        $page->assertSee('storage folder writable')->assertSee('bootstrap/cache folder writable')->assertSee('.env file writable');
+    }
+
+    public function test_a_missing_extension_shows_its_fix_and_blocks_install(): void
+    {
+        $this->fakeHost(Requirements::php(), ['zip']);
+
+        $this->get('/install')
+            ->assertSee('Missing')
+            ->assertSee('Enable the zip extension in cPanel → Select PHP Version → Extensions (for PHP 8.4), then reload this page.')
+            ->assertSee('1 check needs fixing.')
+            ->assertSee('class="req-item req-fail"', false)
+            ->assertSee('Installing is blocked until every check above passes.')
+            ->assertSee('<fieldset disabled', false);
+        $this->assertStringContainsString('disabled', $this->installButton());
+
+        $this->post('/install', $this->validPayload())
+            ->assertSessionHas('error', 'One or more system requirements are not met. Please resolve them before continuing.');
+        $this->assertFileDoesNotExist(storage_path('app/.installed'));
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_installer_checks_the_pdo_driver_of_the_configured_database(): void
@@ -237,12 +298,16 @@ class InstallationTest extends BaseTestCase
         $driver = config("database.connections.{$default}.driver");
         try {
             config(["database.connections.{$default}.driver" => 'mariadb']);
-            $this->get('/install')->assertSee('PDO MySQL / MariaDB Extension')->assertDontSee('PDO SQLite Extension');
+            $this->get('/install')->assertSee('pdo_mysql extension (database: mariadb)')->assertDontSee('pdo_sqlite extension');
+
+            $this->fakeHost(Requirements::php(), ['pdo_mysql']);
+            $this->get('/install')->assertSee('Enable the pdo_mysql extension in cPanel');
 
             config(["database.connections.{$default}.driver" => 'sqlite']);
-            $this->get('/install')->assertSee('PDO SQLite Extension')->assertDontSee('PDO MySQL / MariaDB Extension');
+            $this->get('/install')->assertSee('pdo_sqlite extension (database: sqlite)')->assertDontSee('pdo_mysql extension');
         } finally {
             config(["database.connections.{$default}.driver" => $driver]);
         }
     }
 }
+
