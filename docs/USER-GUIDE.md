@@ -41,11 +41,12 @@ an email about it. Wait and try again, or use **Lupa kata laluan?** to reset you
 
 **Bayaran** (bottom bar) lists all your fees by year.
 
-**Language.** **BM / EN** at the top switches the app at once, and the portal remembers your choice on your account:
-it is used on your other phones and browsers, on the sign-in pages, and for every email the portal sends you
-(receipts, reminders, slip results, security notices, password reset links). Until you choose, you get the portal's
-default language (Bahasa Melayu unless the super admin changed it). If you switched before this was remembered,
-that choice is kept the first time you sign in.
+**Language.** Pick once: **BM / EN** at the top switches the app at once, and the portal remembers your choice on
+your account. It is used on your other phones and browsers, and for every email the portal sends you (receipts,
+reminders, slip results, security notices, password reset links). Until you choose, you get the portal's default
+language (Bahasa Melayu unless the super admin changed it), also if you switched before this was remembered: pick
+again once in the app. The **BM / EN** on the sign-in page only changes that page in this browser; signing in on
+someone else's phone never takes their language.
 
 <br clear="right">
 

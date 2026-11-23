@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{{-- Sign-in pages (login, two-factor challenge, password reset). Language from AuthPageLocale: BM by default. --}}
+{{-- Sign-in pages (login, two-factor challenge, password reset and change, privacy). Language from AuthPageLocale. --}}
 @php($lang = \App\Support\UiLang::normalise($authLang ?? null) ?? \App\Support\Portal\PortalSettings::defaultLocale())
 <html lang="{{ \App\Support\UiLang::htmlLang($lang) }}">
 <head>
@@ -34,8 +34,8 @@
             .auth-langs { position: relative; }
             .auth-langs > summary { cursor: pointer; color: {{ $brandHex }}; font-weight: 700; padding: 10px; }
             .auth-langs-menu { position: absolute; right: 0; z-index: 30; margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #DEDCEC; border-radius: 12px; min-width: 12rem; }
-            .auth-langs-menu a { display: block; padding: 10px 12px; color: {{ $brandHex }}; }
-            .auth-langs-menu a.is-active { font-weight: 700; }
+            .auth-langs-menu a, .auth-langs-menu button { display: block; width: 100%; text-align: left; padding: 10px 12px; color: {{ $brandHex }}; font: inherit; background: none; border: 0; }
+            .auth-langs-menu .is-active { font-weight: 700; }
             .auth-card { background: #fff; border: 1px solid #DEDCEC; border-radius: 16px; padding: 24px; margin: 32px 0; }
             label, input:not([type=checkbox]), .auth-btn { display: block; width: 100%; box-sizing: border-box; }
             input:not([type=checkbox]) { min-height: 48px; padding: 8px 12px; margin: 6px 0 16px; border: 1px solid #8A87A6; border-radius: 12px; font: inherit; }
@@ -85,9 +85,10 @@
             </div>
             {{-- The language picker: a disclosure (works without JavaScript and under the CSP) showing the current
                  language's short label; the list has every lang/member file in its own name, "(beta)" for a first
-                 translation. Each choice is a ?lang= link (Malay still "bm"), which AuthPageLocale turns into the
-                 cp_lang cookie and, when signed in, the saved language. The script at the end closes it on Escape
-                 or a click outside. --}}
+                 translation. Guests get ?lang= links (Malay still "bm"), which AuthPageLocale turns into the cp_lang
+                 cookie. A signed-in member (change password, privacy notice) gets buttons that POST the choice to
+                 member.language.update, the only way an account's language is written, and the page comes back in
+                 it. The script at the end closes the list on Escape or a click outside. --}}
             <details class="auth-langs relative shrink-0" data-lang-picker data-testid="lang-picker">
                 {{-- The accessible name starts with the visible label ("BM – Bahasa: Bahasa Melayu"). --}}
                 <summary class="auth-langs-btn">
@@ -95,16 +96,29 @@
                     <span>{{ \App\Support\UiLang::label($lang) }}<span class="sr-only"> – {{ __('Language') }}: {{ \App\Support\UiLang::name($lang) }}</span></span>
                     <svg viewBox="0 0 24 24" class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </summary>
-                <ul class="auth-langs-menu" aria-label="{{ __('Language') }}">
-                    @foreach (\App\Support\UiLang::available() as $code)
-                        @php($codeLang = \App\Support\UiLang::htmlLang($code))
-                        <li><a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
-                               hreflang="{{ $codeLang }}"
-                               lang="{{ $codeLang }}"
-                               @if ($lang === $code) aria-current="true" @endif
-                               class="auth-lang-option {{ $lang === $code ? 'is-active' : '' }}">{{ \App\Support\UiLang::pickerName($code) }}</a></li>
-                    @endforeach
-                </ul>
+                @if ($authLangForm ?? false)
+                    <form method="POST" action="{{ route('member.language.update') }}" class="auth-langs-menu" aria-label="{{ __('Language') }}" data-testid="auth-lang-form">
+                        @csrf
+                        @foreach (\App\Support\UiLang::available() as $code)
+                            @php($codeLang = \App\Support\UiLang::htmlLang($code))
+                            <button type="submit" name="lang" value="{{ $code }}"
+                                    lang="{{ $codeLang }}"
+                                    @if ($lang === $code) aria-current="true" @endif
+                                    class="auth-lang-option {{ $lang === $code ? 'is-active' : '' }}">{{ \App\Support\UiLang::pickerName($code) }}</button>
+                        @endforeach
+                    </form>
+                @else
+                    <ul class="auth-langs-menu" aria-label="{{ __('Language') }}">
+                        @foreach (\App\Support\UiLang::available() as $code)
+                            @php($codeLang = \App\Support\UiLang::htmlLang($code))
+                            <li><a href="{{ request()->fullUrlWithQuery(['lang' => \App\Support\UiLang::stored($code)]) }}"
+                                   hreflang="{{ $codeLang }}"
+                                   lang="{{ $codeLang }}"
+                                   @if ($lang === $code) aria-current="true" @endif
+                                   class="auth-lang-option {{ $lang === $code ? 'is-active' : '' }}">{{ \App\Support\UiLang::pickerName($code) }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
             </details>
         </header>
 

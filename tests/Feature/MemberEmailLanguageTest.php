@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\AccountSecurityNotice;
+use App\Mail\ClubAdminNotice;
 use App\Mail\MemberWelcome;
 use App\Mail\OverdueReminder;
 use App\Mail\PaymentCancelled;
@@ -89,7 +90,7 @@ class MemberEmailLanguageTest extends TestCase
         ];
         yield 'overdue reminder' => [
             fn (self $t, User $u) => new OverdueReminder($t->fee($u, ['status' => 'overdue', 'paid_date' => null])),
-            'Tindakan diperlukan: yuran kelab lewat — Kelab Contoh', 'Lewat 19 hari',
+            'Tindakan diperlukan: yuran kelab tertunggak — Kelab Contoh', 'Lewat 19 hari',
             'Action Required: Overdue Club Fee — Kelab Contoh', '19 days overdue',
         ];
         yield 'payment cancelled' => [
@@ -188,7 +189,7 @@ class MemberEmailLanguageTest extends TestCase
         Artisan::call('payments:send-overdue-reminders');
 
         $this->assertCount(2, $this->sent());
-        $this->assertSame('Tindakan diperlukan: yuran kelab lewat — Kelab Contoh', $this->sentTo($members['ms'])->getSubject());
+        $this->assertSame('Tindakan diperlukan: yuran kelab tertunggak — Kelab Contoh', $this->sentTo($members['ms'])->getSubject());
         $this->assertStringContainsString('Lewat 19 hari', $this->sentTo($members['ms'])->getHtmlBody());
         $this->assertSame('Action Required: Overdue Club Fee — Kelab Contoh', $this->sentTo($members['en'])->getSubject());
         $this->assertStringContainsString('19 days overdue', $this->sentTo($members['en'])->getHtmlBody());
@@ -202,29 +203,34 @@ class MemberEmailLanguageTest extends TestCase
         yield 'English first' => ['en', 'ms'];
     }
 
-    /** Laravel's reset-link email: translated through lang/ms.json; the saved language, else the page's language. */
+    /**
+     * Laravel's reset-link email (subject "Reset your password" in laravel/framework 13's ResetPassword, translated
+     * through lang/ms.json): the account's saved language, else the portal default, never the language of the
+     * browser that asked for it (on a shared browser that may be someone else's).
+     */
     public function test_the_password_reset_email_is_in_the_members_language(): void
     {
         $malay = $this->member('ms');
         $english = $this->member('en');
         $unsaved = $this->member(null);
 
-        // The saved language wins over the page the link was asked from.
         $this->post('/password/email?lang=en', ['email' => $malay->email])->assertRedirect();
         $this->post('/password/email?lang=bm', ['email' => $english->email])->assertRedirect();
-        // Nothing saved: the page's language.
-        $this->post('/password/email?lang=en', ['email' => $unsaved->email])->assertRedirect();
+        $this->withUnencryptedCookie('cp_lang', 'en')->post('/password/email?lang=en', ['email' => $unsaved->email])->assertRedirect();
 
         $ms = $this->sentTo($malay);
         $this->assertSame('Tetapkan semula kata laluan anda', $ms->getSubject());
-        $this->assertStringContainsString('Anda menerima e-mel ini kerana kami menerima permintaan', $ms->getHtmlBody());
+        $this->assertStringContainsString('Anda menerima e-mel ini kerana terdapat permintaan untuk menetapkan semula kata laluan akaun anda.', $ms->getHtmlBody());
+        $this->assertStringContainsString('Jika butang "Tetapkan semula kata laluan" tidak berfungsi', html_entity_decode($ms->getHtmlBody()));
         $this->assertStringContainsString('Salam hormat,', $ms->getHtmlBody());
 
         $en = $this->sentTo($english);
         $this->assertSame('Reset your password', $en->getSubject());
         $this->assertStringContainsString('You are receiving this email because we received a password reset request', $en->getHtmlBody());
 
-        $this->assertSame('Reset your password', $this->sentTo($unsaved)->getSubject());
+        // Nothing saved: the portal default, not the page's (or cookie's) English.
+        $this->assertSame('Tetapkan semula kata laluan anda', $this->sentTo($unsaved)->getSubject());
+        $this->assertNull($unsaved->fresh()->locale);
     }
 
     public function test_the_password_reset_email_without_any_choice_is_in_the_portal_default(): void
@@ -232,6 +238,28 @@ class MemberEmailLanguageTest extends TestCase
         $member = $this->member(null);
         $this->post('/password/email', ['email' => $member->email])->assertRedirect();
         $this->assertSame('Tetapkan semula kata laluan anda', $this->sentTo($member)->getSubject());
+
+        PortalSettings::put(['default_locale' => 'en']);
+        $other = $this->member(null);
+        $this->post('/password/email?lang=bm', ['email' => $other->email])->assertRedirect();
+        $this->assertSame('Reset your password', $this->sentTo($other)->getSubject());
+    }
+
+    /** The admin notice is addressed by email (no locale preference): pinned to English, even inside a Malay request. */
+    public function test_an_admin_notice_sent_during_a_malay_member_request_is_english(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->club->members()->attach($admin, ['role' => 'admin', 'job_level' => 'executive', 'joined_date' => now()->toDateString(), 'is_active' => true]);
+        $member = $this->member('ms');
+
+        $this->actingAs($member);
+        app()->setLocale('ms'); // as a Malay member's sign-in-style page sets it (AuthPageLocale)
+        $this->club->notifyAdmins('Bank details changed', ['A line.'], null, null, $member);
+
+        Mail::assertSent(ClubAdminNotice::class, fn ($m) => $m->hasTo($admin->email) && $m->locale === 'en');
+        Mail::assertSent(ClubAdminNotice::class, fn ($m) => $m->hasTo($member->email) && $m->locale === 'en');
+        $this->assertSame('ms', app()->getLocale());
     }
 
     /** The welcome email to a new admin account stays English (admin emails), whatever the default. */

@@ -119,8 +119,7 @@ Route::middleware('check_installed')->group(function () {
     // (EnsurePasswordChanged); it allows only the change-password page and logout.
     // admin_two_factor: with REQUIRE_ADMIN_2FA (default on) a super admin / club admin without 2FA is sent to
     // the Security page to set it up (RequireAdminTwoFactor). Members are never forced.
-    // adopt_lang (AdoptBrowserLanguage): an account with no saved language takes its browser's cp_lang, once.
-    Route::middleware(['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor', 'adopt_lang'])->group(function () {
+    Route::middleware(['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor'])->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
 
         // ── Change password (sign-in page style, BM by default) ─────────────
@@ -162,8 +161,9 @@ Route::middleware('check_installed')->group(function () {
             Route::post('clubs/{club}/pay-all/transfer', [MemberPayAll::class, 'transfer'])->middleware('throttle:10,1')->name('payments.transfer-all');
             Route::get('pay-all/{paymentBill}', [MemberPayAll::class, 'result'])->name('payments.group-result');
             Route::get('pay-all/{paymentBill}/status', [MemberPayAll::class, 'status'])->name('payments.group-status');
-            // The language switch saves the choice on the account in the background (UserLocale; app.tsx).
-            Route::post('language', [\App\Http\Controllers\Member\LanguageController::class, 'update'])->middleware('throttle:20,1')->name('language.update');
+            // The language switch saves the choice on the account (UserLocale; app.tsx in the background, a small form
+            // on the sign-in-style pages). Its own limiter: a plain throttle:N,1 would share pay's counter.
+            Route::post('language', [\App\Http\Controllers\Member\LanguageController::class, 'update'])->middleware('throttle:language')->name('language.update');
         });
 
         // ── Super Admin ──────────────────────────────────────────────

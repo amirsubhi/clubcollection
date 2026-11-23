@@ -14,10 +14,11 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Language of the sign-in pages (login, two-factor challenge, password reset and change, privacy notice).
  *
- * UserLocale::resolve() decides: a signed-in account's saved language, else the browser's choice (?lang=bm|en from
- * the page's BM/EN switch, else the cp_lang cookie, which the member app also writes when its switch changes, so
- * both sides stay in step), else the portal's default language (Malay unless changed on Portal settings). A switch
- * clicked while signed in (the change-password page) is saved on the account like the member app's switch.
+ * UserLocale::resolve() decides. A guest (and an admin): the browser's choice (?lang=bm|en from the page's BM/EN
+ * links, else the cp_lang cookie, which the member app also writes when its switch changes), else the portal's
+ * default language. A signed-in member: the language saved on the account, else the portal default; ?lang= and the
+ * cookie are ignored and nothing is saved from them. Their switch is a small POST form to member.language.update
+ * instead (layouts/auth.blade.php, $authLangForm), the one way an account's language is written.
  * The cookie is not encrypted (see bootstrap/app.php): it only ever holds a language code. Values are read through
  * UiLang::normalise() ("bm" = "ms"); the page gets the code ("ms" / "en") as $authLang, and the cookie is still
  * written as "bm" (UiLang::stored()).
@@ -28,21 +29,22 @@ class AuthPageLocale
 
     public function handle(Request $request, Closure $next): Response
     {
-        $asked = UiLang::normalise($request->query('lang'));
         $user = $request->user();
-        if ($asked !== null && $user !== null) {
-            UserLocale::save($user, $asked);
-        }
+        $member = $user !== null && $user->role === 'member';
         $lang = UserLocale::resolve($user, $request);
 
         App::setLocale($lang);
         View::share('authLang', $lang);
-        // Chosen on purpose (switch, earlier cookie or a saved language): the page also copies it to the member
-        // app's saved choice. A cookie holding anything else is ignored, so it does not count as a choice.
-        View::share('authLangChosen', UserLocale::saved($user) !== null || UserLocale::browserChoice($request) !== null);
+        // A signed-in member switches with a form that saves on the account (not ?lang= links).
+        View::share('authLangForm', $member);
+        // Chosen on purpose (the switch, an earlier cookie, or the member's saved language): the page also copies
+        // it to the member app's stored choice. A portal default is never written down as a choice.
+        View::share('authLangChosen', $member ? UserLocale::saved($user) !== null : UserLocale::browserChoice($request) !== null);
 
         $response = $next($request);
 
+        // The browser's choice is remembered for the next sign-in page; a signed-in member's ?lang= is ignored.
+        $asked = $member ? null : UiLang::normalise($request->query('lang'));
         if ($asked !== null) {
             $response->headers->setCookie(Cookie::make(self::COOKIE, UiLang::stored($asked), 60 * 24 * 365, '/', null, $request->secure(), false, false, 'lax'));
         }

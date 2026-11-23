@@ -46,7 +46,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'two_factor'            => \App\Http\Middleware\RequiresTwoFactor::class,
             'password_changed'      => \App\Http\Middleware\EnsurePasswordChanged::class,
             'admin_two_factor'      => \App\Http\Middleware\RequireAdminTwoFactor::class,
-            'adopt_lang'            => \App\Http\Middleware\AdoptBrowserLanguage::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

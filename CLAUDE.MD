@@ -81,7 +81,7 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `['auth', 'auth.session', 'two_factor', 'password_changed', 'admin_two_factor']`:
   - `password_changed` (`EnsurePasswordChanged`): `users.must_change_password` (set where an admin emails a temporary
     password: member store, CSV import, admin store) sends the user to `password.change` (Blade, auth layout) until
-    done; only that page and `logout` pass. Cleared there and by a password reset.
+    done; only that page, its language switch (`member.language.update`) and `logout` pass. Cleared there and by a password reset.
   - `admin_two_factor` (`RequireAdminTwoFactor`): with `config('security.require_admin_two_factor')`
     (`REQUIRE_ADMIN_2FA`, default true) an admin (`isAdmin()`) without 2FA only gets `profile.security`,
     `profile.2fa.enable|confirm`, `password.change*` and `logout`. `Tests\TestCase` sets it false; turn it on in a
@@ -196,20 +196,24 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `VERSION`), made only on Portal settings save / open; pages and the manifest fall back to `public/icons` when the
   set is missing. Old icon files are kept.
 - **Member language** (member side only; admin pages and admin emails stay English): one rule,
-  `App\Support\UserLocale::resolve($user, $request)`: `users.locale` (saved; not fillable, `UserLocale::save()`) →
-  the browser's choice (`?lang=`, else the `cp_lang` cookie) → `PortalSettings::defaultLocale()` (Portal settings
-  `default_locale`, only a non-Malay code stored; missing/unreadable = `ms`). Used by `AuthPageLocale`,
-  `HandleInertiaRequests::locale()` (members and guests; admins get the app locale), app.tsx (`props.langSave`
-  `{url, saved}`: with a saved language a member opens in the server's answer, except a choice not yet saved,
-  `lib/langSave.ts`, `cp-lang-unsaved`; with none, never write the portal default into `cp-lang` / `cp_lang`, or it
-  gets adopted as a choice) and emails.
-  The switch saves with `POST /my/language` (`member.language.update`, throttle:20,1); `?lang=` on a sign-in page
-  while signed in saves too; `AdoptBrowserLanguage` (`adopt_lang`, end of the auth group) saves a valid `cp_lang`
-  once for an account with nothing saved. **Emails**: `User` implements `HasLocalePreference` (`preferredLocale()`
-  = saved → portal default, no request), which Laravel applies only when `Mail::to()` gets the **model**: always pass
-  the User (`MemberEmailLanguageTest` scans `app/` for `Mail::to(...->email)`; only `ClubAdminNotice` in
-  `Club::notifyAdmins` is addressed by string, English). The reset link (`sendPasswordResetNotification`) uses the
-  rule with the request. Subjects are built in `envelope()` (runs under the recipient's locale), never in the
+  `App\Support\UserLocale::resolve($user, $request)`. A signed-in member and every member email: `users.locale`
+  (saved; not fillable) → `PortalSettings::defaultLocale()` (Portal settings `default_locale`, only a non-Malay code
+  stored; missing/unreadable = `ms`). A guest (and an admin on a sign-in page): the browser's choice (`?lang=`, else
+  the `cp_lang` cookie) → the portal default. **An account's language is written only by `UserLocale::save()` from
+  the owner's own `POST /my/language`** (`member.language.update`, `throttle:language`, its own limiter: a plain
+  `throttle:N,1` shares one per-user counter with pay; allowed by `EnsurePasswordChanged`; JSON = 204, a form =
+  back). Never save from a cookie, `cp-lang` storage or `?lang=` (a shared browser would hand one person's language
+  to the next). Used by `AuthPageLocale` (a signed-in member's `?lang=` is ignored and their switch is a POST form,
+  `$authLangForm`), `HandleInertiaRequests::locale()` (members and guests; admins get the app locale) and app.tsx
+  (`props.langSave` `{url, saved}`: a member opens in their own unsent choice, `lib/langSave.ts`
+  `cp-lang-unsaved` = `<user id>:<code>:<ms>`, dropped after 24 h and resent with its original time, else the
+  server's answer; never `cp-lang`; with nothing saved, never write the portal default into `cp-lang` / `cp_lang`).
+  The branded error pages (`errors/_branded`, 429) still read `cp_lang` directly (no session there).
+  **Emails**: `User` implements `HasLocalePreference` (`preferredLocale()` = `UserLocale::forMail()`: saved → portal
+  default for members, English for admins; no request, the password reset link included), which Laravel applies
+  only when `Mail::to()` gets the **model**: always pass the User (`MemberEmailLanguageTest` scans `app/` for
+  `Mail::to(...->email)`; only `ClubAdminNotice` in `Club::notifyAdmins` is addressed by string, pinned to English
+  with `->locale()`). Subjects are built in `envelope()` (runs under the recipient's locale), never in the
   constructor. Email text: `__('English sentence')` with the Malay in `lang/ms.json` (bold words as `**…**` via
   `App\Support\MailText::bold()`), dates with `UiLang::date()` (the member app's month names, not Carbon's). Every
   key needs its `lang/ms.json` entry (the test checks); new Malay goes in `docs/i18n-new-wording.md` for the owner.
@@ -218,7 +222,8 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
     by `langMeta()` / `UiLang::meta()`, never English's. `<html lang>`, `lang=` and `hreflang` use `htmlLang`
     (Chinese is `zh-Hans`), never the code.
   - **Pickers**: the member app picker (`LangToggle` in MemberShell, a native `<select>`) and the sign-in picker
-    (`layouts/auth`, a `<details>` list of `?lang=` links) show `label` closed, and `name` plus "(beta)" when open.
+    (`layouts/auth`, a `<details>` list: `?lang=` links for guests, a POST form to `member.language.update` for a
+    signed-in member, `$authLangForm`) show `label` closed, and `name` plus "(beta)" when open.
   - **Dates**: never hard-code a date order. Use `fmtDate` / `fmtMonth` / `fmtPeriod` / `fmtDateTime` and
     `UiLang::date()`, which follow the pattern keys (`dateFormat`, `monthYearFormat`, `periodSameYear`,
     `periodRange`, `dateTimeFormat`, `timeFormat`).
@@ -268,7 +273,9 @@ missing": a locking read of a missing row takes a gap lock and two first receipt
 - **Rate limits**: named limiters in `AppServiceProvider`: `login` (5/min per account + IP, 30/min per IP; a hit is a
   `Lockout` event); `two-factor` (5/min per pending user + IP, 30/min per IP); `password-email`, `password-reset`,
   `password-confirm` (each 5/min per account + IP, 30/min per IP); `password-change` and `two-factor-setup` (5/min per
-  user); `install` (5/min per IP); `webhooks` (300/min per IP); CSV import `throttle:5,1`. Per-account sign-in pause: `App\Support\Auth\AccountLoginBlock` (keyed on the user id, 10
+  user); `install` (5/min per IP); `webhooks` (300/min per IP); `language` (20/min per user, the member language
+  switch); CSV import `throttle:5,1`. Every plain `throttle:N,1` is keyed on the user (or IP) alone, with no
+  prefix, so all of them share one counter per user: give a route that must not eat into another's budget a named limiter. Per-account sign-in pause: `App\Support\Auth\AccountLoginBlock` (keyed on the user id, 10
   failures / 15 min; config `security.account_login`; the "paused" email at most once an hour). Every failed
   sign-in takes at least `auth.timebox_duration` (500 ms, `AUTH_TIMEBOX_MICROSECONDS`) so unknown emails are not faster. Sign-in audit rows and owner emails:
   `App\Listeners\AuthSecurityListener` (auto-discovered: don't register it by hand). Mail that must not slow the

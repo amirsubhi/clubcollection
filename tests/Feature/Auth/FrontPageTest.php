@@ -21,7 +21,7 @@ class FrontPageTest extends TestCase
             ->assertSee('<html lang="ms">', false)
             ->assertSee('action="'.route('login').'"', false)
             ->assertSee('data-testid="auth-join"', false)
-            ->assertSee('Ahli baru? Cara menyertai')
+            ->assertSee('Ahli baharu? Cara menyertai')
             ->assertSee('Untuk menyertai, atau jika anda tidak dapat log masuk, hubungi pentadbir kelab anda.')
             ->assertDontSee('wa.me', false);
 

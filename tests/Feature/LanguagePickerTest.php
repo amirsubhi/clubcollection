@@ -62,6 +62,23 @@ class LanguagePickerTest extends TestCase
             ->assertSee('ZZ<span class="sr-only"> – Language: Zedish</span>', false);
     }
 
+    /** Signed in (change password), the same picker posts the choice to the save route: one button per language. */
+    public function test_a_signed_in_member_gets_the_picker_as_a_form_with_every_language(): void
+    {
+        $this->fakeMemberLanguage('zz', ['name' => 'Zedish', 'label' => 'ZZ', 'htmlLang' => 'zz-Hans', 'localeTag' => 'zz-MY', 'beta' => true]);
+        $this->withoutVite();
+        $member = $this->actingAsMember(Club::factory()->create());
+
+        $html = $this->get(route('password.change'))->assertOk()->getContent();
+        $this->assertStringContainsString('data-testid="auth-lang-form"', $html);
+        $this->assertSame(1, preg_match('/<button type="submit" name="lang" value="ms"\s+lang="ms"\s+aria-current="true"\s+class="auth-lang-option is-active">Bahasa Melayu<\/button>/', $html));
+        $this->assertSame(1, preg_match('/<button type="submit" name="lang" value="zz"\s+lang="zz-Hans"\s+class="auth-lang-option ">Zedish \(beta\)<\/button>/', $html));
+
+        $this->from(route('password.change'))->post(route('member.language.update'), ['lang' => 'zz'])->assertRedirect(route('password.change'));
+        $this->assertSame('zz', $member->fresh()->locale);
+        $this->get(route('password.change'))->assertSee('<html lang="zz-Hans">', false);
+    }
+
     /** The privacy notice is written in Malay and English only: a third language reads the English. */
     public function test_a_third_language_reads_the_english_privacy_notice(): void
     {
