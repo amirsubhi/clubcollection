@@ -89,7 +89,7 @@ class MemberEmailLanguageTest extends TestCase
         ];
         yield 'overdue reminder' => [
             fn (self $t, User $u) => new OverdueReminder($t->fee($u, ['status' => 'overdue', 'paid_date' => null])),
-            'Tindakan diperlukan: yuran kelab lewat — Kelab Contoh', 'Lewat 19 hari',
+            'Tindakan diperlukan: yuran kelab tertunggak — Kelab Contoh', 'Lewat 19 hari',
             'Action Required: Overdue Club Fee — Kelab Contoh', '19 days overdue',
         ];
         yield 'payment cancelled' => [
@@ -188,7 +188,7 @@ class MemberEmailLanguageTest extends TestCase
         Artisan::call('payments:send-overdue-reminders');
 
         $this->assertCount(2, $this->sent());
-        $this->assertSame('Tindakan diperlukan: yuran kelab lewat — Kelab Contoh', $this->sentTo($members['ms'])->getSubject());
+        $this->assertSame('Tindakan diperlukan: yuran kelab tertunggak — Kelab Contoh', $this->sentTo($members['ms'])->getSubject());
         $this->assertStringContainsString('Lewat 19 hari', $this->sentTo($members['ms'])->getHtmlBody());
         $this->assertSame('Action Required: Overdue Club Fee — Kelab Contoh', $this->sentTo($members['en'])->getSubject());
         $this->assertStringContainsString('19 days overdue', $this->sentTo($members['en'])->getHtmlBody());
@@ -217,7 +217,7 @@ class MemberEmailLanguageTest extends TestCase
 
         $ms = $this->sentTo($malay);
         $this->assertSame('Tetapkan semula kata laluan anda', $ms->getSubject());
-        $this->assertStringContainsString('Anda menerima e-mel ini kerana kami menerima permintaan', $ms->getHtmlBody());
+        $this->assertStringContainsString('Anda menerima e-mel ini kerana terdapat permintaan', $ms->getHtmlBody());
         $this->assertStringContainsString('Salam hormat,', $ms->getHtmlBody());
 
         $en = $this->sentTo($english);

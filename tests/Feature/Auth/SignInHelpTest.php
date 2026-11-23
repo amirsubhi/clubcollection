@@ -6,7 +6,7 @@ use App\Models\Club;
 use Tests\TestCase;
 
 /**
- * "Perlukan bantuan? Hubungi pentadbir kelab" on the sign-in pages opens a help section (details/summary, no JS).
+ * "Perlu bantuan? Hubungi pentadbir kelab" on the sign-in pages opens a help section (details/summary, no JS).
  * A club contact appears only when exactly one active club exists.
  */
 class SignInHelpTest extends TestCase

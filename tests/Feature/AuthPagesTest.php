@@ -28,7 +28,7 @@ class AuthPagesTest extends TestCase
             ->assertSee('Club Portal')
             ->assertDontSee('Laravel')
             ->assertSee('Untuk ahli kelab sahaja')
-            ->assertSee('Perlukan bantuan? Hubungi pentadbir kelab')
+            ->assertSee('Perlu bantuan? Hubungi pentadbir kelab')
             ->assertSee('Kata laluan')
             ->assertDontSee('Authorized Users Only')
             ->assertDontSee('legal action')
