@@ -198,8 +198,10 @@ tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.m
   `App\Support\UserLocale::resolve($user, $request)`: `users.locale` (saved; not fillable, `UserLocale::save()`) →
   the browser's choice (`?lang=`, else the `cp_lang` cookie) → `PortalSettings::defaultLocale()` (Portal settings
   `default_locale`, only a non-Malay code stored; missing/unreadable = `ms`). Used by `AuthPageLocale`,
-  `HandleInertiaRequests::locale()` (members and guests; admins get the app locale), app.tsx (a signed-in member
-  opens in the server's answer, except a choice not yet saved: `lib/langSave.ts`, `cp-lang-unsaved`) and emails.
+  `HandleInertiaRequests::locale()` (members and guests; admins get the app locale), app.tsx (`props.langSave`
+  `{url, saved}`: with a saved language a member opens in the server's answer, except a choice not yet saved,
+  `lib/langSave.ts`, `cp-lang-unsaved`; with none, never write the portal default into `cp-lang` / `cp_lang`, or it
+  gets adopted as a choice) and emails.
   The switch saves with `POST /my/language` (`member.language.update`, throttle:20,1); `?lang=` on a sign-in page
   while signed in saves too; `AdoptBrowserLanguage` (`adopt_lang`, end of the auth group) saves a valid `cp_lang`
   once for an account with nothing saved. **Emails**: `User` implements `HasLocalePreference` (`preferredLocale()`

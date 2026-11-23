@@ -21,17 +21,20 @@ bootTheme();
 registerServiceWorker();
 captureInstallPrompt();
 
-/** A signed-in member, whose language is saved on the account (props.langSaveUrl, shared for members only). */
-type Account = { id: number; saveUrl: string } | null;
+/** A signed-in member, whose language is saved on the account (props.langSave, shared for members only). */
+type Account = { id: number; saveUrl: string; saved: boolean } | null;
 
 /**
- * The language the app opens in. For a signed-in member the server decides (UserLocale: saved on the account, else
- * this browser's cp_lang, else the portal default), so a choice saved on another device wins over an older one
- * stored here; only a choice made here that has not reached the server yet comes first. Others (admins on member
- * pages): the choice stored in this browser, else the server locale.
+ * The language the app opens in. A choice made here that has not reached the server yet comes first. Then, for a
+ * signed-in member with a saved language, the server's answer (UserLocale), so a choice saved on another device wins
+ * over an older one stored here. With nothing saved, and for others (admins on member pages): the choice stored in
+ * this browser, else the server's answer (this browser's cp_lang, else the portal default).
  */
 function initialLang(locale: unknown, account: Account): Lang {
-  if (account) return unsavedLang(account.id) ?? normaliseLang(locale) ?? DEFAULT_LANG;
+  const pending = account ? unsavedLang(account.id) : null;
+  if (pending) return pending;
+  if (account?.saved) return normaliseLang(locale) ?? DEFAULT_LANG;
+  if (account) return normaliseLang(readPref("cp-lang")) ?? normaliseLang(locale) ?? DEFAULT_LANG;
   return normaliseLang(readPref("cp-lang")) ?? langFromLocale(locale);
 }
 
@@ -69,9 +72,17 @@ function Providers({ locale, account, component, children }: { locale: unknown; 
   }, [pageLang]);
   useEffect(() => {
     if (account) {
-      // Bring this browser's copies in line with the account, and send a choice that did not reach the server
-      // (now, and again when the connection comes back).
-      rememberLang(lang);
+      // Only a real choice is copied or saved: never the portal default, or the next request would adopt it as the
+      // member's choice (AdoptBrowserLanguage) and a later change of the default would not reach them.
+      const stored = normaliseLang(readPref("cp-lang"));
+      if (account.saved || unsavedLang(account.id)) {
+        rememberLang(lang); // this browser's copies follow the account
+      } else if (stored) {
+        // A choice stored here before languages were saved (cp-lang): adopt it, like the cp_lang cookie.
+        rememberLang(stored);
+        saveLang(account.saveUrl, account.id, stored);
+      }
+      // Send a choice that did not reach the server: now, and again when the connection comes back.
       const retry = () => {
         const pending = unsavedLang(account.id);
         if (pending) saveLang(account.saveUrl, account.id, pending);
@@ -111,8 +122,8 @@ createInertiaApp({
   },
   setup({ el, App, props }) {
     portalName = props.initialPage.props.portal?.name || portalName;
-    const { auth, langSaveUrl } = props.initialPage.props;
-    const account: Account = auth?.user && langSaveUrl ? { id: auth.user.id, saveUrl: langSaveUrl } : null;
+    const { auth, langSave } = props.initialPage.props;
+    const account: Account = auth?.user && langSave ? { id: auth.user.id, saveUrl: langSave.url, saved: langSave.saved } : null;
     createRoot(el).render(
       <StrictMode>
         <Providers locale={props.initialPage.props.locale} account={account} component={props.initialPage.component}>

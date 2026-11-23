@@ -778,14 +778,21 @@ super admin can change it; each member can switch and keep the choice; emails go
 - **One rule** (`App\Support\UserLocale::resolve($user, $request)`): saved → browser choice (`?lang=`, else
   `cp_lang`) → `PortalSettings::defaultLocale()`. Used by `AuthPageLocale`, `HandleInertiaRequests::locale()`
   (members, guests; admins keep the app locale), app.tsx and mail. Error pages fall back to the portal default too.
-- **Member app.** For a signed-in member (`props.langSaveUrl`, members only) app.tsx opens in the server's answer,
-  so a choice saved on another device wins over an old `cp-lang`; then it rewrites `cp-lang` and `cp_lang` to match.
+- **Member app.** `props.langSave` (members only) = `{url, saved}`. With a saved language app.tsx opens in the
+  server's answer, so a choice saved on another device wins over an old `cp-lang`, and rewrites `cp-lang` / `cp_lang`
+  to match. With nothing saved it never writes the portal default down (the next request would adopt the cookie
+  and pin the member to today's default): it opens in a stored `cp-lang` (an earlier real choice, which it then
+  saves) or the server's answer, and writes nothing. Found in the browser check (the first version wrote the
+  default on every load), not by PHPUnit, which runs no JavaScript.
   The switch is instant: state + storage + cookie at once, the POST in the background (`lib/langSave.ts`, one at a
   time, in order). Until the server confirms, `cp-lang-unsaved` = `<user id>:<code>` is kept; it wins on the next
   load and is sent again on load and on the `online` event (another member signing in on that browser ignores it).
   A redirect (signed out) or network error counts as not saved; a 422 is final.
 - **Adoption.** `AdoptBrowserLanguage` (`adopt_lang`, last in the signed-in group): an account with nothing saved and
-  a valid `cp_lang` gets it saved, once. Without a cookie nothing is saved (the account follows the default).
+  a valid `cp_lang` gets it saved, once; app.tsx does the same for a `cp-lang` stored without the cookie. Without
+  either nothing is saved (the account follows the default). `POST /my/language` accepts any signed-in user (admins
+  use member pages); only the app limits the switch's saving to members. `?lang=` on a sign-in-style page while
+  signed in (change password, privacy) saves too, on a GET (a display preference only).
 - **Portal default.** `default_locale` in `PortalSettings` (only a non-Malay code stored; no row, an old cache, a code
   whose file is gone, a down database = `ms`); a select on Portal settings listing `UiLang::available()` (the
   `lang/member/*.json` files, default first) by `UiLang::NAMES`; flash "Saved: default language.", audit
@@ -823,12 +830,17 @@ super admin can change it; each member can switch and keep the choice; emails go
   `DefaultLanguageSettingTest` (missing = ms, list, audited both ways, validation, field absent = unchanged, super
   admin only), `UiLangTest` (`available()` = `FILES` in i18n.ts, dates). Updated: three tests that read the old
   bilingual emails. Mutation check: sending the reminder to `->email` again fails 3 tests.
-- **Results on the VM (PHP 8.4.28):** SQLite 1109 passed; MariaDB 10.11 (cp_test) 1108 passed, 1 skipped; the new
-  migration fresh / rollback / migrate on cp_mig. `tsc --noEmit` and `npm run build` pass.
-- **Browser (Kali Selenium against a scratch copy on :8099, e2e seed).** Member opens in BM (default); EN switches
-  at once and the account says `en`; a fresh browser opens in EN; a stale `cp-lang=bm` + reload stays EN; offline,
-  BM switches at once with `cp-lang-unsaved=1:bm`, the POST fails, and when the network is back the account is `ms`
-  before any reload; a third fresh browser opens in BM. Database checked: `locale = ms`.
+- **Results on the VM (PHP 8.4.28), final code:** SQLite 1109 passed; MariaDB 10.11 (cp_test) 1108 passed, 1
+  skipped; the new migration fresh / rollback / migrate on cp_mig. `tsc --noEmit` and `npm run build` pass.
+- **Browser (Kali Selenium against a scratch copy on :8099, e2e seed; `users.locale` read on the VM).** Nothing
+  saved: login, an in-app visit and a reload leave `locale` NULL and no cookie, BM by default; with the default set
+  to English the same member opens in English, still NULL. Then: EN switches at once and the account says `en`; a
+  fresh browser opens in EN; a stale `cp-lang=bm` + reload stays EN; offline, BM switches at once with
+  `cp-lang-unsaved=1:bm`, the POST fails, and when the network is back the account is `ms` before any reload; a
+  third fresh browser opens in BM (database: `ms`). A `cp-lang=en` stored without a cookie is adopted on sign-in
+  (database: `en`). No console errors besides the offline requests.
+- **For the owner:** admins with nothing saved now get the sign-in and password-change notices (were BM + EN) and
+  the reset email (was English) in the portal default (Malay), as these were read as member-facing emails.
 - **Not proven:** real SMTP delivery (array / log mailer only); the `online` retry on a real phone; the emails'
   look in mail clients (rendered HTML checked, not a client); a member's choice between two tabs open at once (the
   later switch wins on the server, the other tab keeps its own until reloaded).

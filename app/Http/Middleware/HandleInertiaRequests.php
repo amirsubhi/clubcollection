@@ -38,8 +38,11 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'locale' => fn () => $this->locale($request),
-            // A signed-in member's language switch saves the choice here (resources/js/lib/langSave.ts).
-            'langSaveUrl' => fn () => $request->user()?->role === 'member' ? route('member.language.update') : null,
+            // A signed-in member's language switch saves the choice at `url` (resources/js/lib/langSave.ts); `saved`:
+            // the account has a language, so the browser copies it (else the portal default is never written down).
+            'langSave' => fn () => $request->user()?->role === 'member'
+                ? ['url' => route('member.language.update'), 'saved' => UserLocale::saved($request->user()) !== null]
+                : null,
             'club' => fn () => $this->currentClub($request),
             // Portal settings: the name for page titles (app.tsx) and fallbacks.
             'portal' => fn () => ['name' => PortalSettings::name()],

@@ -84,7 +84,7 @@ class MemberLanguageTest extends TestCase
             ->get(route('member.dashboard'))
             ->assertInertia(fn (Assert $page) => $page
                 ->where('locale', 'en')
-                ->where('langSaveUrl', route('member.language.update')));
+                ->where('langSave', ['url' => route('member.language.update'), 'saved' => true]));
     }
 
     public function test_a_member_with_nothing_saved_gets_the_portal_default_and_admins_stay_english(): void
@@ -93,7 +93,10 @@ class MemberLanguageTest extends TestCase
         PortalSettings::put(['default_locale' => 'en']);
         $club = Club::factory()->create();
         $this->actingAsMember($club);
-        $this->get(route('member.dashboard'))->assertInertia(fn (Assert $page) => $page->where('locale', 'en'));
+        $this->get(route('member.dashboard'))->assertInertia(fn (Assert $page) => $page
+            ->where('locale', 'en')
+            // Nothing saved: the app must not write the default down as a choice.
+            ->where('langSave', ['url' => route('member.language.update'), 'saved' => false]));
 
         PortalSettings::put(['default_locale' => null]);
         $this->get(route('member.dashboard'))->assertInertia(fn (Assert $page) => $page->where('locale', 'ms'));
@@ -103,7 +106,7 @@ class MemberLanguageTest extends TestCase
         $admin->forceFill(['locale' => 'ms'])->save();
         $this->get(route('member.dashboard'))->assertInertia(fn (Assert $page) => $page
             ->where('locale', config('app.locale'))
-            ->where('langSaveUrl', null));
+            ->where('langSave', null));
     }
 
     public function test_sign_in_pages_follow_the_rule(): void

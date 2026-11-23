@@ -23,8 +23,11 @@ export interface SharedProps {
    * cp_lang, else the portal default). Admins: the app locale (e.g. "en").
    */
   locale: string;
-  /** Where a signed-in member's language switch saves the choice (POST { lang }); null for everyone else. */
-  langSaveUrl: string | null;
+  /**
+   * Signed-in members only (else null): where the language switch saves the choice (POST { lang }), and whether the
+   * account has a saved language (until it does, the portal default must not be copied into the browser).
+   */
+  langSave: { url: string; saved: boolean } | null;
   /** The route-bound {club}, or null when the route has none. */
   club: SharedClub | null;
   /** Portal settings: the portal name (else APP_NAME / "Club Portal"). */
