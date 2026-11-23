@@ -8,6 +8,7 @@ use App\Services\LogoService;
 use App\Support\Portal\AppIcons;
 use App\Support\Portal\BrandPalette;
 use App\Support\Portal\PortalSettings;
+use App\Support\UiLang;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -16,7 +17,8 @@ use Illuminate\View\View;
  * Portal settings (super admin only): the portal name (page titles, sign-in pages, emails, admin sidebar), the
  * portal logo (sign-in header when no single club's logo is shown, admin sidebar, app icons) and the brand colour
  * (one of BrandPalette's presets; only its key is stored), and the breached-password check for new passwords (on
- * unless switched off; only "off" is stored). Left empty, the name is APP_NAME, the logo the
+ * unless switched off; only "off" is stored), and the default language of the member side (members with no saved
+ * choice; Malay is stored as nothing). Left empty, the name is APP_NAME, the logo the
  * built-in mark and the colour lavender.
  */
 class PortalSettingsController extends Controller
@@ -37,6 +39,9 @@ class PortalSettingsController extends Controller
             'presets' => BrandPalette::keys(),
             'appIcons' => AppIcons::current(),
             'breachCheckOn' => PortalSettings::breachCheckOn(),
+            'defaultLocale' => PortalSettings::defaultLocale(),
+            // Every language with a member text file (UiLang::available()), by its own name.
+            'languages' => collect(UiLang::available())->mapWithKeys(fn (string $code) => [$code => UiLang::name($code)])->all(),
         ]);
     }
 
@@ -50,14 +55,17 @@ class PortalSettingsController extends Controller
             'brand' => ['sometimes', 'string', Rule::in(BrandPalette::keys())],
             // Only changed when the form sends it (hidden 0 + checkbox 1), so another form never turns it off.
             'breach_check' => 'sometimes|boolean',
+            // One of the available languages (a lang/member/<code>.json file); left alone when not sent.
+            'default_locale' => ['sometimes', 'string', Rule::in(UiLang::available())],
         ], LogoService::messages() + [
             'brand.in' => 'Choose one of the listed colours.',
+            'default_locale.in' => 'Choose one of the listed languages.',
             'name.not_regex' => 'The portal name can\'t contain tabs, line breaks or other hidden characters.',
-        ], ['name' => 'portal name', 'brand' => 'brand colour']);
+        ], ['name' => 'portal name', 'brand' => 'brand colour', 'default_locale' => 'default language']);
 
-        $old = ['name' => PortalSettings::get('name'), 'logo' => PortalSettings::get('logo'), 'brand' => PortalSettings::get('brand'), 'breach_check' => PortalSettings::get('breach_check')];
+        $old = ['name' => PortalSettings::get('name'), 'logo' => PortalSettings::get('logo'), 'brand' => PortalSettings::get('brand'), 'breach_check' => PortalSettings::get('breach_check'), 'default_locale' => PortalSettings::get('default_locale')];
         $name = trim((string) ($data['name'] ?? ''));
-        $new = ['name' => $name === '' ? null : $name, 'logo' => $old['logo'], 'brand' => $old['brand'], 'breach_check' => $old['breach_check']];
+        $new = ['name' => $name === '' ? null : $name, 'logo' => $old['logo'], 'brand' => $old['brand'], 'breach_check' => $old['breach_check'], 'default_locale' => $old['default_locale']];
         // The default preset is stored as nothing, so it renders exactly as tokens.css.
         if (array_key_exists('brand', $data)) {
             $new['brand'] = $data['brand'] === BrandPalette::DEFAULT ? null : $data['brand'];
@@ -65,6 +73,11 @@ class PortalSettingsController extends Controller
 
         if (array_key_exists('breach_check', $data)) {
             $new['breach_check'] = $request->boolean('breach_check') ? null : PortalSettings::BREACH_CHECK_OFF;
+        }
+
+        // The built-in default (Malay) is stored as nothing, like the default colour.
+        if (array_key_exists('default_locale', $data)) {
+            $new['default_locale'] = $data['default_locale'] === UiLang::DEFAULT ? null : $data['default_locale'];
         }
 
         // A new file wins over "remove". Old files are kept (a sign-in page cached by a browser may still show it).
@@ -89,6 +102,7 @@ class PortalSettingsController extends Controller
             'logo' => 'logo',
             'brand' => 'brand colour',
             'breach_check' => 'breached-password check turned '.($new['breach_check'] === null ? 'on' : 'off'),
+            'default_locale' => 'default language: '.UiLang::name($new['default_locale'] ?? UiLang::DEFAULT),
         }, $changed));
 
         AuditService::log(
@@ -101,7 +115,7 @@ class PortalSettingsController extends Controller
         );
 
         // Whole sentences (no pieces joined around a word), so each one can become one translation later.
-        $saved = array_values(array_map(fn ($key) => ['name' => 'portal name', 'logo' => 'logo', 'brand' => 'brand colour'][$key],
+        $saved = array_values(array_map(fn ($key) => ['name' => 'portal name', 'logo' => 'logo', 'brand' => 'brand colour', 'default_locale' => 'default language'][$key],
             array_diff($changed, ['breach_check'])));
         $flash = $saved === [] ? ['Saved.'] : ['Saved: '.implode(', ', $saved).'.'];
         if (in_array('breach_check', $changed, true)) {

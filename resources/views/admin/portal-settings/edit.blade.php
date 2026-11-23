@@ -11,7 +11,7 @@
 
 {{-- Field errors show (and are announced) once, under their field; only an error with no field here goes on top. --}}
 @php
-    $otherError = collect($errors->getMessages())->except(['name', 'logo', 'remove_logo', 'brand', 'breach_check'])->flatten()->first();
+    $otherError = collect($errors->getMessages())->except(['name', 'logo', 'remove_logo', 'brand', 'breach_check', 'default_locale'])->flatten()->first();
 @endphp
 @if($otherError)
 <div class="alert alert-danger" role="alert">{{ $otherError }}</div>
@@ -134,6 +134,21 @@
                         </details>
                         @error('breach_check')<div role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </fieldset>
+
+                    <div class="mb-4" data-testid="default-locale">
+                        <label for="f-default-locale" class="form-label fw-semibold mb-1">Default language</label>
+                        <div id="f-default-locale-help" class="form-text mt-0 mb-2">
+                            The language of the member app, the sign-in pages and member emails for members who have not chosen one.
+                            A member's own choice (the language switch in the app) is remembered and always wins. Admin pages stay in English.
+                        </div>
+                        <select class="form-select @error('default_locale') is-invalid @enderror" name="default_locale" id="f-default-locale"
+                                style="max-width:22rem" aria-describedby="f-default-locale-help{{ $errors->has('default_locale') ? ' f-default-locale-error' : '' }}">
+                            @foreach($languages as $code => $languageName)
+                                <option value="{{ $code }}" @selected(old('default_locale', $defaultLocale) === $code)>{{ $languageName }}</option>
+                            @endforeach
+                        </select>
+                        @error('default_locale')<div id="f-default-locale-error" role="alert" class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
 
                     <button type="submit" class="btn btn-primary">Save settings</button>
                 </form>

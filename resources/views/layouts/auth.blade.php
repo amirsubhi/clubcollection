@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 {{-- Sign-in pages (login, two-factor challenge, password reset). Language from AuthPageLocale: BM by default. --}}
-@php($lang = \App\Support\UiLang::normalise($authLang ?? null) ?? \App\Support\UiLang::DEFAULT)
+@php($lang = \App\Support\UiLang::normalise($authLang ?? null) ?? \App\Support\Portal\PortalSettings::defaultLocale())
 <html lang="{{ $lang }}">
 <head>
     <meta charset="UTF-8">

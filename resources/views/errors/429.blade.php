@@ -6,7 +6,7 @@
 @php
     $authLang = \App\Support\UiLang::normalise($authLang ?? null)
         ?? \App\Support\UiLang::normalise(request()->cookie(\App\Http\Middleware\AuthPageLocale::COOKIE))
-        ?? \App\Support\UiLang::DEFAULT;
+        ?? \App\Support\Portal\PortalSettings::defaultLocale();
     app()->setLocale($authLang);
     $retryAfter = isset($exception) && method_exists($exception, 'getHeaders') ? (int) ($exception->getHeaders()['Retry-After'] ?? 0) : 0;
     $wait = max(1, $retryAfter ?: 60);

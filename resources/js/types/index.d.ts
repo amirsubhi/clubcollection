@@ -18,8 +18,13 @@ export interface SharedProps {
   [key: string]: unknown;
   auth: { user: AuthUser | null };
   flash: { success: string | null; error: string | null };
-  /** "ms" for members and guests, otherwise the app locale (e.g. "en"). */
+  /**
+   * Members and guests: their member-side language (App\Support\UserLocale: saved on the account, else the browser's
+   * cp_lang, else the portal default). Admins: the app locale (e.g. "en").
+   */
   locale: string;
+  /** Where a signed-in member's language switch saves the choice (POST { lang }); null for everyone else. */
+  langSaveUrl: string | null;
   /** The route-bound {club}, or null when the route has none. */
   club: SharedClub | null;
   /** Portal settings: the portal name (else APP_NAME / "Club Portal"). */

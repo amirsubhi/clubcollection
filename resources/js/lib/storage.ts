@@ -14,3 +14,11 @@ export function writePref(key: string, value: string) {
     /* ignore */
   }
 }
+
+export function removePref(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
