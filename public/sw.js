@@ -11,7 +11,7 @@
  *
  * Bump CACHE_VERSION on every release (docs/RELEASE.md); activate deletes the old caches.
  */
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `cp-static-${CACHE_VERSION}`;
 const OFFLINE_CACHE = `cp-offline-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";

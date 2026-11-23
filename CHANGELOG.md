@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [v2.0.1] — 2026-11-23
+
+> **Upgrade:** from v2.0.0 with the release zip and `docs/RELEASE.md` §2. No database changes. A patch release that
+> also carries two small features: the breached-password check switch and the installer's full requirement checks.
+
 ### Added
 - A guard at the top of `public/index.php` (`bootstrap/preflight.php`, before the Composer autoloader): on PHP older
   than 8.4.1 every page is a short "Server setup needed" page (HTTP 503, `Cache-Control: no-store`, `noindex`) that
@@ -40,6 +45,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Brand colours on a phone: the radio stays beside the colour name, so the list is about half as long.
 - Breached-password check: one line of help above the choice, the details under "How it works", "(recommended)" on
   the label, and a warning line while it is off. The intro text is capped at a readable width.
+- From a copy review: the save message is whole sentences ("Saved: portal name." / "Breached-password check turned
+  off."); the help says what Have I Been Pwned is; the off warning no longer reads as if your own password leaked.
+
+### Changed (installer, from a design critique and a copy review)
+- The count of failing checks shows above the list, a failing row is tinted with a red edge, and the form is dimmed
+  with the reason right above **Install Application** while any check fails. Pass/Fail badges meet AA contrast.
+- Fix lines say where to type commands ("In the Terminal, run …"); the password hint mentions the data-leak check.
+- "Server setup needed" page: the command in a copyable block, and a last line for anyone who can't find the
+  setting (send the page to the host's support; club members tell the portal admin). English only: it runs before
+  the app, so it can't use the language files.
+- PWA service worker cache `v4`.
+
+### Known issue
+- Opening `/install` before `php artisan migrate` has run gives an HTTP 500 (with `APP_DEBUG=true`, Laravel's debug
+  page). `docs/INSTALL.md` step 6 runs the migrations first.
 
 ### Documentation
 - `docs/screenshots/`: all 17 screenshots retaken from the current app (per-club receipt numbers with club details and Share, the current admin menu, Billing settings with the overdue and WhatsApp sections).
@@ -558,6 +578,7 @@ First public release of Club Portal — a self-hosted club membership management
 
 ---
 
-[Unreleased]: https://github.com/amirsubhi/clubcollection/compare/v2.0.0...master
+[Unreleased]: https://github.com/amirsubhi/clubcollection/compare/v2.0.1...master
+[v2.0.1]: https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.1
 [v2.0.0]: https://github.com/amirsubhi/clubcollection/releases/tag/v2.0.0
 [v0.0.1]: https://github.com/amirsubhi/clubcollection/releases/tag/v1.0.0
