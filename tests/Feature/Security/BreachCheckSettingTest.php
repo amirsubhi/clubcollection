@@ -150,6 +150,26 @@ class BreachCheckSettingTest extends TestCase
         $this->assertStringNotContainsString('checked', $off[0]);
     }
 
+    public function test_the_flash_says_what_changed_and_the_off_warning_is_in_the_page(): void
+    {
+        $this->actingAsSuperAdmin();
+        $this->switchTo(false)->assertSessionHas('success', 'Portal settings saved (breached-password check turned off).');
+        $this->get(route('admin.portal-settings.edit'))->assertOk()
+            ->assertSee('data-testid="breach-check-off"', false)
+            ->assertSee('How it works');
+    }
+
+    public function test_a_field_error_shows_once_under_its_field_with_a_plain_message(): void
+    {
+        $this->actingAsSuperAdmin();
+        $html = $this->followingRedirects()->from(route('admin.portal-settings.edit'))
+            ->put(route('admin.portal-settings.update'), ['name' => "Kelab\x07Staf"])
+            ->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'The portal name can&#039;t contain tabs, line breaks or other hidden characters.'), $html);
+        $this->assertStringNotContainsString('alert alert-danger', $html);
+    }
+
     public function test_a_settings_cache_from_before_this_setting_reads_as_on(): void
     {
         // v2.0.0 cached only name / logo / brand; an upgraded site may still hold that array.

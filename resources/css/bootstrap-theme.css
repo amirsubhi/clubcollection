@@ -443,3 +443,12 @@ a.stat-link .stat-label { color: rgb(var(--primary)); }
 .bar-list-spent .bar-fill { background: rgb(var(--chart-4)); box-shadow: inset 0 0 0 1.5px rgb(var(--chart-4-stroke)); }
 /* Audit log: the full description, wrapped (never cut off). */
 .audit-desc { min-width: 16rem; white-space: normal; overflow-wrap: break-word; }
+
+/* Portal settings (admin/portal-settings/edit): a brand colour row keeps its radio beside the name on phones, the
+   previews wrap under it; the name column lines the previews up only from sm up. */
+.brand-choice .form-check-input { margin-top: 0.3em !important; }
+.brand-choice-name { min-width: 0; }
+@media (min-width: 576px) { .brand-choice-name { min-width: 8.5rem; } }
+/* Breached-password check: a warning line only while the box is unticked (no script). */
+.breach-check .breach-check-off { display: none; }
+.breach-check .form-check-input:not(:checked) ~ .breach-check-off { display: block; }
