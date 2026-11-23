@@ -105,8 +105,9 @@
 
                     <fieldset class="mb-4" data-testid="breach-check">
                         <legend class="form-label fw-semibold fs-6 mb-1">Breached-password check</legend>
-                        <input type="hidden" name="breach_check" value="0">
                         <div class="form-check">
+                            {{-- Inside the row: Bootstrap clears the floated legend with "legend + *", so this div must follow it. --}}
+                            <input type="hidden" name="breach_check" value="0">
                             <input class="form-check-input" type="checkbox" name="breach_check" value="1" id="f-breach-check"
                                    aria-describedby="f-breach-check-help" @checked(old('breach_check', $breachCheckOn ? '1' : '0') === '1')>
                             <label class="form-check-label" for="f-breach-check">Refuse new passwords that appear in known data breaches</label>
