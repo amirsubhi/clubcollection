@@ -25,6 +25,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Accounts with an admin role (club admins and the super admin) always get English emails and never have a language
   saved, even when they pay their own fees in the member app.
 - `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, for review.
+- **Chinese (Simplified), Tamil, French and Spanish** on the member side (member app, sign-in pages, member emails),
+  marked **beta** in the picker until a native speaker reviews each file. Chinese and Tamil are written for readers
+  in Malaysia. Each was checked by a blind back-translation into English (no wrong meaning on money, status or
+  security text). Admin pages stay English.
+- Pay ahead: the plan cards stack one per row on phones narrower than 360 px, and the "Recommended" badge never runs
+  past its card (it ran off the screen at 320 px, in English too).
 - **Language picker** instead of the BM / EN switch, in the member app and on the sign-in pages. It lists every
   language by its own name, marks first translations "(beta)", and shows the short label ("BM") when closed, so it
   stays compact on a phone. It saves the same way as the switch. The sign-in pages' picker works without
