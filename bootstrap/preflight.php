@@ -86,18 +86,23 @@ if (! function_exists('clubportal_preflight')) {
         if ($notWritable) {
             return clubportal_preflight_page(
                 'PHP cannot write to the folder'.(count($notWritable) > 1 ? 's ' : ' ').implode(' and ', $notWritable).'.',
-                'In the Terminal, run chmod -R 775 storage bootstrap/cache in the app folder (or set the permissions in cPanel File Manager), then reload this page.'
+                'In the Terminal, run this in the app folder (or set the permissions in cPanel File Manager), then reload this page:',
+                'chmod -R 775 storage bootstrap/cache'
             );
         }
 
         return null;
     }
 
-    /** The plain, self-contained page (no app, no assets) for one problem and its fix. */
-    function clubportal_preflight_page($problem, $fix)
+    /**
+     * The plain, self-contained page (no app, no assets) for one problem, its fix and, when there is one, the
+     * command to copy. English only: it runs before the app, so it can't use the language files.
+     */
+    function clubportal_preflight_page($problem, $fix, $command = null)
     {
         $problem = htmlspecialchars($problem, ENT_QUOTES, 'UTF-8');
         $fix = htmlspecialchars($fix, ENT_QUOTES, 'UTF-8');
+        $command = $command === null ? '' : '<pre><code>'.htmlspecialchars($command, ENT_QUOTES, 'UTF-8').'</code></pre>';
         $body = '<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -110,7 +115,9 @@ body{margin:0;padding:2rem 1rem;font:16px/1.5 system-ui,-apple-system,"Segoe UI"
 main{max-width:36rem;margin:10vh auto 0;background:#fff;border-radius:12px;padding:1.75rem 1.5rem;box-shadow:0 2px 12px rgba(0,0,0,.08)}
 h1{font-size:1.25rem;margin:0 0 .75rem}
 p{margin:.5rem 0}
-@media (prefers-color-scheme:dark){body{background:#15171e;color:#e8e9ee}main{background:#1f2230;box-shadow:none}}
+pre{margin:.75rem 0;padding:.625rem .75rem;background:#eef0f4;border-radius:8px;overflow-x:auto;font-size:.9375rem}
+.help{margin-top:1.25rem;padding-top:.75rem;border-top:1px solid #e3e5ea;color:#5b6070;font-size:.9375rem}
+@media (prefers-color-scheme:dark){body{background:#15171e;color:#e8e9ee}main{background:#1f2230;box-shadow:none}pre{background:#2a2e3f}.help{border-color:#353a4d;color:#b4b8c6}}
 </style>
 </head>
 <body>
@@ -118,6 +125,8 @@ p{margin:.5rem 0}
 <h1>Server setup needed</h1>
 <p>'.$problem.'</p>
 <p>'.$fix.'</p>
+'.$command.'
+<p class="help">Can\'t find this setting? Send this page to your hosting provider\'s support. Members of the club: please tell your club\'s portal admin.</p>
 </main>
 </body>
 </html>

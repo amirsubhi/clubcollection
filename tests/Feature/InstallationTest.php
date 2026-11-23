@@ -250,7 +250,7 @@ class InstallationTest extends BaseTestCase
         foreach (Requirements::extensions() as $ext) {
             $page->assertSee("{$ext} extension");
         }
-        $page->assertSee('storage/ writable')->assertSee('bootstrap/cache writable')->assertSee('.env file writable');
+        $page->assertSee('storage folder writable')->assertSee('bootstrap/cache folder writable')->assertSee('.env file writable');
     }
 
     public function test_a_missing_extension_shows_its_fix_and_blocks_install(): void
@@ -260,7 +260,10 @@ class InstallationTest extends BaseTestCase
         $this->get('/install')
             ->assertSee('Missing')
             ->assertSee('Enable the zip extension in cPanel → Select PHP Version → Extensions (for PHP 8.4), then reload this page.')
-            ->assertSee('Installing stays blocked until every row passes.');
+            ->assertSee('1 check needs fixing.')
+            ->assertSee('class="req-item req-fail"', false)
+            ->assertSee('Installing is blocked until every check above passes.')
+            ->assertSee('<fieldset disabled', false);
         $this->assertStringContainsString('disabled', $this->installButton());
 
         $this->post('/install', $this->validPayload())

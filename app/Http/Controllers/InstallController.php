@@ -165,8 +165,8 @@ class InstallController extends Controller
                 "Enable the {$ext} extension in cPanel → Select PHP Version → Extensions (for PHP {$series}), then reload this page.");
         }
 
-        $chmod = 'Run chmod -R 775 storage bootstrap/cache in the app folder (or set the permissions in cPanel File Manager), then reload this page.';
-        foreach (['storage' => 'storage/ writable', 'bootstrap/cache' => 'bootstrap/cache writable'] as $prefix => $label) {
+        $chmod = 'In the Terminal, run chmod -R 775 storage bootstrap/cache in the app folder (or set the permissions in cPanel File Manager), then reload this page.';
+        foreach (['storage' => 'storage folder writable', 'bootstrap/cache' => 'bootstrap/cache folder writable'] as $prefix => $label) {
             $blocked = array_values(array_filter(Requirements::writable(),
                 fn (string $dir) => str_starts_with($dir, $prefix) && ! is_writable(base_path($dir))));
             $row($label, $blocked === [], $blocked === [] ? 'Writable' : 'Not writable: '.implode(', ', $blocked), $chmod);
@@ -176,8 +176,8 @@ class InstallController extends Controller
         $envOk = is_file($envPath) && is_writable($envPath);
         $row('.env file writable', $envOk, $envOk ? 'Writable' : (is_file($envPath) ? 'Not writable' : 'Missing'),
             is_file($envPath)
-                ? 'Make .env writable by PHP (e.g. chmod 664 .env, or File Manager → Permissions), then reload this page.'
-                : 'Create it: cp .env.example .env, then php artisan key:generate (docs/INSTALL.md step 5), then reload this page.');
+                ? 'Make .env writable by PHP: in the Terminal, run chmod 664 .env (or use File Manager → Permissions), then reload this page.'
+                : 'In the Terminal, run cp .env.example .env, then php artisan key:generate (docs/INSTALL.md step 5), then reload this page.');
 
         return ['rows' => $rows, 'all_pass' => ! in_array(false, array_column($rows, 'pass'), true)];
     }
