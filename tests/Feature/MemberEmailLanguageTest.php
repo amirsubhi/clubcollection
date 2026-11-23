@@ -168,11 +168,9 @@ class MemberEmailLanguageTest extends TestCase
         yield '23:30 night' => [23, 30, 'Selamat malam'];
     }
 
-    /**
-     * @param  \Closure(self, User): Mailable  $make
-     */
+    /** @param \Closure(self, User): Mailable $make */
     #[DataProvider('emails')]
-    public function test_malay_emails_greet_by_the_malaysia_time_of_day(\Closure $make): void
+    public function test_malay_emails_greet_by_the_malaysia_time_of_day(\Closure $make, string $msSubject, string $msLine, string $enSubject, string $enLine): void
     {
         foreach (self::times() as [$hour, $minute, $greeting]) {
             $this->travelTo(Carbon::create(2026, 8, 20, $hour, $minute, 0, 'Asia/Kuala_Lumpur')->utc());
