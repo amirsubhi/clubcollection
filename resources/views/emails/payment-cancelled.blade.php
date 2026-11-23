@@ -6,7 +6,7 @@
     $totalSen = (int) $fees->sum(fn ($f) => $f->amountSen());
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ \App\Support\UiLang::htmlLang(app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>

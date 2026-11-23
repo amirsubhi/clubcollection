@@ -5,7 +5,7 @@
     $dueOn = \App\Support\UiLang::date($payment->due_date);
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ \App\Support\UiLang::htmlLang(app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>
@@ -40,7 +40,7 @@
 
     <div class="days-overdue">
       &#128197; {{ \App\Support\MailText::bold('Originally due on **:date**', ['date' => $dueOn]) }}
-      &mdash; <strong>{{ $daysLate === 1 ? __('1 day overdue') : __(':count days overdue', ['count' => $daysLate]) }}</strong>
+      &mdash; <strong>{{ trans_choice(':count day overdue|:count days overdue', $daysLate) }}</strong>
     </div>
 
     <div class="details">

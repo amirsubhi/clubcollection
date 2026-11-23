@@ -10,7 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { fmtDate, rm } from "@/lib/format";
-import { fill, localeTag, useLang, useT } from "@/lib/i18n";
+import { fill, localeTag, useLang, useT, useCountText } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useStickyFit } from "@/lib/useStickyFit";
 import type { MemberPaymentRow, PaymentContext, PaymentGroup, TransferOption, TransferVerification } from "@/types/member";
@@ -128,6 +128,7 @@ function MethodOption({
 /** Bank details, the reference to type, and the slip form. */
 function TransferForm({ transfer, amount, group }: { transfer: TransferOption; amount: number; group?: PaymentGroup | null }) {
   const t = useT();
+  const tn = useCountText();
   const { lang } = useLang();
   const text = useServerText();
   const [items, setItems] = useState<UploadItem[]>([]);
@@ -220,14 +221,11 @@ function TransferForm({ transfer, amount, group }: { transfer: TransferOption; a
           comfortable
           maxFiles={transfer.maxFiles}
           maxKb={transfer.maxMb * 1024}
-          error={tooMany ? fill(t("tooManyFiles"), { n: transfer.maxFiles }) : fileError ? text(fileError) : undefined}
+          error={tooMany ? tn("tooManyFiles", transfer.maxFiles) : fileError ? text(fileError) : undefined}
           text={{
             dropPrefix: t("dropPrefix"),
             browse: t("browse"),
-            limits: fill(t("slipLimits"), {
-              n: transfer.maxFiles,
-              mb: transfer.maxMb,
-            }),
+            limits: tn("slipLimits", transfer.maxFiles, { mb: transfer.maxMb }),
             takePhoto: t("takePhotoSlip"),
             cameraHint: t("cameraHint"),
             chooseFile: t("chooseFile"),
@@ -417,11 +415,12 @@ function StickyBar({ children }: { children: React.ReactNode }) {
 /** "Bayar semua": each fee on its own line, oldest first, then the fees total. */
 function GroupLines({ group }: { group: PaymentGroup }) {
   const t = useT();
+  const tn = useCountText();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
   return (
     <div className="px-4 py-3" data-testid="group-fees">
-      <dt className="text-sm text-muted-foreground">{fill(t("feesN"), { n: group.fees.length })}</dt>
+      <dt className="text-sm text-muted-foreground">{tn("feesN", group.fees.length)}</dt>
       <dd>
         <ul className="mt-1 flex flex-col divide-y divide-dashed">
           {group.fees.map((f) => (
@@ -429,7 +428,7 @@ function GroupLines({ group }: { group: PaymentGroup }) {
               <span className="min-w-0 flex-[1_1_10rem] break-words">
                 {feeLabel(f)}
                 <span className="block text-sm text-muted-foreground">
-                  {f.invoiceNo} · {t("due")} {fmtDate(f.dueDate, lang)}
+                  {f.invoiceNo} · {fill(t("dueOn"), { d: fmtDate(f.dueDate, lang) })}
                   <DueNote p={f} />
                 </span>
               </span>
@@ -494,7 +493,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                   <span className="min-w-0 flex-[1_1_10rem] break-words">
                     {feeLabel(payment)}
                     <span className="block text-sm text-muted-foreground">
-                      {t(`freq_${payment.frequency}`)} · {t("due")} {fmtDate(payment.dueDate, lang)}
+                      {t(`freq_${payment.frequency}`)} · {fill(t("dueOn"), { d: fmtDate(payment.dueDate, lang) })}
                       <DueNote p={payment} />
                     </span>
                   </span>
@@ -645,7 +644,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                         </>
                       ) : (
                         <>
-                          {t("payAgain")} {rm(total)}
+                          {fill(t("payAgainAmt"), { x: rm(total) })}
                         </>
                       )}
                     </Button>
@@ -675,7 +674,7 @@ export default function ReviewPay({ payment, group, gateway, charges, hasOpenBil
                     </>
                   ) : (
                     <>
-                      <Lock aria-hidden /> {t("payNow")} {rm(total)}
+                      <Lock aria-hidden /> {fill(t("payNowAmt"), { x: rm(total) })}
                     </>
                   )}
                 </Button>

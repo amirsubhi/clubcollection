@@ -86,7 +86,10 @@ export function CollectedSpentChart({
   const range = windowLabel ?? (data.length ? `${data[0].full}–${data[last].full}` : "");
   const summary =
     summaryProp ??
-    fill(t("chartSummary"), { range, collected: config.collected.label.toLowerCase(), in: rm(totalIn), spent: config.spent.label.toLowerCase(), out: rm(totalOut) });
+    (labels
+      ? // Own series names: only the admin Ledger ("Money in" / "Money out"), whose pages are English.
+        `${range}: ${labels.collected.toLowerCase()} ${rm(totalIn)}, ${labels.spent.toLowerCase()} ${rm(totalOut)}.`
+      : fill(t("chartSummary"), { range, in: rm(totalIn), out: rm(totalOut) }));
   // On a phone, label every other month counted back from the latest, so the
   // labels are evenly spaced and the current month is always named.
   const narrow = useNarrow();

@@ -421,9 +421,13 @@ class PaymentController extends Controller
         $user = auth()->user();
         $this->authorizeActiveMembership($user, $club);
 
+        // Codes, not sentences: the member app shows them in the member's language (flash_* in lang/member).
         $request->validate([
             'period_start' => 'required|date|after:today',
             'frequency' => 'required|in:monthly,quarterly,yearly',
+        ], [
+            'period_start.*' => 'member.start_next_month',
+            'frequency.*' => 'member.plan_not_allowed',
         ]);
 
         if (! in_array($request->frequency, $club->allowedPlans(), true)) {

@@ -7,7 +7,7 @@ import { FlashBanner, PaymentRow, SectionCard } from "@/components/app/MemberPar
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { rm } from "@/lib/format";
-import { fill, useLang, useT } from "@/lib/i18n";
+import { fill, useLang, useT, useCountText } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { HomeClub, MemberPaymentRow, PayAllOffer } from "@/types/member";
 
@@ -29,20 +29,20 @@ interface Props {
 
 /** "1 menunggu pengesahan": fees whose slip the treasurer is still checking. */
 function VerifyingLine({ n }: { n: number }) {
-  const t = useT();
+  const tn = useCountText();
   return (
     <span className="inline-flex h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="verifying-line">
-      <Hourglass className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("verifyingN"), { n })}
+      <Hourglass className="h-4 w-4" strokeWidth={2} aria-hidden /> {tn("verifyingN", n)}
     </span>
   );
 }
 
 /** "1 dalam proses": fees with an FPX payment the bank has not confirmed yet. */
 function ProcessingLine({ n }: { n: number }) {
-  const t = useT();
+  const tn = useCountText();
   return (
     <span className="inline-flex min-h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="processing-line">
-      <RefreshCw className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("processingN"), { n })}
+      <RefreshCw className="h-4 w-4" strokeWidth={2} aria-hidden /> {tn("processingN", n)}
     </span>
   );
 }
@@ -89,6 +89,7 @@ function Hero({
   memberName: string;
 }) {
   const t = useT();
+  const tn = useCountText();
   // Nothing else owed, but an FPX payment is still with the bank: checking it comes first, paying again second.
   if (outstanding.count === 0 && outstanding.processingCount > 0 && next?.status === "processing") {
     return (
@@ -162,7 +163,7 @@ function Hero({
         </h2>
         {outstanding.overdueCount > 0 && (
           <span className="inline-flex min-h-7 items-center gap-1 rounded-full bg-warning-soft px-2.5 text-sm font-bold text-warning-foreground ring-1 ring-warning/25" data-testid="late-line">
-            <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden /> {fill(t("lateN"), { n: outstanding.overdueCount })}
+            <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden /> {tn("lateN", outstanding.overdueCount)}
           </span>
         )}
       </div>
@@ -172,9 +173,9 @@ function Hero({
           {rm(outstanding.total)}
         </div>
         <div className="mt-2 text-base text-deep-foreground/80">
-          {fill(t("openN"), { n: outstanding.count })}
+          {tn("openN", outstanding.count)}
           {outstanding.count > 1 && !payAll && <span className="block">{t("payOldestFirst")}</span>}
-          {payAll && <span className="block">{fill(t("payAllHint"), { n: payAll.count })}</span>}
+          {payAll && <span className="block">{tn("payAllHint", payAll.count)}</span>}
         </div>
         {(outstanding.verifyingCount > 0 || outstanding.processingCount > 0) && (
           <div className="mt-2 flex flex-wrap gap-2">
@@ -206,7 +207,7 @@ function Hero({
       ) : (
         <div className="flex flex-wrap gap-2">
           <Link href={next.urls.review ?? next.urls.invoice} className={cn(heroPrimary, "flex-[1_1_12rem]")}>
-            {t("payNow")} {rm(next.amount)}
+            {fill(t("payNowAmt"), { x: rm(next.amount) })}
           </Link>
           <Link href={next.urls.invoice} className={cn(heroSecondary, "flex-[1_0_auto]")}>
             {t("viewInvoice")}
@@ -263,6 +264,7 @@ function ClubCard({ club, multi }: { club: HomeClub; multi: boolean }) {
 
 export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs, dashboardUrl, account }: Props) {
   const t = useT();
+  const tn = useCountText();
   const { lang } = useLang();
   const { auth, portal } = usePage().props;
   const multi = clubs.length > 1;
@@ -278,9 +280,9 @@ export default function Home({ outstanding, upcoming, recentPaid, payAll, clubs,
     <MemberShell
       tab="home"
       navHrefs={navHrefs}
-      clubName={multi ? fill(t("clubsN"), { n: clubs.length }) : (clubs[0]?.name ?? portal?.name ?? "Club Portal")}
+      clubName={multi ? tn("clubsN", clubs.length) : (clubs[0]?.name ?? portal?.name ?? "Club Portal")}
       clubLogoUrl={multi ? null : clubs[0]?.logoUrl}
-      title={`${t("hi")}, ${firstName}`}
+      title={fill(t("hiName"), { name: firstName })}
     >
       <Head title={t("navHome")} />
       <FlashBanner />

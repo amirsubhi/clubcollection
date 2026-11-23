@@ -1,6 +1,6 @@
 {{-- One language: the recipient's (sent under their locale; English sentences are the keys of lang/<code>.json). --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ \App\Support\UiLang::htmlLang(app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>

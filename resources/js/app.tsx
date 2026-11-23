@@ -3,7 +3,7 @@ import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { setNonce } from "get-nonce";
-import { DEFAULT_LANG, LangContext, PageLangContext, langFromLocale, normaliseLang, storedLang, type Lang } from "@/lib/i18n";
+import { DEFAULT_LANG, LangContext, PageLangContext, htmlLangOf, langFromLocale, normaliseLang, storedLang, type Lang } from "@/lib/i18n";
 import { saveLang, unsavedLang } from "@/lib/langSave";
 import { captureInstallPrompt, registerServiceWorker } from "@/lib/pwa";
 import { readPref, writePref } from "@/lib/storage";
@@ -38,7 +38,7 @@ function initialLang(locale: unknown, account: Account): Lang {
   return normaliseLang(readPref("cp-lang")) ?? langFromLocale(locale);
 }
 
-/** Member pages follow the BM/EN toggle; admin (English) and other pages follow the server locale. */
+/** Member pages follow the language picker; admin (English) and other pages follow the server locale. */
 function htmlLang(component: string, locale: unknown, lang: Lang): Lang {
   return component.startsWith("Member/") ? lang : langFromLocale(locale);
 }
@@ -68,7 +68,7 @@ function Providers({ locale, account, component, children }: { locale: unknown; 
   useEffect(() => router.on("navigate", (e) => setPage({ component: e.detail.page.component, locale: e.detail.page.props.locale })), []);
   const pageLang = htmlLang(page.component, page.locale, lang);
   useEffect(() => {
-    document.documentElement.lang = pageLang;
+    document.documentElement.lang = htmlLangOf(pageLang);
   }, [pageLang]);
   useEffect(() => {
     if (account) {
