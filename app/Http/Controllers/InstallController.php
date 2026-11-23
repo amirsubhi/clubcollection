@@ -74,9 +74,12 @@ class InstallController extends Controller
             'app_url'        => 'required|url|max:255',
             'admin_name'     => 'required|string|max:255',
             'admin_email'    => 'required|email|max:255',
-            'admin_password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()],
+            // Always checked against known breaches here: no Portal settings exist yet. An unreachable service passes.
+            'admin_password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()->uncompromised()],
         ], [
             'app_name.not_regex' => 'The application name may not contain quotes, backslashes, $ or line breaks.',
+            // The Password rule reports a breached password as the rule "password.uncompromised".
+            'admin_password.password.uncompromised' => 'This password has appeared in a data leak on another website, so it is not safe. Please choose a different one.',
         ]);
         $https = str_starts_with(strtolower($data['app_url']), 'https://');
 

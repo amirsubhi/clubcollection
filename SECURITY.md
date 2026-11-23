@@ -46,8 +46,9 @@ Upgrade with the steps in [docs/RELEASE.md](docs/RELEASE.md).
   the installer and uploads have their own limits.
 - **Passwords:** a new password (password reset or change) needs 12+ characters and must not be in a known breach
   (Have I Been Pwned range API, only the first 5 characters of the SHA-1 leave the server; passes if the API is
-  unreachable). The installer's first super-admin password has its own rule: 12+ characters with upper- and
-  lower-case letters, numbers and symbols (no breach check). Temporary passwords emailed by an admin must be
+  unreachable). The super admin can turn the breach check off on **Portal settings** (on by default; the change is
+  audited), for a host that blocks outgoing connections. The installer's first super-admin password has its own
+  rule: 12+ characters with upper- and lower-case letters, numbers and symbols, and always the breach check. Temporary passwords emailed by an admin must be
   replaced at first sign-in. The reset form never says whether an email has an account, and the reset email is sent
   after the answer. A password change or reset ends the user's other sessions and emails the owner. "Keep me signed
   in" lasts 30 days.

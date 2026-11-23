@@ -193,7 +193,8 @@ backups and troubleshooting. Upgrades are in [docs/RELEASE.md](docs/RELEASE.md).
 - **2FA** (TOTP with recovery codes) for any user, and required for admins: the super admin and club admins must set
   it up before the admin pages open (`REQUIRE_ADMIN_2FA`, on by default). Codes can't be reused and the challenge
   locks after 5 wrong codes.
-- **Passwords and sign-in:** new passwords need 12+ characters and are checked against known breached passwords;
+- **Passwords and sign-in:** new passwords need 12+ characters and are checked against known breached passwords
+  (a Portal settings switch, on by default);
   10 wrong passwords for one account pause its sign-in for 15 minutes (never permanent; a password reset still works)
   and email the owner.
 - **Private, encrypted files:** documents and slips are encrypted at rest with `APP_KEY` on a private disk and served

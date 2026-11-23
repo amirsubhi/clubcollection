@@ -18,6 +18,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `bootstrap/requirements.php`: one list of the server requirements (lowest PHP, extensions, PDO extension per
   database, writable folders) read by `app:doctor`, `/install` and the guard; a test checks it against Composer's
   platform check.
+- **Breached-password check switch** on Portal settings (super admin; on by default; audited): with it off, new
+  passwords on reset and change need only the 12-character minimum and nothing is sent to Have I Been Pwned. A site
+  upgraded from v2.0.0 keeps the check on.
 
 ### Changed
 - `/install` checks everything `app:doctor` checks about the server: the PHP version, every required extension and
@@ -28,8 +31,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   locked dependencies need; it was 8.4.0 in the installer and `app:doctor`. The release build refuses a zip whose
   Composer platform check disagrees with `bootstrap/requirements.php`.
 - `app:doctor` starts each run with no rows (a second run in the same process repeated the first one's rows).
+- **Installer:** the first super-admin password is also checked against known breaches (passes if the service
+  can't be reached), with a plain message when it has been seen in a leak.
+
+### Changed (Portal settings, from an Impeccable review: critique 30/40, audit 18/20, 0 axe violations)
+- A field error shows once, under its field (no duplicate alert at the top); a plain message for a portal name with
+  hidden characters; the success message says what changed.
+- Brand colours on a phone: the radio stays beside the colour name, so the list is about half as long.
+- Breached-password check: one line of help above the choice, the details under "How it works", "(recommended)" on
+  the label, and a warning line while it is off. The intro text is capped at a readable width.
 
 ### Documentation
+- `docs/screenshots/`: all 17 screenshots retaken from the current app (per-club receipt numbers with club details and Share, the current admin menu, Billing settings with the overdue and WhatsApp sections).
+- Treasurer & Club Admin Guide **1.1** (`docs/guides/`): section 3.3 says a new club starts with one job level, "Ahli".
 - `docs/INSTALL.md`: `composer.json` requires PHP `^8.4` too (the "still says ^8.3" note is gone); the extension
   table lists `curl`, `xml` and `zip` (required by `app:doctor`; the backup uses `ZipArchive`); the `app:doctor`
   summary names the APP_KEY, Database and "No Vite dev-server file" rows; PostgreSQL is marked untested (CI covers

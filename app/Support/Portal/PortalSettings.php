@@ -7,8 +7,8 @@ use App\Services\LogoService;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Portal-wide settings the super admin sets on /admin/portal-settings (settings phase 1): the portal name and
- * logo. Stored as key / value rows (portal_settings) and cached forever under one key; the cache is cleared on
+ * Portal-wide settings the super admin sets on /admin/portal-settings (settings phase 1): the portal name,
+ * logo, brand colour and the breached-password check. Stored as key / value rows (portal_settings) and cached forever under one key; the cache is cleared on
  * save. Every read is wrapped in rescue(): the installer, a fresh install before migrations, and error pages
  * with the database down all fall back to the defaults (APP_NAME, the built-in mark).
  */
@@ -16,7 +16,10 @@ final class PortalSettings
 {
     public const CACHE_KEY = 'portal-settings.v1';
 
-    public const KEYS = ['name', 'logo', 'brand'];
+    public const KEYS = ['name', 'logo', 'brand', 'breach_check'];
+
+    /** The only stored value of breach_check: no row (or anything else) means the check is on. */
+    public const BREACH_CHECK_OFF = 'off';
 
     /** config key holding APP_NAME as it was before a portal name was applied (AppServiceProvider). */
     public const DEFAULT_NAME_CONFIG = 'app.default_name';
@@ -27,7 +30,7 @@ final class PortalSettings
     /**
      * Every setting (missing ones null).
      *
-     * @return array{name: ?string, logo: ?string, brand: ?string}
+     * @return array{name: ?string, logo: ?string, brand: ?string, breach_check: ?string}
      */
     public static function all(): array
     {
@@ -64,6 +67,16 @@ final class PortalSettings
         $name = (string) config(self::DEFAULT_NAME_CONFIG, config('app.name'));
 
         return in_array($name, ['', 'Laravel'], true) ? 'Club Portal' : $name;
+    }
+
+    /**
+     * Whether new passwords are checked against known data breaches (Password::defaults, AppServiceProvider).
+     * On unless the super admin turned it off: a missing row, a settings cache from before this key existed, an
+     * unreadable database and a not-yet-installed portal all read as on.
+     */
+    public static function breachCheckOn(): bool
+    {
+        return self::get('breach_check') !== self::BREACH_CHECK_OFF;
     }
 
     /** Public URL of the portal logo, or null for the built-in mark. */

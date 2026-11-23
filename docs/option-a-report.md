@@ -667,6 +667,19 @@ first install from it on an empty MariaDB database was walked end to end (instal
 members, Generate fees twice, a member's first sign-in with the emailed temporary password and forced change).
 Still open for go-live: the real-host ToyyibPay / Billplz sandbox run (go-live checklist).
 
+## Breached-password check switch (branch `breach-check-setting`, 23 Nov 2026)
+
+- Portal settings (super admin) gets a **Breached-password check** checkbox, on by default. Only `breach_check = off`
+  is stored in `portal_settings`; no row, a v2.0.0 settings cache without the key, a down database or a site not
+  yet installed all read as on (`PortalSettings::breachCheckOn()`).
+- `Password::defaults()` reads the switch on every validation (reset, change). With it off, only the 12-character
+  minimum applies and nothing is sent to Have I Been Pwned.
+- The form sends a hidden `0` + checkbox `1`; a request without the field leaves the switch alone. Audited as
+  "breached-password check turned off / on".
+- Installer: the first super-admin password also gets `uncompromised()` (always on: no settings exist yet; passes if
+  the service is unreachable), with a plain message for a leaked password.
+- Read as super-admin only: passwords belong to people, not to one club, so a club admin switch doesn't fit.
+
 ## Installer checks (branch `installer-checks`)
 
 No separate `installer.php`. `bootstrap/requirements.php` is the one list (PHP 8.4.1, the twelve extensions, the PDO
@@ -701,4 +714,4 @@ answers 503 "This portal needs PHP 8.4.1 or newer ... choose PHP 8.4" with `no-s
 views → the 503 page; missing `zip` or `mbstring` → `/install` 200 with the failing row, its fix and the button
 disabled. PHPUnit on the VM: 1048 tests pass (new `PreflightTest`, `RequirementsTest`, extended `InstallationTest`).
 Not proven: `php -l` under an old PHP (no Docker or old PHP on this machine or the VM); a token scan in
-`PreflightTest` covers it, and a CI job lints the three files on PHP 5.6 and 7.4 once a PR runs.
+`PreflightTest` covers it, and a CI job lints the three files on PHP 5.6 and 7.4 (passed on PR #35).

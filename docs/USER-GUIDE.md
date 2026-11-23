@@ -585,6 +585,11 @@ show that club's name and logo instead, with the portal name under it. Changes a
   A logo saved before this release gets its icons the next time Portal settings is opened. The app's name is the
   portal name. **Phones that already installed the app may keep the old icon and name** until the app is removed
   from the home screen and added again (browsers refresh them on their own schedule, sometimes days later).
+- **Breached-password check** (on by default): when anyone resets or changes a password, the portal refuses one
+  that appears in known data breaches. Only the first 5 characters of the password's SHA-1 hash are sent to Have I
+  Been Pwned (pwnedpasswords.com), never the password; if the service can't be reached, the password is accepted.
+  Untick **Refuse new passwords that appear in known data breaches** only if your host blocks outgoing connections.
+  The 12-character minimum always applies, and the installer always checks the first admin's password.
 
 ### Privacy notice
 

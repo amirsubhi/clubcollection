@@ -205,7 +205,7 @@
                        class="form-control @error('admin_password') is-invalid @enderror"
                        autocomplete="new-password" required minlength="12">
                 <div class="form-text small">
-                    Must be at least 12 characters and contain upper-case, lower-case, a number and a symbol.
+                    Must be at least 12 characters with upper-case, lower-case, a number and a symbol, and not a password known from a data leak.
                 </div>
                 @error('admin_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
