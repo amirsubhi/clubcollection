@@ -112,7 +112,7 @@
                         {{-- Right after the legend (Bootstrap clears the floated legend with "legend + *"); help above the
                              choice, as for the brand colour. --}}
                         <div id="f-breach-check-help" class="form-text mt-0 mb-2">
-                            When anyone sets a new password, it is checked against Have I Been Pwned. The password itself is never sent.
+                            When anyone sets a new password, it is checked against Have I Been Pwned, a public list of leaked passwords. The password itself is never sent.
                         </div>
                         <div class="form-check breach-check">
                             <input type="hidden" name="breach_check" value="0">
@@ -120,7 +120,7 @@
                                    aria-describedby="f-breach-check-help" @checked(old('breach_check', $breachCheckOn ? '1' : '0') === '1')>
                             <label class="form-check-label" for="f-breach-check">Refuse new passwords that appear in known data breaches <span class="fw-normal text-body-secondary">(recommended)</span></label>
                             <div class="breach-check-off form-text text-warning-emphasis" data-testid="breach-check-off">
-                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Off: new passwords only need 12 characters, even if they have leaked.
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Off: any password of 12 or more characters is accepted, even one known to have leaked.
                             </div>
                         </div>
                         <details class="form-text mt-2">

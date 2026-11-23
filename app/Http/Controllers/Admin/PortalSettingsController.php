@@ -100,6 +100,14 @@ class PortalSettingsController extends Controller
             array_intersect_key($new, array_flip($changed))
         );
 
-        return redirect()->route('admin.portal-settings.edit')->with('success', 'Portal settings saved ('.$what.').');
+        // Whole sentences (no pieces joined around a word), so each one can become one translation later.
+        $saved = array_values(array_map(fn ($key) => ['name' => 'portal name', 'logo' => 'logo', 'brand' => 'brand colour'][$key],
+            array_diff($changed, ['breach_check'])));
+        $flash = $saved === [] ? ['Saved.'] : ['Saved: '.implode(', ', $saved).'.'];
+        if (in_array('breach_check', $changed, true)) {
+            $flash[] = $new['breach_check'] === null ? 'Breached-password check turned on.' : 'Breached-password check turned off.';
+        }
+
+        return redirect()->route('admin.portal-settings.edit')->with('success', implode(' ', $flash));
     }
 }

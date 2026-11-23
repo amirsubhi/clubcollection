@@ -118,7 +118,7 @@ class BreachCheckSettingTest extends TestCase
 
         // Another form (or an old page) posting only the name never turns the check back on or off.
         $this->put(route('admin.portal-settings.update'), ['name' => 'Portal Kelab'])->assertRedirect()
-            ->assertSessionHas('success', 'Portal settings saved (portal name).');
+            ->assertSessionHas('success', 'Saved: portal name.');
         $this->assertFalse(PortalSettings::breachCheckOn());
     }
 
@@ -154,7 +154,7 @@ class BreachCheckSettingTest extends TestCase
     public function test_the_flash_says_what_changed_and_the_off_warning_is_in_the_page(): void
     {
         $this->actingAsSuperAdmin();
-        $this->switchTo(false)->assertSessionHas('success', 'Portal settings saved (breached-password check turned off).');
+        $this->switchTo(false)->assertSessionHas('success', 'Saved. Breached-password check turned off.');
         $this->get(route('admin.portal-settings.edit'))->assertOk()
             ->assertSee('data-testid="breach-check-off"', false)
             ->assertSee('How it works');
