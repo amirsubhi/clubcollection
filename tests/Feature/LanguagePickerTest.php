@@ -33,7 +33,12 @@ class LanguagePickerTest extends TestCase
         $this->assertSame(1, preg_match('/<a href="[^"]*lang=bm"\s+hreflang="ms"\s+lang="ms"\s+aria-current="true"\s+class="auth-lang-option is-active">Bahasa Melayu<\/a>/', $html));
         $this->assertSame(1, preg_match('/<a href="[^"]*lang=en"\s+hreflang="en"\s+lang="en"\s+class="auth-lang-option ">English<\/a>/', $html));
         $this->assertLessThan(strpos($html, '>English</a>'), strpos($html, '>Bahasa Melayu</a>'));
-        $this->assertStringNotContainsString('(beta)', $html);
+        // Malay and English are not beta; the four drafted languages are, until a native speaker checks them.
+        $this->assertStringNotContainsString('Bahasa Melayu (beta)', $html);
+        $this->assertStringNotContainsString('English (beta)', $html);
+        foreach (['简体中文', 'தமிழ்', 'Français', 'Español'] as $name) {
+            $this->assertStringContainsString($name.' (beta)', $html);
+        }
         // The script that closes the list carries the CSP nonce.
         $this->assertSame(1, preg_match('/<script nonce="[^"]+">\s*\(function \(\) \{\s*var picker = document\.querySelector\(\'\[data-lang-picker\]\'\);/', $html));
 

@@ -26,7 +26,7 @@ class DefaultLanguageSettingTest extends TestCase
         Cache::forever(PortalSettings::CACHE_KEY, ['name' => 'Portal']);
         $this->assertSame('ms', PortalSettings::defaultLocale());
 
-        PortalSetting::query()->create(['key' => 'default_locale', 'value' => 'fr']);
+        PortalSetting::query()->create(['key' => 'default_locale', 'value' => 'de']);
         PortalSettings::flush();
         $this->assertSame('ms', PortalSettings::defaultLocale());
     }
@@ -70,7 +70,7 @@ class DefaultLanguageSettingTest extends TestCase
     public function test_only_an_available_language(): void
     {
         $this->actingAsSuperAdmin();
-        foreach (['fr', 'bm', 'EN', 'en_US'] as $code) {
+        foreach (['de', 'bm', 'EN', 'en_US'] as $code) {
             $this->choose($code)->assertSessionHasErrors(['default_locale' => 'Choose one of the listed languages.']);
         }
         $this->assertSame(0, PortalSetting::where('key', 'default_locale')->count());

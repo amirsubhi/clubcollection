@@ -26,7 +26,7 @@ class UiLangTest extends TestCase
 
     public function test_anything_else_is_not_a_language(): void
     {
-        foreach (['', 'xx', 'BM', 'EN', 'en_US', 'zh', ' bm', null, 1, ['bm'], true] as $value) {
+        foreach (['', 'xx', 'BM', 'EN', 'en_US', 'de', ' bm', null, 1, ['bm'], true] as $value) {
             $this->assertNull(UiLang::normalise($value), var_export($value, true));
         }
     }
@@ -72,9 +72,9 @@ class UiLangTest extends TestCase
 
     public function test_a_code_without_a_file_is_not_available(): void
     {
-        $this->assertNull(UiLang::normalise('fr'));
+        $this->assertNull(UiLang::normalise('de'));
         $this->assertNull(UiLang::normalise('../ms'));
-        $this->assertSame('fr', UiLang::name('fr'));
+        $this->assertSame('de', UiLang::name('de'));
         $this->assertSame('Bahasa Melayu', UiLang::name('ms'));
     }
 
@@ -86,7 +86,7 @@ class UiLangTest extends TestCase
             'monthShort_8' => '8月',
         ]);
 
-        $this->assertSame(['ms', 'en', 'zz'], UiLang::available());
+        $this->assertSame(['ms', 'en', 'es', 'fr', 'ta', 'zh', 'zz'], UiLang::available(), 'the default first, then by code');
         $this->assertSame('zz', UiLang::normalise('zz'));
         $this->assertSame('Zedish (beta)', UiLang::pickerName('zz'));
         $this->assertSame('Bahasa Melayu', UiLang::pickerName('ms'));
