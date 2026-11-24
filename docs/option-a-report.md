@@ -1018,7 +1018,7 @@ here (`docs/i18n-translator-brief.md`). Owner rule recorded there and in CLAUDE.
   overflow after the fix.
 - **New Malay:** only the picker label "Bahasa", approved by the owner (kept as "Bahasa", 24 Nov).
 - **How it reached `master`.**
-  - A power cut on 23 Nov stopped the merge of `master` (#38 and #39) into the branch halfway. The resolved
+  - An interrupted session on 23 Nov left the merge of `master` (#38 and #39) into the branch halfway. The resolved
     CHANGELOG and wording-doc conflicts and two follow-up edits were committed as `03a0523` the next morning.
   - PR #40 was stacked on #38 and still targeted `i18n-saved-language`, so its merge landed there, not in `master`.
   - PR #41 brought the same commit to `master` (`5b41c5f`). The trees of `5b41c5f` and `03a0523` are identical.
@@ -1029,12 +1029,11 @@ here (`docs/i18n-translator-brief.md`). Owner rule recorded there and in CLAUDE.
 
 ### Browser test of `master` (24 Nov 2026)
 
-Run after the merge, on the exact tree of `master` (`~/cp-l4` on the VM at `03a0523`, built after that commit).
+Run after the merge, on the exact tree of `master` (a throwaway copy at `03a0523`, built after that commit).
 - **Setup.**
   - A fresh SQLite database (demo + e2e seeders), served by `php artisan serve` on :8099.
-  - Selenium headless Chrome on Kali, at 390 px and 1366 px.
+  - Selenium headless Chrome, at 390 px and 1366 px.
   - `e2e.admin.a` was also made a member of club 1 by hand, to test an admin in the member app.
-  - Scripts, results and screenshots are in `~/p3` on Kali.
 - **Member app.** For each of the six languages, `e2e.member` chose it in the picker. The test then loaded Home,
   Payments, Fund, Review & pay and Security at both widths: 60 page loads. Each was checked for:
   - `<html lang>`;
@@ -1062,9 +1061,6 @@ Run after the merge, on the exact tree of `master` (`~/cp-l4` on the VM at `03a0
   Tamil, Home in French at 1366 px, and the French and Spanish sign-in pages. Proper glyphs, no boxes, nothing clipped.
 - **Not tested.**
   - MariaDB, nginx and admin 2FA (this ran on SQLite, `artisan serve`, 2FA off).
-  - The FPX pay button (no gateway on the LAN).
+  - The FPX pay button (no payment gateway in the test setup).
   - Member emails in the new languages (covered by PHPUnit only).
-  - The :8080 test bed still runs v2.0.1.
-- **Test bed after the 24 Nov power cut.** The VM's DHCP address moved from `.21` to `192.168.31.22` (another
-  device took `.21`). `APP_URL`, the nginx `server_name` and Kali's `~/cpt/h.py` now use `.22`. A DHCP
-  reservation for the VM's MAC would stop this happening again.
+  - The shared test install still runs v2.0.1.
