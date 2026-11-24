@@ -337,7 +337,7 @@ class MemberEmailLanguageTest extends TestCase
             if (str_contains($file, 'club-admin-notice') || str_contains($file, 'ClubAdminNotice')) {
                 continue; // admin email: English only
             }
-            preg_match_all('/(?:__|MailText::bold)\(\s*(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)")/', (string) file_get_contents($file), $m, PREG_SET_ORDER);
+            preg_match_all('/(?:__|trans_choice|MailText::bold)\(\s*(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)")/', (string) file_get_contents($file), $m, PREG_SET_ORDER);
             foreach ($m as $match) {
                 $keys[] = stripslashes($match[2] ?? '' ?: $match[1]);
             }
@@ -359,7 +359,8 @@ class MemberEmailLanguageTest extends TestCase
             $this->assertNotSame('', trim($ms[$key]), $key);
             preg_match_all('/:(\w+)/', $key, $a);
             preg_match_all('/:(\w+)/', $ms[$key], $b);
-            $this->assertEqualsCanonicalizing($a[1], $b[1], "placeholders differ: {$key}");
+            // A trans_choice key ("one|other") names :count in each form; the translation may have fewer forms.
+            $this->assertEqualsCanonicalizing(array_values(array_unique($a[1])), array_values(array_unique($b[1])), "placeholders differ: {$key}");
             $this->assertSame(substr_count($key, '**'), substr_count($ms[$key], '**'), "bold markers differ: {$key}");
         }
     }

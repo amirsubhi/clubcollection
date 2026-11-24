@@ -58,13 +58,13 @@ perlindungan data".
 | Overdue reminder | Payment Overdue | Bayaran tertunggak (owner: as the subject) |
 | Overdue reminder | Dear \*\*:name\*\*, | Selamat pagi / petang / malam \*\*:name\*\*, (section 3) |
 | Overdue reminder | Originally due on \*\*:date\*\* | Tarikh akhir asal \*\*:date\*\* |
-| Overdue reminder | 1 day overdue / :count days overdue | Lewat 1 hari / Lewat :count hari |
+| Overdue reminder | :count day overdue\|:count days overdue (one `trans_choice` key since phase 3) | Lewat :count hari |
 | Overdue reminder | Club / Payment Type / Pay Now | Kelab / Jenis bayaran / Bayar sekarang |
 | Overdue reminder | If you have already made this payment, please contact your club administrator. | Jika anda sudah membuat bayaran ini, sila hubungi pentadbir kelab anda. |
 | Overdue reminder | This is an automated reminder, please do not reply. | Ini peringatan automatik, sila jangan balas. |
 | Payment confirmation | Payment Confirmed – :club / Payment Confirmed | Bayaran disahkan – :club / Bayaran disahkan |
 | Payment confirmation | Your payment has been received and confirmed. Thank you! | Bayaran anda telah diterima dan disahkan. Terima kasih! |
-| Payment confirmation | 1 fee paid together / bill :code | 1 yuran dibayar sekali gus / bil :code |
+| Payment confirmation | :count fee paid together\|:count fees paid together, also with " (:ref)" (`trans_choice` keys since phase 3) / bill :code | :count yuran dibayar sekali gus (:ref) / bil :code |
 | Payment confirmation | Bank transfer / DuitNow (verified by the club) | Pindahan bank / DuitNow (disahkan oleh kelab) |
 | Payment confirmation | Bank reference / Transaction ID | Rujukan bank / ID transaksi |
 | Payment confirmation | Please keep this email as your payment receipt. If you have any questions, contact your club administrator. | Sila simpan e-mel ini sebagai resit bayaran anda. Jika ada sebarang pertanyaan, hubungi pentadbir kelab anda. |
@@ -93,3 +93,25 @@ password reset's "Hello!"), not "Salam":
 Malaysia time is fixed (Asia/Kuala_Lumpur, as the 08:00 reminder schedule), not `APP_TIMEZONE`, which is UTC on an
 install that never set it. It is the time the email is sent, not read: the daily overdue reminder (08:00) always says
 "Selamat pagi". English and the other languages keep their own opener (Hi / Dear / Hello).
+
+## Language phase 3 (language picker; ready for more languages)
+
+New text, approved by the owner on 2026-11-23 (the picker label stays "Bahasa"):
+
+| Where | English | Malay |
+|---|---|---|
+| Language picker label, read by screen readers (member app `langPicker`, sign-in pages `Language`) | Language | Bahasa |
+| English only: a text with a count when the number is 1 (Malay keeps one form) | "1 fee to pay", "1 club", "Pay 1 fee in one go.", "1 fee", "1 fee paid together", "1 fee in one slip", "…: 1 fee, … in total.", "up to 1 file", "Up to 1 file only.", "max 1 file" | (unchanged) |
+
+Some sentences were joined from two pieces in code. Each is now one key, and the text on screen is the same as
+before:
+- "Dalam proses, jangan bayar sekali lagi."
+- "Yuran keahlian {period}"
+- "Dibayar pada {d}"
+- "Tarikh akhir {d}"
+- "Hai, {name}"
+- "Bayar {x}", "Bayar sekali lagi {x}", "Semak & bayar {x}"
+- "Disemak {time}"
+- "Perlu bantuan? WhatsApp kelab", "Perlu bantuan? Hubungi pentadbir kelab"
+- "Bayar tahunan: jimat {x} caj berbanding bulanan", "Bayar suku tahunan: jimat {x} caj berbanding bulanan"
+- "{range}: dikutip {in}, dibelanjakan {out}."

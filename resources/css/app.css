@@ -100,10 +100,19 @@
   .auth-link {
     @apply inline-flex min-h-11 items-center rounded font-semibold text-primary underline-offset-4 hover:underline;
   }
-  .auth-lang {
-    @apply inline-flex h-11 min-w-11 items-center justify-center rounded-full px-2.5 text-muted-foreground hover:text-foreground;
+  /* Language picker (layouts/auth): a <details> disclosure, compact on a 320px phone. */
+  .auth-langs > summary { list-style: none; }
+  .auth-langs > summary::-webkit-details-marker { display: none; }
+  .auth-langs-btn {
+    @apply inline-flex h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full border bg-card pl-2.5 pr-2 text-sm font-bold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
-  .auth-lang.is-active { @apply bg-primary text-primary-foreground hover:text-primary-foreground; }
+  .auth-langs-menu {
+    @apply absolute right-0 top-full z-30 mt-1 flex min-w-[12rem] max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-2xl border bg-card p-1 text-base shadow-lg;
+  }
+  .auth-lang-option {
+    @apply flex min-h-11 w-full items-center rounded-xl px-3 text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+  .auth-lang-option.is-active { @apply bg-primary font-bold text-primary-foreground hover:bg-primary; }
   .auth-help > summary { list-style: none; }
   .auth-help > summary::-webkit-details-marker { display: none; }
   .auth-alert { @apply flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-base ring-1; }

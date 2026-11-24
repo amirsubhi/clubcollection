@@ -99,11 +99,13 @@ class AuthPagesTest extends TestCase
             ->assertDontSee('cdn.jsdelivr.net/npm/bootstrap', false);
     }
 
+    /** The language picker's accessible name starts with the label it shows ("BM"), then says what it is. */
     public function test_language_switch_names_include_the_visible_label(): void
     {
         $this->get('/login')
-            ->assertSee('BM<span class="sr-only"> – Bahasa Melayu</span>', false)
-            ->assertSee('EN<span class="sr-only"> – English</span>', false);
+            ->assertSee('BM<span class="sr-only"> – Bahasa: Bahasa Melayu</span>', false);
+        $this->get('/login?lang=en')
+            ->assertSee('EN<span class="sr-only"> – Language: English</span>', false);
     }
 
     public function test_two_factor_errors_follow_the_page_language(): void

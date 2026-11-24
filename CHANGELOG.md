@@ -29,6 +29,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   "Selamat malam" (19:00–04:59), Malaysia time when the email is sent, instead of "Salam" (the password reset's
   "Hello!" too, via `App\Notifications\ResetPassword`). Other languages keep their opener. Also from the owner's
   Malay review: "Pegawai perlindungan data" on the privacy notice and "Bayaran tertunggak" as the overdue heading.
+- **Chinese (Simplified), Tamil, French and Spanish** on the member side (member app, sign-in pages, member emails),
+  marked **beta** in the picker until a native speaker reviews each file. Chinese and Tamil are written for readers
+  in Malaysia. Each was checked by a blind back-translation into English (no wrong meaning on money, status or
+  security text). Admin pages stay English.
+- Pay ahead: the plan cards stack one per row on phones narrower than 360 px, and the "Recommended" badge never runs
+  past its card (it ran off the screen at 320 px, in English too).
+- **Language picker** instead of the BM / EN switch, in the member app and on the sign-in pages. It lists every
+  language by its own name, marks first translations "(beta)", and shows the short label ("BM") when closed, so it
+  stays compact on a phone. It saves the same way as the switch. The sign-in pages' picker works without
+  JavaScript.
+- Ready for more languages. A language is now files only: `lang/member/<code>.json` carries its own name, label,
+  `<html lang>` and locale (`_meta`), plus `lang/<code>.json` and `lang/<code>/{auth,passwords,validation}.php`.
+  The member app and PHP read the list from the folder. Date order, plural forms and whole sentences are keys
+  translators fill in (`docs/i18n-translator-brief.md`).
 
 ### Changed
 - **Member emails are in one language, the member's** (their saved choice, else the portal default): welcome,
@@ -49,6 +63,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   language by adding a file. Every BM/EN choice in the React components now goes through the i18n module. Malay is
   still stored as `bm` in the `cp_lang` cookie and the app's saved choice, so open tabs and sign-in pages keep
   working. Nothing on screen changes.
+- English text with a count now says "1 fee" where it said "1 fees". The forms are `_one` / `_other` keys, and
+  emails use `trans_choice`. Malay text is unchanged.
+- Pay-ahead form errors (start date, payment period) show in the member's language; they were English sentences.
 
 ### Fixed
 - **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such

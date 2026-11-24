@@ -3,7 +3,7 @@ import { Camera, FileText, ImageIcon, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { attachmentKinds } from "@/lib/fund-meta";
-import { fill, textsIn, usePageLang, type Lang } from "@/lib/i18n";
+import { countText, fill, textsIn, usePageLang, type Lang } from "@/lib/i18n";
 import type { AttachmentKind } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ const defaultText = (maxFiles: number, lang: Lang): UploaderText => {
   return {
     dropPrefix: t("uploaderDropPrefix"),
     browse: t("uploaderBrowse"),
-    limits: fill(t("uploaderLimits"), { n: maxFiles }),
+    limits: countText(lang, "uploaderLimits", maxFiles),
     takePhoto: t("uploaderTakePhoto"),
     cameraHint: t("uploaderCameraHint"),
     chooseFile: t("uploaderChooseFile"),

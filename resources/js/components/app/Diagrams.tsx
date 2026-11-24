@@ -1,7 +1,7 @@
 import { useId } from "react";
 import type { Sen } from "@/types/domain";
 import { rm } from "@/lib/format";
-import { fill, textsIn, type Lang } from "@/lib/i18n";
+import { countText, fill, textsIn, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const rmShort = (sen: number) => `RM ${Math.round(sen / 100).toLocaleString("en-MY")}`;
@@ -45,7 +45,7 @@ export function MoneyFlowDiagram({
   const claim = fill(t("flowClaim"), { fees: rm(fees), other: rm(otherIncome), spending: rm(spending), welfare: rm(totalWelfare), kept: rm(kept) });
   const outs = [
     { x: 6, label: t("flowSpending"), sub: t("flowSpendingSub"), amt: spending },
-    { x: 120, label: t("welfare"), sub: fill(t(welfareCount === 1 ? "flowWelfareSubOne" : "flowWelfareSub"), { n: welfareCount }), amt: totalWelfare },
+    { x: 120, label: t("welfare"), sub: countText(lang, "flowWelfareSub", welfareCount), amt: totalWelfare },
     { x: 234, label: t("flowKept"), sub: t("flowKeptSub"), amt: kept },
   ];
   return (

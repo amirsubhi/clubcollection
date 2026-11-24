@@ -59,7 +59,7 @@ class MemberLanguageTest extends TestCase
         $this->assertSame('en', UserLocale::resolve($this->member(), $this->request([], 'bm')));
         $this->assertSame('ms', UserLocale::resolve(null, $this->request([], 'bm')));
         // A saved code that is no longer available falls through to the default.
-        $this->assertSame('en', UserLocale::resolve($this->member('fr'), $this->request()));
+        $this->assertSame('en', UserLocale::resolve($this->member('de'), $this->request()));
     }
 
     public function test_emails_use_the_saved_language_else_the_portal_default_never_the_browser(): void
@@ -245,7 +245,7 @@ class MemberLanguageTest extends TestCase
         $member = $this->actingAsMember(Club::factory()->create());
         $member->forceFill(['locale' => 'en'])->save();
 
-        foreach (['fr', 'bm', '', 'EN', '../ms', ['en']] as $value) {
+        foreach (['de', 'bm', '', 'EN', '../ms', ['en']] as $value) {
             $this->postJson(route('member.language.update'), ['lang' => $value])->assertUnprocessable()->assertJsonValidationErrors('lang');
         }
         $this->postJson(route('member.language.update'), [])->assertUnprocessable();

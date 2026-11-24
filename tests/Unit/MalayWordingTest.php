@@ -42,6 +42,14 @@ class MalayWordingTest extends TestCase
         foreach (['ms.json', 'member/ms.json'] as $file) {
             $data = json_decode((string) file_get_contents("{$root}/{$file}"), true, 512, JSON_THROW_ON_ERROR);
             foreach ($data as $key => $value) {
+                if (is_array($value)) {
+                    // lang/member/ms.json "_meta": its name and label are checked too.
+                    foreach (array_filter($value, 'is_string') as $sub => $text) {
+                        $out["{$file}: {$key}.{$sub}"] = $text;
+                    }
+
+                    continue;
+                }
                 $out["{$file}: {$key}"] = (string) $value;
             }
         }

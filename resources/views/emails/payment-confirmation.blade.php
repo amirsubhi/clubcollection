@@ -1,6 +1,6 @@
 {{-- One language: the recipient's (sent under their locale; English sentences are the keys of lang/<code>.json). --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ \App\Support\UiLang::htmlLang(app()->getLocale()) }}">
 <head>
 <meta charset="UTF-8">
 <style>
@@ -31,7 +31,9 @@
 
     @if($fees)
     <div class="amount">RM {{ number_format($fees->sum(fn ($f) => (float) $f->amount), 2) }}</div>
-    <p style="text-align:center;margin-top:-10px;color:#6c757d">{{ $fees->count() === 1 ? __('1 fee paid together') : __(':count fees paid together', ['count' => $fees->count()]) }}{{ $group ? ' ('.($group->isTransfer() ? $group->reference : __('bill :code', ['code' => $group->bill_code])).')' : '' }}</p>
+    <p style="text-align:center;margin-top:-10px;color:#6c757d">{{ $group
+        ? trans_choice(':count fee paid together (:ref)|:count fees paid together (:ref)', $fees->count(), ['ref' => $group->isTransfer() ? $group->reference : __('bill :code', ['code' => $group->bill_code])])
+        : trans_choice(':count fee paid together|:count fees paid together', $fees->count()) }}</p>
     @else
     <div class="amount">RM {{ number_format($payment->amount, 2) }}</div>
     @endif

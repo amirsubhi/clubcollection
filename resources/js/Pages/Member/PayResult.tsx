@@ -9,7 +9,7 @@ import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
 import { StatusChip } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate } from "@/lib/format";
-import { fill, localeTag, useLang, useT } from "@/lib/i18n";
+import { fill, localeTag, useLang, useT, useCountText } from "@/lib/i18n";
 import type { GroupReceipt, MemberPaymentRow, MemberReceipt, PaymentCancellationInfo, PaymentContext, PaymentGroup, TransferVerification } from "@/types/member";
 
 /** "verifying": a "Bayar semua" slip the treasurer is still checking. "cancelled": its receipt was cancelled by an admin. */
@@ -141,6 +141,7 @@ function usePaymentStatusPoll(statusUrl: string, enabled: boolean) {
 
 export default function PayResult({ outcome, cancellation, payment, group, receipt, verification, gateway, reference, statusUrl, reviewUrl, receiptUrl, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
+  const tn = useCountText();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
   const why = useCancelReason();
@@ -190,7 +191,7 @@ export default function PayResult({ outcome, cancellation, payment, group, recei
               <h2 id="vf-h" className="font-display text-xl font-bold leading-tight tracking-tight">
                 {t("verifyingTitle")}
               </h2>
-              <p className="mt-1 text-base">{fill(t("sentTogether"), { n: group.fees.length })}</p>
+              <p className="mt-1 text-base">{tn("sentTogether", group.fees.length)}</p>
               <p className="mt-1 text-base">{t("verifyingBody")}</p>
             </div>
           </div>
@@ -249,7 +250,7 @@ export default function PayResult({ outcome, cancellation, payment, group, recei
           <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight">{t("successTitle")}</h1>
           <p className="text-base text-muted-foreground">{t("receiptEmailed")}</p>
         </div>
-        {lines && <p className="-mt-2 text-center text-base font-semibold">{fill(t("paidTogether"), { n: lines.length })}</p>}
+        {lines && <p className="-mt-2 text-center text-base font-semibold">{tn("paidTogether", lines.length)}</p>}
         <ReceiptCard
           club={receiptClub(receipt.issuer, payClub)}
           member={{ name: member.name }}
@@ -362,7 +363,7 @@ export default function PayResult({ outcome, cancellation, payment, group, recei
         <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-warning" strokeWidth={1.75} aria-hidden />
         <div>
           <p className="font-display text-xl font-bold text-warning-foreground">
-            {t("processing")}, {t("dontPayAgain").toLowerCase()}
+            {t("processingDontPay")}
           </p>
           <p className="mt-1 text-base text-foreground">{t("pendingHint")}</p>
         </div>
@@ -381,7 +382,7 @@ export default function PayResult({ outcome, cancellation, payment, group, recei
         </Button>
         {poll.checkedAt && (
           <p className="text-center text-sm text-muted-foreground" aria-live="polite">
-            {t("checkedAt")} {poll.checkedAt.toLocaleTimeString(localeTag(lang), { hour: "numeric", minute: "2-digit", second: "2-digit" })}
+            {fill(t("checkedAtTime"), { time: poll.checkedAt.toLocaleTimeString(localeTag(lang), { hour: "numeric", minute: "2-digit", second: "2-digit" }) })}
           </p>
         )}
         <Button asChild variant="ghost" size="lg" className="h-12 rounded-full">

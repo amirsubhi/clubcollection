@@ -15,7 +15,7 @@ import type { FundCategory, MemberPaymentRow, PaymentCancellationInfo } from "@/
 export function useFeeLabel() {
   const t = useT();
   const { lang } = useLang();
-  return (p: Pick<MemberPaymentRow, "periodStart" | "periodEnd">) => `${t("membershipFee")} ${fmtPeriod(p.periodStart, p.periodEnd, lang)}`;
+  return (p: Pick<MemberPaymentRow, "periodStart" | "periodEnd">) => fill(t("membershipFeeFor"), { period: fmtPeriod(p.periodStart, p.periodEnd, lang) });
 }
 
 /** The one status word (DisplayStatus) as a dictionary key. */
@@ -134,14 +134,14 @@ export function PaymentRow({ p, showClub = false, hideDueChip = false }: { p: Me
           <div className="break-words text-base font-semibold leading-snug">{feeLabel(p)}</div>
           <div className="text-sm text-muted-foreground">
             {p.status === "paid" && p.paidDate
-              ? `${t("paidOn")} ${fmtDate(p.paidDate, lang)}`
+              ? fill(t("paidOnDate"), { d: fmtDate(p.paidDate, lang) })
               : p.status === "verifying"
                 ? t("slipBeingChecked")
                 : p.status === "processing"
                   ? t("processingRow")
                   : p.lateAfter
                     ? fill(t("lateAfter"), { d: fmtDate(p.lateAfter, lang) })
-                    : `${t("due")} ${fmtDate(p.dueDate, lang)}`}
+                    : fill(t("dueOn"), { d: fmtDate(p.dueDate, lang) })}
             {showClub && p.clubName ? ` · ${p.clubName}` : ""}
           </div>
         </div>
@@ -169,7 +169,7 @@ export function toSlices(categories: FundCategory[]): CategorySlice[] {
   const fixed = categories.filter(isFixed);
   const expenses = categories.filter((c) => !isFixed(c)).sort((a, b) => b.amount - a.amount);
   const room = sliceTokens.length - fixed.length;
-  const shown = [...expenses.slice(0, room), ...fixed]
+  const shown: CategorySlice[] = [...expenses.slice(0, room), ...fixed]
     .sort((a, b) => b.amount - a.amount)
     .map((c, i) => ({ key: c.kind === "welfare" || c.kind === "charges" ? c.kind : `c${i}`, names: { ms: c.nameMs, en: c.name }, amount: c.amount, colorVar: sliceTokens[i], onVar: `--on-chart-${i + 1}` }));
   const rest = expenses.slice(room).reduce((s, c) => s + c.amount, 0);
@@ -191,7 +191,7 @@ export interface HelpContact {
  */
 export function whatsAppHelpHref(digits: string, club: string, about?: { fee?: Pick<MemberPaymentRow, "periodStart" | "periodEnd"> | null; reference?: string | null }) {
   const lines = [fill(textIn("waHelloMsg", "ms"), { club })];
-  if (about?.fee) lines.push(fill(textIn("waFeeMsg", "ms"), { fee: `${textIn("membershipFee", "ms")} ${fmtPeriod(about.fee.periodStart, about.fee.periodEnd, "ms")}` }));
+  if (about?.fee) lines.push(fill(textIn("waFeeMsg", "ms"), { period: fmtPeriod(about.fee.periodStart, about.fee.periodEnd, "ms") }));
   if (about?.reference) lines.push(fill(textIn("waRefMsg", "ms"), { ref: about.reference }));
   return `https://wa.me/${digits.replace(/\D/g, "")}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
@@ -215,14 +215,14 @@ export function HelpLine({
   if (club.whatsapp) {
     return (
       <a href={whatsAppHelpHref(club.whatsapp, club.name, { fee, reference })} target="_blank" rel="noopener noreferrer" className={linkCls} data-testid="help-whatsapp">
-        <MessageCircle className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden /> {t("helpTitle")} {t("helpWhatsApp")}
+        <MessageCircle className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden /> {t("helpViaWhatsApp")}
         <span className="sr-only"> {t("helpOpensWhatsApp")}</span>
       </a>
     );
   }
   const body = (
     <>
-      <Mail className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden /> {t("helpTitle")} {t("helpAdmin")}
+      <Mail className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden /> {t("helpViaAdmin")}
     </>
   );
   return club.email ? (

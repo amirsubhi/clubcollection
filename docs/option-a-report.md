@@ -895,3 +895,107 @@ account; admin accounts never get one.
 - **Found on master (v2.0.1), not fixed here:** because plain throttles share one counter, an admin who loads 20
   attachment thumbnails (`throttle:300,1`) gets 429 on the next admin write (`throttle:20,1`); a member who opens 10
   slips (`throttle:60,1`) gets 429 on pay (`throttle:10,1`).
+
+## Language phase 3, step 1: ready for more languages (branch `i18n-more-languages`, 23 Nov 2026)
+
+Malay and English only. Chinese (Simplified), Tamil, French and Spanish are translated in step 2 from the keys frozen
+here (`docs/i18n-translator-brief.md`). Owner rule recorded there and in CLAUDE.MD: all Malay is Malaysian Malay
+(DBP usage), never Indonesian; readers of every language are in Malaysia.
+
+- **Self-describing files.** Each `lang/member/<code>.json` starts with `"_meta"`:
+  `{name, label, htmlLang, localeTag, beta}`. `i18n.ts` builds the list with `import.meta.glob` (eager), using
+  `UiLang::CODE_PATTERN` and the same order (default first, then by code). `UiLang::meta()` / `name()` / `label()` /
+  `htmlLang()` / `pickerName()` read the same files; `LABELS` / `NAMES` are gone. `<html lang>` (app.blade, app.tsx,
+  layouts/auth, emails) and the pickers' `lang` / `hreflang` use `htmlLang`. `langFromLocale` keeps a code that has
+  a file; before, every non-English locale became Malay. Adding a language touches no code (proved twice, below).
+- **Picker.**
+  - Member app: `LangToggle` in MemberShell is a native `<select>` drawn as a pill, globe + "BM" + chevron. Its
+    accessible name is "BM – Bahasa", and the options are the own names plus "(beta)". It still switches at once
+    and saves in the background, and Malay is still written `bm`.
+  - Sign-in pages: a `<details>` list, `?lang=` links for guests. For a signed-in member it is phase 2's POST form,
+    one button per language (`$authLangForm`; merged in from the review fixes on #38). It works without JS and the
+    links keep the rest of the address. A nonce'd script closes it on Escape or an outside click, and the no-build
+    fallback styles cover it.
+  - At 320 px the "BM" pill sits beside the title on one row, with no horizontal scroll. A two-character CJK label
+    wraps under the title, like large text.
+- **Dates.** Pattern keys `dateFormat`, `monthYearFormat`, `periodSameYear`, `periodRange`, `dateTimeFormat`,
+  `timeFormat`, `timeAm` and `timePm` drive `fmtDate` / `fmtMonth` / `fmtPeriod` / `fmtDateTime` and `UiLang::date()`.
+  `fmtPeriod` no longer splits on a space. `{h}`, `{H}` and `{HH}` allow a 24-hour clock.
+- **Counts.** 14 bases, each `<base>_one` / `<base>_other`, are read through `countText` / `useCountText`
+  (`Intl.PluralRules(localeTag)`). Extra CLDR forms are allowed, with `_other` as the fallback.
+  - Converted: `lateN`, `processingN`, `openN`, `clubsN`, `payAllHint`, `feesN`, `paidTogether`, `sentTogether`,
+    `verifyingN`, `receiptPartOf`, `slipLimits`, `tooManyFiles`, `uploaderLimits`, and `flowWelfareSub` (+
+    `flowWelfareSubOne`).
+  - Before, code picked the form in `flowWelfareSub` and in the emails ("1 day overdue", "1 fee paid together");
+    every other key let the text decide ("{n} fees"). The emails now use `trans_choice` keys
+    (`:count day overdue|:count days overdue`, `:count fee paid together|…`, also with `(:ref)`).
+  - Laravel's `getPluralIndex`, checked on the VM: `ms` and `zh` give 0 for every n (one form); `en`, `ta` and `es`
+    give 1 vs other; `fr` gives 0 and 1 vs other. A code Laravel does not know always gives 0.
+  - English now says "1 fee to pay" where n = 1. The seeded comparison never reached n = 1.
+- **Whole sentences.** New keys: `chartSummary` (rewritten), `processingDontPay` (replaces `{processing},
+  {dontPayAgain lowercased}`), `membershipFeeFor`, `paidOnDate`, `dueOn`, `hiName`, `payNowAmt`, `payAgainAmt`,
+  `reviewPayAmt`, `checkedAtTime`, `helpViaWhatsApp`, `helpViaAdmin`, `saveVsMonthly_yearly` / `_quarterly`
+  (replace `saveVsMonthly` + `planWord_*`), and `waFeeMsg` now takes `{period}`. Removed: `checkedAt`, `hi`,
+  `helpTitle`, `helpWhatsApp`, `helpAdmin`, `dontPayAgain`, `planWord_yearly`, `planWord_quarterly`, `membershipFee`,
+  `flowWelfareSubOne`, and the plain count keys. The Malay and English output is byte-identical (checked below).
+  The admin Ledger's own chart labels keep an English summary inline (admin is English only).
+- **Server text** (survey in the brief). Member flashes and errors are `member.*` codes. Pay-ahead validation was
+  Laravel's English: it is now codes. The privacy notice showed Malay to every non-English language; a third language
+  now gets the English. Known gaps, left for later and listed in the brief:
+  - category names `name` / `nameMs`;
+  - the welfare / charges slice names;
+  - `2fa_disable_locked` "15 minutes";
+  - the numeric time in the password-change email.
+
+  Member routes never set the locale, so `__()` there is English. With `lang/<code>/validation.php` missing,
+  Laravel shows the English line (`fallback_locale` en, checked in tinker under an unknown locale).
+- **Tests.**
+  - `MemberLangFilesTest`: `_meta` first and well formed, label at most 6 characters, BCP 47 shapes; parity
+    ignoring `_meta` with extra plural forms allowed; pattern keys; count pairs; no `{n}` outside a pair; no
+    per-language import in `resources/js`.
+  - `UiLangTest`: glob path, `CODE` = `CODE_PATTERN`, order, meta, a fake third language and its date order, a
+    file without `_meta`.
+  - New `LaravelLangFilesTest`: every `lang/<code>.json` covers `lang/ms.json` with the same `:placeholders` and
+    `**`; every member language but English has `lang/<code>.json` and the three PHP files.
+  - New `LanguagePickerTest`: the sign-in list and order, Malay as `bm`, the name with its visible label, the
+    nonce'd script, the query kept, a fake beta language in the list / `<html lang>` / member app, the privacy
+    notice.
+  - New `PseudoLangTest`.
+  - `MemberEmailLanguageTest` also scans `trans_choice`.
+  - `tests/Support/FakeMemberLanguages` copies `lang/member` to a temp folder (`UiLang::useDirectory()`).
+- **Visible text, base (`origin/i18n-saved-language` at 7caefa8) vs branch.** Setup: the same seeded SQLite
+  (demo + e2e + one transfer approved, one slip, one group slip), copied fresh per run, each ref built and served
+  in turn on :8099, Selenium on Kali. Each capture records body text, title, `<html lang>`, every
+  aria-label / title / alt / placeholder / lang, the `cp_lang` cookie, `cp-lang` and console errors, with each
+  side's own language control hidden.
+  - 48 captures: sign-in and reset request, each BM → EN → BM; four members over home, payments, fund, receipt,
+    paid result, security, transfer review, pay all, review, unpaid invoice and group result, BM then EN, with the
+    switch and the switch back.
+  - **0 differences** besides the bundle file name in the known "Unable to encrypt history" error on Security
+    (plain http).
+  - Admin pages were not captured: the e2e admins must set up 2FA first.
+  - After the merge of #38's review fixes, the comparison ran again: base `origin/i18n-saved-language` at 6fc4d71,
+    branch at the merge. Again 48 captures and 0 differences.
+  - The signed-in change-password picker lists both languages as buttons. "English" saves `en` and comes back as
+    an English page, with no console errors.
+- **No code to add a language.** A build of the branch with only `lang/member/zh.json` added (`zh-Hans`, beta,
+  `{y}年{m}{d}日`, `N月`):
+  - both pickers list "简体中文 (beta)";
+  - choosing it sets `<html lang="zh-Hans">` and `cp_lang=zh`, and saves `users.locale = zh`;
+  - the payments page shows "Paid on 2026年11月23日";
+  - no console errors.
+- **Pseudo-language gate.** `scripts/i18n-pseudo.php` with `xx` (bracketed, accented, +40%; gitignored, refused
+  under `APP_ENV=production`), on the same pages plus a failed sign-in:
+  - no unbracketed words except data, the other languages' own names in the pickers, "XX" and "(beta)";
+  - chosen in the app, it saved and survived a fresh browser (`en-XA`);
+  - the payment confirmation and overdue reminder were fully bracketed with `<html lang="en-XA">`;
+  - label-and-value headings ("Invoice INV-…") are the only joined pieces left.
+- **Results on the VM (PHP 8.4.28).** Before the merge of #38's review fixes: SQLite 1131 passed; MariaDB 10.11
+  (cp_test) 1130 passed, 1 skipped. After it: SQLite 1136 passed; MariaDB 1135 passed, 1 skipped. One MariaDB run
+  failed 145 tests, then passed unchanged on a rerun: `cp_test` is shared, and another agent was probably testing #38
+  at the same time. `MalayWordingTest` (from #38) reads `_meta`'s name and label. `tsc --noEmit` and `npm run build`
+  pass.
+- **Fonts on Kali** for step 2 screenshots:
+  - `fc-list :lang=zh` shows only Droid Sans Fallback;
+  - `fc-list :lang=ta` shows only FreeSans / FreeSerif / FreeSerifBold;
+  - install `fonts-noto-cjk` and `fonts-noto-core`.

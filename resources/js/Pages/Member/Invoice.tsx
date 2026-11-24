@@ -8,7 +8,7 @@ import { ReceiptCard, receiptClub } from "@/components/app/ReceiptCard";
 import { PaymentStatusBadge } from "@/components/app/StatusBadges";
 import { Button } from "@/components/ui/button";
 import { fmtDate, rm } from "@/lib/format";
-import { fill, useLang, useT } from "@/lib/i18n";
+import { fill, useLang, useT, useCountText } from "@/lib/i18n";
 import type { MemberPaymentRow, MemberReceipt, PaymentCancellationInfo, PaymentContext } from "@/types/member";
 
 interface Props extends PaymentContext {
@@ -31,6 +31,7 @@ function PrintButton() {
 
 export default function Invoice({ payment, receipt, cancellation, issuedOn, discount, member, payClub, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
+  const tn = useCountText();
   const { lang } = useLang();
   const feeLabel = useFeeLabel();
   const nav = { home: dashboardUrl, payments: paymentsUrl };
@@ -42,7 +43,7 @@ export default function Invoice({ payment, receipt, cancellation, issuedOn, disc
         <FlashBanner />
         {receipt.partOf && (
           <p className="mb-3 rounded-2xl border bg-card px-4 py-3 text-base" data-testid="receipt-part-of">
-            {fill(t("receiptPartOf"), { no: receipt.partOf.receiptNo, n: receipt.partOf.count, total: rm(receipt.partOf.amount) })}{" "}
+            {tn("receiptPartOf", receipt.partOf.count, { no: receipt.partOf.receiptNo, total: rm(receipt.partOf.amount) })}{" "}
             <Link href={receipt.partOf.url} className="font-semibold text-primary underline-offset-4 hover:underline">
               {t("receiptPartOfLink")}
             </Link>
@@ -212,7 +213,7 @@ export default function Invoice({ payment, receipt, cancellation, issuedOn, disc
       {payment.urls.review && payment.status !== "verifying" && payment.status !== "processing" && (
         <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-center text-lg print:hidden">
           <Link href={payment.urls.review}>
-            <Lock aria-hidden /> {t("reviewPay")} {rm(payment.amount)}
+            <Lock aria-hidden /> {fill(t("reviewPayAmt"), { x: rm(payment.amount) })}
           </Link>
         </Button>
       )}

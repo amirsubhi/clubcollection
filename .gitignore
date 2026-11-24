@@ -23,6 +23,11 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
+# Pseudo-language for test copies only (scripts/i18n-pseudo.php); never commit or ship it
+/lang/member/xx.json
+/lang/xx.json
+/lang/xx/
+
 # UI mockup
 /mockup/node_modules
 /mockup/dist

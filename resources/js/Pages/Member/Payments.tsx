@@ -2,13 +2,13 @@ import { useState, type FormEvent } from "react";
 import { CalendarPlus, ChevronDown, PiggyBank, RefreshCw } from "lucide-react";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import { MemberShell } from "@/components/app/MemberShell";
-import { FlashBanner, PaymentRow } from "@/components/app/MemberParts";
+import { FlashBanner, PaymentRow, useServerText } from "@/components/app/MemberParts";
 import { Money } from "@/components/app/Money";
 import { Button } from "@/components/ui/button";
 import { FieldError, Label } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtDate, fmtMonth, rm } from "@/lib/format";
-import { fill, useLang, useT } from "@/lib/i18n";
+import { fill, useLang, useT, useCountText } from "@/lib/i18n";
 import type { MemberPaymentRow, PayAllOffer } from "@/types/member";
 
 interface Props {
@@ -63,6 +63,7 @@ function monthAfter(start: string, i: number): string {
 /** Pay ahead: 1, 3 or 12 months (as the club allows), with the gateway-charge saving vs paying monthly. */
 function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans, defaultPlan, monthlySen, monthRates, feePayer, feeSen }: Props["futureForm"]) {
   const t = useT();
+  const serverText = useServerText();
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
   // Default plan, or the longest allowed plan that still fits the cap from the default start.
@@ -128,7 +129,8 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
             <>
               <fieldset className="flex flex-col gap-2">
                 <legend className="mb-1.5 text-base font-medium">{t("futurePlan")}</legend>
-                <div className={`grid gap-2 ${plans.length === 3 ? "grid-cols-3" : plans.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+                {/* One card per row below 22.5em (360 px): three columns of about 77 px broke longer words and the price. */}
+                <div className={`grid grid-cols-1 gap-2 ${plans.length === 3 ? "min-[22.5em]:grid-cols-3" : plans.length === 2 ? "min-[22.5em]:grid-cols-2" : ""}`}>
                   {plans.map((p) => {
                     const checked = form.data.frequency === p;
                     const disabled = !fits(p);
@@ -142,7 +144,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                       >
                         <input type="radio" name="frequency" value={p} checked={checked} disabled={disabled} onChange={() => form.setData("frequency", p)} className="sr-only" />
                         {p === defaultPlan && (
-                          <span className="absolute -top-2.5 left-2 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">{t("recommended")}</span>
+                          <span className="absolute -top-2.5 left-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground" title={t("recommended")}>{t("recommended")}</span>
                         )}
                         <span className="text-base font-semibold">{t(`months_${PLAN_MONTHS[p]}`)}</span>
                         <span className="text-xs text-muted-foreground">{t(`freq_${p}`)}</span>
@@ -151,7 +153,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                     );
                   })}
                 </div>
-                {form.errors.frequency && <FieldError>{form.errors.frequency}</FieldError>}
+                {form.errors.frequency && <FieldError>{serverText(form.errors.frequency)}</FieldError>}
               </fieldset>
 
               {chosen > 1 && saving > 0 && (
@@ -159,7 +161,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                   <PiggyBank className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                   <span>
                     {memberPays
-                      ? fill(t("saveVsMonthly"), { plan: t(form.data.frequency === "yearly" ? "planWord_yearly" : "planWord_quarterly"), x: rm(saving) })
+                      ? fill(t(form.data.frequency === "yearly" ? "saveVsMonthly_yearly" : "saveVsMonthly_quarterly"), { x: rm(saving) })
                       : t("helpsClubSave")}
                   </span>
                 </p>
@@ -181,7 +183,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
                     ))}
                   </SelectContent>
                 </Select>
-                {form.errors.period_start && <FieldError>{form.errors.period_start}</FieldError>}
+                {form.errors.period_start && <FieldError>{serverText(form.errors.period_start)}</FieldError>}
               </div>
 
               <div className="flex flex-col gap-1">
@@ -200,6 +202,7 @@ function FutureForm({ action, freeMonths, defaultStart, maxEnd, paidUntil, plans
 
 export default function Payments({ club, selectedYear, years, summary, payments, pagination, futureForm, payAll, paymentsUrl, dashboardUrl }: Props) {
   const t = useT();
+  const tn = useCountText();
   // Fees still owed, oldest first (the order to pay them in); history stays newest first.
   const open = payments.filter((p) => p.status === "due" || p.status === "overdue").sort(oldestFirst);
   // Past its due date: "Perlu dibayar"; not yet due: "Akan datang".
@@ -259,7 +262,7 @@ export default function Payments({ club, selectedYear, years, summary, payments,
         <Button asChild size="xl" className="h-auto min-h-14 w-full whitespace-normal rounded-full py-3 text-lg">
           <Link href={payAll.url} data-testid="payments-pay-all">
             {fill(t("payAllAmt"), { x: rm(payAll.totalSen) })}
-            <span className="text-base font-semibold opacity-90">· {fill(t("feesN"), { n: payAll.count })}</span>
+            <span className="text-base font-semibold opacity-90">· {tn("feesN", payAll.count)}</span>
           </Link>
         </Button>
       )}
