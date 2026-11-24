@@ -999,3 +999,72 @@ here (`docs/i18n-translator-brief.md`). Owner rule recorded there and in CLAUDE.
   - `fc-list :lang=zh` shows only Droid Sans Fallback;
   - `fc-list :lang=ta` shows only FreeSans / FreeSerif / FreeSerifBold;
   - install `fonts-noto-cjk` and `fonts-noto-core`.
+  - Installed on 24 Nov (`fc-list :lang=zh` now lists 31 fonts, `:lang=ta` 9).
+
+## Language phase 3, step 2: Chinese, Tamil, French, Spanish (branch `i18n-more-languages`, 23–24 Nov 2026)
+
+- **Four new member languages**, all marked **(beta)** in both pickers until a native speaker reviews each file:
+  `lang/member/{zh,ta,fr,es}.json` plus Laravel's `lang/{zh,ta,fr,es}.json` and `lang/<code>/*.php` for the
+  sign-in pages, messages and member emails. Chinese and Tamil are written for readers in Malaysia.
+- **Checks on the wording.** Each draft was translated back into English blind, by a separate agent, and compared.
+  No wrong meaning was found on money, payment status or security text. Fixes made from those checks:
+  - French: "fees being paid" no longer reads as "paid".
+  - Chinese: "pending" no longer reads as "unpaid".
+  - Spanish: the maintenance message and the security-pause wording.
+  - Tamil: the gateway charge reads as a service charge.
+- **Layout fix (English too).** At 320 px the three pay-ahead plan cards broke words and pushed the "Recommended"
+  badge off screen. The cards now stack under 360 px, the badge can't outgrow its card, and four labels in TA, FR
+  and ES are shorter. A phone-width check of every member page in all six languages, at 320 and 390 px, found no
+  overflow after the fix.
+- **New Malay:** only the picker label "Bahasa", approved by the owner (kept as "Bahasa", 24 Nov).
+- **How it reached `master`.**
+  - A power cut on 23 Nov stopped the merge of `master` (#38 and #39) into the branch halfway. The resolved
+    CHANGELOG and wording-doc conflicts and two follow-up edits were committed as `03a0523` the next morning.
+  - PR #40 was stacked on #38 and still targeted `i18n-saved-language`, so its merge landed there, not in `master`.
+  - PR #41 brought the same commit to `master` (`5b41c5f`). The trees of `5b41c5f` and `03a0523` are identical.
+  - Lesson: check a stacked PR's base and retarget it to `master` before merging.
+- **Results before the merge.** VM: `tsc` and the build pass. SQLite and MariaDB each ran 1167 passed and 1 failed:
+  the throwaway copy's `.env` turned admin 2FA off, and that test passes with the default. CI passed on SQLite,
+  MariaDB and MySQL 8.
+
+### Browser test of `master` (24 Nov 2026)
+
+Run after the merge, on the exact tree of `master` (`~/cp-l4` on the VM at `03a0523`, built after that commit).
+- **Setup.**
+  - A fresh SQLite database (demo + e2e seeders), served by `php artisan serve` on :8099.
+  - Selenium headless Chrome on Kali, at 390 px and 1366 px.
+  - `e2e.admin.a` was also made a member of club 1 by hand, to test an admin in the member app.
+  - Scripts, results and screenshots are in `~/p3` on Kali.
+- **Member app.** For each of the six languages, `e2e.member` chose it in the picker. The test then loaded Home,
+  Payments, Fund, Review & pay and Security at both widths: 60 page loads. Each was checked for:
+  - `<html lang>`;
+  - key names showing as text;
+  - English text left where the language's value differs;
+  - elements wider than the page;
+  - console errors.
+
+  None failed. The only console error was the known "Unable to encrypt history" on Security (plain http).
+- **Sign-in pages, all six languages, at a true 390 px.** Checked against Laravel's `lang/<code>.json`: sign-in,
+  password reset request, and a failed sign-in in French. All passed.
+  - Guests: the picker lists the six languages in their own names with "(beta)" on the four new ones. The
+    `cp_lang` cookie and `cp-lang` storage say `bm` for Malay and the code for the others.
+  - The picker also works with JavaScript off.
+- **Saving rules.**
+  - A picker choice saves `users.locale` (`zh`), and a fresh browser comes back in Chinese.
+  - The signed-in picker on `/password/change` shows six POST buttons. Spanish saved `es` and the page came back in
+    Spanish.
+  - A member who never chose, signing in on a browser that carries Tamil, gets the portal default (Malay), and
+    `locale` stays NULL.
+  - `?lang=fr` on a signed-in page saves nothing.
+  - An admin: `locale` stays NULL and admin pages are English. In the member app, an admin follows the language
+    stored in that browser, as documented in `app.tsx` (nothing is saved for admins).
+- **Screenshots looked at by hand.** Sign-in and Home in Chinese and Tamil at 390 px, Payments and Review & pay in
+  Tamil, Home in French at 1366 px, and the French and Spanish sign-in pages. Proper glyphs, no boxes, nothing clipped.
+- **Not tested.**
+  - MariaDB, nginx and admin 2FA (this ran on SQLite, `artisan serve`, 2FA off).
+  - The FPX pay button (no gateway on the LAN).
+  - Member emails in the new languages (covered by PHPUnit only).
+  - The :8080 test bed still runs v2.0.1.
+- **Test bed after the 24 Nov power cut.** The VM's DHCP address moved from `.21` to `192.168.31.22` (another
+  device took `.21`). `APP_URL`, the nginx `server_name` and Kali's `~/cpt/h.py` now use `.22`. A DHCP
+  reservation for the VM's MAC would stop this happening again.
