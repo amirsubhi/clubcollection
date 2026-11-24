@@ -15,6 +15,15 @@ class LaravelLangFilesTest extends TestCase
 {
     private const PHP_FILES = ['auth', 'passwords', 'validation'];
 
+    /**
+     * Keys only Malay uses: its emails open by the time of day (MailText::greeting / plainGreeting); every other
+     * language keeps the "Hi / Dear / Hello **:name**," and "Hello!" keys, which stay in lang/ms.json for them.
+     */
+    private const MALAY_ONLY = [
+        'Good morning **:name**,', 'Good afternoon **:name**,', 'Good evening **:name**,',
+        'Good morning!', 'Good afternoon!', 'Good evening!',
+    ];
+
     private static function root(): string
     {
         return dirname(__DIR__, 2);
@@ -51,7 +60,7 @@ class LaravelLangFilesTest extends TestCase
 
     public function test_every_sentence_file_covers_the_malay_keys(): void
     {
-        $ms = self::json(self::root().'/lang/ms.json');
+        $ms = array_diff_key(self::json(self::root().'/lang/ms.json'), array_flip(self::MALAY_ONLY));
         $files = array_filter(glob(self::root().'/lang/*.json') ?: [], fn (string $f) => basename($f) !== 'ms.json');
         $this->assertGreaterThan(100, count($ms));
         foreach ($files as $file) {

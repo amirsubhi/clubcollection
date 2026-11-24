@@ -24,7 +24,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   list is every language with a `lang/member/<code>.json` file. Admin pages and admin emails stay in English.
   Accounts with an admin role (club admins and the super admin) always get English emails and never have a language
   saved, even when they pay their own fees in the member app.
-- `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, for review.
+- `docs/i18n-new-wording.md`: the new Malay (and the little new English) the emails needed, approved by the owner.
+- **Malay emails greet by the time of day**: "Selamat pagi" (05:00–11:59), "Selamat petang" (12:00–18:59) or
+  "Selamat malam" (19:00–04:59), Malaysia time when the email is sent, instead of "Salam" (the password reset's
+  "Hello!" too, via `App\Notifications\ResetPassword`). Other languages keep their opener. Also from the owner's
+  Malay review: "Pegawai perlindungan data" on the privacy notice and "Bayaran tertunggak" as the overdue heading.
 - **Chinese (Simplified), Tamil, French and Spanish** on the member side (member app, sign-in pages, member emails),
   marked **beta** in the picker until a native speaker reviews each file. Chinese and Tamil are written for readers
   in Malaysia. Each was checked by a blind back-translation into English (no wrong meaning on money, status or
@@ -38,7 +42,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Ready for more languages. A language is now files only: `lang/member/<code>.json` carries its own name, label,
   `<html lang>` and locale (`_meta`), plus `lang/<code>.json` and `lang/<code>/{auth,passwords,validation}.php`.
   The member app and PHP read the list from the folder. Date order, plural forms and whole sentences are keys
-  translators fill in (`docs/i18n-translator-brief.md`). Malay and English are the only languages shipped so far.
+  translators fill in (`docs/i18n-translator-brief.md`).
 
 ### Changed
 - **Member emails are in one language, the member's** (their saved choice, else the portal default): welcome,
@@ -62,6 +66,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - English text with a count now says "1 fee" where it said "1 fees". The forms are `_one` / `_other` keys, and
   emails use `trans_choice`. Malay text is unchanged.
 - Pay-ahead form errors (start date, payment period) show in the member's language; they were English sentences.
+
+### Fixed
+- **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such
+  route, so viewing 20 slip thumbnails blocked an admin's next save or verification for a minute, and 10 slip views
+  blocked a member's payment (in v2.0.0 and v2.0.1). Each route now has its own counter; pay and pay-all still share
+  one (10 payment attempts a minute in all).
 
 ## [v2.0.1] — 2026-11-23
 

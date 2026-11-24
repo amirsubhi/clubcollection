@@ -1,5 +1,9 @@
 # Malay wording for the owner to approve
 
+**Approved by the owner on 2026-11-23**, with three owner changes: "Data protection contact" is "Pegawai
+perlindungan data"; the overdue heading is "Bayaran tertunggak" (as its subject); and the "Salam" openers greet by
+the Malaysia time instead (section 3).
+
 Rule: Malaysian Malay only (DBP usage), never Indonesian (`tests/Unit/MalayWordingTest.php` refuses a list of
 Indonesian words in every Malay file). Text lives in `lang/ms.json` (sign-in pages and member emails: the English
 sentence is the key) and `lang/member/ms.json` (member app). To change a translation, edit its value and keep the
@@ -37,22 +41,22 @@ overdue reminder, Laravel's password reset).
 | New | Welcome | Jangan balas e-mel ini. | Sila jangan balas e-mel ini. |
 | New | Password reset | Anda menerima e-mel ini kerana kami menerima permintaan untuk menetapkan semula kata laluan akaun anda. | Anda menerima e-mel ini kerana terdapat permintaan untuk menetapkan semula kata laluan akaun anda. |
 
-**Owner to choose (not changed):** "Data protection contact" (privacy notice, live) is still "Hubungan perlindungan
-data"; pick one of the two wordings offered by the reviewer.
+**Owner's choice:** "Data protection contact" (privacy notice, live): "Hubungan perlindungan data" → "Pegawai
+perlindungan data".
 
-## 2. The other new email Malay (unchanged by the review, still to approve)
+## 2. The other new email Malay (unchanged by the review)
 
 | Email | English (key) | Malay |
 |---|---|---|
 | Welcome | Welcome to :club — Your Account Details | Selamat datang ke :club — Butiran akaun anda |
 | Welcome | Welcome to :club | Selamat datang ke :club |
 | Welcome | Your account has been created | Akaun anda telah dicipta |
-| Welcome | Hi \*\*:name\*\*, | Salam \*\*:name\*\*, |
+| Welcome | Hi \*\*:name\*\*, | Selamat pagi / petang / malam \*\*:name\*\*, (section 3) |
 | Welcome | An administrator has created your account on \*\*:portal\*\*. You can now log in and manage your club membership fees. | Pentadbir telah mencipta akaun anda di \*\*:portal\*\*. Anda kini boleh log masuk dan menguruskan yuran keahlian kelab anda. |
 | Welcome | Temporary password | Kata laluan sementara |
 | Welcome | Login Now | Log masuk sekarang |
-| Overdue reminder | Payment Overdue | Bayaran lewat |
-| Overdue reminder | Dear \*\*:name\*\*, | Salam \*\*:name\*\*, |
+| Overdue reminder | Payment Overdue | Bayaran tertunggak (owner: as the subject) |
+| Overdue reminder | Dear \*\*:name\*\*, | Selamat pagi / petang / malam \*\*:name\*\*, (section 3) |
 | Overdue reminder | Originally due on \*\*:date\*\* | Tarikh akhir asal \*\*:date\*\* |
 | Overdue reminder | :count day overdue\|:count days overdue (one `trans_choice` key since phase 3) | Lewat :count hari |
 | Overdue reminder | Club / Payment Type / Pay Now | Kelab / Jenis bayaran / Bayar sekarang |
@@ -68,16 +72,31 @@ data"; pick one of the two wordings offered by the reviewer.
 | Password reset | Reset your password (the subject) | Tetapkan semula kata laluan anda |
 | Password reset | This password reset link will expire in :count minutes. | Pautan untuk menetapkan semula kata laluan ini akan tamat tempoh dalam :count minit. |
 | Password reset | If you did not request a password reset, no further action is required. | Jika anda tidak meminta untuk menetapkan semula kata laluan, tiada tindakan lanjut diperlukan. |
-| Password reset | Hello! / Regards, / All rights reserved. | Salam! / Salam hormat, / Hak cipta terpelihara. |
+| Password reset | Hello! / Regards, / All rights reserved. | Selamat pagi! (section 3) / Salam hormat, / Hak cipta terpelihara. |
 | Password reset | If you're having trouble clicking the ":actionText" button, copy and paste the URL below`\n`into your web browser: | Jika butang ":actionText" tidak berfungsi, salin dan tampal URL di bawah`\n`ke dalam pelayar web anda: |
 
 `\n` is a line break inside the key: Laravel's mail layout uses exactly this sentence, so the `lang/ms.json` key and
 value both keep it (not `<br>`). The rest of the email Malay was already in the old bilingual emails or the member
 app and is reused unchanged.
 
+## 3. The greeting by the time of day (owner's request)
+
+Every Malay member email opens with the Malaysia time it is written (`MailText::greeting`, `plainGreeting` for the
+password reset's "Hello!"), not "Salam":
+
+| Malaysia time | Greeting |
+|---|---|
+| 05:00 – 11:59 | Selamat pagi **nama**, |
+| 12:00 – 18:59 | Selamat petang **nama**, |
+| 19:00 – 04:59 | Selamat malam **nama**, |
+
+Malaysia time is fixed (Asia/Kuala_Lumpur, as the 08:00 reminder schedule), not `APP_TIMEZONE`, which is UTC on an
+install that never set it. It is the time the email is sent, not read: the daily overdue reminder (08:00) always says
+"Selamat pagi". English and the other languages keep their own opener (Hi / Dear / Hello).
+
 ## Language phase 3 (language picker; ready for more languages)
 
-New text to approve:
+New text, approved by the owner on 2026-11-23 (the picker label stays "Bahasa"):
 
 | Where | English | Malay |
 |---|---|---|

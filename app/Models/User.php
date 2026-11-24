@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\ResetPassword;
 use App\Support\UserLocale;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -49,6 +50,12 @@ class User extends Authenticatable implements HasLocalePreference
     public function preferredLocale(): string
     {
         return UserLocale::forMail($this);
+    }
+
+    /** The reset-link email, with the Malay time-of-day greeting (App\Notifications\ResetPassword). */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPassword($token));
     }
 
     // ── Two-factor authentication ──────────────────────────────────────────

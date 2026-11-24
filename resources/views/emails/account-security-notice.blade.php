@@ -21,7 +21,7 @@
       <h1>{{ __('Sign-in attempts on your account') }}</h1>
     </div>
     <div class="body">
-      <p>{{ \App\Support\MailText::bold('Hello **:name**,', ['name' => $user->name]) }}</p>
+      <p>{{ \App\Support\MailText::greeting('Hello **:name**,', $user->name) }}</p>
       <p>{{ __('Someone tried several times to sign in to your :portal account with the wrong password. To protect your account, signing in is paused for :minutes minutes.', ['portal' => config('app.name'), 'minutes' => $minutes]) }}</p>
       <p>{{ __('If it was you, there is nothing to do: wait a little and try again, or reset your password now.') }}</p>
       <p>{{ \App\Support\MailText::bold('**If it was not you,** reset your password and tell your club admin.') }}</p>
@@ -32,7 +32,7 @@
       <h1>{{ __('Your password was changed') }}</h1>
     </div>
     <div class="body">
-      <p>{{ \App\Support\MailText::bold('Hello **:name**,', ['name' => $user->name]) }}</p>
+      <p>{{ \App\Support\MailText::greeting('Hello **:name**,', $user->name) }}</p>
       <p>{{ __('The password of your :portal account was just changed (:time).', ['portal' => config('app.name'), 'time' => now()->format('d/m/Y H:i')]) }}</p>
       <p>{{ __('If it was you, there is nothing to do.') }}</p>
       <p>{{ \App\Support\MailText::bold('**If it was not you,** contact your club admin straight away, and reset your password.') }}</p>
