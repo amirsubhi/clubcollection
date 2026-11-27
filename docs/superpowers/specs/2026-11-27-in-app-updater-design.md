@@ -1,6 +1,6 @@
 # In-app updater: design
 
-Status: for the owner's review (27 November 2026). Target release: v2.2.0.
+Status: approved by the owner (27 November 2026). Target release: v2.2.0.
 
 ## Why
 
