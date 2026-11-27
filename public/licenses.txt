@@ -2433,7 +2433,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-egulias/email-validator@4.0.4
+egulias/email-validator@4.0.5
 ==============================================================================
 
 Copyright (c) 2013-2023 Eduardo Gulias Davis
@@ -4510,10 +4510,10 @@ symfony/console@8.1.11
 symfony/css-selector@8.1.10
 symfony/event-dispatcher@8.1.5
 symfony/finder@8.1.11
-symfony/http-foundation@8.1.11
-symfony/http-kernel@8.1.11
+symfony/http-foundation@8.1.12
+symfony/http-kernel@8.1.12
 symfony/process@8.1.10
-symfony/routing@8.1.11
+symfony/routing@8.1.12
 symfony/translation@8.1.11
 ==============================================================================
 
@@ -4565,7 +4565,7 @@ THE SOFTWARE.
 
 ==============================================================================
 symfony/error-handler@8.1.10
-symfony/mailer@8.1.10
+symfony/mailer@8.1.12
 symfony/string@8.1.10
 ==============================================================================
 
@@ -4618,7 +4618,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/mime@8.1.10
+symfony/mime@8.1.12
 ==============================================================================
 
 Copyright (c) 2010-present Fabien Potencier
@@ -4765,7 +4765,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-symfony/var-dumper@8.1.10
+symfony/var-dumper@8.1.12
 ==============================================================================
 
 Copyright (c) 2014-present Fabien Potencier
