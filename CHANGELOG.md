@@ -8,17 +8,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-> **Upgrade:** one new migration (`users.locale`, nullable). Run `php artisan migrate --force` as in
-> `docs/RELEASE.md` §2.
+## [v2.1.0] — 2026-11-27
+
+> **Upgrade:** from v2.0.0 or v2.0.1 with the release zip and `docs/RELEASE.md` §2. One new migration
+> (`users.locale`, nullable), run by `php artisan migrate --force`; no new `.env` settings and no files removed.
+> **Also a security release:** it updates Symfony for five advisories published on 25 November 2026 (see Security).
+
+### Security
+- Symfony updated to 8.1.12 (`http-kernel`, `routing`, `mailer`, with `http-foundation`, `mime`, `var-dumper`) and
+  `egulias/email-validator` to 4.0.5. Fixes CVE-2026-133743 and CVE-2026-133746 / CVE-2026-133754 (forwarded headers
+  or host placeholders could make generated links point at another host) and CVE-2026-133751 / CVE-2026-133755 (a man
+  in the middle could get around the mailer's `require_tls` or inject replies after STARTTLS). v2.0.0 and v2.0.1 carry
+  the affected versions.
 
 ### Added
-- **Each member's language is remembered.** A member picks once with the BM / EN switch in the app (or on the
+- **Each member's language is remembered.** A member picks once with the language picker in the app (or on the
   change-password page): the choice is saved on the account (`POST /my/language`, its own rate limit, so it never
   uses up payment attempts) and follows them to another phone or browser, the signed-in pages and their emails. The
-  switch still changes the page at once; a choice made offline is sent when the connection is back (kept for 24
-  hours). Only that switch saves: nothing a browser merely carries (an earlier choice in the `cp_lang` cookie or the
+  picker still changes the page at once; a choice made offline is sent when the connection is back (kept for 24
+  hours). Only that choice saves: nothing a browser merely carries (an earlier choice in the `cp_lang` cookie or the
   app's storage, a `?lang=` link) is written to an account, so someone signing in on a browser another person used
-  gets their own language. A member who switched before this release sees the portal default until they pick again.
+  gets their own language. A member who chose a language before this release sees the portal default until they pick again.
 - **Default language** on Portal settings (super admin, audited, "Saved: default language."): the language of the
   member app, sign-in pages and member emails for members who have not chosen one. Bahasa Melayu unless changed. The
   list is every language with a `lang/member/<code>.json` file. Admin pages and admin emails stay in English.
@@ -35,9 +45,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   security text). Admin pages stay English.
 - Pay ahead: the plan cards stack one per row on phones narrower than 360 px, and the "Recommended" badge never runs
   past its card (it ran off the screen at 320 px, in English too).
-- **Language picker** instead of the BM / EN switch, in the member app and on the sign-in pages. It lists every
+- **Language picker** instead of the v2.0.1 BM / EN switch, in the member app and on the sign-in pages. It lists every
   language by its own name, marks first translations "(beta)", and shows the short label ("BM") when closed, so it
-  stays compact on a phone. It saves the same way as the switch. The sign-in pages' picker works without
+  stays compact on a phone. A choice made in it is saved on the account as above. The sign-in pages' picker works without
   JavaScript.
 - Ready for more languages. A language is now files only: `lang/member/<code>.json` carries its own name, label,
   `<html lang>` and locale (`_meta`), plus `lang/<code>.json` and `lang/<code>/{auth,passwords,validation}.php`.
@@ -54,7 +64,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - One rule decides the member-side language everywhere (`App\Support\UserLocale`): a signed-in member's pages and
   every member email use the account's saved language, else the portal default; the browser's choice (`?lang=` /
   `cp_lang`) only applies to the sign-in pages before signing in. On the change-password and privacy pages a
-  signed-in member's BM / EN switch is a small form that saves the choice.
+  signed-in member's language choice is a small form that saves it.
 - Malay wording review (Malaysian Malay, DBP usage): 21 strings reworded, 15 of them already live in v2.0.1 (for
   example "Ahli baharu?", "Perlu bantuan?", "jangan bayar sekali lagi"); listed before → after in
   `docs/i18n-new-wording.md`. A test now refuses common Indonesian words in every Malay file.
@@ -66,6 +76,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - English text with a count now says "1 fee" where it said "1 fees". The forms are `_one` / `_other` keys, and
   emails use `trans_choice`. Malay text is unchanged.
 - Pay-ahead form errors (start date, payment period) show in the member's language; they were English sentences.
+
+- PWA service worker cache `v5`.
 
 ### Fixed
 - **Rate limits no longer share one counter.** A plain `throttle:N,M` counts per signed-in user across *every* such

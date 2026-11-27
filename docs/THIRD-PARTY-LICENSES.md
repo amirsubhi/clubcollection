@@ -30,7 +30,7 @@ Licences: MIT (76), BSD-3-Clause (5), BSD-2-Clause (2), BSD-3-Clause OR GPL-2.0-
 | `dompdf/php-font-lib` | 1.0.2 | LGPL-2.1-or-later | <https://github.com/dompdf/php-font-lib> |
 | `dompdf/php-svg-lib` | 1.0.2 | LGPL-3.0-or-later | <https://github.com/dompdf/php-svg-lib> |
 | `dragonmantank/cron-expression` | 3.6.1 | MIT | <https://github.com/dragonmantank/cron-expression> |
-| `egulias/email-validator` | 4.0.4 | MIT | <https://github.com/egulias/EmailValidator> |
+| `egulias/email-validator` | 4.0.5 | MIT | <https://github.com/egulias/EmailValidator> |
 | `fruitcake/php-cors` | 1.4.0 | MIT | <https://github.com/fruitcake/php-cors> |
 | `graham-campbell/result-type` | 1.2.0 | MIT | <https://github.com/GrahamCampbell/Result-Type> |
 | `guzzlehttp/guzzle` | 8.5.5 | MIT | <https://github.com/guzzle/guzzle> |
@@ -80,10 +80,10 @@ Licences: MIT (76), BSD-3-Clause (5), BSD-2-Clause (2), BSD-3-Clause OR GPL-2.0-
 | `symfony/event-dispatcher` | 8.1.5 | MIT | <https://github.com/symfony/event-dispatcher> |
 | `symfony/event-dispatcher-contracts` | 3.8.1 | MIT | <https://github.com/symfony/event-dispatcher-contracts> |
 | `symfony/finder` | 8.1.11 | MIT | <https://github.com/symfony/finder> |
-| `symfony/http-foundation` | 8.1.11 | MIT | <https://github.com/symfony/http-foundation> |
-| `symfony/http-kernel` | 8.1.11 | MIT | <https://github.com/symfony/http-kernel> |
-| `symfony/mailer` | 8.1.10 | MIT | <https://github.com/symfony/mailer> |
-| `symfony/mime` | 8.1.10 | MIT | <https://github.com/symfony/mime> |
+| `symfony/http-foundation` | 8.1.12 | MIT | <https://github.com/symfony/http-foundation> |
+| `symfony/http-kernel` | 8.1.12 | MIT | <https://github.com/symfony/http-kernel> |
+| `symfony/mailer` | 8.1.12 | MIT | <https://github.com/symfony/mailer> |
+| `symfony/mime` | 8.1.12 | MIT | <https://github.com/symfony/mime> |
 | `symfony/polyfill-ctype` | 1.37.0 | MIT | <https://github.com/symfony/polyfill-ctype> |
 | `symfony/polyfill-intl-grapheme` | 1.43.3 | MIT | <https://github.com/symfony/polyfill-intl-grapheme> |
 | `symfony/polyfill-intl-idn` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-intl-idn> |
@@ -97,13 +97,13 @@ Licences: MIT (76), BSD-3-Clause (5), BSD-2-Clause (2), BSD-3-Clause OR GPL-2.0-
 | `symfony/polyfill-time` | 1.42.0 | MIT | <https://github.com/symfony/polyfill-time> |
 | `symfony/polyfill-uuid` | 1.43.0 | MIT | <https://github.com/symfony/polyfill-uuid> |
 | `symfony/process` | 8.1.10 | MIT | <https://github.com/symfony/process> |
-| `symfony/routing` | 8.1.11 | MIT | <https://github.com/symfony/routing> |
+| `symfony/routing` | 8.1.12 | MIT | <https://github.com/symfony/routing> |
 | `symfony/service-contracts` | 3.8.1 | MIT | <https://github.com/symfony/service-contracts> |
 | `symfony/string` | 8.1.10 | MIT | <https://github.com/symfony/string> |
 | `symfony/translation` | 8.1.11 | MIT | <https://github.com/symfony/translation> |
 | `symfony/translation-contracts` | 3.8.1 | MIT | <https://github.com/symfony/translation-contracts> |
 | `symfony/uid` | 8.1.9 | MIT | <https://github.com/symfony/uid> |
-| `symfony/var-dumper` | 8.1.10 | MIT | <https://github.com/symfony/var-dumper> |
+| `symfony/var-dumper` | 8.1.12 | MIT | <https://github.com/symfony/var-dumper> |
 | `tijsverkoyen/css-to-inline-styles` | 2.4.0 | BSD-3-Clause | <https://github.com/tijsverkoyen/CssToInlineStyles> |
 | `vlucas/phpdotenv` | 5.8.0 | BSD-3-Clause | <https://github.com/phpdotenv/phpdotenv> |
 | `voku/portable-ascii` | 2.1.1 | MIT | <https://github.com/voku/portable-ascii> |
@@ -2696,9 +2696,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### egulias/email-validator@4.0.4
+### egulias/email-validator@4.0.5
 
-Used by: `egulias/email-validator@4.0.4`
+Used by: `egulias/email-validator@4.0.5`
 
 ~~~~text
 Copyright (c) 2013-2023 Eduardo Gulias Davis
@@ -4887,7 +4887,7 @@ THE SOFTWARE.
 
 ### symfony/console@8.1.11 and 8 more
 
-Used by: `symfony/console@8.1.11`, `symfony/css-selector@8.1.10`, `symfony/event-dispatcher@8.1.5`, `symfony/finder@8.1.11`, `symfony/http-foundation@8.1.11`, `symfony/http-kernel@8.1.11`, `symfony/process@8.1.10`, `symfony/routing@8.1.11`, `symfony/translation@8.1.11`
+Used by: `symfony/console@8.1.11`, `symfony/css-selector@8.1.10`, `symfony/event-dispatcher@8.1.5`, `symfony/finder@8.1.11`, `symfony/http-foundation@8.1.12`, `symfony/http-kernel@8.1.12`, `symfony/process@8.1.10`, `symfony/routing@8.1.12`, `symfony/translation@8.1.11`
 
 ~~~~text
 Copyright (c) 2004-present Fabien Potencier
@@ -4939,7 +4939,7 @@ THE SOFTWARE.
 
 ### symfony/error-handler@8.1.10 and 2 more
 
-Used by: `symfony/error-handler@8.1.10`, `symfony/mailer@8.1.10`, `symfony/string@8.1.10`
+Used by: `symfony/error-handler@8.1.10`, `symfony/mailer@8.1.12`, `symfony/string@8.1.10`
 
 ~~~~text
 Copyright (c) 2019-present Fabien Potencier
@@ -4989,9 +4989,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/mime@8.1.10
+### symfony/mime@8.1.12
 
-Used by: `symfony/mime@8.1.10`
+Used by: `symfony/mime@8.1.12`
 
 ~~~~text
 Copyright (c) 2010-present Fabien Potencier
@@ -5145,9 +5145,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
-### symfony/var-dumper@8.1.10
+### symfony/var-dumper@8.1.12
 
-Used by: `symfony/var-dumper@8.1.10`
+Used by: `symfony/var-dumper@8.1.12`
 
 ~~~~text
 Copyright (c) 2014-present Fabien Potencier
