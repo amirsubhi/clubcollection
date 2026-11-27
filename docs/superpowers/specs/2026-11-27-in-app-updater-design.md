@@ -76,6 +76,266 @@ safely, without a terminal.
 The owner also decided: no cron at all; the check happens when the super admin loads their dashboard (and on demand);
 checksum only, no signing.
 
+## User journeys
+
+The machinery below only matters if the people in these stories come out of it calm. Every screen, message and email
+the updater shows must fit these journeys; where a journey and a later section disagree, the journey wins and the
+section is fixed. (The people are invented. Research notes and sources: "Why these journeys" at the end.)
+
+**The people.**
+- **Aminah**, honorary secretary of a 120-member sports club and the portal's super admin. Not technical. Does most
+  admin on her phone in the evening, sometimes on the office laptop at lunch. Signs in about twice a month.
+- **Ravi**, the treasurer, a club admin (not super admin). Signs in every week to verify transfer slips.
+- **Farid**, a member who pays his fee by FPX from his phone, often late at night.
+- **Mei Ling**, a second super admin (the club chairperson), who rarely signs in.
+
+**Rules every journey relies on.**
+- **Plain words only on screen.** Steps are named for what they mean to Aminah, never "swap", "migrate", "unpack",
+  "opcache", "journal" or "maintenance mode". Technical detail sits behind a **Show details** link and in the copyable
+  report. The step list she sees:
+
+  | Aminah sees | Steps (§5) |
+  |---|---|
+  | Checking your site is ready | 1 |
+  | Downloading Club Portal v2.2.1 | 2 |
+  | Saving a copy of your club's data | 3 |
+  | Checking the new files | 4 |
+  | Pausing the portal for members | 5 |
+  | Switching to the new version | 6, 7 |
+  | Updating your club's records to the new version | 8 |
+  | Checking everything works | 9 |
+  | Opening the portal again | 10 |
+
+- **Always say how long and what members see.** Before, during and after: "usually about 2 minutes", "members see a
+  'back in a few minutes' page".
+- **Always say what to do next.** No screen ends on an error alone. Every failure screen says (1) whether the site is
+  working, (2) whether anything was lost, (3) the one thing to do now, and offers **Copy report** (plain text with the
+  versions, the step, the error and the host checks, for a developer or the host's support).
+- **Never ask a question Aminah can't answer.** No "keep maintenance mode?", no choices about files.
+- **The app is the record, email is a copy.** Every outcome (done, undone, failed) is shown in the app (J7) and
+  kept on the Updates page; an email is sent as well only when the site has mail set up (`MAIL_MAILER=log`, the
+  default, sends nothing).
+- **The portal's own name.** Members' screens use the portal name from Portal settings, not "Club Portal".
+- **No ticks she can't honestly give.** Where the engine needs something done by a person with cPanel or file
+  access (a database backup on a host without `mysqldump`, a `manual_action` such as a new `.env` setting), the page
+  shows a J3-style screen: what is needed, **Copy message** for the host or whoever installed the portal, and an
+  "It's been done" tick for that person, worded so Aminah knows she isn't the one meant to tick it.
+- **One source of truth.** The banner, the Updates page and the emails all read the same check and the same journal;
+  the security banner disappears the moment the update finishes (Ghost's banner that stayed after updating made people
+  think they were still exposed).
+
+### J1. The ordinary update
+
+Monday, 9 pm. Aminah signs in on her phone to approve a new member. Above her dashboard a calm blue strip says:
+"**Club Portal v2.2.1 is available.** You're on v2.2.0. [See what's new]". She taps it.
+
+The Updates page reads like a phone's update screen:
+
+```
+Club Portal v2.2.1                       released 3 Dec 2026
+You're on v2.2.0
+
+What's new
+• Receipts now show the club's logo
+• Fixed: overdue reminders sometimes went out twice
+
+Updating takes about 2 minutes. During that time members
+see a "back in a few minutes" page. Pick a quiet time,
+such as late evening.
+
+✓ Your site is ready to update        [Show checks]
+✓ A copy of your club's data is saved first
+
+[ Update to v2.2.1 ]
+```
+
+The release notes come from the manifest's `notes` and are written for clubs, not developers (release checklist:
+"What's new" bullets in plain words, at most five, security fixes first).
+
+She taps **Update to v2.2.1**, enters her password and the 6-digit code from her authenticator (§4), and the updater page opens:
+
+```
+Updating to v2.2.1 — about 2 minutes
+Keep this page open and your screen on until it says Done.
+
+✓ Checking your site is ready
+✓ Downloading Club Portal v2.2.1
+● Saving a copy of your club's data…
+○ Checking the new files
+○ Pausing the portal for members
+…
+```
+
+Each step ticks within seconds. The page keeps her phone screen awake while it runs (Screen Wake Lock API where the
+browser has it) and warns her if she tries to leave or close it. After about two minutes:
+
+```
+Done. Club Portal is now v2.2.1.
+Members can use the portal again.
+
+What's new  • Receipts now show the club's logo  • …
+A copy of your club's data from before the update
+is kept on your site (with your other backups).
+
+[ Back to the dashboard ]
+```
+
+If mail is set up she also gets an email "Club Portal updated to v2.2.1" with the same text. The blue strip is
+gone from her dashboard.
+
+### J2. A security fix
+
+A security release is published. When Aminah next opens her dashboard the strip is red: "**Important security fix:
+Club Portal v2.2.2.** Please update today. It takes about 2 minutes. [Update now]". The Updates page puts one plain line
+on top of the notes: "This update fixes a security problem. Updating soon keeps your members' details safe." No CVE
+numbers on the page (they are in the release notes on GitHub, linked as "Technical details").
+
+Aminah only signs in twice a month, so a red strip only she can see may wait two weeks. Ravi signs in weekly. **Open
+question for the owner (see end of this section).**
+
+### J3. "Your host doesn't allow this"
+
+Aminah's club is on a host that has turned off the PHP zip extension. The Updates page still shows what's new, but the
+button is replaced by:
+
+```
+✗ Your site can't update itself on this host yet.
+  Your host has turned off a feature the updater needs (PHP zip).
+
+  What to do: send this message to your hosting company's support.
+  [ Copy message for my host ]
+
+  Or ask whoever installed the portal to update it by hand
+  (instructions: docs/RELEASE.md).
+```
+
+The copied message is written to a host's support desk: "Please enable the PHP zip extension (ZipArchive) for the
+account that runs <domain>. It is needed by the Club Portal web updater." Every pre-check that can fail has such a
+message. Checks are shown only as pass or fail, never "unknown" (Joomla's "No compatibility information" taught people
+to ignore warnings). A check that cannot be decided counts as a pass with no line, or as a fail with a fix; the builder
+picks per check, and documents the choice.
+
+### J4. Her phone's screen goes off, or the signal drops
+
+Halfway through, Aminah's phone locks (the wake lock is not supported on her old browser) and the page pauses.
+
+- **She comes back within 10 minutes.** The page notices it is visible again and carries on by itself from the first
+  unfinished step: "Welcome back, carrying on…". Members saw the "back in a few minutes" page a little longer; nothing
+  else happened. If two tabs are open, the second says "This update is running in another tab" and only watches.
+- **She presses Back or opens the dashboard in another tab** during the pause: her browser carries the maintenance
+  bypass (set when the update starts), so she sees the admin, with a strip "Update in progress [Watch]".
+- **She comes back after 10 minutes, or never.** The first request after that (hers, a member's, or the every-minute
+  scheduler) undoes the update (§5 recovery): the portal is back on v2.2.0, members can use it, nothing was lost. When
+  Aminah opens the updater page or her dashboard she sees: "The update to v2.2.1 didn't finish, because this page was
+  closed or the phone's screen went off. Your portal was put back on v2.2.0 at 9:42 pm and is working normally. Nothing
+  was lost. [Try again]". An email says the same, if mail is set up.
+- **Her signal drops for a moment.** A step whose request fails is retried quietly up to 3 times over about 30 seconds
+  ("Connection lost, retrying…") before it counts as failed.
+
+### J5. Something goes wrong and the update undoes itself
+
+At "Checking everything works", the new version's login page returns an error on this host. The updater puts the old
+version back by itself and shows:
+
+```
+The update didn't work on your site, so we put it back.
+Your portal is on v2.2.0 and working normally.
+Nothing was lost.
+
+What happened: the new version showed an error on this
+host's settings.
+
+What to do: nothing right now. Your portal is safe on
+v2.2.0. You can try again after the next release.
+If you'd like help, send the report to whoever installed
+the portal, or to the Club Portal team.
+[ Copy report ]  [ Report a problem ]  [ Back to the dashboard ]
+```
+
+If this was a security release, the red strip changes to "The security update couldn't be installed on this host.
+Your portal still works. [What to do]", which leads to the same help and the J3 host message, so she is never left
+with an alarm and no action. **Report a problem** opens the GitHub issue form with the report filled in; the page
+never says "open an issue". An email says the same, if mail is set up. The Updates page shows "Last update attempt: 3 Dec, 9:31 pm, put back automatically [View
+report]" and lets her try again later.
+
+The one case where "nothing was lost" is not certain is a database change that failed half-way (§6). That screen says
+so honestly, in plain words: "The portal is back on v2.2.0, but one change to your club's records didn't finish. Your
+members can still use the portal. The update button is switched off until this is sorted. Send the report to whoever looks after the portal: they may
+need to restore the copy of your data saved at 9:30 pm." That is the only journey that ends with someone else's help.
+
+### J6. Farid pays during the update
+
+Farid finishes paying on his bank's FPX page at 9:31 pm, just as the portal pauses. His bank sends him back to the
+portal and he sees, in the portal's default language (Bahasa Melayu unless the super admin changed it):
+
+```
+<Nama portal> sedang dikemas kini
+Kembali dalam beberapa minit. Halaman ini akan dimuat semula sendiri.
+
+Jika anda baru membuat bayaran, bayaran anda selamat.
+Resit akan dipaparkan sebaik sahaja portal dibuka semula.
+```
+
+(English: "<Portal name> is being updated. Back in a few minutes; this page reloads by itself. If you've just paid, your
+payment is safe. Your receipt will show as soon as the portal is open again." Malay wording to be approved by the
+owner.) The page is static, has a 503 status with `Retry-After: 120`, and reloads itself every 30 seconds by going to the
+portal's home page (never by re-sending a form). A member in the middle of a form, or a slip upload, when the pause
+starts gets this page instead of a result: the page adds "If you were sending a form or a transfer slip, please send it
+again when we're back." Inside the member app (Inertia), a 503 during a page visit shows this page full-screen, not an
+error box.
+
+Behind the scenes his payment must not be lost: the gateway's confirmation (`/webhook/toyyibpay`, `/webhook/billplz`)
+may arrive while the code is being switched. ToyyibPay payments are re-checked by the existing scheduled job, but
+Billplz has only the callback. **My call:** while the swap guard is up, a POST to `/webhook/*` is saved as-is (body
+and headers) to `storage/app/updater/webhooks/` and answered 503; the final step replays the saved callbacks through
+the normal webhook handler (signatures are checked as usual), and the rollback path does the same on the old code.
+The pre-check that no bill was opened in the last 2 minutes stays.
+
+### J7. Finding out the next morning
+
+Aminah closed her laptop mid-update and went to bed. At 7 am Ravi signs in to verify slips: the portal works (it was
+put back at 9:42 pm). Ravi sees nothing about it (club admins never see updater messages). Aminah has an email from
+last night if mail is set up, and her dashboard (and Mei Ling's) says, until each of them dismisses it or an
+update succeeds: "Last night's update to v2.2.1 didn't finish and was
+undone at 9:42 pm. Your portal has been working normally since. [Try again] [Dismiss]".
+
+### J8. Two super admins
+
+Mei Ling signs in while Aminah's update is in its first steps, before the pause. Her Updates page shows "Aminah is updating the portal to v2.2.1
+(started 9:30 pm)" and no button. During the pause she can't sign in at all (she sees the members' page, like everyone without the bypass). If the
+update was abandoned, Mei Ling sees the J4 message, not a stuck state.
+
+### J9. Not now
+
+Aminah sees the strip at lunch at the office and doesn't want to pause the portal while members are paying. She does
+nothing: the strip stays, and nothing happens until she presses the button. (No "remind me later" in this version;
+the strip itself is the reminder.)
+
+### Open questions for the owner
+
+1. **A security fix that waits for a rare sign-in (J2).** Options, none needs cron:
+   - (a) **Club admins see a quiet note** on their dashboard for security releases only: "A security update for Club
+     Portal is waiting. Your super admin (Aminah) can install it." Uses the same cached check when a club admin loads
+     their dashboard. *Recommended:* it reaches the people who sign in weekly, at no extra cost.
+   - (b) Leave it to the super admin's own sign-ins.
+2. **The Malay maintenance text in J6** needs the owner's approval (Malaysian Malay rule).
+
+### Why these journeys (research, 28 November 2026)
+
+- Closing the tab is the most common cause of WordPress's stuck "Briefly unavailable for scheduled maintenance", and
+  the fix is FTP: dreamhost.com/blog/how-to-fix-wordpress-error-unavailable-scheduled-maintenance; core even left
+  maintenance on after a failed auto-update until 2024: core.trac.wordpress.org/ticket/61459.
+- WordPress ignores a maintenance file older than 10 minutes: developer.wordpress.org/reference/functions/wp_is_maintenance_mode.
+- Nextcloud's "Step N is currently in process" threads come from new users who can't find the hidden `.step` file:
+  help.nextcloud.com/t/90535; its backup step times out on shared hosts: help.nextcloud.com/t/175806.
+- Matomo one-click updates that silently stay on the old version: issues.matomo.org/14177.
+- Ghost's critical-security banner that stayed after updating: forum.ghost.org/t/23673.
+- Named steps instead of a spinner for waits over 10 seconds: nngroup.com/articles/progress-indicators.
+- WordPress emails the admin after automatic updates and rollbacks (core.trac.wordpress.org/changeset/25837,
+  make.wordpress.org/core/2024/04/19/merge-proposal-rollback-auto-update); those emails often land in spam, so the
+  same message is also shown in the app.
+- Maintenance pages: 503 with `Retry-After`, static, inline CSS: yoast.com/http-503-site-maintenance-seo.
+
 ## Design
 
 ### 1. The release manifest (built by CI)
@@ -186,13 +446,14 @@ enable the PHP zip extension.").
   rollback). So the journal and step protocol are private to one version and need no compatibility between releases;
   the release check is that the previous version's updater can install the new release (see Testing).
 - **Recovery never needs the token.** A token can expire or its cookie vanish with the browser, and a super admin
-  cannot sign in while the site is down. So any visit to `/update/`, and any request or `artisan` run that sees the
+  cannot sign in while the site is down. So any visit to `/update/`, and any web request that sees the
   swap guard (step 5), checks the journal: if no step has run for 10 minutes, the update is abandoned and is undone
   without a token: before the swap, the job is dropped and maintenance lifted; from the swap on, the file rollback
   runs (it only restores the previous release, so it is safe unauthenticated). The result is audited and shown the
   next time the super admin opens the Updates page.
 - **A failed step is any reply that is not the expected JSON** (HTTP 500, a host error page, a timeout): the page
-  retries the step once, then, from the swap on, rolls back.
+  retries the step up to 3 times over about 30 seconds (a phone on mobile data, J4), then, from the swap on, rolls
+  back. When the page becomes visible again after being hidden, it continues by itself (J4).
 - **The journal** (`storage/app/updater/journal.json`, written atomically by temp-file + rename after every step):
   steps done, the current step with `started_at`, paths of the staged and old folders, the backup file, and
   `maintenance: true/false`. Reloading the page reads it and offers **Continue** (from the first unfinished step) or,
@@ -318,9 +579,53 @@ OPcache; it says so.
 - `docs/USER-GUIDE.md`: the super admin's Updates page.
 - `docs/INSTALL.md`: the hosting needs (zip and curl extensions, writable app folder, disk headroom).
 
+### 12. What the journeys need from the engine (journey review, 28 November 2026)
+
+- **Outcomes from code without Laravel.** The standalone updater and the token-free recovery in the swap guard have
+  no database or mailer. They write `storage/app/updater/outcome.json`; the next request that boots Laravel (any
+  user) moves it into the audit log and the history (below), raises the dashboard notice for every super admin, and
+  sends the email **synchronously**, best effort (never queued: with `QUEUE_CONNECTION=database` there may be no
+  worker).
+- **History.** `storage/app/updater/history/<time>-<from>-<to>.json`: outcome, steps, timings, reason, report text.
+  Step 10 does not delete it; the Updates page shows the last attempt and **View report**. A failed migration writes
+  a `blocked` flag that switches the button off until a super admin confirms the database was restored or checked,
+  because the old code cannot see the new migrations as pending (§3).
+- **Report.** Versions, PHP version, failing pre-checks, the step, the error message and the step's last log lines,
+  with the app path shown as `<app>`. Never `.env` values, tokens, cookies or database credentials.
+- **Saved payment callbacks (J6).**
+  - The v2.2.0 guard itself saves them, because every later update runs the installed guard: a POST to
+    `/webhook/toyyibpay` or `/webhook/billplz` (body plus the headers the handler needs) is written to
+    `storage/app/updater/webhooks/` (at most 200 files of 64 KB) and answered 503.
+  - Laravel's `down` file lists `webhook/*` in `except` until step 10, so callbacks between the guard going and
+    maintenance ending reach the new code directly.
+  - Replay runs on the first booted request after the guard is gone, on whichever code is installed (new after
+    success, old after a rollback), through the normal handler with its signature checks, skipping the throttle and
+    relying on the handler's "already processed" check.
+- **The members' pause page (J6).** In step 3 (booted), read the default language, the portal name and
+  `APP_TIMEZONE`, store them in the job, and render one static HTML file from the lang files. The guard and
+  `maintenance.php` both serve it with 503, `Retry-After: 120` and a 30-second refresh to `/`. This replaces the
+  English text in §5 step 5. All times on updater screens and in history use the job's timezone.
+- **The admin's own bypass.** Step 5 gives the updating super admin's browser Laravel's maintenance bypass cookie.
+- **Locking.** One `flock` on `storage/app/updater/lock`, shared by every step, slice and the recovery. Each slice
+  refreshes the 10-minute clock. Recovery takes the lock and marks the journal `recovering` first; steps refuse to run
+  once it is set. A second tab sees the lock and only watches.
+- **Recovery runs from web requests only.** The guard in `artisan` just exits: the CLI cannot clear the website's PHP
+  cache (§7). (This replaces "or `artisan` run" in §5.)
+- **Updater page JavaScript.** Screen Wake Lock while running (https only; otherwise the "keep your screen on" line is
+  bold), a `beforeunload` warning, continue on `visibilitychange` back to visible after re-reading the journal, and 3
+  retries over about 30 seconds.
+- **"What's new" for clubs (J1).** The manifest gains `whats_new: [string]` (at most 5 plain lines) from a
+  `### What's new` subsection of the version's CHANGELOG section; the manifest script fails the release build when it
+  is missing or longer. `notes_markdown` stays, shown as "Technical details".
+- **What is kept.** The database backup follows `backup:run`'s keep-the-last-14 rule; the old files folder is removed
+  by the next update's step 1 (no cron, so nothing happens at 7 days).
+- **Old member tabs after an update.** Check that the Inertia asset version changes with the build, so an old tab
+  reloads instead of asking for `/build` files that were moved away.
+
 ## Left to the builder
 
-- Exact UI wording (English only on admin pages, per project rule), layout of the Updates page and the updater page.
+- UI wording beyond what the User journeys fix (English only on admin pages, per project rule; the members'
+  maintenance page is in the portal's default language), and layout within the journeys' sketches.
 - Slice sizes for unpack and download; timeouts.
 - How "a payment is being settled" is detected (existing `pay:*` cache locks, open bills in the last minutes).
 - Whether `release-files.json` hashes are also shown by `app:doctor` as a "modified files" row (nice to have).
