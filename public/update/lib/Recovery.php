@@ -21,8 +21,8 @@ final class Recovery
     private const OPEN_JOB_STATUSES = ['ready', 'running'];
 
     /**
-     * Takes the update lock and, when the update is still abandoned under it, undoes it. Null when another request holds
-     * the lock, the update moved recently, the journal cannot be read, or there is nothing to undo.
+     * Takes the update lock and, when the update is still abandoned under it (guard file up, idle), undoes it. Null when
+     * another request holds the lock, the update moved recently, the journal cannot be read, or there is no guard file.
      *
      * @throws UpdaterError when the old files could not all be put back (the portal stays paused; a later idle request
      *                      tries again)
@@ -45,16 +45,17 @@ final class Recovery
         }
     }
 
-    /** True when the guard is up (or a job is still open) and nothing has moved for IDLE_AFTER seconds. */
+    /**
+     * True when the swap guard is up and nothing has moved for IDLE_AFTER seconds. An update abandoned before the pause
+     * (no guard file) is left to the updater page and the job's own expiry.
+     */
     public static function isAbandoned(Files $f, int $now): bool
     {
         clearstatcache();
-        $job = self::readJob($f);
-        $open = $job === null ? false : in_array($job['status'] ?? null, self::OPEN_JOB_STATUSES, true);
-        if (! is_file($f->guardPath) && ! $open) {
+        if (! is_file($f->guardPath)) {
             return false;
         }
-        $idle = self::idleSeconds($f, $now, $job);
+        $idle = self::idleSeconds($f, $now);
 
         return $idle !== null && $idle >= self::IDLE_AFTER;
     }
@@ -112,12 +113,10 @@ final class Recovery
     }
 
     /**
-     * Seconds since the last progress: the journal's `last_step_at`; without one, the guard file's age; without that, the
-     * job's `last_step_at`. Null when the journal exists but cannot be read, or nothing tells.
-     *
-     * @param  ?array<string, mixed>  $job
+     * Seconds since the last progress: the journal's `last_step_at`, or the guard file's age when there is no journal
+     * (or it has no time yet). Null when the journal exists but cannot be read, or nothing tells.
      */
-    private static function idleSeconds(Files $f, int $now, ?array $job): ?int
+    private static function idleSeconds(Files $f, int $now): ?int
     {
         if (is_file($f->journalPath)) {
             $raw = @file_get_contents($f->journalPath);
@@ -129,15 +128,9 @@ final class Recovery
                 return max(0, $now - $journal['last_step_at']);
             }
         }
-        $mtime = is_file($f->guardPath) ? @filemtime($f->guardPath) : false;
-        if (is_int($mtime)) {
-            return max(0, $now - $mtime);
-        }
-        if (is_int($job['last_step_at'] ?? null)) {
-            return max(0, $now - $job['last_step_at']);
-        }
+        $mtime = @filemtime($f->guardPath);
 
-        return null;
+        return is_int($mtime) ? max(0, $now - $mtime) : null;
     }
 
     /** The job, null when there is none; a file that cannot be read gives an empty job (status unknown). */

@@ -283,6 +283,25 @@ class UpdateGuardTest extends TestCase
         $this->assertSame('undone', $this->job()['status']);
     }
 
+    public function test_without_a_journal_an_old_guard_file_is_recovered(): void
+    {
+        touch($this->site.'/storage/framework/updating', time() - 700);
+        $this->assertFileDoesNotExist($this->dir.'/journal.json');
+
+        $this->assertTrue(clubportal_update_guard_recover($this->site));
+
+        $this->assertNull($this->decide('GET', '/'));
+        $this->assertSame('undone', $this->job()['status']);
+    }
+
+    public function test_without_a_journal_a_new_guard_file_is_not_recovered(): void
+    {
+        touch($this->site.'/storage/framework/updating', time() - 100);
+
+        $this->assertFalse(clubportal_update_guard_recover($this->site));
+        $this->assertSame(['action' => 'pause'], $this->decide('GET', '/'));
+    }
+
     public function test_a_recent_journal_is_not_recovered(): void
     {
         $this->runUpdateUntil('migrate', 540);

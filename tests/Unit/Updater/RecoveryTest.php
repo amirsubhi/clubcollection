@@ -145,6 +145,16 @@ class RecoveryTest extends TestCase
         $this->assertSame('running', $this->job()['status']);
     }
 
+    public function test_without_the_guard_file_an_idle_job_is_left_to_the_updater_page(): void
+    {
+        $this->runUpdateUntil('download', 660);
+
+        $this->assertNull(Recovery::runIfIdle($this->site));
+
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+    }
+
     public function test_an_unreadable_job_file_is_marked_undone(): void
     {
         $this->runUpdateUntil('swap', 660);
