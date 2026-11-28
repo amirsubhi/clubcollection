@@ -98,6 +98,16 @@ function Providers({ locale, account, component, children }: { locale: unknown; 
   );
 }
 
+// While the portal is paused for an update every request answers 503 with the members' pause page. A visit that
+// gets it goes to the home page (a plain GET, which shows the pause page full-screen) instead of an error box, and
+// never re-sends a form.
+router.on("invalid", (event) => {
+  if (event.detail.response.status === 503) {
+    event.preventDefault();
+    window.location.assign("/");
+  }
+});
+
 /** The portal name (Portal settings, shared as props.portal); read once from the first page. */
 let portalName = "Club Portal";
 

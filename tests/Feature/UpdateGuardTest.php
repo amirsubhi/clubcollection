@@ -186,6 +186,16 @@ class UpdateGuardTest extends TestCase
         return glob($this->dir.'/webhooks/*.json') ?: [];
     }
 
+    public function test_the_query_string_is_saved_for_toyyibpays_webhook_token(): void
+    {
+        $this->assertTrue(clubportal_update_guard_save_webhook($this->site, '/webhook/toyyibpay', 'a=1', ['QUERY_STRING' => 'webhook_token=abc123']));
+        $this->assertTrue(clubportal_update_guard_save_webhook($this->site, '/webhook/toyyibpay', 'a=2', ['QUERY_STRING' => "x=1\n2"]));
+        $this->assertTrue(clubportal_update_guard_save_webhook($this->site, '/webhook/toyyibpay', 'a=3', ['QUERY_STRING' => str_repeat('a', 1025)]));
+        $queries = array_map(fn ($f) => json_decode((string) file_get_contents($f), true)['query'], $this->savedFiles());
+        sort($queries);
+        $this->assertSame(['', '', 'webhook_token=abc123'], $queries);
+    }
+
     public function test_a_callback_is_saved_with_only_the_needed_headers(): void
     {
         $saved = clubportal_update_guard_save_webhook($this->site, '/webhook/billplz/', 'id=abc&paid=true', [
@@ -209,6 +219,7 @@ class UpdateGuardTest extends TestCase
         $data = json_decode((string) file_get_contents($files[0]), true);
         $this->assertSame('/webhook/billplz', $data['path']);
         $this->assertSame('id=abc&paid=true', $data['body']);
+        $this->assertSame('', $data['query']);
         $this->assertSame([
             'content-type' => 'application/x-www-form-urlencoded',
             'x-billplz-id' => 'b1',

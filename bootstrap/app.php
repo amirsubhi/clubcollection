@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // HandleInertiaRequests passes plain Blade responses through untouched.
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
+            // The updater's outcome and saved payment callbacks reach the portal here (two file checks when idle).
+            \App\Http\Middleware\ConsumeUpdaterOutcome::class,
         ]);
         // Security headers (and the CSP nonce) on every response, outermost, so
         // the error pages thrown before the web group runs (404 for an unknown

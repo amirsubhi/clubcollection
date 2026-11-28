@@ -506,7 +506,7 @@ class UpdateStartTest extends TestCase
         $this->get(route('admin.updates.index'))->assertOk()
             ->assertSeeText('Aminah is updating the portal to v2.2.3 (started 9:30 pm)')
             ->assertDontSee('Update to v2.2.3')
-            ->assertDontSee('name="password"', false);
+            ->assertDontSee('id="update-start-form"', false);
     }
 
     public function test_a_blocked_flag_hides_the_button_and_shows_the_line(): void
@@ -518,7 +518,7 @@ class UpdateStartTest extends TestCase
         $this->get(route('admin.updates.index'))->assertOk()
             ->assertSeeText('The update button is switched off until this is sorted.')
             ->assertDontSee('Update to v2.2.3')
-            ->assertDontSee('name="password"', false);
+            ->assertDontSee('id="update-start-form"', false);
     }
 
     public function test_updater_files_has_the_fixed_names(): void

@@ -196,7 +196,7 @@ if (! function_exists('clubportal_update_guard_decide')) {
 
     /**
      * Saves a payment callback for the portal to replay: storage/app/updater/webhooks/<microtime>-<random>.json with
-     * {path, body, headers, at}. Refused (false) for another path, a body over 64 KB or not UTF-8, or when 200 are
+     * {path, body, headers, query, at}. Refused (false) for another path, a body over 64 KB or not UTF-8, or when 200 are
      * already waiting. The file name and folder never come from the request.
      *
      * @param string $path   the request path
@@ -230,6 +230,7 @@ if (! function_exists('clubportal_update_guard_decide')) {
             'path' => $known,
             'body' => $body,
             'headers' => clubportal_update_guard_webhook_headers($server),
+            'query' => clubportal_update_guard_webhook_query($server),
             'at' => time(),
         ));
         $random = clubportal_update_guard_random_hex(6);
@@ -281,6 +282,20 @@ if (! function_exists('clubportal_update_guard_decide')) {
         ksort($out);
 
         return $out;
+    }
+
+    /**
+     * The request's query string, kept so the replay can show ToyyibPay's per-bill webhook_token (it travels in the
+     * URL, not the body). Empty when there is none, it is not text, or it is over 1 KB.
+     */
+    function clubportal_update_guard_webhook_query($server)
+    {
+        $query = is_array($server) && isset($server['QUERY_STRING']) ? $server['QUERY_STRING'] : '';
+        if (! is_string($query) || strlen($query) > 1024 || preg_match('/[^\x21-\x7e]/', $query)) {
+            return '';
+        }
+
+        return $query;
     }
 
     /** Random hex, or null when this PHP has no safe random source. */

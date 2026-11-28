@@ -3,6 +3,57 @@
 @section('page-title', 'Updates')
 
 @section('content')
+@if (session('status'))
+    <div class="alert alert-success" role="status">{{ session('status') }}</div>
+@endif
+
+@if ($blockedByFailure && ! $running)
+    <div class="card border-danger shadow-sm mb-4" data-testid="update-blocked">
+        <div class="card-body">
+            <p class="fw-semibold text-danger mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>One change to your club's records didn't finish.</p>
+            <p class="mb-2">Your members can still use the portal. The update button is switched off until this is sorted. Send the report to whoever looks after the portal: they may need to restore the last saved copy of your data.</p>
+            @if ($lastAttempt && $lastAttempt['report'] !== '')
+                <textarea id="blocked-report" class="form-control mb-2" rows="6" readonly aria-label="Report">{{ $lastAttempt['report'] }}</textarea>
+                <button type="button" class="btn btn-outline-primary btn-sm mb-3" data-copy-from="blocked-report" hidden>Copy report</button>
+                <span class="small text-success ms-2" data-copy-done hidden>Copied</span>
+            @endif
+            <form method="POST" action="{{ route('admin.updates.unblock') }}" id="update-unblock-form" class="border rounded p-3" data-testid="update-unblock">
+                @csrf
+                <p class="mb-2">Once the copy of your data has been restored or checked, confirm it is you to switch the update button back on.</p>
+                @if ($errors->has('update'))
+                    <div class="alert alert-danger" role="alert">{{ $errors->first('update') }}</div>
+                @endif
+                <div class="mb-3">
+                    <label for="unblock-password" class="form-label">Your password</label>
+                    <input type="password" class="form-control" id="unblock-password" name="password" required autocomplete="current-password">
+                </div>
+                @if ($twoFactorOn)
+                    <div class="mb-3">
+                        <label for="unblock-code" class="form-label">The 6-digit code from your authenticator app</label>
+                        <input type="text" class="form-control" id="unblock-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+                    </div>
+                @endif
+                <button type="submit" class="btn btn-danger">The database was restored or checked</button>
+            </form>
+        </div>
+    </div>
+@elseif ($lastAttempt && $lastAttempt['outcome'] !== 'finished' && ! $running)
+    <div class="card shadow-sm mb-4" data-testid="update-last-attempt-card">
+        <div class="card-body">
+            <p class="h5">{{ $lastAttempt['title'] }}</p>
+            @foreach ($lastAttempt['lines'] as $line)
+                <p class="mb-2">{{ $line }}</p>
+            @endforeach
+            @if ($lastAttempt['what_happened'])
+                <p class="mb-2"><strong>What happened:</strong> {{ $lastAttempt['what_happened'] }}</p>
+            @endif
+            @if ($lastAttempt['what_to_do'])
+                <p class="mb-2"><strong>What to do:</strong> {{ $lastAttempt['what_to_do'] }}</p>
+            @endif
+        </div>
+    </div>
+@endif
+
 @if ($latest === null || ! $status->available)
     <div class="card shadow-sm mb-4">
         <div class="card-body">
@@ -49,11 +100,6 @@
                     @if ($running['mine'])
                         <p class="mt-2 mb-0"><a href="/update/">Go back to the update screen</a></p>
                     @endif
-                </div>
-            @elseif ($blockedByFailure)
-                <div class="border border-danger rounded p-3 mb-3" data-testid="update-blocked">
-                    <p class="fw-semibold text-danger mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>One change to your club's records didn't finish.</p>
-                    <p class="mb-0">Your members can still use the portal. The update button is switched off until this is sorted. Send the report to whoever looks after the portal: they may need to restore the last saved copy of your data.</p>
                 </div>
             @elseif ($ready)
                 <p class="fw-semibold text-success mb-2"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>Your site is ready to update</p>
@@ -164,6 +210,20 @@
                 <a href="{{ $latest->notesUrl }}" target="_blank" rel="noopener noreferrer">Release notes on GitHub</a>
             </details>
         </div>
+    </div>
+@endif
+
+@if ($lastAttempt)
+    <div class="mb-4" data-testid="update-last-attempt">
+        <p class="mb-1">Last update attempt: {{ $lastAttempt['when'] }}, {{ $lastAttempt['label'] }}</p>
+        @if ($lastAttempt['report'] !== '')
+            <details id="last-report">
+                <summary>View report</summary>
+                <textarea id="last-report-text" class="form-control my-2" rows="8" readonly aria-label="Report">{{ $lastAttempt['report'] }}</textarea>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-copy-from="last-report-text" hidden>Copy report</button>
+                <span class="small text-success ms-2" data-copy-done hidden>Copied</span>
+            </details>
+        @endif
     </div>
 @endif
 

@@ -12,6 +12,7 @@ use App\Support\ReleaseInfo;
 use App\Support\Updates\PreChecks;
 use App\Support\Updates\UpdateCheck;
 use App\Support\Updates\UpdateJob;
+use App\Support\Updates\UpdateOutcomes;
 use App\Support\Updates\UpdaterFiles;
 use App\Support\Updates\UpdateStatus;
 use Carbon\CarbonImmutable;
@@ -52,28 +53,8 @@ class UpdatesController extends Controller
         $user = $request->user();
         $request->validate(['password' => ['required', 'string'], 'code' => ['nullable', 'string', 'max:20']]);
 
-        $lockKey = TwoFactorChallengeController::lockKey($user);
-        if ($user->hasEnabledTwoFactor() && RateLimiter::tooManyAttempts($lockKey, TwoFactorChallengeController::MAX_FAILURES)) {
-            $minutes = (int) ceil(RateLimiter::availableIn($lockKey) / 60);
-
-            return $this->refuse($request, "Too many wrong codes. Try again in $minutes minute(s).");
-        }
-        if (! Hash::check((string) $request->input('password'), (string) $user->password)) {
-            AuditService::log('portal.update_failed_check', 'Update not started: wrong password.');
-
-            return $this->refuse($request, 'That password is not right.');
-        }
-        if ($user->hasEnabledTwoFactor()) {
-            $code = trim((string) $request->input('code'));
-            if ($code === '' || ! $user->verifyTwoFactorCode($code)) {
-                RateLimiter::hit($lockKey, TwoFactorChallengeController::LOCK_SECONDS);
-                AuditService::log('portal.update_failed_check', 'Update not started: wrong or missing authenticator code.');
-
-                return $this->refuse($request, $code === ''
-                    ? 'Enter the 6-digit code from your authenticator app.'
-                    : 'That code is not right. Enter the current 6-digit code from your authenticator app.');
-            }
-            RateLimiter::clear($lockKey);
+        if ($refused = $this->reconfirm($request, 'Update not started')) {
+            return $refused;
         }
 
         if (is_file(UpdaterFiles::blockedPath())) {
@@ -130,6 +111,62 @@ class UpdatesController extends Controller
         return redirect('/update/')->withCookie(cookie('cp_update', $token, 60, '/update/', null, $request->isSecure(), true, false, 'strict'));
     }
 
+    /**
+     * The re-confirmation both "Update to vX" and "switch the button back on" need: the password, plus a current
+     * authenticator code when two-step sign-in is on. Null when it passes, else the redirect back with the reason.
+     */
+    private function reconfirm(Request $request, string $what): ?RedirectResponse
+    {
+        $user = $request->user();
+        $lockKey = TwoFactorChallengeController::lockKey($user);
+        if ($user->hasEnabledTwoFactor() && RateLimiter::tooManyAttempts($lockKey, TwoFactorChallengeController::MAX_FAILURES)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($lockKey) / 60);
+
+            return $this->refuse($request, "Too many wrong codes. Try again in $minutes minute(s).");
+        }
+        if (! Hash::check((string) $request->input('password'), (string) $user->password)) {
+            AuditService::log('portal.update_failed_check', "$what: wrong password.");
+
+            return $this->refuse($request, 'That password is not right.');
+        }
+        if ($user->hasEnabledTwoFactor()) {
+            $code = trim((string) $request->input('code'));
+            if ($code === '' || ! $user->verifyTwoFactorCode($code)) {
+                RateLimiter::hit($lockKey, TwoFactorChallengeController::LOCK_SECONDS);
+                AuditService::log('portal.update_failed_check', "$what: wrong or missing authenticator code.");
+
+                return $this->refuse($request, $code === ''
+                    ? 'Enter the 6-digit code from your authenticator app.'
+                    : 'That code is not right. Enter the current 6-digit code from your authenticator app.');
+            }
+            RateLimiter::clear($lockKey);
+        }
+
+        return null;
+    }
+
+    /** "The database was restored or checked": switches the update button back on after a failed migration (J5). */
+    public function unblock(Request $request): RedirectResponse
+    {
+        $request->validate(['password' => ['required', 'string'], 'code' => ['nullable', 'string', 'max:20']]);
+        if ($refused = $this->reconfirm($request, 'Update button not switched on')) {
+            return $refused;
+        }
+        @unlink(UpdaterFiles::blockedPath());
+        AuditService::log('portal.update_unblocked', 'The update button was switched back on: the database was restored or checked.');
+
+        return redirect()->route('admin.updates.index')->with('status', 'The update button is switched on again.');
+    }
+
+    /** J7: this admin has read the notice about an update that did not finish. */
+    public function dismiss(Request $request): RedirectResponse
+    {
+        $request->validate(['file' => ['required', 'string', 'max:120']]);
+        UpdateOutcomes::dismiss($request->user(), (string) $request->input('file'));
+
+        return redirect()->back(fallback: route('home'));
+    }
+
     private function refuse(Request $request, string $message): RedirectResponse
     {
         return redirect()->route('admin.updates.index')
@@ -153,6 +190,8 @@ class UpdatesController extends Controller
             }
 
             return response()->json([
+                'running' => UpdateJob::isRunning(),
+                'last_outcome' => UpdateOutcomes::latest()['outcome'] ?? null,
                 'installed' => $s->installed,
                 'available' => $s->available,
                 'latest' => $s->latest === null ? null : [
@@ -165,7 +204,7 @@ class UpdatesController extends Controller
             ]);
         } catch (Throwable) {
             return response()->json($super
-                ? ['installed' => null, 'available' => false, 'latest' => null, 'error' => 'The update check failed, try again later.']
+                ? ['running' => false, 'last_outcome' => null, 'installed' => null, 'available' => false, 'latest' => null, 'error' => 'The update check failed, try again later.']
                 : ['security_waiting' => false, 'super_admins' => []]);
         }
     }
@@ -212,8 +251,21 @@ class UpdatesController extends Controller
             'installedCommit' => $this->installedCommit(),
             'running' => $running ? $this->runningLine($job, $user?->id) : null,
             'blockedByFailure' => $blockedByFailure,
+            'lastAttempt' => $this->lastAttempt(),
             'twoFactorOn' => $user?->hasEnabledTwoFactor() === true,
         ]);
+    }
+
+    /** The newest attempt in words (J5, J4): its screen text, its report, and whether it is still worth a card. */
+    private function lastAttempt(): ?array
+    {
+        try {
+            $h = UpdateOutcomes::latest();
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $h === null ? null : UpdateOutcomes::describe($h) + ['report' => (string) ($h['report'] ?? '')];
     }
 
     /** @return array{who: ?string, to: ?string, started: ?string, mine: bool} the J8 line's parts */
