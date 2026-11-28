@@ -18,6 +18,15 @@ final class UpdateCheck
 
     public const ERROR_UNREACHABLE = 'GitHub did not answer, try again later.';
 
+    public const ERROR_NOT_FOUND = 'No release information was found on GitHub yet. Try again later.';
+
+    public const ERROR_TOO_NEW = "A newer version of Club Portal is out, but this version can't read its details. Update by hand using the upgrade steps.";
+
+    /** Cached failure kinds (stored as a key, never as a sentence): null means "GitHub did not answer". */
+    private const KIND_NOT_FOUND = 'not_found';
+
+    private const KIND_TOO_NEW = 'too_new';
+
     private const BASE = 'https://github.com/';
 
     /** Never throws: any failure becomes an UpdateStatus with a plain error sentence. */
@@ -48,12 +57,19 @@ final class UpdateCheck
                 $latest = $this->parseEntry($entry);
             }
 
+            $kind = $latest === null ? ($entry['failure'] ?? null) : null;
+
             return new UpdateStatus(
                 $installed,
                 $latest,
                 $latest !== null && Version::compare($latest->version, $installed) > 0,
-                $latest === null ? self::ERROR_UNREACHABLE : null,
+                $latest === null ? match ($kind) {
+                    self::KIND_NOT_FOUND => self::ERROR_NOT_FOUND,
+                    self::KIND_TOO_NEW => self::ERROR_TOO_NEW,
+                    default => self::ERROR_UNREACHABLE,
+                } : null,
                 CarbonImmutable::parse($entry['checked_at']),
+                $kind === self::KIND_TOO_NEW,
             );
         } catch (Throwable) {
             return new UpdateStatus($installed, null, false, self::ERROR_UNREACHABLE, CarbonImmutable::now());
@@ -91,7 +107,7 @@ final class UpdateCheck
         return Manifest::fromJson((string) json_encode($entry['manifest']));
     }
 
-    /** @return array{checked_at: string, manifest: array<string, mixed>|null} */
+    /** @return array{checked_at: string, manifest: array<string, mixed>|null, failure?: string} */
     private function fetch(): array
     {
         $now = CarbonImmutable::now()->toIso8601String();
@@ -108,6 +124,9 @@ final class UpdateCheck
                 ->withHeaders(['Accept-Encoding' => 'identity'])
                 ->accept('application/json')
                 ->get($this->manifestUrl());
+            if ($response->status() === 404) {
+                return ['checked_at' => $now, 'manifest' => null, 'failure' => self::KIND_NOT_FOUND];
+            }
             if (! $response->successful() || (int) $response->header('Content-Length') > Manifest::MAX_BYTES) {
                 return ['checked_at' => $now, 'manifest' => null];
             }
@@ -118,7 +137,14 @@ final class UpdateCheck
                 return ['checked_at' => $now, 'manifest' => null];
             }
 
-            return ['checked_at' => $now, 'manifest' => Manifest::fromJson($body)->toArray()];
+            try {
+                return ['checked_at' => $now, 'manifest' => Manifest::fromJson($body)->toArray()];
+            } catch (InvalidManifest) {
+                // A genuine Club Portal manifest in a format (or with a signature) this version can't read is its own case.
+                return $this->readsAsFutureManifest($body)
+                    ? ['checked_at' => $now, 'manifest' => null, 'failure' => self::KIND_TOO_NEW]
+                    : ['checked_at' => $now, 'manifest' => null];
+            }
         } catch (Throwable) {
             return ['checked_at' => $now, 'manifest' => null];
         } finally {
@@ -127,6 +153,14 @@ final class UpdateCheck
             } catch (Throwable) {
             }
         }
+    }
+
+    private function readsAsFutureManifest(string $body): bool
+    {
+        $d = json_decode($body, true, 16);
+
+        return is_array($d) && ($d['app'] ?? null) === 'clubportal'
+            && ((is_int($d['format'] ?? null) && $d['format'] > 1) || ($d['signature'] ?? null) !== null);
     }
 
     /**

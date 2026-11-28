@@ -129,7 +129,6 @@ class UpdateCheckTest extends TestCase
         $cases = [
             'html' => fn () => Http::response('<html>Too busy</html>', 200),
             '429' => fn () => Http::response('', 429),
-            '404' => fn () => Http::response('', 404),
             'connection' => fn () => fn () => throw new ConnectionException('timeout'),
         ];
         foreach ($cases as $name => $response) {
@@ -157,6 +156,56 @@ class UpdateCheckTest extends TestCase
             $this->assertTrue($this->check()->available, $name.' retried after 15 minutes');
             $this->travelBack();
         }
+    }
+
+    public function test_a_future_format_or_a_signature_is_its_own_cached_error(): void
+    {
+        $tooNew = "A newer version of Club Portal is out, but this version can't read its details. Update by hand using the upgrade steps.";
+        foreach (['format' => ['format' => 2], 'signature' => ['signature' => 'abc'], 'both' => ['format' => 3, 'signature' => 'abc']] as $name => $over) {
+            Cache::flush();
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response(array_merge($this->manifest(), $over))]);
+
+            $s = $this->check();
+            $this->assertSame($tooNew, $s->error, $name);
+            $this->assertTrue($s->manualSteps, $name);
+            $this->assertFalse($s->available, $name);
+
+            $again = $this->check();
+            $this->assertSame($tooNew, $again->error, $name.' (cached)');
+            Http::assertSentCount(1);
+
+            $this->travel(16)->minutes();
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response($this->manifest())]);
+            $this->assertTrue($this->check()->available, $name.' retried after 15 minutes');
+            $this->travelBack();
+        }
+    }
+
+    public function test_something_that_is_not_a_club_portal_manifest_stays_a_plain_failure(): void
+    {
+        Http::fake(['*' => Http::response(array_merge($this->manifest(), ['app' => 'other', 'format' => 2]))]);
+
+        $s = $this->check();
+
+        $this->assertSame(UpdateCheck::ERROR_UNREACHABLE, $s->error);
+        $this->assertFalse($s->manualSteps);
+    }
+
+    public function test_a_404_is_its_own_cached_error(): void
+    {
+        Http::fake(['*' => Http::response('', 404)]);
+
+        $s = $this->check();
+        $this->assertSame('No release information was found on GitHub yet. Try again later.', $s->error);
+        $this->assertFalse($s->manualSteps);
+        $this->assertSame($s->error, $this->check()->error);
+        Http::assertSentCount(1);
+
+        $this->travel(14)->minutes();
+        $this->check();
+        Http::assertSentCount(1);
     }
 
     public function test_failure_is_not_retried_before_fifteen_minutes(): void

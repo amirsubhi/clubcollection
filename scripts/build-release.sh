@@ -113,6 +113,7 @@ cat > release.json <<JSON
 JSON
 
 # Every shipped file with its SHA-256 (the updater verifies an extract with it and finds files a release removed).
+# It fails the build on a symbolic link: the zip would store it as a link and the updater refuses those.
 php -r 'require $argv[1]; file_put_contents("release-files.json", json_encode(release_files($argv[2], "."), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");' \
   "$WORK/release-scripts/lib/release_manifest.php" "$VERSION"
 
@@ -145,6 +146,16 @@ BAD="$(unzip -Z1 "$ZIP" | forbidden_entries)"
 if [[ -n "$BAD" ]]; then
   echo "Refusing the zip, it contains:" >&2
   echo "$BAD" >&2
+  rm -f "$ZIP"
+  exit 1
+fi
+
+# The zip's files must be exactly the ones release-files.json lists, plus release-files.json itself.
+EXPECTED="$(php -r 'foreach (array_keys(json_decode(file_get_contents("release-files.json"), true)["files"]) as $f) echo $argv[1], "/", $f, "\n"; echo $argv[1], "/release-files.json\n";' "$NAME" | LC_ALL=C sort)"
+ACTUAL="$(unzip -Z1 "$ZIP" | grep -v '/$' | LC_ALL=C sort)"
+if [[ "$EXPECTED" != "$ACTUAL" ]]; then
+  echo "Refusing the zip: its files differ from release-files.json (< expected, > in the zip):" >&2
+  diff <(echo "$EXPECTED") <(echo "$ACTUAL") >&2 || true
   rm -f "$ZIP"
   exit 1
 fi

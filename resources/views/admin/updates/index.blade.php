@@ -9,6 +9,9 @@
             <p class="h5 mb-1">You're on {{ \App\Support\Updates\Version::isRelease($status->installed) ? 'v' : '' }}{{ $status->installed }}</p>
             @if ($status->error)
                 <p class="mb-0">{{ $status->error }}</p>
+                @if ($status->manualSteps)
+                    <p class="mt-2 mb-0"><a href="{{ $manualStepsUrl }}" target="_blank" rel="noopener noreferrer">Follow the upgrade steps</a></p>
+                @endif
             @else
                 <p class="mb-0">You're up to date.</p>
             @endif
@@ -99,6 +102,9 @@
 
             <details data-technical>
                 <summary>Technical details</summary>
+                @if ($installedCommit !== null)
+                    <p class="mt-2 mb-1">Installed commit: <code>{{ $installedCommit }}</code></p>
+                @endif
                 <pre class="mt-2 mb-2" style="white-space: pre-wrap">{{ $latest->notesMarkdown }}</pre>
                 <a href="{{ $latest->notesUrl }}" target="_blank" rel="noopener noreferrer">Release notes on GitHub</a>
             </details>

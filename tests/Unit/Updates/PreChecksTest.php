@@ -228,6 +228,22 @@ class PreChecksTest extends TestCase
         $this->assertTrue($c->blocking);
     }
 
+    public function test_a_release_candidate_floor_lets_release_candidates_through_but_not_older_versions(): void
+    {
+        $floor = $this->manifest(['min_from_version' => '2.2.0-rc.1', 'version' => '2.2.0-rc.2', 'tag' => 'v2.2.0-rc.2',
+            'zip' => ['name' => 'clubportal-2.2.0-rc.2.zip', 'url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.0-rc.2/clubportal-2.2.0-rc.2.zip', 'size' => 1048576, 'sha256' => str_repeat('ab', 32)]]);
+
+        $this->host->installed = '2.2.0-rc.1';
+        $this->assertTrue($this->check('version_from', true, $floor)->ok);
+
+        $this->host->installed = '2.1.0';
+        $this->assertFalse($this->check('version_from', true, $floor)->ok);
+
+        // The shipped policy: the floor is the first release candidate, so no candidate is locked out.
+        $policy = json_decode((string) file_get_contents(dirname(__DIR__, 3).'/release-policy.json'), true);
+        $this->assertSame('2.2.0-rc.1', $policy['min_from_version']);
+    }
+
     public function test_unreadable_installed_version_says_so_plainly(): void
     {
         foreach (['dev', ''] as $v) {

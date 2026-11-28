@@ -60,6 +60,19 @@ function release_changelog_section(string $changelog, string $version): ?string
     return null;
 }
 
+/** True when release_changelog_section() would use [Unreleased] for this version (no own section, a pre-release). */
+function release_changelog_section_is_unreleased(string $changelog, string $version): bool
+{
+    $version = ltrim($version, 'vV');
+    foreach (release_changelog_sections($changelog) as $section) {
+        if ($section['version'] === $version) {
+            return false;
+        }
+    }
+
+    return str_contains($version, '-');
+}
+
 function release_has_security_heading(string $body): bool
 {
     return (bool) preg_match('/^###\s+Security\b/mi', $body);
@@ -74,16 +87,36 @@ function release_plain_text(string $text): string
     return trim(preg_replace('/\s+/', ' ', $text));
 }
 
-/** First line of the section's `> **Upgrade:**` note, without the markup. */
-function release_summary(string $body): string
+/**
+ * The first sentence of the section's `> **Upgrade:**` note (its `>` continuation lines joined), without the
+ * markup and the "Upgrade:" label; null when the section has no such note.
+ */
+function release_summary(string $body): ?string
 {
+    $note = null;
     foreach (preg_split('/\R/', $body) as $line) {
-        if (preg_match('/^>\s*\*\*Upgrade:\*\*/', $line)) {
-            return release_plain_text(preg_replace('/^>\s*/', '', $line));
+        if ($note === null) {
+            if (preg_match('/^>\s*\*\*Upgrade:\*\*/', $line)) {
+                $note = preg_replace('/^>\s*/', '', $line);
+            }
+
+            continue;
         }
+        if (! preg_match('/^>/', $line)) {
+            break;
+        }
+        $note .= ' '.preg_replace('/^>\s*/', '', $line);
+    }
+    if ($note === null) {
+        return null;
     }
 
-    return '';
+    $text = preg_replace('/^Upgrade:\s*/i', '', release_plain_text($note));
+    if (preg_match('/^.*?[.!?](?=\s|$)/su', $text, $m)) {
+        $text = $m[0];
+    }
+
+    return $text === '' ? null : $text;
 }
 
 /**
@@ -132,11 +165,25 @@ function release_manifest(string $version, string $zipPath, string $changelog, a
     if ($whatsNew === [] || count($whatsNew) > 5) {
         throw new RuntimeException("The CHANGELOG section for $version needs a \"### What's new\" subsection with 1 to 5 bullets (found ".count($whatsNew).').');
     }
+    foreach ($whatsNew as $bullet) {
+        if (mb_strlen($bullet) > 200) {
+            throw new RuntimeException("A \"What's new\" bullet in the CHANGELOG section for $version is ".mb_strlen($bullet).' characters long; the limit is 200 (the update check rejects longer ones): "'.mb_substr($bullet, 0, 60).'..."');
+        }
+    }
 
-    // The newest version up to and including this one whose section has a Security heading ([Unreleased] counts as this version).
+    // The newest version up to and including this one whose section has a Security heading. [Unreleased] counts as
+    // this version only when it is the section used above (the pre-release fallback), never for a stable build.
+    $usesUnreleased = release_changelog_section_is_unreleased($changelog, $version);
     $lastSecurity = null;
     foreach (release_changelog_sections($changelog) as $section) {
-        $sectionVersion = strcasecmp($section['version'], 'Unreleased') === 0 ? $version : $section['version'];
+        if (strcasecmp($section['version'], 'Unreleased') === 0) {
+            if (! $usesUnreleased) {
+                continue;
+            }
+            $sectionVersion = $version;
+        } else {
+            $sectionVersion = $section['version'];
+        }
         if (! release_has_security_heading($section['body']) || version_compare($sectionVersion, $version, '>')) {
             continue;
         }
@@ -174,7 +221,7 @@ function release_manifest(string $version, string $zipPath, string $changelog, a
 
 /**
  * release-files.json: every regular file under $root with its SHA-256, sorted by path, not listing itself.
- * Symbolic links are skipped (the zip stores them as links).
+ * A symbolic link anywhere in the tree is an error: the zip would store it as a link, and the updater refuses those.
  *
  * @return array{format: int, version: string, files: array<string, string>}
  */
@@ -184,7 +231,10 @@ function release_files(string $version, string $root): array
     $files = [];
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
     foreach ($iterator as $file) {
-        if ($file->isLink() || ! $file->isFile()) {
+        if ($file->isLink()) {
+            throw new RuntimeException('The release tree contains a symbolic link, which a release must not ship: '.substr($file->getPathname(), strlen($root) + 1));
+        }
+        if (! $file->isFile()) {
             continue;
         }
         $relative = substr($file->getPathname(), strlen($root) + 1);

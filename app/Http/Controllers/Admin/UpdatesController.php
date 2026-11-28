@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\ReleaseInfo;
 use App\Support\Updates\PreChecks;
 use App\Support\Updates\UpdateCheck;
 use App\Support\Updates\UpdateStatus;
@@ -104,7 +105,16 @@ class UpdatesController extends Controller
             'releasedOn' => $latest === null ? null : $this->date($latest->releasedAt),
             'checkedAt' => $s->checkedAt,
             'manualStepsUrl' => self::MANUAL_STEPS_URL,
+            'installedCommit' => $this->installedCommit(),
         ]);
+    }
+
+    /** The short form of the commit the installed zip was built from; null for a git checkout. */
+    private function installedCommit(): ?string
+    {
+        $commit = ReleaseInfo::read((string) config('updates.release_file'))['commit'] ?? null;
+
+        return $commit === null ? null : substr($commit, 0, 7);
     }
 
     private function date(string $iso): string

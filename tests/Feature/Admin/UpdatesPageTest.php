@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Admin\UpdatesController;
 use App\Models\Club;
 use App\Models\User;
 use App\Support\Updates\Manifest;
@@ -336,6 +337,43 @@ class UpdatesPageTest extends TestCase
                 $this->assertStringNotContainsString($word, $text, "page contains '$word' (zip ok: ".var_export($hostOk, true).')');
             }
         }
+    }
+
+    public function test_the_installed_commit_is_shown_short_inside_technical_details(): void
+    {
+        file_put_contents($this->releaseFile, json_encode(['version' => '2.2.0', 'commit' => 'abcdef0123456789abcdef0123456789abcdef01']));
+        $this->release();
+        $this->actingAsSuperAdmin();
+
+        $html = $this->get(route('admin.updates.index'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<details data-technical>.*Installed commit: <code>abcdef0<\/code>/s', $html);
+        $this->assertStringNotContainsString('abcdef01', $html);
+    }
+
+    public function test_a_future_format_manifest_says_so_and_links_the_manual_steps_but_the_banner_stays_silent(): void
+    {
+        Http::fake(['*' => Http::response($this->manifest(['format' => 2]))]);
+        $this->actingAsSuperAdmin();
+
+        $this->get(route('admin.updates.index'))
+            ->assertOk()
+            ->assertSeeText("A newer version of Club Portal is out, but this version can't read its details. Update by hand using the upgrade steps.")
+            ->assertSee(UpdatesController::MANUAL_STEPS_URL, false)
+            ->assertDontSeeText('GitHub did not answer');
+        $this->getJson(route('admin.updates.status'))->assertJson(['available' => false, 'latest' => null]);
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_404_says_no_release_information_yet(): void
+    {
+        Http::fake(['*' => Http::response('', 404)]);
+        $this->actingAsSuperAdmin();
+
+        $this->get(route('admin.updates.index'))
+            ->assertOk()
+            ->assertSeeText('No release information was found on GitHub yet. Try again later.')
+            ->assertDontSee(UpdatesController::MANUAL_STEPS_URL, false);
     }
 
     public function test_a_dev_install_shows_the_git_line_and_no_button(): void

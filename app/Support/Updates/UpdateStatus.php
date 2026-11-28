@@ -15,5 +15,7 @@ final class UpdateStatus
         public readonly bool $available,
         public readonly ?string $error,
         public readonly CarbonImmutable $checkedAt,
+        /** True when the error is that a newer release exists that this version can't read: the page then links the manual steps. */
+        public readonly bool $manualSteps = false,
     ) {}
 }

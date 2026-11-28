@@ -148,7 +148,7 @@ MD;
         $this->assertSame('2.2.0', $m['min_from_version']);
         $this->assertNull($m['manual_action']);
         $this->assertNull($m['signature']);
-        $this->assertSame('Upgrade: only 2.2.1.', $m['summary']);
+        $this->assertSame('only 2.2.1.', $m['summary']);
         $this->assertSame('https://github.com/amirsubhi/clubcollection/releases/tag/v2.2.1', $m['notes_url']);
         $this->assertStringContainsString('Only the 2.2.1 bullet.', $m['notes_markdown']);
         $this->assertSame(['Only the 2.2.1 bullet.'], $m['whats_new']);
@@ -158,11 +158,106 @@ MD;
         $this->assertSame('Add X to .env', $custom['manual_action']);
     }
 
-    public function test_summary_is_the_first_line_of_the_upgrade_note_without_markup(): void
+    public function test_summary_is_the_first_sentence_of_the_upgrade_note_without_markup_or_label(): void
     {
         $m = release_manifest('2.2.3', $this->zip(), $this->changelog(), $this->policy(), '2026-12-20T03:00:00Z');
 
-        $this->assertSame('Upgrade: from v2.2.0 or later with the in-app updater. Second sentence on a later line.', $m['summary']);
+        $this->assertSame('from v2.2.0 or later with the in-app updater.', $m['summary']);
+    }
+
+    public function test_summary_joins_continuation_lines_and_is_not_cut_mid_sentence(): void
+    {
+        $changelog = "## [v2.1.0] — 2026-11-26\n\n> **Upgrade:** from v2.0.0 or v2.0.1 with the release zip\n"
+            ."> and `docs/RELEASE.md` §2. One new migration (`users.locale`).\n> More.\n\n### What's new\n- Thing.\n";
+        $wrapped = "## [v2.1.1] — 2026-11-27\n\n> **Upgrade:** no database changes, a patch release that\n> carries two small features\n\n### What's new\n- Thing.\n";
+        $none = "## [v2.1.2] — 2026-11-28\n\n### What's new\n- Thing.\n";
+
+        $this->assertSame('from v2.0.0 or v2.0.1 with the release zip and docs/RELEASE.md §2.', release_manifest('2.1.0', $this->zip(), $changelog, $this->policy(), '2026-11-26T03:00:00Z')['summary']);
+        $this->assertSame('no database changes, a patch release that carries two small features', release_manifest('2.1.1', $this->zip(), $wrapped, $this->policy(), '2026-11-27T03:00:00Z')['summary']);
+        $this->assertNull(release_manifest('2.1.2', $this->zip(), $none, $this->policy(), '2026-11-28T03:00:00Z')['summary']);
+    }
+
+    public function test_unreleased_security_counts_only_for_a_prerelease_build(): void
+    {
+        $changelog = "## [Unreleased]\n\n### Security\n- Fix.\n\n### What's new\n- Next thing.\n\n"
+            ."## [v2.2.1] — 2026-12-10\n\n### What's new\n- Only 2.2.1.\n";
+
+        $stable = release_manifest('2.2.1', $this->zip(), $changelog, $this->policy(), '2026-12-10T03:00:00Z');
+        $rc = release_manifest('2.3.0-rc.1', $this->zip(), $changelog, $this->policy(), '2026-12-11T03:00:00Z');
+
+        $this->assertNull($stable['last_security_version']);
+        $this->assertFalse($stable['security']);
+        $this->assertSame('2.3.0-rc.1', $rc['last_security_version']);
+        $this->assertTrue($rc['security']);
+    }
+
+    public function test_a_bullet_over_200_characters_fails_the_build(): void
+    {
+        $long = "## [v2.3.0] — 2026-12-30\n\n### What's new\n- ".str_repeat('x', 201)."\n";
+        $ok = "## [v2.3.0] — 2026-12-30\n\n### What's new\n- ".str_repeat('x', 200)."\n";
+
+        $this->assertCount(1, release_manifest('2.3.0', $this->zip(), $ok, $this->policy(), '2026-12-30T03:00:00Z')['whats_new']);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('200');
+        release_manifest('2.3.0', $this->zip(), $long, $this->policy(), '2026-12-30T03:00:00Z');
+    }
+
+    public function test_the_command_refuses_a_manifest_the_app_would_reject(): void
+    {
+        $root = sys_get_temp_dir().'/relcli'.bin2hex(random_bytes(4));
+        mkdir($root.'/bootstrap', 0777, true);
+        mkdir($root.'/app/Support/Updates', 0777, true);
+        foreach (['Version', 'InvalidManifest', 'Manifest'] as $class) {
+            copy(dirname(__DIR__, 2)."/app/Support/Updates/$class.php", "$root/app/Support/Updates/$class.php");
+        }
+        file_put_contents($root.'/release-policy.json', '{"min_from_version": "2.2.0-rc.1", "manual_action": null}');
+        file_put_contents($root.'/bootstrap/requirements.php', "<?php return ['php' => '8.4.1'];");
+        $zip = $this->zip();
+        $script = dirname(__DIR__, 2).'/scripts/release-manifest.php';
+        $run = function (string $changelog) use ($root, $script, $zip): array {
+            file_put_contents($root.'/CHANGELOG.md', $changelog);
+            $cmd = escapeshellarg(PHP_BINARY).' '.escapeshellarg($script).' 2.3.0 '.escapeshellarg($zip).' '.escapeshellarg($root.'/out.json').' '.escapeshellarg($root).' 2>&1';
+            exec($cmd, $output, $code);
+
+            return [$code, implode("\n", $output)];
+        };
+
+        try {
+            [$goodCode, $goodOut] = $run("## [v2.3.0] — 2026-12-30\n\n### What's new\n- Fine.\n");
+            $this->assertSame(0, $goodCode, $goodOut);
+            $this->assertSame(['Fine.'], json_decode(file_get_contents($root.'/out.json'), true)['whats_new']);
+
+            @unlink($root.'/out.json');
+            [$code, $output] = $run("## [v2.3.0] — 2026-12-30\n\n### What's new\n- ".str_repeat('x', 224)."\n");
+            $this->assertSame(1, $code);
+            $this->assertStringContainsString('release-manifest:', $output);
+            $this->assertFileDoesNotExist($root.'/out.json');
+        } finally {
+            array_map('unlink', glob($root.'/{*.*,bootstrap/*,app/Support/Updates/*}', GLOB_BRACE));
+            rmdir($root.'/bootstrap');
+            rmdir($root.'/app/Support/Updates');
+            rmdir($root.'/app/Support');
+            rmdir($root.'/app');
+            rmdir($root);
+        }
+    }
+
+    public function test_release_files_fails_on_a_symbolic_link(): void
+    {
+        $dir = sys_get_temp_dir().'/relsym'.bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir.'/a.txt', 'ay');
+        symlink($dir.'/a.txt', $dir.'/link.txt');
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('link.txt');
+            release_files('2.2.1', $dir);
+        } finally {
+            unlink($dir.'/link.txt');
+            unlink($dir.'/a.txt');
+            rmdir($dir);
+        }
     }
 
     public function test_whats_new_bullets(): void

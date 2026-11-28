@@ -73,6 +73,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Two release-candidate tags pushed close together must not interleave their edits of the pre-release "next".
+    concurrency:
+      group: release-next
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -109,8 +113,12 @@ jobs:
               --title "next (testing channel)" \
               --notes "Assets of the newest release candidate, for sites with UPDATE_CHANNEL=next. Not a release to install by hand."
           fi
-          # Drop the previous candidate's files so only this one's remain.
-          for asset in $(gh release view next --json assets --jq '.assets[].name'); do
-            gh release delete-asset next "$asset" --yes
-          done
+          # Upload first (--clobber replaces same-named files), so `next` always has a manifest; then drop only the
+          # previous candidate's files whose names are not in the new set (the version is in the zip's name).
           gh release upload next dist/clubportal-*.zip dist/clubportal-*.zip.sha256 dist/clubportal-manifest.json --clobber
+          keep="$(for f in dist/clubportal-*.zip dist/clubportal-*.zip.sha256 dist/clubportal-manifest.json; do basename "$f"; done)"
+          for asset in $(gh release view next --json assets --jq '.assets[].name'); do
+            if ! grep -qxF "$asset" <<<"$keep"; then
+              gh release delete-asset next "$asset" --yes
+            fi
+          done
