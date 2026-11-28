@@ -94,7 +94,7 @@ class ReportTest extends TestCase
         $app = $parent.'/clubportal';
         mkdir($app);
         $text = Report::text(['outcome' => 'rolled_back', 'reason' => "Could not move $parent/.clubportal-old-2.2.0/vendor",
-            'log' => ["staging $parent/.clubportal-new-2.2.1 for $app/vendor", "real ".realpath($parent).'/x']], $app);
+            'log' => ["staging $parent/.clubportal-new-2.2.1 for $app/vendor", 'real '.realpath($parent).'/x']], $app);
 
         $this->assertStringNotContainsString($parent, $text);
         $this->assertStringContainsString('<app-parent>/.clubportal-old-2.2.0/vendor', $text);

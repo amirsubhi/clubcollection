@@ -29,9 +29,10 @@ use Throwable;
  * and Steps::run for `prechecks` ... `swap`, so a browser and a terminal can never run an update at once and the
  * outcome, history and report are the same files.
  *
- * What differs: this process IS the old app, so after the swap the new code cannot be booted here. `migrate` and
- * `optimize` therefore run in a child `php artisan` (only when PHP may start programs), and the website's PHP cache
- * cannot be reset from the command line (the CLI and the web pool have separate caches).
+ * What differs: this process IS the old app, so after the swap the new code cannot be booted here. `migrate`,
+ * `optimize` and then `app:update --finish` (the health check and the finish) therefore run in child `php artisan`
+ * commands (only when PHP may start programs) that get past the swap guard with a one-time pass, and the website's PHP
+ * cache cannot be reset from the command line (the CLI and the web pool have separate caches).
  */
 #[Signature('app:update {--check : Only show the installed and the latest version} {--yes : Do not ask before updating} {--database-backed-up : With --yes: I have just taken a full backup of the database} {--manual-action-done : With --yes: the thing the release asks to be done first has been done} {--finish : Finish an update that stopped after the switch, once the manual commands have been run}')]
 #[Description('Update Club Portal to the latest release (the same steps as the Updates page)')]
@@ -40,7 +41,7 @@ class AppUpdate extends Command
     /** Test seam: adjusts the updater's Context (fake download, fake Laravel boot) before it is used. */
     public static ?\Closure $tune = null;
 
-    /** Test seam: runs a child process, fn(list<string> $argv, string $cwd): array{code: int, output: string}. */
+    /** Test seam: runs a child process, fn(list<string> $argv, string $cwd, array $env): array{code: int, output: string}. */
     public static ?\Closure $child = null;
 
     /** Test seam: whether the web server's PHP checks files for changes (null: read opcache.validate_timestamps). */
@@ -55,6 +56,11 @@ class AppUpdate extends Command
     private const BUSY = 'An update is already running (in a browser or another terminal). Try again later.';
 
     private const MANUAL = 'Run: php artisan migrate --force && php artisan optimize && php artisan app:update --finish';
+
+    /** The one-time pass for the child commands (storage/app/updater/cli-pass; public/update-guard.php reads both). */
+    public const PASS_FILE = 'cli-pass';
+
+    public const PASS_ENV = 'CLUBPORTAL_UPDATER_PASS';
 
     public function handle(): int
     {
@@ -234,13 +240,11 @@ class AppUpdate extends Command
             return self::FAILURE;
         }
 
-        // The swap guard makes `artisan` print one line and stop at its first line (Task 9), so a child `php artisan
-        // migrate` would be refused by it. Lift ONLY the guard file here: Laravel's own `down` file stays up, so members
-        // still get the pause page from maintenance.php while the new code migrates. The manual line below needs it
-        // lifted for the same reason.
-        Maintenance::liftGuard($c->app);
-
         if (! $canStartProcesses) {
+            // The operator's own `php artisan` commands must get past the swap guard (it stops artisan at its first
+            // line), so ONLY the guard file is lifted: Laravel's `down` file stays up and members still get the pause
+            // page from maintenance.php. /update/ shows that the update is waiting for these commands.
+            Maintenance::liftGuard($c->app);
             $this->line('This server does not let PHP start programs, so the update stops here. The new files are in place and the portal is still paused for members.');
             $this->line(self::MANUAL);
             $this->line('The update is not finished until you run these commands. Members see the pause page until then.');
@@ -249,47 +253,73 @@ class AppUpdate extends Command
             return self::SUCCESS;
         }
 
-        $failure = $this->migrateInChild($c);
-        if ($failure === self::BUSY) {
+        $lock = self::$lockAfterSwitch !== null ? (self::$lockAfterSwitch)($c->files->dir) : Lock::acquire($c->files->dir);
+        if ($lock === null) {
             // Someone else holds the lock: nothing is put back from here, and the old files are already switched out.
+            // The guard is lifted for the operator's commands, as above.
+            Maintenance::liftGuard($c->app);
             $this->line('The new files are in place and the portal is paused for members, but this command could not take the update lock to carry on.');
             $this->line('Once the other update has finished, run this to complete it:');
             $this->line(self::MANUAL);
 
             return self::FAILURE;
         }
-        if ($failure !== null) {
-            // Putting the old files back needs the guard again, like any other switch of files.
-            Files::writeAtomic($c->files->guardPath, time()."\n");
 
+        // The guard stays up (web requests keep the pause page, saved callbacks and idle recovery); the child commands
+        // get past its artisan check with a one-time pass that only lives while they run.
+        $passFile = $c->files->dir.'/'.self::PASS_FILE;
+        $finish = null;
+        try {
+            $pass = bin2hex(random_bytes(32));
+            Files::writeAtomic($passFile, $pass."\n");
+            @chmod($passFile, 0600);
+            $env = [self::PASS_ENV => $pass];
+            $failure = $this->migrateInChild($c, $lock, $env); // releases the lock
+            if ($failure === null) {
+                $this->line("✓ Updating your club's records to the new version");
+                // `health` and `finish` on the new code, through the same code as the manual line.
+                $finish = $this->child([PHP_BINARY, base_path('artisan'), 'app:update', '--finish'], base_path(), $env);
+            }
+        } finally {
+            $lock->release();
+            @unlink($passFile);
+        }
+        if ($failure !== null) {
             return $this->failed(Steps::abort('migrate', $c, $failure), $c, true);
         }
-        $this->line("✓ Updating your club's records to the new version");
 
-        // `finish`: pause off, outcome `finished` with what's new, then the new update-guard.php and public/update/ move in.
-        if (! Steps::completeFinishing($c)) {
-            $this->line('✗ The portal could not be opened again from here. The new version is in place: run php artisan up, or open the Updates page.');
-            $this->cacheLine();
-
-            return self::FAILURE;
+        $lines = $this->outputLines((string) $finish['output']);
+        foreach ($lines as $line) {
+            $this->line($line);
         }
-        $this->line('✓ '.Steps::screenName('finish', $c->to()));
-        $this->line('Club Portal is now v'.ltrim($c->to(), 'vV').'.');
+        $c->load();
+        if (($c->job['status'] ?? null) === 'finished') {
+            return self::SUCCESS;
+        }
+        clearstatcache();
+        if (is_file($c->files->guardPath)) {
+            // The new version failed its check (or the finish command could not run): put the old files back, as the
+            // page does when `health` fails.
+            $error = 'app:update --finish failed (exit code '.$finish['code'].').'.($lines === [] ? '' : ' '.end($lines));
+
+            return $this->failed(Steps::abort('health', $c, $error), $c, true);
+        }
+        $this->line('✗ The portal could not be opened again from here. The new version is in place and members see the pause page.');
+        $this->line('Run: php artisan app:update --finish');
         $this->cacheLine();
 
-        return self::SUCCESS;
+        return self::FAILURE;
     }
 
     /**
      * migrate, optimize:clear and optimize in a child process on the new code, with the journal kept as the page keeps
-     * it. Returns the failure text, or null when all three worked (then `health` and `finish` are begun for the finish).
+     * it. The caller holds the lock; it is released here once `migrate` is recorded, because the `--finish` child takes
+     * it itself. Returns the failure text, or null when all three worked.
+     *
+     * @param  array<string, string>  $env
      */
-    private function migrateInChild(Context $c): ?string
+    private function migrateInChild(Context $c, Lock $lock, array $env): ?string
     {
-        $lock = self::$lockAfterSwitch !== null ? (self::$lockAfterSwitch)($c->files->dir) : Lock::acquire($c->files->dir);
-        if ($lock === null) {
-            return self::BUSY;
-        }
         try {
             $j = Journal::open($c->files->dir, $c->clock);
             $j->begin('opcache');
@@ -302,8 +332,8 @@ class AppUpdate extends Command
             $c->saveJob();
 
             foreach ([['migrate', '--force'], ['optimize:clear'], ['optimize']] as $args) {
-                $r = $this->child([PHP_BINARY, base_path('artisan'), ...$args], base_path());
-                $lines = array_values(array_filter(array_map('trim', explode("\n", $r['output'])), static fn ($l) => $l !== ''));
+                $r = $this->child([PHP_BINARY, base_path('artisan'), ...$args], base_path(), $env);
+                $lines = $this->outputLines($r['output']);
                 foreach (array_slice($lines, -10) as $line) {
                     $j->log('migrate', $line);
                 }
@@ -314,11 +344,7 @@ class AppUpdate extends Command
                     $j->set('migrated', true);
                 }
             }
-            $j->finish('migrate');
-            $j->begin('health');
-            $j->log('health', 'Not checked from the command line: the website cannot be asked for its pages from here.');
-            $j->finish('health');
-            $j->begin('finish');
+            $j->finish('migrate'); // also restarts the 10-minute clock for the finish
             $c->saveJob();
 
             return null;
@@ -329,13 +355,23 @@ class AppUpdate extends Command
         }
     }
 
-    /** @param list<string> $argv @return array{code: int, output: string} */
-    private function child(array $argv, string $cwd): array
+    /** @return list<string> the non-empty lines of a child's output */
+    private function outputLines(string $output): array
+    {
+        return array_values(array_filter(array_map('trim', explode("\n", $output)), static fn ($l) => $l !== ''));
+    }
+
+    /**
+     * @param  list<string>  $argv
+     * @param  array<string, string>  $env  added to this process's environment
+     * @return array{code: int, output: string}
+     */
+    private function child(array $argv, string $cwd, array $env = []): array
     {
         if (self::$child !== null) {
-            return (self::$child)($argv, $cwd);
+            return (self::$child)($argv, $cwd, $env);
         }
-        $process = @proc_open($argv, [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes, $cwd);
+        $process = @proc_open($argv, [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes, $cwd, $env === [] ? null : $env + getenv());
         if (! is_resource($process)) {
             return ['code' => 1, 'output' => 'The command could not be started.'];
         }
@@ -384,9 +420,14 @@ class AppUpdate extends Command
     }
 
     /**
-     * `--finish`: after the manual commands (migrate, optimize) the operator ran, completes what the page's last steps
-     * would have: the remaining steps are recorded as done, then Steps::completeFinishing writes the outcome, ends the
-     * job, lifts the pause and moves the new update-guard.php and public/update/ in.
+     * `--finish`: after the manual commands (migrate, optimize) the operator ran, or as the last child command of
+     * app:update itself, completes what the page's last steps would have: the health check on the new code, the
+     * remaining steps recorded as done, then Steps::completeFinishing writes the outcome, ends the job, lifts the pause
+     * and moves the new update-guard.php and public/update/ in.
+     *
+     * This runs the NEW release's code against the installed (old) release's public/update/lib (moved in only by the
+     * finish): keep the lib API it calls (Context, Lock, Journal, Steps::isThisAttempt/completeFinishing,
+     * Maintenance::liftGuard, LaravelApp::forKernel) stable for at least one release.
      */
     private function finishManually(): int
     {
@@ -412,7 +453,9 @@ class AppUpdate extends Command
 
                 return self::FAILURE;
             }
-            if ($j->isRecovering() || is_file($c->files->guardPath)) {
+            // With the guard up only app:update's own child (holding the one-time pass) may finish; it lifts the guard.
+            $child = $this->hasPass($c);
+            if ($j->isRecovering() || (is_file($c->files->guardPath) && ! $child)) {
                 $this->line('The update is still switching versions or is being undone. Try again in a few minutes.');
 
                 return self::FAILURE;
@@ -426,7 +469,9 @@ class AppUpdate extends Command
             $problem = ($c->boot)($c->app)->health($c->to());
             if ($problem !== null) {
                 $this->line('The new version is not working yet, so the update was not finished: '.$problem);
-                $this->line('The new files are in place and members see the pause page. Fix that, then run: php artisan app:update --finish');
+                if (! $child) { // app:update's own child: the command that started it puts the old version back
+                    $this->line('The new files are in place and members see the pause page. Fix that, then run: php artisan app:update --finish');
+                }
 
                 return self::FAILURE;
             }
@@ -445,6 +490,10 @@ class AppUpdate extends Command
             if (! isset($j->steps()['finish'])) {
                 $j->begin('finish');
             }
+            if ($child) {
+                // Laravel's `down` file stays until the finish lifts it, so members keep the pause page meanwhile.
+                Maintenance::liftGuard($c->app);
+            }
         } catch (Throwable $e) {
             $this->line('The update could not be finished: '.$e->getMessage());
 
@@ -462,6 +511,16 @@ class AppUpdate extends Command
         $this->cacheLine();
 
         return self::SUCCESS;
+    }
+
+    /** True when this process is app:update's own child: its pass variable matches the one-time pass file. */
+    private function hasPass(Context $c): bool
+    {
+        $given = getenv(self::PASS_ENV);
+        $file = $c->files->dir.'/'.self::PASS_FILE;
+        $secret = is_file($file) ? trim((string) @file_get_contents($file)) : '';
+
+        return is_string($given) && strlen($secret) >= 32 && hash_equals($secret, $given);
     }
 
     /** @return list<string> migration names that have not run, from the same files `migrate` reads */

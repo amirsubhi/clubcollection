@@ -12,6 +12,8 @@ use ClubPortalUpdater\Swap;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Tests\TestCase;
 use Tests\Unit\Updater\UpdateRunFixture;
 
@@ -47,11 +49,13 @@ class AppUpdateCommandTest extends TestCase
             $c->opcacheReset = $f->opcacheReset;
             $c->opcacheWait = $f->opcacheWait;
         };
-        AppUpdate::$child = function (array $argv, string $cwd): array {
+        AppUpdate::$child = function (array $argv, string $cwd, array $env = []): array {
             $this->childCalls[] = [$argv, $cwd];
-            // The guard is lifted before a child runs, or the new artisan would stop at its first line.
-            $this->assertFileDoesNotExist($this->site.'/storage/framework/updating');
-            $this->assertFileExists($this->site.'/storage/framework/down', 'members still see the pause page');
+            // The guard stays up while a child runs; the child gets past artisan's check with the one-time pass.
+            $this->assertChildPass($env);
+            if (array_slice($argv, 2) === ['app:update', '--finish']) {
+                return $this->runFinishChild($env);
+            }
 
             return ['code' => 0, 'output' => "ok\n"];
         };
@@ -99,6 +103,39 @@ class AppUpdateCommandTest extends TestCase
     private function superAdmin(): User
     {
         return User::factory()->create(['role' => 'super_admin', 'name' => 'Aminah']);
+    }
+
+    /** @param array<string, string> $env what app:update gives a child command */
+    private function assertChildPass(array $env): void
+    {
+        $this->assertFileExists($this->site.'/storage/framework/updating', 'the guard stays up for web requests');
+        $this->assertFileExists($this->site.'/storage/framework/down', 'members still see the pause page');
+        $this->assertFileExists($this->dir.'/cli-pass');
+        $pass = trim((string) file_get_contents($this->dir.'/cli-pass'));
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $pass);
+        $this->assertSame($pass, $env[AppUpdate::PASS_ENV] ?? null);
+    }
+
+    /**
+     * What the child `php artisan app:update --finish` does: a fresh command (the new code) run with the pass in its
+     * environment, as proc_open would start it.
+     *
+     * @param  array<string, string>  $env
+     * @return array{code: int, output: string}
+     */
+    private function runFinishChild(array $env): array
+    {
+        putenv(AppUpdate::PASS_ENV.'='.$env[AppUpdate::PASS_ENV]);
+        try {
+            $command = new AppUpdate;
+            $command->setLaravel($this->app);
+            $out = new BufferedOutput;
+            $code = $command->run(new ArrayInput(['--finish' => true]), $out);
+
+            return ['code' => $code, 'output' => $out->fetch()];
+        } finally {
+            putenv(AppUpdate::PASS_ENV);
+        }
     }
 
     /** The command starts its own job: drop the fixture's ready job. */
@@ -322,6 +359,9 @@ class AppUpdateCommandTest extends TestCase
             ->assertExitCode(1);
 
         $this->assertSame([], $this->childCalls);
+        $this->assertFileDoesNotExist($this->site.'/storage/framework/updating', 'lifted for the operator\'s commands');
+        $this->assertFileExists($this->site.'/storage/framework/down', 'members still see the pause page');
+        $this->assertFileDoesNotExist($this->dir.'/cli-pass');
         $this->assertSame('<?php // new A', $this->read('app/A.php'), 'nothing is put back from here');
         $this->assertSame('running', $this->job()['status']);
     }
@@ -399,9 +439,12 @@ class AppUpdateCommandTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertSame(
-            ['migrate --force', 'optimize:clear', 'optimize'],
+            ['migrate --force', 'optimize:clear', 'optimize', 'app:update --finish'],
             array_map(fn ($c) => implode(' ', array_slice($c[0], 2)), $this->childCalls),
         );
+        $this->assertFileDoesNotExist($this->dir.'/cli-pass', 'the pass lives only while the children run');
+        $this->assertContains('health 2.2.1', $this->laravel->calls, 'the finish child checks the new version');
+        $this->assertSame('checked from the command line: the new version is running and reaches the database', $this->journal()->steps()['health']['detail']);
         $this->assertSame(PHP_BINARY, $this->childCalls[0][0][0]);
         $this->assertSame($this->site.'/artisan', $this->childCalls[0][0][1]);
         $this->assertSame($this->site, $this->childCalls[0][1]);
@@ -419,10 +462,91 @@ class AppUpdateCommandTest extends TestCase
         $this->assertFileExists(Swap::oldDir($this->site, '2.2.0').'/public/update/index.php');
     }
 
+    public function test_a_health_problem_in_the_finish_child_puts_the_old_version_back(): void
+    {
+        $this->laravel->healthProblem = 'The new version cannot reach the database: nope';
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain('nope')
+            ->expectsOutputToContain("The new version showed an error on this host's settings.")
+            ->doesntExpectOutputToContain('Fix that, then run')
+            ->assertExitCode(1);
+
+        $this->assertOldSite();
+        $this->assertNotPaused();
+        $this->assertSame('rolled_back', $this->outcome()['outcome']);
+        $this->assertSame('health', $this->outcome()['step']);
+        $this->assertSame('rolled_back', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/cli-pass');
+        $this->assertSame('<?php // old updater', $this->read('public/update/index.php'));
+    }
+
+    public function test_a_finish_child_that_stops_after_lifting_the_guard_points_to_the_finish_command(): void
+    {
+        AppUpdate::$child = function (array $argv, string $cwd, array $env = []): array {
+            $this->childCalls[] = [$argv, $cwd];
+            if ($argv[2] === 'app:update') {
+                unlink($this->site.'/storage/framework/updating'); // it got as far as lifting the guard, then died
+
+                return ['code' => 255, 'output' => "PHP Fatal error: out of memory\n"];
+            }
+
+            return ['code' => 0, 'output' => ''];
+        };
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain('Run: php artisan app:update --finish')
+            ->assertExitCode(1);
+
+        $this->assertSame('<?php // new A', $this->read('app/A.php'), 'nothing is put back once the guard is gone');
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileExists($this->site.'/storage/framework/down');
+        $this->assertFileDoesNotExist($this->dir.'/cli-pass');
+
+        // The operator runs the printed command.
+        $this->artisan('app:update', ['--finish' => true])->assertExitCode(0);
+        $this->assertSame('finished', $this->job()['status']);
+        $this->assertNotPaused();
+    }
+
+    public function test_finish_refuses_while_the_guard_is_up_without_the_pass(): void
+    {
+        BackupRun::$processAvailable = static fn (): bool => false;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+        $this->artisan('app:update', ['--yes' => true])->assertExitCode(0);
+        touch($this->site.'/storage/framework/updating');
+        file_put_contents($this->dir.'/cli-pass', bin2hex(random_bytes(32)));
+
+        $this->artisan('app:update', ['--finish' => true])
+            ->expectsOutputToContain('still switching versions')
+            ->assertExitCode(1);
+        putenv(AppUpdate::PASS_ENV.'='.bin2hex(random_bytes(32)));
+        try {
+            $this->artisan('app:update', ['--finish' => true])
+                ->expectsOutputToContain('still switching versions')
+                ->assertExitCode(1);
+        } finally {
+            putenv(AppUpdate::PASS_ENV);
+        }
+
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileExists($this->site.'/storage/framework/updating');
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+    }
+
     public function test_a_failed_migration_in_the_child_puts_the_old_version_back_and_blocks(): void
     {
-        AppUpdate::$child = function (array $argv, string $cwd): array {
+        AppUpdate::$child = function (array $argv, string $cwd, array $env = []): array {
             $this->childCalls[] = [$argv, $cwd];
+            $this->assertChildPass($env);
 
             return $argv[2] === 'migrate'
                 ? ['code' => 1, 'output' => "SQLSTATE[42S21]: Column already exists\n"]
