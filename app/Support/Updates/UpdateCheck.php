@@ -8,6 +8,7 @@ use App\Support\ReleaseInfo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Psr\Http\Message\StreamInterface;
 use Throwable;
 
 /** Asks GitHub's release download address (not the API) for the manifest, cached so pages never wait on it twice. */
@@ -79,6 +80,7 @@ final class UpdateCheck
         if (! is_array($entry) || ! is_string($entry['checked_at'] ?? null) || ! array_key_exists('manifest', $entry)) {
             throw new \UnexpectedValueException('Malformed cache entry.');
         }
+        CarbonImmutable::parse($entry['checked_at']);
         if ($entry['manifest'] === null) {
             return null;
         }
@@ -93,6 +95,8 @@ final class UpdateCheck
     private function fetch(): array
     {
         $now = CarbonImmutable::now()->toIso8601String();
+        $deadline = microtime(true) + (int) config('updates.timeout');
+        $stream = null;
         try {
             $response = Http::timeout((int) config('updates.timeout'))
                 ->connectTimeout(2)
@@ -108,17 +112,40 @@ final class UpdateCheck
                 return ['checked_at' => $now, 'manifest' => null];
             }
 
-            // Read at most one byte more than the cap, so a large or endless body never fills memory.
             $stream = $response->toPsrResponse()->getBody();
-            $body = '';
-            while (! $stream->eof() && strlen($body) <= Manifest::MAX_BYTES) {
-                $body .= $stream->read(Manifest::MAX_BYTES + 1 - strlen($body));
+            $body = $this->readBounded($stream, $deadline);
+            if ($body === null) {
+                return ['checked_at' => $now, 'manifest' => null];
             }
-            $stream->close();
 
             return ['checked_at' => $now, 'manifest' => Manifest::fromJson($body)->toArray()];
         } catch (Throwable) {
             return ['checked_at' => $now, 'manifest' => null];
+        } finally {
+            try {
+                $stream?->close();
+            } catch (Throwable) {
+            }
         }
+    }
+
+    /**
+     * Reads at most MAX_BYTES + 1 bytes (the extra byte makes an oversized body fail validation), and gives up
+     * with null on a stalled or trickling server: an empty read (a read timeout) or passing the deadline.
+     *
+     * @internal public for tests
+     */
+    public function readBounded(StreamInterface $stream, float $deadline): ?string
+    {
+        $body = '';
+        while (! $stream->eof() && strlen($body) <= Manifest::MAX_BYTES) {
+            $chunk = $stream->read(Manifest::MAX_BYTES + 1 - strlen($body));
+            if ($chunk === '' || microtime(true) > $deadline) {
+                return null;
+            }
+            $body .= $chunk;
+        }
+
+        return $body;
     }
 }

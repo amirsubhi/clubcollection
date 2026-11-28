@@ -4,11 +4,14 @@ namespace Tests\Feature\Updates;
 
 use App\Support\Updates\Manifest;
 use App\Support\Updates\UpdateCheck;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Psr\Http\Message\StreamInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class UpdateCheckTest extends TestCase
@@ -190,6 +193,92 @@ class UpdateCheckTest extends TestCase
         $this->assertFalse($s->available);
     }
 
+    public function test_bounded_read_gives_up_on_a_stalled_stream(): void
+    {
+        $stalled = new class implements StreamInterface
+        {
+            public int $reads = 0;
+
+            public function __toString(): string
+            {
+                return '';
+            }
+
+            public function close(): void {}
+
+            public function detach()
+            {
+                return null;
+            }
+
+            public function getSize(): ?int
+            {
+                return null;
+            }
+
+            public function tell(): int
+            {
+                return 0;
+            }
+
+            public function eof(): bool
+            {
+                return false;
+            }
+
+            public function isSeekable(): bool
+            {
+                return false;
+            }
+
+            public function seek(int $offset, int $whence = SEEK_SET): void {}
+
+            public function rewind(): void {}
+
+            public function isWritable(): bool
+            {
+                return false;
+            }
+
+            public function write(string $string): int
+            {
+                return 0;
+            }
+
+            public function isReadable(): bool
+            {
+                return true;
+            }
+
+            public function read(int $length): string
+            {
+                $this->reads++;
+                if ($this->reads > 50) {
+                    throw new RuntimeException('looped');
+                }
+
+                return '';
+            }
+
+            public function getContents(): string
+            {
+                return '';
+            }
+
+            public function getMetadata(?string $key = null)
+            {
+                return null;
+            }
+        };
+
+        $this->assertNull(app(UpdateCheck::class)->readBounded($stalled, microtime(true) + 5));
+        $this->assertSame(1, $stalled->reads);
+
+        $this->assertNull(app(UpdateCheck::class)->readBounded(Utils::streamFor('abc'), microtime(true) - 1));
+        $this->assertSame('abc', app(UpdateCheck::class)->readBounded(Utils::streamFor('abc'), microtime(true) + 5));
+        $this->assertSame(Manifest::MAX_BYTES + 1, strlen(app(UpdateCheck::class)->readBounded(Utils::streamFor(str_repeat('x', Manifest::MAX_BYTES * 2)), microtime(true) + 5)));
+    }
+
     public function test_requests_are_https_only_with_bounded_redirects_and_identity_encoding(): void
     {
         Http::fake(['*' => Http::response($this->manifest())]);
@@ -203,7 +292,7 @@ class UpdateCheckTest extends TestCase
     {
         $bad = $this->manifest();
         $bad['zip']['url'] = 'https://evil.example/x.zip';
-        foreach ([['checked_at' => now()->toIso8601String(), 'manifest' => $bad], 'junk', ['checked_at' => 5]] as $entry) {
+        foreach ([['checked_at' => now()->toIso8601String(), 'manifest' => $bad], 'junk', ['checked_at' => 5], ['checked_at' => 'not a date', 'manifest' => null]] as $entry) {
             Cache::flush();
             Http::swap(new Factory);
             Http::fake(['*' => Http::response($this->manifest())]);
