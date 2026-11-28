@@ -20,6 +20,24 @@ final class PreChecks
     private const REPLACED = ['app', 'bootstrap', 'config', 'database', 'lang', 'public', 'resources', 'routes', 'vendor',
         'artisan', 'composer.json', 'composer.lock', 'release.json'];
 
+    /** Plain names of the checks, used for passing rows too ("Show checks"). */
+    public const LABELS = [
+        'version_from' => 'Your portal is recent enough to update from here',
+        'version_newer' => 'A newer version is available',
+        'php' => "Your host's PHP version is fine",
+        'extensions' => 'Your host has the features the updater needs',
+        'functions' => 'Your host allows the file changes the updater needs',
+        'opcache' => 'Your host shows new files straight away',
+        'writable' => "The portal's files can be replaced",
+        'rename' => 'The website can prepare the new version',
+        'disk' => 'There is enough free space',
+        'no_update_running' => 'No other update is running',
+        'no_payment' => 'No member is paying right now',
+        'migrations' => "Your club's records are up to date",
+        'backup_database' => "Your club's data can be copied automatically",
+        'manual_action' => 'Nothing needs doing by hand first',
+    ];
+
     private const BY_HAND = 'ask whoever installed the portal to update it by hand (instructions: docs/RELEASE.md)';
 
     private const HOST_FIX = 'Send the message below to your host, or '.self::BY_HAND.'.';
@@ -37,18 +55,23 @@ final class PreChecks
         $checks = [];
 
         $installed = self::safe(fn () => $h->installedVersion()) ?? 'dev';
-        $checks[] = Version::compare($installed, $m->minFromVersion) >= 0
-            ? self::pass('version_from')
-            : new PreCheck('version_from', false,
-                "Your portal is on version $installed, which is too old to update from this page: ".self::BY_HAND.'.',
-                'Update it by hand once with the steps in docs/RELEASE.md; after that, updates can be done from this page.',
-                null, true);
+        if (trim($installed) === '' || ! Version::isRelease($installed)) {
+            $checks[] = self::row('version_from', false,
+                "We can't tell which version your portal is on, so it can't update itself here: ".self::BY_HAND.'.',
+                'Update it by hand once with the steps in docs/RELEASE.md; after that, updates can be done from this page.');
+        } else {
+            $checks[] = Version::compare($installed, $m->minFromVersion) >= 0
+                ? self::pass('version_from')
+                : self::row('version_from', false,
+                    "Your portal is on version $installed, which is too old to update from this page: ".self::BY_HAND.'.',
+                    'Update it by hand once with the steps in docs/RELEASE.md; after that, updates can be done from this page.');
+        }
 
         $checks[] = Version::compare($m->version, $installed) > 0
             ? self::pass('version_newer')
-            : new PreCheck('version_newer', false,
+            : self::row('version_newer', false,
                 'The newest version is not newer than the one you have, so there is nothing to update.',
-                'Nothing to do. Use Check now to look for a newer version.', null, true);
+                'Nothing to do. Use Check now to look for a newer version.');
 
         $checks[] = self::php($m, $h, $d);
         $checks[] = self::extensions($h, $d);
@@ -63,7 +86,7 @@ final class PreChecks
         $checks[] = self::disk($m, $h, $d);
         $checks[] = self::flag('no_update_running', fn () => $h->updateRunning(),
             'An update is already running.',
-            'Wait a few minutes and reload this page. An update that stops for 10 minutes is undone on its own.');
+            'Wait for it to finish, then reload this page.');
         $checks[] = self::flag('no_payment', fn () => $h->paymentInProgress(),
             'A member is paying a fee right now.',
             'Try again in a couple of minutes, when the payment is finished.');
@@ -77,11 +100,38 @@ final class PreChecks
         return $checks;
     }
 
-    /** @param  list<PreCheck>  $checks */
+    /**
+     * True when every blocking check passes. This NEVER enables the button by itself: the two "a person must act" rows
+     * (backup_database, manual_action) are not blocking here because they are cleared by a tick; use canStart().
+     *
+     * @param  list<PreCheck>  $checks
+     */
     public static function allPass(array $checks): bool
     {
         foreach ($checks as $c) {
             if (! $c->ok && $c->blocking) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The button gate: every blocking check passes AND each tick that is needed has been given.
+     *
+     * @param  list<PreCheck>  $checks  from run()
+     */
+    public static function canStart(array $checks, bool $dbBackupTicked, bool $manualActionTicked): bool
+    {
+        if (! self::allPass($checks)) {
+            return false;
+        }
+        foreach ($checks as $c) {
+            if ($c->key === 'backup_database' && ! $c->ok && ! $dbBackupTicked) {
+                return false;
+            }
+            if ($c->key === 'manual_action' && ! $c->ok && ! $manualActionTicked) {
                 return false;
             }
         }
@@ -95,14 +145,25 @@ final class PreChecks
         return self::safe(fn () => self::host()->databaseBackupNeedsTick()) ?? true;
     }
 
+    /** True when the release asks for something to be done by hand first, which someone must confirm. */
+    public static function needsManualActionTick(Manifest $m): bool
+    {
+        return $m->manualAction !== null && trim($m->manualAction) !== '';
+    }
+
     private static function host(): UpdaterHost
     {
         return self::$host ??= new UpdaterHost;
     }
 
+    private static function row(string $key, bool $ok, string $message, ?string $fix, ?string $hostMessage = null, bool $blocking = true): PreCheck
+    {
+        return new PreCheck($key, self::LABELS[$key], $ok, $message, $fix, $hostMessage, $blocking);
+    }
+
     private static function pass(string $key): PreCheck
     {
-        return new PreCheck($key, true, '', null, null, true);
+        return self::row($key, true, '', null);
     }
 
     private static function safe(callable $fact): mixed
@@ -116,7 +177,7 @@ final class PreChecks
 
     private static function hostFail(string $key, string $message, string $hostMessage, ?string $fix = null): PreCheck
     {
-        return new PreCheck($key, false, $message, $fix ?? self::HOST_FIX, $hostMessage, true);
+        return self::row($key, false, $message, $fix ?? self::HOST_FIX, $hostMessage);
     }
 
     /** A check where "true" means a problem. An unreadable fact fails with a generic line, never a pass. */
@@ -125,11 +186,11 @@ final class PreChecks
         try {
             $bad = (bool) $problem();
         } catch (Throwable) {
-            return new PreCheck($key, false, "We couldn't finish checking your site just now.",
-                'Reload this page in a minute. If it keeps happening, ask whoever installed the portal to look at it.', null, true);
+            return self::row($key, false, "We couldn't finish checking your site just now.",
+                'Reload this page in a minute. If it keeps happening, ask whoever installed the portal to look at it.');
         }
 
-        return $bad ? new PreCheck($key, false, $message, $fix, null, true) : self::pass($key);
+        return $bad ? self::row($key, false, $message, $fix) : self::pass($key);
     }
 
     private static function php(Manifest $m, UpdaterHost $h, string $d): PreCheck
@@ -175,10 +236,13 @@ final class PreChecks
 
     private static function functions(UpdaterHost $h, string $d): PreCheck
     {
+        $all = implode(', ', UpdaterHost::NEEDED_FUNCTIONS);
         try {
             $blocked = $h->disabledFunctions();
         } catch (Throwable) {
-            $blocked = ['rename', 'copy', 'unlink'];
+            return self::hostFail('functions',
+                "We couldn't check whether your host allows the file changes the updater needs.",
+                "Please confirm that none of these PHP functions are listed in disable_functions for the account that runs $d: $all. They are needed by the Club Portal web updater.");
         }
         if ($blocked === []) {
             return self::pass('functions');
@@ -213,7 +277,9 @@ final class PreChecks
         try {
             $bad = $h->unwritablePaths($h->basePath(), self::REPLACED);
         } catch (Throwable) {
-            $bad = ['(could not be read)'];
+            return self::hostFail('writable',
+                "We couldn't check whether the portal's files can be replaced by the website.",
+                "Please make sure the portal's files and folders are writable by the PHP user of the account that runs $d (owner of the files = the account user). The check could not read them. It is needed by the Club Portal web updater.");
         }
         if ($bad === []) {
             return self::pass('writable');
@@ -251,14 +317,16 @@ final class PreChecks
         if ($free < $needed) {
             return self::hostFail('disk',
                 "There isn't enough free space on your hosting account for this update (about $mb MB are needed).",
-                "Please free up or add disk space (at least $mb MB free, and enough file quota) for the account that runs $d. It is needed by the Club Portal web updater.",
-                'Delete old backups or files you no longer need, or send the message below to your host to ask for more space.');
+                "Please free up or add disk space (at least $mb MB free, and enough file quota) for the account that runs $d. Disk Usage in cPanel shows the account's use. It is needed by the Club Portal web updater.",
+                'Ask your host or whoever installed the portal to free up space on the hosting account, or to give it more.');
         }
         if ($free < $needed * 2) {
             // Only the server's disk is visible, not the account's own limit: say so when it is close.
-            return new PreCheck('disk', true,
+            return self::row('disk', true,
                 "We can't see your hosting account's own storage limit, and free space looks tight.",
-                "Open Disk Usage in cPanel and make sure at least $mb MB are free.", null, false);
+                "Ask your host or whoever installed the portal to check that the account has at least $mb MB free.",
+                "Please check Disk Usage in cPanel for the account that runs $d: at least $mb MB should be free before the Club Portal web updater runs.",
+                false);
         }
 
         return self::pass('disk');
@@ -267,26 +335,34 @@ final class PreChecks
     private static function backupDatabase(UpdaterHost $h, string $d): PreCheck
     {
         if (! self::needsDatabaseBackupTick()) {
-            return new PreCheck('backup_database', true, '', null, null, false);
+            return self::row('backup_database', true, '', null, null, false);
         }
+        $driver = self::safe(fn () => $h->databaseDriver()) ?? '';
+        $why = in_array($driver, ['mysql', 'mariadb'], true)
+            ? 'The portal could not run mysqldump on this server.'
+            : 'The portal cannot back up this kind of database by itself.';
 
-        return new PreCheck('backup_database', false,
+        return self::row('backup_database', false,
             "This host can't copy your club's data by itself, so the host or whoever installed the portal must take a copy before the update.",
-            'Ask them to take a database backup in cPanel (Backup, or phpMyAdmin Export) and confirm it is done.',
-            "Please take a full backup of the database for the account that runs $d (cPanel, Backup, or phpMyAdmin, Export) before the Club Portal web updater runs. The portal could not run mysqldump on this server.",
+            'Ask them to take a copy of the database before updating.',
+            "Please take a full backup of the database for the account that runs $d (cPanel, Backup, or phpMyAdmin, Export) before the Club Portal web updater runs. $why",
             false);
     }
 
+    /**
+     * The release author's text is shown as written, in this row's fix and in the host message, never in the message
+     * line (so the screen's own wording stays plain).
+     */
     private static function manualAction(Manifest $m, string $d): PreCheck
     {
-        if ($m->manualAction === null || trim($m->manualAction) === '') {
-            return self::pass('manual_action');
+        if (! self::needsManualActionTick($m)) {
+            return self::row('manual_action', true, '', null, null, false);
         }
 
-        return new PreCheck('manual_action', false,
+        return self::row('manual_action', false,
             'This update needs one thing done first by your host or whoever installed the portal.',
             'They need to: '.$m->manualAction,
             "For the account that runs $d: before the Club Portal is updated to version {$m->version}, please do the following: {$m->manualAction}",
-            true);
+            false);
     }
 }

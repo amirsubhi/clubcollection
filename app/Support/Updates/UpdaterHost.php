@@ -18,8 +18,12 @@ use Throwable;
  */
 class UpdaterHost
 {
-    /** PHP functions the updater calls (opcache_reset is optional and not listed). */
-    private const NEEDED_FUNCTIONS = ['rename', 'copy', 'unlink', 'mkdir', 'rmdir', 'file_put_contents', 'fopen', 'scandir'];
+    /** PHP functions the updater calls (opcache_reset is optional and not listed). Later tasks extend this list. */
+    public const NEEDED_FUNCTIONS = ['rename', 'copy', 'unlink', 'mkdir', 'rmdir', 'file_put_contents', 'fopen', 'fwrite',
+        'flock', 'hash_file', 'scandir', 'curl_init', 'curl_setopt', 'curl_exec'];
+
+    /** A job in one of these states is over and no longer blocks a new update. */
+    public const TERMINAL_JOB_STATUSES = ['finished', 'undone', 'failed', 'rolled_back'];
 
     public function installedVersion(): string
     {
@@ -183,7 +187,7 @@ class UpdaterHost
             ->exists();
     }
 
-    /** storage/app/updater/job.json exists and its status is not "finished". */
+    /** storage/app/updater/job.json exists and its status is not a terminal one (finished, undone, failed, rolled_back). */
     public function updateRunning(): bool
     {
         $file = storage_path('app/updater/job.json');
@@ -192,13 +196,24 @@ class UpdaterHost
         }
         $job = json_decode((string) @file_get_contents($file), true);
 
-        return ! (is_array($job) && ($job['status'] ?? null) === 'finished');
+        return ! (is_array($job) && in_array($job['status'] ?? null, self::TERMINAL_JOB_STATUSES, true));
     }
 
-    /** True when backup:run cannot put the database in the backup on this host (no mysqldump, or not MySQL/MariaDB). */
+    public function databaseDriver(): string
+    {
+        return (string) config('database.connections.'.config('database.default').'.driver');
+    }
+
+    /**
+     * True when backup:run cannot put the database in the backup on this host. SQLite is copied by backup:run itself;
+     * MySQL/MariaDB needs a program it can start (mysqldump); any other driver is not backed up by it.
+     */
     public function databaseBackupNeedsTick(): bool
     {
-        $driver = (string) config('database.connections.'.config('database.default').'.driver');
+        $driver = $this->databaseDriver();
+        if ($driver === 'sqlite') {
+            return false;
+        }
         if (! in_array($driver, ['mysql', 'mariadb'], true) || ! BackupRun::canStartProcesses()) {
             return true;
         }

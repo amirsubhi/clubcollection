@@ -41,6 +41,8 @@ class FakeHost extends UpdaterHost
 
     public bool $needsTick = false;
 
+    public string $driver = 'mysql';
+
     /** @var list<string> names of facts that throw */
     public array $throws = [];
 
@@ -150,6 +152,11 @@ class FakeHost extends UpdaterHost
         return $this->running;
     }
 
+    public function databaseDriver(): string
+    {
+        return $this->driver;
+    }
+
     public function databaseBackupNeedsTick(): bool
     {
         $this->fact('backup_database');
@@ -219,6 +226,28 @@ class PreChecksTest extends TestCase
         $this->assertFalse($c->ok);
         $this->assertStringContainsString('docs/RELEASE.md', $c->message);
         $this->assertTrue($c->blocking);
+    }
+
+    public function test_unreadable_installed_version_says_so_plainly(): void
+    {
+        foreach (['dev', ''] as $v) {
+            $this->host->installed = $v;
+            $c = $this->check('version_from');
+            $this->assertFalse($c->ok);
+            $this->assertStringStartsWith("We can't tell which version your portal is on", $c->message);
+            $this->assertStringNotContainsString('too old', $c->message);
+            $this->assertStringContainsString('docs/RELEASE.md', $c->fix);
+        }
+        $this->host->throws = [];
+        $this->host = new class extends FakeHost
+        {
+            public function installedVersion(): string
+            {
+                throw new \RuntimeException('x');
+            }
+        };
+        PreChecks::$host = $this->host;
+        $this->assertStringStartsWith("We can't tell", $this->check('version_from')->message);
     }
 
     public function test_not_newer_fails(): void
@@ -336,7 +365,7 @@ class PreChecksTest extends TestCase
 
     public function test_disk_passes_with_room_and_warns_without_blocking_when_tight(): void
     {
-        $this->host->free = 91 * 1048576;
+        $this->host->free = 91 * 1048576; // tight
         $c = $this->check('disk');
         $this->assertTrue($c->ok);
         $this->assertFalse($c->blocking);
@@ -353,6 +382,7 @@ class PreChecksTest extends TestCase
         $c = $this->check('no_update_running');
         $this->assertFalse($c->ok);
         $this->assertSame('An update is already running.', $c->message);
+        $this->assertSame('Wait for it to finish, then reload this page.', $c->fix);
     }
 
     public function test_payment_in_progress(): void
@@ -381,7 +411,99 @@ class PreChecksTest extends TestCase
         $this->assertTrue(PreChecks::needsDatabaseBackupTick());
         $this->assertTrue(PreChecks::allPass(PreChecks::run($this->manifest(), true)));
         $this->assertStringContainsString('example.org', $c->hostMessage);
+        $this->assertStringContainsString('mysqldump', $c->hostMessage);
         $this->assertStringContainsString('host or whoever installed the portal', $c->message);
+        $this->assertStringNotContainsString('confirm', $c->fix);
+    }
+
+    public function test_other_database_kinds_need_a_tick_without_mentioning_mysqldump(): void
+    {
+        $this->host->needsTick = true;
+        $this->host->driver = 'pgsql';
+        $c = $this->check('backup_database');
+        $this->assertFalse($c->ok);
+        $this->assertStringNotContainsString('mysqldump', $c->hostMessage);
+    }
+
+    public function test_button_gate_requires_both_ticks(): void
+    {
+        $m = $this->manifest(['manual_action' => 'Add MAIL_X=1 to .env']);
+        $this->host->needsTick = true;
+        $checks = PreChecks::run($m, true);
+
+        $this->assertTrue(PreChecks::allPass($checks), 'allPass alone never gates the button');
+        $this->assertTrue(PreChecks::needsManualActionTick($m));
+        $this->assertFalse(PreChecks::needsManualActionTick($this->manifest()));
+        $this->assertFalse(PreChecks::canStart($checks, false, false));
+        $this->assertFalse(PreChecks::canStart($checks, true, false));
+        $this->assertFalse(PreChecks::canStart($checks, false, true));
+        $this->assertTrue(PreChecks::canStart($checks, true, true));
+
+        // only the manual action
+        $this->host->needsTick = false;
+        $checks = PreChecks::run($m, true);
+        $this->assertFalse(PreChecks::canStart($checks, true, false));
+        $this->assertTrue(PreChecks::canStart($checks, false, true));
+
+        // only the backup
+        $this->host->needsTick = true;
+        $checks = PreChecks::run($this->manifest(), true);
+        $this->assertFalse(PreChecks::canStart($checks, false, true));
+        $this->assertTrue(PreChecks::canStart($checks, true, false));
+
+        // nothing needed
+        $this->host->needsTick = false;
+        $this->assertTrue(PreChecks::canStart(PreChecks::run($this->manifest(), true), false, false));
+
+        // a blocking failure is never cleared by ticks
+        $this->host->php = '7.4.0';
+        $this->assertFalse(PreChecks::canStart(PreChecks::run($this->manifest(), true), true, true));
+    }
+
+    public function test_every_key_has_a_plain_label(): void
+    {
+        $this->host->needsTick = true;
+        foreach ([true, false] as $broken) {
+            if ($broken) {
+                $this->host->php = '7.0.0';
+                $this->host->running = true;
+            }
+            foreach (PreChecks::run($this->manifest(['manual_action' => 'x']), true) as $c) {
+                $this->assertNotSame('', $c->label, $c->key);
+                foreach (['opcache', 'migrat', 'swap', 'journal', 'maintenance mode', 'unpack'] as $word) {
+                    $this->assertStringNotContainsStringIgnoringCase($word, $c->label, $c->key);
+                }
+            }
+        }
+        $this->assertCount(14, PreChecks::LABELS);
+    }
+
+    public function test_unreadable_function_and_writable_checks_make_no_specific_claims(): void
+    {
+        $this->host->throws = ['functions', 'writable'];
+        $f = $this->check('functions');
+        $this->assertFalse($f->ok);
+        $this->assertStringContainsString("couldn't check", $f->message);
+        $this->assertStringContainsString('curl_init', $f->hostMessage);
+        $w = $this->check('writable');
+        $this->assertStringContainsString("couldn't check", $w->message);
+        $this->assertStringNotContainsString('Not writable', $w->hostMessage);
+    }
+
+    public function test_fixes_do_not_send_the_reader_into_cpanel(): void
+    {
+        $this->host->free = 1;
+        $this->host->needsTick = true;
+        $this->host->throws = [];
+        foreach (PreChecks::run($this->manifest(['manual_action' => 'x']), true) as $c) {
+            if (! $c->ok) {
+                $this->assertStringNotContainsStringIgnoringCase('cpanel', $c->message.$c->fix, $c->key);
+            }
+        }
+        $this->host->free = 95 * 1048576;
+        $tight = $this->check('disk');
+        $this->assertStringNotContainsStringIgnoringCase('cpanel', $tight->message.$tight->fix);
+        $this->assertStringContainsString('cPanel', $tight->hostMessage);
     }
 
     public function test_manual_action_row_names_who_must_act(): void
@@ -440,19 +562,30 @@ class PreChecksTest extends TestCase
         $this->host->needsTick = true;
 
         $failed = 0;
-        foreach (PreChecks::run($this->manifest(['manual_action' => 'Do a thing']), true) as $c) {
+        // The release author's own text is shown as written in the manual_action fix and host message only.
+        $author = 'Run the migration and clear the opcache';
+        foreach (PreChecks::run($this->manifest(['manual_action' => $author]), true) as $c) {
+            if ($c->key === 'manual_action') {
+                $this->assertStringContainsString($author, $c->fix);
+                $this->assertStringContainsString($author, $c->hostMessage);
+                $this->assertStringNotContainsString($author, $c->message);
+                $this->assertStringNotContainsStringIgnoringCase('opcache', $c->message);
+            }
             if ($c->ok) {
                 continue;
             }
             $failed++;
             $this->assertNotNull($c->fix, "{$c->key} has a fix");
-            foreach ([$c->message, $c->fix] as $line) {
-                foreach (['opcache', 'migrat', 'swap', 'journal', 'maintenance mode'] as $word) {
+            foreach ($c->key === 'manual_action' ? [$c->message] : [$c->message, $c->fix] as $line) {
+                foreach (['opcache', 'migrat', 'swap', 'journal', 'maintenance mode', 'unpack'] as $word) {
                     $this->assertStringNotContainsStringIgnoringCase($word, $line, "{$c->key}: $line");
                 }
             }
         }
         $this->assertSame(13, $failed);
+        foreach (PreChecks::run($this->manifest(), true) as $c) {
+            $this->assertStringNotContainsStringIgnoringCase('cpanel', $c->message.$c->fix, $c->key);
+        }
     }
 
     public function test_an_unreadable_fact_is_never_unknown(): void
