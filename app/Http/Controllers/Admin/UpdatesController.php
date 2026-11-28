@@ -179,6 +179,7 @@ class UpdatesController extends Controller
         $super = $request->user()?->isSuperAdmin() === true;
         try {
             $s = $check->status();
+            $last = $super ? UpdateOutcomes::latest() : null;
 
             if (! $super) {
                 $waiting = $this->securityWaiting($s);
@@ -191,7 +192,8 @@ class UpdatesController extends Controller
 
             return response()->json([
                 'running' => UpdateJob::isRunning(),
-                'last_outcome' => UpdateOutcomes::latest()['outcome'] ?? null,
+                'last_outcome' => $last['outcome'] ?? null,
+                'last_to' => isset($last['to']) && is_string($last['to']) ? ltrim($last['to'], 'v') : null,
                 'installed' => $s->installed,
                 'available' => $s->available,
                 'latest' => $s->latest === null ? null : [
@@ -204,7 +206,7 @@ class UpdatesController extends Controller
             ]);
         } catch (Throwable) {
             return response()->json($super
-                ? ['running' => false, 'last_outcome' => null, 'installed' => null, 'available' => false, 'latest' => null, 'error' => 'The update check failed, try again later.']
+                ? ['running' => false, 'last_outcome' => null, 'last_to' => null, 'installed' => null, 'available' => false, 'latest' => null, 'error' => 'The update check failed, try again later.']
                 : ['security_waiting' => false, 'super_admins' => []]);
         }
     }

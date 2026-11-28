@@ -217,6 +217,7 @@ class UpdatesPageTest extends TestCase
             ->assertExactJson([
                 'running' => false,
                 'last_outcome' => null,
+                'last_to' => null,
                 'installed' => '2.2.0',
                 'available' => true,
                 'latest' => ['version' => '2.2.3', 'security' => false, 'summary' => 'Fixes receipts', 'released_at' => '2026-12-03T00:00:00Z'],
@@ -618,6 +619,16 @@ class UpdatesPageTest extends TestCase
         File::ensureDirectoryExists(UpdaterFiles::dir());
         file_put_contents(UpdaterFiles::jobPath(), json_encode(['status' => 'running']));
         $this->getJson(route('admin.updates.status'))->assertJsonPath('running', true);
+    }
+
+    public function test_the_failure_strip_needs_the_failed_attempt_to_be_for_the_offered_version(): void
+    {
+        $this->release(['security' => true, 'last_security_version' => '2.2.3']);
+        $this->history(['outcome' => 'rolled_back', 'to' => '2.2.1']);
+        $this->actingAsSuperAdmin();
+
+        $this->getJson(route('admin.updates.status'))->assertJsonPath('last_to', '2.2.1')->assertJsonPath('latest.version', '2.2.3');
+        $this->get(route('home'))->assertSee('s.last_to === s.latest.version', false);
     }
 
     public function test_the_banner_has_the_security_failure_variant_and_the_watch_strip(): void

@@ -176,6 +176,16 @@ class UpdateOutcomesTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'portal.update_rolled_back')->count());
     }
 
+    public function test_the_finished_text_and_email_carry_whats_new(): void
+    {
+        $d = UpdateOutcomes::describe(['outcome' => 'finished', 'from' => '2.2.0', 'to' => '2.2.1', 'whats_new' => ['Receipts show the logo', 'Faster pages']]);
+        $this->assertContains('• Receipts show the logo', $d['lines']);
+
+        $html = (new PortalUpdateResult($d, ''))->render();
+        $this->assertStringContainsString('Receipts show the logo', $html);
+        $this->assertStringContainsString('Faster pages', $html);
+    }
+
     public function test_the_texts_follow_the_journeys_and_cope_with_unknown_versions(): void
     {
         $undone = UpdateOutcomes::describe(['outcome' => 'undone', 'from' => '2.2.0', 'to' => '2.2.1', 'at' => 1796330000, 'timezone' => 'UTC']);

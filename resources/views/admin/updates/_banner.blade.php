@@ -23,8 +23,8 @@
             }
             if (!s.available || !s.latest) { return; }
             link.href = el.dataset.updatesUrl;
-            if (s.latest.security && s.last_outcome && s.last_outcome !== 'finished') {
-                // J5: the last attempt did not go through, so the alarm must come with something to do.
+            if (s.latest.security && s.last_outcome && s.last_outcome !== 'finished' && s.last_to === s.latest.version) {
+                // J5: the attempt at this very version did not go through, so the alarm must come with something to do.
                 el.className = 'alert alert-danger mb-4';
                 strong.textContent = 'The security update couldn’t be installed on this host.';
                 link.textContent = 'What to do';

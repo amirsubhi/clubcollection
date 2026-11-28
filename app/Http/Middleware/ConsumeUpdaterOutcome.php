@@ -17,6 +17,12 @@ class ConsumeUpdaterOutcome
 {
     public function handle(Request $request, Closure $next): Response
     {
+        return $next($request);
+    }
+
+    /** After the response is sent (under FPM): a slow gateway check never makes someone's page wait. */
+    public function terminate(Request $request, Response $response): void
+    {
         try {
             if (UpdateOutcomes::pending()) {
                 UpdateOutcomes::consume();
@@ -24,7 +30,5 @@ class ConsumeUpdaterOutcome
         } catch (Throwable $e) {
             report($e);
         }
-
-        return $next($request);
     }
 }

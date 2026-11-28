@@ -42,6 +42,16 @@ class OutcomeTest extends TestCase
         ];
     }
 
+    public function test_whats_new_is_kept_in_the_outcome_and_the_history_at_most_five_strings(): void
+    {
+        Outcome::write($this->dir, $this->sample(['whats_new' => ['a', ' b ', 3, '', 'c', 'd', 'e', 'f']]));
+
+        $out = json_decode((string) file_get_contents($this->dir.'/outcome.json'), true);
+        $this->assertSame(['a', 'b', 'c', 'd', 'e'], $out['whats_new']);
+        $history = glob($this->dir.'/history/*.json');
+        $this->assertSame(['a', 'b', 'c', 'd', 'e'], json_decode((string) file_get_contents($history[0]), true)['whats_new']);
+    }
+
     public function test_it_writes_the_outcome_with_the_fixed_keys_and_a_report(): void
     {
         Outcome::write($this->dir, $this->sample());

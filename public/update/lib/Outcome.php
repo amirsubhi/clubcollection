@@ -13,7 +13,7 @@ final class Outcome
     /** outcome.json / history `outcome` values (constraints, Stage 2 rules). */
     public const OUTCOMES = ['finished', 'rolled_back', 'undone', 'failed', 'blocked'];
 
-    private const KEYS = ['outcome', 'from', 'to', 'step', 'reason', 'at', 'started_at', 'report'];
+    private const KEYS = ['outcome', 'from', 'to', 'step', 'reason', 'at', 'started_at', 'report', 'whats_new'];
 
     /**
      * Writes history/<YmdHis>-<from>-<to>.json first (YmdHis is started_at, or at, in UTC: one attempt keeps one file
@@ -43,6 +43,15 @@ final class Outcome
             'at' => $at,
             'started_at' => $startedAt,
         ];
+        $whatsNew = [];
+        foreach (is_array($o['whats_new'] ?? null) ? $o['whats_new'] : [] as $line) {
+            if (is_string($line) && trim($line) !== '' && count($whatsNew) < 5) {
+                $whatsNew[] = trim($line);
+            }
+        }
+        if ($whatsNew !== []) {
+            $out['whats_new'] = $whatsNew;
+        }
         $out['report'] = Report::text($out + [
             'log' => is_array($o['log'] ?? null) ? array_values($o['log']) : [],
             'php_version' => is_string($o['php_version'] ?? null) ? $o['php_version'] : PHP_VERSION,

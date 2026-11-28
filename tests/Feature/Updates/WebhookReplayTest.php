@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Payments\BillplzSignature;
 use App\Support\Updates\UpdateOutcomes;
 use App\Support\Updates\UpdaterFiles;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -94,21 +95,48 @@ class WebhookReplayTest extends TestCase
         Mail::assertSent(PaymentConfirmation::class, 1);
     }
 
-    public function test_a_bad_signature_is_not_settled_and_ends_in_failed_after_three_tries(): void
+    public function test_a_bad_signature_is_not_settled_and_is_set_aside_after_three_spaced_tries(): void
     {
+        Carbon::setTestNow('2026-12-04 10:00:00');
         $p = $this->pending();
         $file = $this->save($this->billplzBody($p, sign: false), '1796330000000001-aaaaaaaaaaaa');
 
         UpdateOutcomes::replayWebhooks();
-        $this->assertFileExists($file);
+        $this->assertSame(1, json_decode(file_get_contents($file), true)['tries']);
+        // Three requests within a second: the later ones find it not yet due.
+        UpdateOutcomes::replayWebhooks();
         UpdateOutcomes::replayWebhooks();
         $this->assertFileExists($file);
+        $this->assertSame(1, json_decode(file_get_contents($file), true)['tries']);
+
+        Carbon::setTestNow('2026-12-04 10:01:01');
+        UpdateOutcomes::replayWebhooks();
         $this->assertSame(2, json_decode(file_get_contents($file), true)['tries']);
+        Carbon::setTestNow('2026-12-04 10:02:30');
+        UpdateOutcomes::replayWebhooks();
+        $this->assertSame(2, json_decode(file_get_contents($file), true)['tries']);
+        Carbon::setTestNow('2026-12-04 10:03:10');
         UpdateOutcomes::replayWebhooks();
 
         $this->assertFileDoesNotExist($file);
         $this->assertFileExists(UpdaterFiles::webhooksDir().'/failed/1796330000000001-aaaaaaaaaaaa.json');
         $this->assertSame('pending', $p->fresh()->status);
+        Carbon::setTestNow();
+    }
+
+    public function test_the_replay_stops_when_its_time_budget_is_spent(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->save(['id' => 'NOPE-'.$i, 'paid' => 'false'], sprintf('17963300000%05d-aaaaaaaaaaaa', $i));
+        }
+        $t = 0.0;
+        // Each look at the clock costs 2 s: deadline 7 s; files are looked at at 4, 6 and 8 s, so two are replayed.
+        UpdateOutcomes::replayWebhooks(function () use (&$t) {
+            return $t += 2.0;
+        });
+
+        $tried = array_filter(glob(UpdaterFiles::webhooksDir().'/*.json'), fn ($f) => isset(json_decode(file_get_contents($f), true)['tries']));
+        $this->assertCount(2, $tried);
     }
 
     public function test_a_saved_toyyibpay_token_travels_with_the_callback(): void

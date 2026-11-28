@@ -39,6 +39,12 @@ final class UpdateOutcomes
 
     public const MAX_TRIES = 3;
 
+    /** A request stops replaying after about this many seconds; the rest waits for the next request. */
+    public const REPLAY_BUDGET_SECONDS = 5.0;
+
+    /** A failed replay is tried again 60 s x (tries so far) later. */
+    private const RETRY_SPACING_SECONDS = 60;
+
     /** A callback being replayed by a request that died is put back after this many seconds. */
     private const CLAIM_STALE_SECONDS = 600;
 
@@ -49,13 +55,13 @@ final class UpdateOutcomes
     }
 
     /** Takes the outcome (once) and replays saved callbacks. Nothing happens while the swap guard is up. */
-    public static function consume(): void
+    public static function consume(?callable $clock = null): void
     {
         if (is_file(UpdaterFiles::guardPath())) {
             return;
         }
         self::takeOutcome();
-        self::replayWebhooks();
+        self::replayWebhooks($clock);
     }
 
     private static function takeOutcome(): void
@@ -157,9 +163,15 @@ final class UpdateOutcomes
 
     // ── Saved payment callbacks ─────────────────────────────────────────────────────────────────────────────────
 
-    /** Replays up to 50 saved callbacks, oldest first, through the normal webhook handler. */
-    public static function replayWebhooks(): void
+    /**
+     * Replays up to 50 saved callbacks, oldest first, through the normal webhook handler, for about 5 seconds at most.
+     *
+     * @param  (callable(): float)|null  $clock  seconds, for the time budget (tests)
+     */
+    public static function replayWebhooks(?callable $clock = null): void
     {
+        $clock ??= fn () => microtime(true);
+        $deadline = $clock() + self::REPLAY_BUDGET_SECONDS;
         $dir = UpdaterFiles::webhooksDir();
         $names = is_dir($dir) ? @scandir($dir) : false;
         if (! is_array($names)) {
@@ -179,6 +191,13 @@ final class UpdateOutcomes
         usort($waiting, 'strnatcmp');
 
         foreach (array_slice($waiting, 0, self::REPLAY_PER_REQUEST) as $name) {
+            if ($clock() >= $deadline) {
+                break;
+            }
+            $due = json_decode((string) @file_get_contents($dir.'/'.$name), true);
+            if (is_array($due) && is_int($due['next_try_at'] ?? null) && $due['next_try_at'] > now()->getTimestamp()) {
+                continue;
+            }
             // Claimed by a rename, so two requests never replay the same callback together.
             $claim = $dir.'/'.$name.'.claim-'.bin2hex(random_bytes(6));
             if (! @rename($dir.'/'.$name, $claim)) {
@@ -196,7 +215,7 @@ final class UpdateOutcomes
             if ($status < 0 || $tries >= self::MAX_TRIES) {
                 $failed = $dir.'/failed';
                 if ((is_dir($failed) || @mkdir($failed, 0750, true) || is_dir($failed)) && @rename($claim, $failed.'/'.$name)) {
-                    Log::warning('A saved payment callback could not be replayed and was set aside.', ['file' => $name, 'status' => $status]);
+                    Log::error('A saved payment callback could not be replayed and was set aside.', ['file' => $name, 'status' => $status]);
                 } else {
                     @unlink($claim);
                 }
@@ -204,6 +223,7 @@ final class UpdateOutcomes
                 continue;
             }
             $saved['tries'] = $tries;
+            $saved['next_try_at'] = now()->getTimestamp() + self::RETRY_SPACING_SECONDS * $tries;
             $json = json_encode($saved, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
             if (is_string($json) && @file_put_contents($claim, $json) !== false) {
                 @rename($claim, $dir.'/'.$name);
@@ -357,7 +377,7 @@ final class UpdateOutcomes
                     'title' => $to === null ? 'Done. Club Portal is updated.' : "Done. Club Portal is now $to.",
                     'lines' => array_merge(
                         ['Members can use the portal again.'],
-                        array_map(fn ($l) => '• '.$l, array_values(array_filter((array) ($h['whats_new'] ?? []), 'is_string'))),
+                        array_map(fn ($l) => '• '.$l, array_slice(array_values(array_filter((array) ($h['whats_new'] ?? []), 'is_string')), 0, 5)),
                         ["A copy of your club's data from before the update is kept on your site (with your other backups)."],
                     ),
                     'notice' => '',
