@@ -35,6 +35,9 @@ final class UpdateOutcomes
     /** The handler that takes each saved callback path. */
     private const WEBHOOK_METHODS = ['/webhook/toyyibpay' => 'toyyibpay', '/webhook/billplz' => 'billplz'];
 
+    /** The same sentence as ClubPortalUpdater\Steps::ENDED_BY_HAND: a `failed` outcome with it was ended by hand. */
+    public const ENDED_BY_HAND = 'The update was ended by hand after it could not be undone by itself.';
+
     public const REPLAY_PER_REQUEST = 50;
 
     public const MAX_TRIES = 3;
@@ -418,7 +421,19 @@ final class UpdateOutcomes
                     'label' => 'needs someone to look at it',
                 ];
                 break;
-            default: // failed: stopped before anything changed
+            default: // failed: stopped before anything changed, or ended by hand after the undo failed
+                if ($reason === self::ENDED_BY_HAND) {
+                    $d += [
+                        'subject' => "$update didn't finish",
+                        'title' => "$update didn't finish and the old version was put back by hand.",
+                        'lines' => [$from === null ? 'Your portal is on the version it had before.' : "Your portal is on $from."],
+                        'what_happened' => $reason,
+                        'what_to_do' => "Check that the portal works. You can try again later. $help",
+                        'notice' => "$update didn't finish and the old version was put back by hand (recorded at $time).",
+                        'label' => 'put back by hand',
+                    ];
+                    break;
+                }
                 $d += [
                     'subject' => "$update did not start",
                     'title' => "$update stopped before anything was changed.",

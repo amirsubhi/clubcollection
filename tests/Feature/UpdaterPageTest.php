@@ -479,13 +479,19 @@ class UpdaterPageTest extends TestCase
     }
 
     /** After a failed undo, someone followed the manual steps but left job.json: guard, down and maintenance.php gone. */
-    private function undoneByHand(): void
+    private function undoneByHand(bool $migrateBegun = false): void
     {
         $this->runSteps($this->context(), 'migrate');
-        Journal::open($this->dir)->set('recovery_error', ['at' => time(), 'message' => 'The old files could not all be put back.']);
+        $j = Journal::open($this->dir);
+        if ($migrateBegun) {
+            $j->begin('migrate');
+        }
+        $j->set('recovery_error', ['at' => time(), 'message' => 'The old files could not all be put back.']);
         foreach (['updating', 'down', 'maintenance.php'] as $name) {
             @unlink($this->site.'/storage/framework/'.$name);
         }
+        // The old version's files are back, its release-files.json among them.
+        file_put_contents($this->site.'/release-files.json', json_encode(['format' => 1, 'version' => '2.2.0', 'files' => []]));
     }
 
     private function pageAt(int $now, ?string $cookie = null): array
@@ -511,7 +517,53 @@ class UpdaterPageTest extends TestCase
         $this->assertSame('failed', $o['outcome']);
         $this->assertSame('The update was ended by hand after it could not be undone by itself.', $o['reason']);
         $this->assertStringContainsString('What happened: The update was ended by hand after it could not be undone by itself.', $text);
+        $this->assertStringContainsString("The update to v2.2.1 didn't finish and the old version was put back by hand.", $text);
+        $this->assertStringContainsString('Your portal is on v2.2.0.', $text);
+        $this->assertStringNotContainsString('stopped before anything was changed', $text);
         $this->assertStringNotContainsString('An update is in progress', $text);
+        $this->assertFileDoesNotExist($this->dir.'/blocked');
+    }
+
+    public function test_a_job_undone_by_hand_part_way_through_the_records_ends_blocked(): void
+    {
+        $this->undoneByHand(migrateBegun: true);
+
+        $text = $this->visibleText($this->pageAt(time() + 700, $this->token)['body']);
+
+        $this->assertSame('blocked', $this->outcome()['outcome']);
+        $this->assertSame('migrate', $this->outcome()['step']);
+        $this->assertSame(Steps::ENDED_BY_HAND_BLOCKED, $this->outcome()['reason']);
+        $this->assertSame('rolled_back', $this->job()['status']);
+        $this->assertFileExists($this->dir.'/blocked', 'the button is switched off');
+        $this->assertStringContainsString("one change to your club's records didn't finish", $text);
+    }
+
+    public function test_a_job_is_never_ended_by_hand_unless_the_undo_failed_and_the_old_version_is_back(): void
+    {
+        $this->undoneByHand();
+        file_put_contents($this->site.'/release-files.json', json_encode(['format' => 1, 'version' => '2.2.1', 'files' => []]));
+        $this->pageAt(time() + 700);
+        $this->assertSame('running', $this->job()['status'], 'the new version is what is installed');
+        // With no failed undo at all (a bare `php artisan up`): test_after_a_bare_artisan_up_the_page_still_shows_the_line_to_finish.
+    }
+
+    public function test_after_a_bare_artisan_up_the_page_still_shows_the_line_to_finish(): void
+    {
+        $this->switchedFromTheCommandLine();
+        foreach (['down', 'maintenance.php'] as $name) {
+            @unlink($this->site.'/storage/framework/'.$name); // someone ran `php artisan up` instead of the line
+        }
+
+        foreach ([time(), time() + 3600] as $now) {
+            $text = $this->visibleText($this->pageAt($now)['body']);
+            $this->assertStringContainsString('The update is waiting to be finished from the command line.', $text);
+            $this->assertStringContainsString(Page::FINISH_LINE, $text);
+            $this->assertStringContainsString('the update has not been finished', $text);
+            $this->assertStringNotContainsString('undone by itself', $text);
+            $this->assertStringNotContainsString('members see a page', $text);
+        }
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
     }
 
     public function test_a_job_is_not_ended_by_hand_while_the_pause_or_the_finish_is_still_there(): void

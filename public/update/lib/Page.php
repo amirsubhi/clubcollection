@@ -178,8 +178,9 @@ final class Page
 
     /**
      * The command line switched the files and lifted only the guard (PHP may not start programs here, or the lock was
-     * busy): the job is `running`, the swap is done, there is no guard file, Laravel's `down` file is up, and the finish
-     * has not begun. Nothing undoes this by itself; it waits for the manual line. Returns the journal, or null.
+     * busy), or someone then ran `php artisan up` by hand: the job is `running`, the swap is done, there is no guard
+     * file, no undo was started or failed, and the finish has not begun. Laravel's `down` file may be up or not.
+     * Nothing undoes this by itself; it waits for the manual line. Returns the journal, or null.
      *
      * @return ?array<string, mixed>
      */
@@ -187,8 +188,7 @@ final class Page
     {
         clearstatcache();
         $job = Auth::job($c->files->dir) ?? [];
-        if (($job['status'] ?? null) !== 'running' || is_file($c->files->guardPath)
-            || ! is_file(dirname($c->files->guardPath).'/down') || ! is_file($c->files->journalPath)) {
+        if (($job['status'] ?? null) !== 'running' || is_file($c->files->guardPath) || ! is_file($c->files->journalPath)) {
             return null;
         }
         try {
@@ -197,7 +197,10 @@ final class Page
             return null;
         }
         $steps = $j->steps();
-        if (! Steps::isThisAttempt($j, $job) || $j->isRecovering() || ($steps['swap']['state'] ?? null) !== 'done' || isset($steps['finish'])) {
+        $swap = $j->get('swap');
+        if (! Steps::isThisAttempt($j, $job) || $j->isRecovering() || $j->get('recovery_error') !== null
+            || (is_array($swap) && ($swap['state'] ?? null) === 'rolling_back')
+            || ($steps['swap']['state'] ?? null) !== 'done' || isset($steps['finish'])) {
             return null;
         }
         $raw = @file_get_contents($c->files->journalPath);
@@ -330,8 +333,11 @@ final class Page
                     .($saved === null ? ' before the update.' : " at $saved.");
                 break;
             default:
-                $title = "$update stopped before anything was changed.";
-                $lines = [($from === null ? 'Your portal is working normally.' : "Your portal is on $from and working normally."), 'Nothing was lost.'];
+                $byHand = $reason === Steps::ENDED_BY_HAND;
+                $title = $byHand ? "$update didn't finish and the old version was put back by hand." : "$update stopped before anything was changed.";
+                $lines = $byHand
+                    ? [$from === null ? 'Your portal is on the version it had before.' : "Your portal is on $from."]
+                    : [($from === null ? 'Your portal is working normally.' : "Your portal is on $from and working normally."), 'Nothing was lost.'];
                 $failed = $showReport ? array_values(array_filter((array) ($h['checks_failed'] ?? []), 'is_string')) : [];
                 if ($failed !== []) {
                     $extra .= '<ul>'.implode('', array_map(static fn (string $l): string => '<li>'.self::e($l).'</li>', $failed)).'</ul>';
@@ -428,7 +434,9 @@ final class Page
         $job = Auth::job($c->files->dir) ?? [];
         $to = self::version($job['to_version'] ?? null);
         $body = '<h1>The update is waiting to be finished from the command line.</h1>'
-            .'<p>'.self::e('The new version'.($to === null ? '' : " ($to)").' is in place, and members see a page saying the portal is being updated. It stays like that until the update is finished.').'</p>'
+            .'<p>'.self::e('The new version'.($to === null ? '' : " ($to)").' is in place, '.(is_file(dirname($c->files->guardPath).'/down')
+                ? 'and members see a page saying the portal is being updated. It stays like that until the update is finished.'
+                : 'but the update has not been finished, so your club\'s records may not be up to date yet.')).'</p>'
             .'<p><strong>What to do:</strong> someone with access to the site\'s Terminal runs this line in the portal\'s folder:</p>'
             .'<p><code>'.self::e(self::FINISH_LINE).'</code></p>'
             .'<p>When it says the portal is open again, members can use it.</p>';

@@ -170,15 +170,21 @@ final class Steps
         }
     }
 
-    /** What the result says when a job is ended after someone put the old version back by hand. */
+    /**
+     * What the result says when a job is ended after someone put the old version back by hand. Laravel's
+     * App\Support\Updates\UpdateOutcomes keeps the same sentence: a `failed` outcome with it gets its own headline.
+     */
     public const ENDED_BY_HAND = 'The update was ended by hand after it could not be undone by itself.';
 
+    public const ENDED_BY_HAND_BLOCKED = "The update stopped while it was changing the club's records and could not be undone by itself; the old version was put back by hand. Restore the database from the copy saved before the update (or a cPanel backup), or have it checked, before trying again.";
+
     /**
-     * Ends a job someone finished undoing by hand (the "could not be undone" screen's steps): the job is still
-     * `running`, but the guard file and Laravel's `down` file are gone, the switch had started (or the undo began),
-     * `finish` never began, and nothing has moved for 10 minutes. The job and outcome become `failed`, so the Updates
-     * page and app:update are free again. Needs no token: it only records what a person already did. Returns true when
-     * it did.
+     * Ends a job someone finished undoing by hand (the "could not be undone" screen's steps). Only that state: the job is
+     * still `running`, the undo failed (`recovery_error`) or stopped part-way (`swap.state` = `rolling_back`), the guard
+     * file and Laravel's `down` file are gone, the installed release-files.json is the job's `from_version` again,
+     * `finish` never began, and nothing has moved for 10 minutes. A change to the club's records left part-way
+     * (Recovery::databaseLeftPartWay) ends `blocked`; anything else `failed` with ENDED_BY_HAND. Needs no token: it only
+     * records what a person already did. Returns true when it did.
      */
     public static function endHandUndone(Context $c): bool
     {
@@ -190,14 +196,22 @@ final class Steps
             $c->load();
             $j = $c->journal();
             clearstatcache();
-            if (($c->job['status'] ?? null) !== 'running' || ! self::isThisAttempt($j, $c->job)
+            $swap = $j->get('swap');
+            $undoFailed = $j->get('recovery_error') !== null || (is_array($swap) && ($swap['state'] ?? null) === 'rolling_back');
+            if (($c->job['status'] ?? null) !== 'running' || ! self::isThisAttempt($j, $c->job) || ! $undoFailed
                 || is_file($c->files->guardPath) || is_file(dirname($c->files->guardPath).'/down')
-                || ! ($j->isSwapStarted() || $j->isRecovering()) || isset($j->steps()['finish'])
-                || $j->idleSeconds() < Recovery::IDLE_AFTER) {
+                || isset($j->steps()['finish']) || $j->idleSeconds() < Recovery::IDLE_AFTER
+                || self::installedVersion($c->app) !== ltrim($c->from(), 'vV')) {
                 return false;
             }
-            self::writeOutcome($c, 'failed', (string) ($j->firstUnfinished() ?? 'finish'), self::ENDED_BY_HAND);
-            $c->saveJob('failed');
+            if (Recovery::databaseLeftPartWay($j, 'running')) {
+                self::writeOutcome($c, 'blocked', 'migrate', self::ENDED_BY_HAND_BLOCKED);
+                $c->saveJob('rolled_back');
+            } else {
+                self::writeOutcome($c, 'failed', (string) ($j->firstUnfinished() ?? 'finish'), self::ENDED_BY_HAND);
+                $c->saveJob('failed');
+            }
+            $j->set('recovery_error', null);
             Maintenance::off($c->app); // a stray maintenance.php must not stay
 
             return true;
@@ -206,6 +220,15 @@ final class Steps
         } finally {
             $lock->release();
         }
+    }
+
+    /** The version in the app's release-files.json without a leading v, null when it cannot be read. */
+    private static function installedVersion(string $app): ?string
+    {
+        $raw = @file_get_contents(rtrim($app, '/\\').'/release-files.json');
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+
+        return is_array($json) && is_string($json['version'] ?? null) ? ltrim($json['version'], 'vV') : null;
     }
 
     /**

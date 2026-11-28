@@ -8,6 +8,7 @@ use App\Models\Club;
 use App\Models\User;
 use App\Support\Updates\UpdateOutcomes;
 use App\Support\Updates\UpdaterFiles;
+use ClubPortalUpdater\Steps;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -201,6 +202,21 @@ class UpdateOutcomesTest extends TestCase
         $this->assertStringContainsString('cPanel backup', (new PortalUpdateResult($notInBackup, ''))->render());
 
         $this->assertContains($kept, UpdateOutcomes::describe(['outcome' => 'finished'])['lines'], 'an older outcome without the key');
+    }
+
+    public function test_an_update_ended_by_hand_says_so_instead_of_nothing_changed(): void
+    {
+        require_once base_path('public/update/lib/load.php');
+        $this->assertSame(Steps::ENDED_BY_HAND, UpdateOutcomes::ENDED_BY_HAND, 'one sentence on both sides');
+
+        $d = UpdateOutcomes::describe(['outcome' => 'failed', 'from' => '2.2.0', 'to' => '2.2.1', 'at' => 1796330000, 'timezone' => 'UTC', 'reason' => UpdateOutcomes::ENDED_BY_HAND]);
+        $this->assertSame("The update to v2.2.1 didn't finish and the old version was put back by hand.", $d['title']);
+        $this->assertSame(['Your portal is on v2.2.0.'], $d['lines']);
+        $this->assertStringNotContainsString('before anything was changed', json_encode($d));
+        $this->assertStringContainsString('put back by hand', (new PortalUpdateResult($d, ''))->render());
+
+        $plain = UpdateOutcomes::describe(['outcome' => 'failed', 'to' => '2.2.1', 'reason' => "Your site wasn't ready to update."]);
+        $this->assertSame('The update to v2.2.1 stopped before anything was changed.', $plain['title']);
     }
 
     public function test_the_texts_follow_the_journeys_and_cope_with_unknown_versions(): void

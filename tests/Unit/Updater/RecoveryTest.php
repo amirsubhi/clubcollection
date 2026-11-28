@@ -96,6 +96,24 @@ class RecoveryTest extends TestCase
         $this->assertFileDoesNotExist($this->dir.'/blocked');
     }
 
+    public function test_one_rule_says_when_the_records_were_left_part_way(): void
+    {
+        $j = Journal::open($this->dir);
+        $this->assertFalse(Recovery::databaseLeftPartWay($j, 'running'), 'migrate never began');
+        foreach (Journal::STEPS as $step) {
+            if ($step === 'migrate') {
+                break;
+            }
+            $j->begin($step);
+            $j->finish($step);
+        }
+        $j->begin('migrate');
+        $this->assertTrue(Recovery::databaseLeftPartWay($j, 'running'));
+        $this->assertFalse(Recovery::databaseLeftPartWay($j, 'finished'), 'a finished job never is');
+        $j->finish('migrate');
+        $this->assertFalse(Recovery::databaseLeftPartWay($j, 'running'));
+    }
+
     public function test_a_failed_undo_is_kept_in_the_journal_and_cleared_by_a_later_success(): void
     {
         $this->runUpdateUntil('health', 660);

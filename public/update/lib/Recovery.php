@@ -114,7 +114,7 @@ final class Recovery
         $job = self::readJob($f) ?? [];
         $status = $job['status'] ?? null;
         $step = $j->firstUnfinished();
-        $migrateState = $j->steps()['migrate']['state'] ?? null;
+        $blocked = self::databaseLeftPartWay($j, is_string($status) ? $status : null);
         $j->markRecovering();
 
         $finished = $status === 'finished' || (($j->steps()['finish']['state'] ?? null) === 'done');
@@ -133,7 +133,6 @@ final class Recovery
         $open = ! is_string($status) || in_array($status, self::OPEN_JOB_STATUSES, true);
         $result = is_string($status) ? $status : 'undone';
         if ($open) {
-            $blocked = $migrateState !== null && $migrateState !== 'done' && ! $finished;
             $result = $blocked ? 'blocked' : 'undone';
             $backup = $j->get('backup');
             Outcome::write($f->dir, [
@@ -160,6 +159,19 @@ final class Recovery
         Maintenance::off($app);
 
         return $result;
+    }
+
+    /**
+     * The one rule for "a change to the club's records was left part-way" (outcome `blocked`, J5 last case), shared by
+     * this undo and Steps::endHandUndone: `migrate` began and is not done, and the update has not finished.
+     */
+    public static function databaseLeftPartWay(Journal $j, ?string $jobStatus): bool
+    {
+        $steps = $j->steps();
+        $migrate = $steps['migrate']['state'] ?? null;
+        $finished = $jobStatus === 'finished' || (($steps['finish']['state'] ?? null) === 'done');
+
+        return $migrate !== null && $migrate !== 'done' && ! $finished;
     }
 
     /**
