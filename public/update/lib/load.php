@@ -16,3 +16,8 @@ require_once __DIR__.'/Swap.php';
 require_once __DIR__.'/Maintenance.php';
 require_once __DIR__.'/Outcome.php';
 require_once __DIR__.'/Recovery.php';
+require_once __DIR__.'/Auth.php';
+require_once __DIR__.'/BootedApp.php';
+require_once __DIR__.'/Context.php';
+require_once __DIR__.'/Steps.php';
+require_once __DIR__.'/Page.php';
