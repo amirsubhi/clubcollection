@@ -16,7 +16,11 @@ namespace ClubPortalUpdater;
  * Failures: before the switch (`swap` not begun) the job and outcome are `failed` and the pause is lifted; from the
  * switch on the old files are put back and the outcome is `rolled_back`, or `blocked` when the database changes began
  * and did not finish. Only the installed release's updater runs these steps (the new public/update/ is moved in by
- * `finish`), so this protocol never has to match another version's.
+ * `finish`), so the page-to-step protocol never has to match another version's. Two seams do cross versions:
+ * `app:update --finish` runs the NEW release's command against THIS lib (Context, Lock, Journal,
+ * Steps::isThisAttempt/completeFinishing, Maintenance::liftGuard, LaravelApp::forKernel), and this lib's
+ * LaravelApp::health and `migrate` call the new app's UpdaterHost and migrations. Keep those APIs stable for at least
+ * one release.
  */
 final class Steps
 {
@@ -157,6 +161,44 @@ final class Steps
             self::writeOutcome($c, 'failed', (string) $step, 'The update page was closed before the portal was paused, so the update stopped. Nothing was changed.');
             $c->saveJob('failed');
             Maintenance::off($c->app); // nothing is up when the guard file is not, but a stray down file must not stay
+
+            return true;
+        } catch (\Throwable) {
+            return false;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /** What the result says when a job is ended after someone put the old version back by hand. */
+    public const ENDED_BY_HAND = 'The update was ended by hand after it could not be undone by itself.';
+
+    /**
+     * Ends a job someone finished undoing by hand (the "could not be undone" screen's steps): the job is still
+     * `running`, but the guard file and Laravel's `down` file are gone, the switch had started (or the undo began),
+     * `finish` never began, and nothing has moved for 10 minutes. The job and outcome become `failed`, so the Updates
+     * page and app:update are free again. Needs no token: it only records what a person already did. Returns true when
+     * it did.
+     */
+    public static function endHandUndone(Context $c): bool
+    {
+        $lock = Lock::acquire($c->files->dir);
+        if ($lock === null) {
+            return false;
+        }
+        try {
+            $c->load();
+            $j = $c->journal();
+            clearstatcache();
+            if (($c->job['status'] ?? null) !== 'running' || ! self::isThisAttempt($j, $c->job)
+                || is_file($c->files->guardPath) || is_file(dirname($c->files->guardPath).'/down')
+                || ! ($j->isSwapStarted() || $j->isRecovering()) || isset($j->steps()['finish'])
+                || $j->idleSeconds() < Recovery::IDLE_AFTER) {
+                return false;
+            }
+            self::writeOutcome($c, 'failed', (string) ($j->firstUnfinished() ?? 'finish'), self::ENDED_BY_HAND);
+            $c->saveJob('failed');
+            Maintenance::off($c->app); // a stray maintenance.php must not stay
 
             return true;
         } catch (\Throwable) {

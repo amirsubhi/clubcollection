@@ -154,7 +154,7 @@ class UpdaterPageTest extends TestCase
             $cookies = array_merge($cookies, $r['cookies']);
         }
 
-        $this->assertSame(Maintenance::COOKIE, $cookies[0]['name'] ?? null);
+        $this->assertContains(Maintenance::COOKIE, array_column($cookies, 'name'));
         $this->assertSame('application/json; charset=UTF-8', $r['headers']['Content-Type']);
     }
 
@@ -320,6 +320,36 @@ class UpdaterPageTest extends TestCase
         $this->assertPlain($text);
     }
 
+    public function test_visitors_without_the_cookie_never_see_the_site_files_the_failed_checks_or_the_blocked_reason(): void
+    {
+        $this->writeHistory(['outcome' => 'finished', 'step' => 'finish', 'site_local' => ['app/.user.ini']]);
+        $text = $this->visibleText($this->page()['body']);
+        $this->assertStringContainsString('Done. Club Portal is now v2.2.1.', $text);
+        $this->assertStringNotContainsString('app/.user.ini', $text);
+        $this->assertStringNotContainsString('Files that belong to your site', $text);
+
+        $this->writeHistory(['outcome' => 'failed', 'step' => 'prechecks', 'at' => time() + 1, 'reason' => "Your site wasn't ready to update.", 'checks_failed' => ['No member is paying right now: A member is paying a fee right now.']]);
+        $text = $this->visibleText($this->page()['body']);
+        $this->assertStringContainsString('stopped before anything was changed', $text);
+        $this->assertStringNotContainsString('A member is paying a fee right now.', $text);
+
+        $this->writeHistory(['outcome' => 'blocked', 'step' => 'migrate', 'at' => time() + 2, 'reason' => 'Restore the database from file clubportal-20261128.zip in storage/app/backups.']);
+        $html = $this->page()['body'];
+        $this->assertStringContainsString('The update button is switched off until this is sorted.', $this->visibleText($html));
+        $this->assertStringNotContainsString('clubportal-20261128.zip', $html);
+        $this->assertStringContainsString('clubportal-20261128.zip', $this->page($this->token)['body'], 'the token holder still sees it');
+    }
+
+    public function test_the_done_screen_says_when_the_data_copy_is_the_cpanel_backup(): void
+    {
+        $this->writeHistory(['outcome' => 'finished', 'step' => 'finish', 'database_in_backup' => false]);
+
+        $text = $this->visibleText($this->page()['body']);
+
+        $this->assertStringContainsString('the cPanel backup taken before the update is your copy', $text);
+        $this->assertStringNotContainsString('is kept on your site', $text);
+    }
+
     public function test_a_whole_update_through_the_page_ends_on_the_done_screen(): void
     {
         $next = 'prechecks';
@@ -339,15 +369,28 @@ class UpdaterPageTest extends TestCase
         file_put_contents($this->site.'/storage/framework/updating', (string) time());
         file_put_contents($this->dir.'/journal.json', '{broken');
 
-        $r = $this->page();
+        $r = $this->page($this->token);
         $text = $this->visibleText($r['body']);
 
         $this->assertStringContainsString('The update could not be undone by itself.', $text);
         $this->assertStringContainsString('Members see a page saying the portal is being updated', $text);
         $this->assertStringContainsString('.clubportal-old-2.2.0', $text);
         $this->assertStringContainsString('delete the files updating, down and maintenance.php', $text);
+        $this->assertStringContainsString('In the portal\'s storage/app/updater folder, delete the file job.json.', $text);
         $this->assertStringContainsString('Copy report', $text);
         $this->assertStringContainsString('id="report"', $r['body']);
+
+        // Without the update's cookie: what members see and the plain steps, never the report.
+        $other = $this->page();
+        $text = $this->visibleText($other['body']);
+        $this->assertStringContainsString('Members see a page saying the portal is being updated', $text);
+        $this->assertStringContainsString('delete the files updating, down and maintenance.php', $text);
+        $this->assertStringContainsString('delete the file job.json', $text);
+        $this->assertStringContainsString('ask whoever started the update', $text);
+        $this->assertStringNotContainsString('Copy report', $other['body']);
+        $this->assertStringNotContainsString('id="report"', $other['body']);
+        $this->assertStringNotContainsString('github.com', $other['body']);
+        $this->assertStringNotContainsString('journal cannot be read', $other['body']);
     }
 
     public function test_a_failed_undo_gives_the_manual_way_out(): void
@@ -363,7 +406,127 @@ class UpdaterPageTest extends TestCase
         $this->assertStringContainsString('app is in use', $r['body']);
     }
 
-    // ------------------------------------------------------------------ the report link and index.php
+    public function test_every_step_answer_keeps_the_update_cookie_as_long_as_the_token_works(): void
+    {
+        $r = $this->step('prechecks', $this->token);
+
+        $cookie = array_values(array_filter($r['cookies'], fn ($c) => $c['name'] === 'cp_update'));
+        $this->assertCount(1, $cookie);
+        $this->assertSame(['name' => 'cp_update', 'value' => $this->token, 'expires' => $this->job()['expires_at'], 'path' => '/update/', 'samesite' => 'Strict'], $cookie[0]);
+        $this->assertGreaterThanOrEqual(time() + 1790, $cookie[0]['expires']);
+
+        $this->assertNotContains('cp_update', array_column($this->step('status', $this->token)['cookies'], 'name'), 'watching changes nothing');
+        $this->assertSame([], $this->step('download', bin2hex(random_bytes(32)))['cookies'], 'never for a wrong token');
+    }
+
+    public function test_index_php_sets_each_cookie_with_its_own_path_and_samesite(): void
+    {
+        $source = (string) file_get_contents(base_path('public/update/index.php'));
+
+        $this->assertStringContainsString("'path' => \$clubportalCookie['path'] ?? '/'", $source);
+        $this->assertStringContainsString("'samesite' => \$clubportalCookie['samesite'] ?? 'Lax'", $source);
+    }
+
+    // ------------------------------------------------------------------ waiting for the command line, ended by hand
+
+    /** The command line switched the files and lifted only the guard; Laravel's `down` file is still up. */
+    private function switchedFromTheCommandLine(): void
+    {
+        $this->runSteps($this->context(), 'migrate');
+        Maintenance::liftGuard($this->site);
+        $this->assertFileExists($this->site.'/storage/framework/down');
+    }
+
+    public function test_an_update_left_for_the_command_line_shows_the_line_to_finish_it(): void
+    {
+        $this->switchedFromTheCommandLine();
+
+        $r = $this->page();
+        $text = $this->visibleText($r['body']);
+
+        $this->assertStringContainsString('The update is waiting to be finished from the command line.', $text);
+        $this->assertStringContainsString(Page::FINISH_LINE, $text);
+        $this->assertStringContainsString('members see a page saying the portal is being updated', $text);
+        $this->assertStringNotContainsString('undone by itself', $text);
+        $this->assertStringNotContainsString('Copy report', $text);
+        $this->assertStringNotContainsString('id="report"', $r['body']);
+        $this->assertStringContainsString('ask whoever started the update', $text);
+        $this->assertPlain(str_replace(Page::FINISH_LINE, '', $text));
+        $this->assertSame('running', $this->job()['status'], 'nothing ends it by itself');
+
+        $holder = $this->page($this->token)['body'];
+        $this->assertStringContainsString('Copy report', $holder);
+        $this->assertStringContainsString('id="report"', $holder);
+        $this->assertStringContainsString(Page::FINISH_LINE, $this->visibleText($holder));
+    }
+
+    public function test_an_update_left_for_the_command_line_is_never_ended_after_10_minutes(): void
+    {
+        $this->switchedFromTheCommandLine();
+        $later = time() + 3600;
+        $c = fn (string $app): Context => tap($this->context(), function (Context $c) use ($later) {
+            $c->clock = static fn (): int => $later;
+        });
+
+        $text = $this->visibleText(Page::handle($this->site, ['method' => 'GET'], $c)['body']);
+
+        $this->assertStringContainsString(Page::FINISH_LINE, $text);
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+    }
+
+    /** After a failed undo, someone followed the manual steps but left job.json: guard, down and maintenance.php gone. */
+    private function undoneByHand(): void
+    {
+        $this->runSteps($this->context(), 'migrate');
+        Journal::open($this->dir)->set('recovery_error', ['at' => time(), 'message' => 'The old files could not all be put back.']);
+        foreach (['updating', 'down', 'maintenance.php'] as $name) {
+            @unlink($this->site.'/storage/framework/'.$name);
+        }
+    }
+
+    private function pageAt(int $now, ?string $cookie = null): array
+    {
+        return Page::handle($this->site, ['method' => 'GET', 'cookies' => $cookie === null ? [] : ['cp_update' => $cookie]],
+            fn (string $app): Context => tap($this->context(), function (Context $c) use ($now) {
+                $c->clock = static fn (): int => $now;
+            }));
+    }
+
+    public function test_a_job_undone_by_hand_is_ended_after_10_minutes(): void
+    {
+        $this->undoneByHand();
+
+        $soon = $this->visibleText($this->pageAt(time() + 300)['body']);
+        $this->assertStringContainsString('An update is in progress', $soon);
+        $this->assertSame('running', $this->job()['status']);
+
+        $text = $this->visibleText($this->pageAt(time() + 700, $this->token)['body']);
+
+        $this->assertSame('failed', $this->job()['status']);
+        $o = $this->outcome();
+        $this->assertSame('failed', $o['outcome']);
+        $this->assertSame('The update was ended by hand after it could not be undone by itself.', $o['reason']);
+        $this->assertStringContainsString('What happened: The update was ended by hand after it could not be undone by itself.', $text);
+        $this->assertStringNotContainsString('An update is in progress', $text);
+    }
+
+    public function test_a_job_is_not_ended_by_hand_while_the_pause_or_the_finish_is_still_there(): void
+    {
+        $this->undoneByHand();
+        file_put_contents($this->site.'/storage/framework/down', '{}');
+        $this->pageAt(time() + 700);
+        $this->assertSame('running', $this->job()['status'], 'down is still up');
+
+        unlink($this->site.'/storage/framework/down');
+        $journal = json_decode((string) file_get_contents($this->dir.'/journal.json'), true);
+        $journal['steps']['finish'] = ['state' => 'running', 'started_at' => time(), 'finished_at' => null, 'detail' => null, 'log' => []];
+        file_put_contents($this->dir.'/journal.json', json_encode($journal));
+        $this->pageAt(time() + 700);
+        $this->assertNotSame('failed', $this->job()['status'], 'the finish had begun: completing it is another path');
+    }
+
+    // ------------------------------------------------------------------ the report link and index.php    // ------------------------------------------------------------------ the report link and index.php
 
     public function test_a_long_report_is_shortened_to_fit_the_link(): void
     {

@@ -34,7 +34,7 @@ final class Page
     /**
      * @param  array{method?: string, query?: array<string, mixed>, cookies?: array<string, mixed>, server?: array<string, mixed>, body?: string}  $req
      * @param  ?\Closure(string): Context  $contextFactory  tests pass one with fakes
-     * @return array{status: int, headers: array<string, string>, body: string, cookies: list<array{name: string, value: string, expires: int}>}
+     * @return array{status: int, headers: array<string, string>, body: string, cookies: list<array{name: string, value: string, expires: int, path?: string, samesite?: string}>}
      */
     public static function handle(string $app, array $req, ?\Closure $contextFactory = null): array
     {
@@ -79,8 +79,17 @@ final class Page
 
         $result = Steps::run($step, $c);
         $result['ended'] = self::ended($c);
+        $cookies = $c->cookies;
+        if (in_array($result['status'] ?? null, ['done', 'more'], true) && Auth::check($c->files->dir, $cookie, $c->now())) {
+            // The token works for 30 minutes after the last step: the cookie lasts as long (the same name, path and
+            // flags as the Updates page set it with; Secure on https).
+            $expires = Auth::job($c->files->dir)['expires_at'] ?? null;
+            if (is_int($expires)) {
+                $cookies[] = ['name' => Auth::COOKIE, 'value' => (string) $cookie, 'expires' => $expires, 'path' => '/update/', 'samesite' => 'Strict'];
+            }
+        }
 
-        return self::json($result, 200, $c->cookies);
+        return self::json($result, 200, $cookies);
     }
 
     /** True when the page should reload to show a result: the job has ended, or the undo needs a person. */
@@ -103,11 +112,17 @@ final class Page
     {
         Steps::completeFinishing($c);
         Steps::expireAbandoned($c);
+        Steps::endHandUndone($c);
         $nonce = bin2hex(random_bytes(12));
+        $holder = Auth::isTokenHolder($c->files->dir, $cookie);
 
         $stuck = self::stuck($c);
         if ($stuck !== null) {
-            return self::html(self::stuckScreen($c, $stuck, $nonce), $nonce);
+            return self::html(self::stuckScreen($c, $stuck, $holder, $nonce), $nonce);
+        }
+        $waiting = self::waitingForCommandLine($c);
+        if ($waiting !== null) {
+            return self::html(self::waitingScreen($c, $waiting, $holder, $nonce), $nonce);
         }
         if (Auth::check($c->files->dir, $cookie, $c->now())) {
             return self::html(self::runner($c, $nonce), $nonce);
@@ -120,7 +135,7 @@ final class Page
         }
         $result = self::latestResult($c);
         if ($result !== null) {
-            return self::html(self::resultScreen($result, Auth::isTokenHolder($c->files->dir, $cookie), $nonce), $nonce);
+            return self::html(self::resultScreen($result, $holder, $nonce), $nonce);
         }
 
         return self::html(self::screen('No update in progress',
@@ -159,6 +174,36 @@ final class Page
         $message = is_array($error) && is_string($error['message'] ?? null) ? $error['message'] : 'Putting the old files back stopped part-way.';
 
         return ['journal' => $journal, 'error' => $message];
+    }
+
+    /**
+     * The command line switched the files and lifted only the guard (PHP may not start programs here, or the lock was
+     * busy): the job is `running`, the swap is done, there is no guard file, Laravel's `down` file is up, and the finish
+     * has not begun. Nothing undoes this by itself; it waits for the manual line. Returns the journal, or null.
+     *
+     * @return ?array<string, mixed>
+     */
+    private static function waitingForCommandLine(Context $c): ?array
+    {
+        clearstatcache();
+        $job = Auth::job($c->files->dir) ?? [];
+        if (($job['status'] ?? null) !== 'running' || is_file($c->files->guardPath)
+            || ! is_file(dirname($c->files->guardPath).'/down') || ! is_file($c->files->journalPath)) {
+            return null;
+        }
+        try {
+            $j = Journal::open($c->files->dir, $c->clock);
+        } catch (UpdaterError) {
+            return null;
+        }
+        $steps = $j->steps();
+        if (! Steps::isThisAttempt($j, $job) || $j->isRecovering() || ($steps['swap']['state'] ?? null) !== 'done' || isset($steps['finish'])) {
+            return null;
+        }
+        $raw = @file_get_contents($c->files->journalPath);
+        $journal = is_string($raw) ? json_decode($raw, true) : null;
+
+        return is_array($journal) ? $journal : null;
     }
 
     /** @return ?array<string, mixed> the newest history entry (or outcome.json) from the last day */
@@ -259,7 +304,7 @@ final class Page
                 $extra .= ($h['database_in_backup'] ?? true) === false
                     ? '<p>Your club\'s data could not be copied automatically on this host; the cPanel backup taken before the update is your copy.</p>'
                     : '<p>A copy of your club\'s data from before the update is kept on your site (with your other backups).</p>';
-                $local = array_values(array_filter((array) ($h['site_local'] ?? []), 'is_string'));
+                $local = $showReport ? array_values(array_filter((array) ($h['site_local'] ?? []), 'is_string')) : [];
                 if ($local !== []) {
                     $extra .= '<p>Files that belong to your site (not to Club Portal) were kept:</p><ul>'
                         .implode('', array_map(static fn (string $p): string => '<li><code>'.self::e($p).'</code></li>', $local)).'</ul>';
@@ -287,7 +332,7 @@ final class Page
             default:
                 $title = "$update stopped before anything was changed.";
                 $lines = [($from === null ? 'Your portal is working normally.' : "Your portal is on $from and working normally."), 'Nothing was lost.'];
-                $failed = array_values(array_filter((array) ($h['checks_failed'] ?? []), 'is_string'));
+                $failed = $showReport ? array_values(array_filter((array) ($h['checks_failed'] ?? []), 'is_string')) : [];
                 if ($failed !== []) {
                     $extra .= '<ul>'.implode('', array_map(static fn (string $l): string => '<li>'.self::e($l).'</li>', $failed)).'</ul>';
                 }
@@ -299,7 +344,8 @@ final class Page
         foreach ($lines as $line) {
             $body .= '<p>'.self::e($line).'</p>';
         }
-        if ($outcome !== 'finished' && $outcome !== 'undone' && $reason !== null) {
+        // The blocked reason names the backup file: only for the browser that ran the update.
+        if ($outcome !== 'finished' && $outcome !== 'undone' && $reason !== null && ($outcome !== 'blocked' || $showReport)) {
             $body .= '<p><strong>What happened:</strong> '.self::e($reason).'</p>';
         }
         $body .= $extra;
@@ -328,7 +374,7 @@ final class Page
     }
 
     /** @param array{journal: ?array<string, mixed>, error: string} $stuck */
-    private static function stuckScreen(Context $c, array $stuck, string $nonce): string
+    private static function stuckScreen(Context $c, array $stuck, bool $showReport, string $nonce): string
     {
         $job = Auth::job($c->files->dir) ?? [];
         $from = is_string($job['from_version'] ?? null) ? $job['from_version'] : null;
@@ -365,17 +411,65 @@ final class Page
         $body = '<h1>The update could not be undone by itself.</h1>'
             .'<p>Members see a page saying the portal is being updated and will be back in a few minutes. They cannot use the portal until this is fixed.</p>'
             .'<p>Your club\'s records and uploaded files are still on your site. The earlier version\'s program files are kept in a folder named <code>'.self::e($where).'</code> '.$place.'.</p>'
-            .'<p><strong>What to do:</strong> send the report to whoever installed the portal, or to your host\'s support. Someone with access to the site\'s files needs to do this by hand:</p>'
+            .'<p><strong>What to do:</strong> '.($showReport ? 'send the report to whoever installed the portal, or to your host\'s support.' : 'tell whoever installed the portal, or your host\'s support.')
+            .' Someone with access to the site\'s files needs to do this by hand:</p>'
             .'<ol><li>Open the folder <code>'.self::e($where).'</code> ('.$place.'). Move everything in it except the file <code>'.self::e(Unpack::OWNER).'</code> back into the portal\'s folder, to the same place, replacing what is there (what is in its <code>public</code> folder goes into the portal\'s <code>public</code> folder).</li>'
             .'<li>In the portal\'s <code>storage/framework</code> folder, delete the files <code>updating</code>, <code>down</code> and <code>maintenance.php</code>.</li>'
-            .'<li>Open the portal\'s home page and check that it works.</li></ol>'
-            .'<p class="actions"><button type="button" class="button" id="copy-report">Copy report</button> '
-            .'<a class="button" href="'.self::e(self::issueUrl('Update could not be undone', $report)).'" target="_blank" rel="noopener noreferrer">Report a problem</a></p>'
+            .'<li>In the portal\'s <code>storage/app/updater</code> folder, delete the file <code>job.json</code>.</li>'
+            .'<li>Open the portal\'s home page and check that it works.</li></ol>';
+        $body .= $showReport ? self::reportBlock('Update could not be undone', $report, $nonce) : self::NO_REPORT;
+
+        return self::screen('Update needs help', $body, $nonce);
+    }
+
+    /** @param array<string, mixed> $journal */
+    private static function waitingScreen(Context $c, array $journal, bool $showReport, string $nonce): string
+    {
+        $job = Auth::job($c->files->dir) ?? [];
+        $to = self::version($job['to_version'] ?? null);
+        $body = '<h1>The update is waiting to be finished from the command line.</h1>'
+            .'<p>'.self::e('The new version'.($to === null ? '' : " ($to)").' is in place, and members see a page saying the portal is being updated. It stays like that until the update is finished.').'</p>'
+            .'<p><strong>What to do:</strong> someone with access to the site\'s Terminal runs this line in the portal\'s folder:</p>'
+            .'<p><code>'.self::e(self::FINISH_LINE).'</code></p>'
+            .'<p>When it says the portal is open again, members can use it.</p>';
+        if ($showReport) {
+            $log = [];
+            foreach ((array) ($journal['steps'] ?? []) as $s) {
+                if (is_array($s) && is_array($s['log'] ?? null)) {
+                    $log = array_merge($log, $s['log']);
+                }
+            }
+            $report = Report::text([
+                'outcome' => 'waiting to be finished from the command line',
+                'from' => is_string($job['from_version'] ?? null) ? $job['from_version'] : '?',
+                'to' => is_string($job['to_version'] ?? null) ? $job['to_version'] : '?',
+                'step' => 'migrate',
+                'started_at' => is_int($job['created_at'] ?? null) ? $job['created_at'] : null,
+                'at' => $c->now(),
+                'log' => $log,
+            ], $c->app);
+            $body .= self::reportBlock('Update waiting to be finished', $report, $nonce);
+        } else {
+            $body .= self::NO_REPORT;
+        }
+
+        return self::screen('Update waiting', $body, $nonce);
+    }
+
+    /** What a visitor without the update's cookie gets instead of the report. */
+    private const NO_REPORT = '<p class="muted">The full report is on the Updates page once the portal is open again, or ask whoever started the update.</p>';
+
+    /** The exact line that finishes an update the command line left switched but not finished. */
+    public const FINISH_LINE = 'php artisan migrate --force && php artisan optimize && php artisan app:update --finish';
+
+    /** Copy report, Report a problem and the report under Show details. */
+    private static function reportBlock(string $title, string $report, string $nonce): string
+    {
+        return '<p class="actions"><button type="button" class="button" id="copy-report">Copy report</button> '
+            .'<a class="button" href="'.self::e(self::issueUrl($title, $report)).'" target="_blank" rel="noopener noreferrer">Report a problem</a></p>'
             .'<p id="copied" role="status" aria-live="polite"></p>'
             .'<details><summary>Show details</summary><textarea id="report" readonly rows="14">'.self::e($report).'</textarea></details>'
             .'<script nonce="'.$nonce.'">'.self::COPY_JS.'</script>';
-
-        return self::screen('Update needs help', $body, $nonce);
     }
 
     /** @param array<string, mixed> $job */
@@ -458,7 +552,7 @@ final class Page
 
     /**
      * @param  array<string, mixed>  $data
-     * @param  list<array{name: string, value: string, expires: int}>  $cookies
+     * @param  list<array{name: string, value: string, expires: int, path?: string, samesite?: string}>  $cookies
      * @return array{status: int, headers: array<string, string>, body: string, cookies: list<array>}
      */
     private static function json(array $data, int $status = 200, array $cookies = []): array

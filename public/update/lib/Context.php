@@ -41,7 +41,7 @@ final class Context
     /** True when the page is served over https (the bypass cookie is then Secure). */
     public bool $https = false;
 
-    /** @var list<array{name: string, value: string, expires: int}> cookies index.php sets on the response */
+    /** @var list<array{name: string, value: string, expires: int, path?: string, samesite?: string}> cookies index.php sets on the response */
     public array $cookies = [];
 
     /** Seconds one download or unpack request may spend before it answers `more`. */

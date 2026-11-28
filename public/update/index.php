@@ -42,10 +42,10 @@ if (! headers_sent()) {
         // setcookie, never setrawcookie: the value is base64 and its "+" must reach Laravel url-encoded.
         setcookie($clubportalCookie['name'], $clubportalCookie['value'], [
             'expires' => $clubportalCookie['expires'],
-            'path' => '/',
+            'path' => $clubportalCookie['path'] ?? '/',
             'secure' => Page::isHttps($_SERVER),
             'httponly' => true,
-            'samesite' => 'Lax',
+            'samesite' => $clubportalCookie['samesite'] ?? 'Lax',
         ]);
     }
 }
