@@ -452,6 +452,67 @@ class UpdateGuardTest extends TestCase
         $this->assertSame('carried on', $out);
     }
 
+    public function test_a_payment_callback_on_the_request_that_rolls_back_is_saved_first(): void
+    {
+        $this->runUpdateUntil('health', 660);
+        mkdir($this->site.'/public/update/lib', 0755, true);
+        foreach (glob(dirname(__DIR__, 2).'/public/update/lib/*.php') as $file) {
+            copy($file, $this->site.'/public/update/lib/'.basename($file));
+        }
+
+        [$out, $status] = $this->runPhp('$_SERVER["REQUEST_METHOD"] = "POST"; $_SERVER["REQUEST_URI"] = "/webhook/billplz?x=1"; require '
+            .var_export($this->site.'/public/update-guard.php', true).'; clubportal_update_guard_web('.var_export($this->site, true).'); echo "CARRIED ON";');
+
+        $this->assertSame(0, $status, $out);
+        $this->assertStringNotContainsString('CARRIED ON', $out);
+        $this->assertOldTree();
+        $this->assertCount(1, $this->savedFiles(), 'the callback is kept for the replay');
+        $this->assertSame('/webhook/billplz', json_decode((string) file_get_contents($this->savedFiles()[0]), true)['path']);
+        $this->assertStringContainsString('The portal is being updated; try again in a few minutes.', $out);
+    }
+
+    /** Runs the real guard's CLI check in a separate PHP, with the pass variable set to $pass (null: not set). */
+    private function runCli(?string $pass): array
+    {
+        $env = $pass === null ? '' : 'putenv('.var_export('CLUBPORTAL_UPDATER_PASS='.$pass, true).'); ';
+
+        return $this->runPhp($env.'require '.var_export($this->site.'/public/update-guard.php', true).'; clubportal_update_guard_cli('
+            .var_export($this->site, true).'); echo "carried on";');
+    }
+
+    public function test_artisan_carries_on_with_the_one_time_pass_of_app_update(): void
+    {
+        $this->guardUp();
+        $secret = bin2hex(random_bytes(32));
+        file_put_contents($this->dir.'/cli-pass', $secret."\n");
+
+        [$out, $status] = $this->runCli($secret);
+
+        $this->assertSame(0, $status);
+        $this->assertSame('carried on', $out);
+    }
+
+    public function test_artisan_stops_with_a_wrong_or_missing_pass(): void
+    {
+        $this->guardUp();
+        $secret = bin2hex(random_bytes(32));
+        file_put_contents($this->dir.'/cli-pass', $secret);
+
+        foreach (['wrong' => bin2hex(random_bytes(32)), 'empty' => '', 'not set' => null, 'prefix' => substr($secret, 0, 32)] as $case => $pass) {
+            [$out, $status] = $this->runCli($pass);
+            $this->assertSame(0, $status, $case);
+            $this->assertSame(rtrim(self::MESSAGE), $out, $case);
+        }
+
+        unlink($this->dir.'/cli-pass');
+        [$out] = $this->runCli($secret);
+        $this->assertSame(rtrim(self::MESSAGE), $out, 'no pass file: the pass is worth nothing');
+
+        file_put_contents($this->dir.'/cli-pass', "\n");
+        [$out] = $this->runCli('');
+        $this->assertSame(rtrim(self::MESSAGE), $out, 'an empty pass file never matches');
+    }
+
     public function test_the_web_guard_serves_the_pause_page_and_stops(): void
     {
         $this->guardUp();

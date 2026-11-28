@@ -422,14 +422,20 @@ if (! function_exists('clubportal_update_guard_decide')) {
             $recovered = clubportal_update_guard_recover($basePath);
             $method = isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
             $uri = isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
-            if ($recovered === 'rolled_back') {
-                clubportal_update_guard_send(clubportal_update_guard_response($basePath, clubportal_update_guard_after_rollback($method, $uri)));
-                exit;
-            }
             $path = $uri;
             $query = strpos($path, '?');
             if ($query !== false) {
                 $path = substr($path, 0, $query);
+            }
+            if ($recovered === 'rolled_back') {
+                // A payment callback on the request that put the old files back is saved first, like any other.
+                $after = clubportal_update_guard_after_rollback($method, $uri);
+                if (strtoupper($method) === 'POST' && clubportal_update_guard_webhook_path($path) !== null) {
+                    clubportal_update_guard_save_webhook($basePath, $path, clubportal_update_guard_read_body(), $_SERVER);
+                    $after = array('action' => 'save_webhook');
+                }
+                clubportal_update_guard_send(clubportal_update_guard_response($basePath, $after));
+                exit;
             }
             $cookie = isset($_COOKIE['laravel_maintenance']) && is_string($_COOKIE['laravel_maintenance']) ? $_COOKIE['laravel_maintenance'] : null;
             $decision = clubportal_update_guard_decide($basePath, $method, $path, $cookie);
@@ -437,13 +443,7 @@ if (! function_exists('clubportal_update_guard_decide')) {
                 return;
             }
             if ($decision['action'] === 'save_webhook') {
-                $body = false;
-                $in = @fopen('php://input', 'rb');
-                if ($in !== false) {
-                    $body = stream_get_contents($in, 65537);
-                    fclose($in);
-                }
-                clubportal_update_guard_save_webhook($basePath, $path, $body, $_SERVER);
+                clubportal_update_guard_save_webhook($basePath, $path, clubportal_update_guard_read_body(), $_SERVER);
             }
         } catch (Exception $e) {
             $decision = array('action' => 'pause');
@@ -454,10 +454,56 @@ if (! function_exists('clubportal_update_guard_decide')) {
         exit;
     }
 
-    /** artisan: while the guard file exists, print one line and stop (exit 0). Never undoes anything (web only). */
+    /** The request body, at most one byte over the 64 KB limit (so a bigger one is refused); false when unreadable. */
+    function clubportal_update_guard_read_body()
+    {
+        $body = false;
+        $in = @fopen('php://input', 'rb');
+        if ($in !== false) {
+            $body = stream_get_contents($in, 65537);
+            fclose($in);
+        }
+
+        return $body;
+    }
+
+    /**
+     * True when this command was started by `php artisan app:update` to finish the switch: the environment variable
+     * CLUBPORTAL_UPDATER_PASS equals the one-time secret in storage/app/updater/cli-pass (written by app:update just
+     * before it starts its child commands, deleted when they end). Anything else is false.
+     */
+    function clubportal_update_guard_cli_pass($basePath)
+    {
+        $given = function_exists('getenv') ? getenv('CLUBPORTAL_UPDATER_PASS') : false;
+        if (! is_string($given) || $given === '') {
+            return false;
+        }
+        $file = $basePath.'/storage/app/updater/cli-pass';
+        if (! is_file($file)) {
+            return false;
+        }
+        $raw = @file_get_contents($file);
+        $secret = is_string($raw) ? trim($raw) : '';
+        if (strlen($secret) < 32) {
+            return false;
+        }
+        if (function_exists('hash_equals')) {
+            return hash_equals($secret, $given);
+        }
+
+        return $secret === $given;
+    }
+
+    /**
+     * artisan: while the guard file exists, print one line and stop (exit 0), unless app:update started this command
+     * with its one-time pass (clubportal_update_guard_cli_pass). Never undoes anything (web only).
+     */
     function clubportal_update_guard_cli($basePath)
     {
         if (! is_file($basePath.'/storage/framework/updating')) {
+            return;
+        }
+        if (clubportal_update_guard_cli_pass($basePath)) {
             return;
         }
         echo "Club Portal is being updated; try again in a few minutes.\n";
