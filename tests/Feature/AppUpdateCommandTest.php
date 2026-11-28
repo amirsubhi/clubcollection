@@ -597,6 +597,22 @@ class AppUpdateCommandTest extends TestCase
         $this->assertSame('failed', $this->job()['status']);
     }
 
+    public function test_a_real_child_process_gets_the_pass_and_keeps_this_processs_environment(): void
+    {
+        AppUpdate::$child = null;
+        putenv('CLUBPORTAL_TEST_KEPT=still-here');
+        try {
+            $child = new \ReflectionMethod(AppUpdate::class, 'child');
+            $r = $child->invoke(new AppUpdate, [PHP_BINARY, '-r', 'echo getenv("'.AppUpdate::PASS_ENV.'"), " ", getenv("CLUBPORTAL_TEST_KEPT");'],
+                $this->site, [AppUpdate::PASS_ENV => 'the-pass']);
+        } finally {
+            putenv('CLUBPORTAL_TEST_KEPT');
+        }
+
+        $this->assertSame(0, $r['code'], $r['output']);
+        $this->assertSame('the-pass still-here', $r['output']);
+    }
+
     public function test_the_php_cache_line_says_to_restart_php_when_timestamps_are_off(): void
     {
         AppUpdate::$opcacheTimestamps = static fn (): bool => false;

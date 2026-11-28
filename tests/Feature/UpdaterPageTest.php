@@ -529,6 +529,18 @@ class UpdaterPageTest extends TestCase
         $this->assertNotSame('failed', $this->job()['status'], 'the finish had begun: completing it is another path');
     }
 
+    public function test_a_job_undone_by_hand_with_a_broken_journal_waits_for_job_json_to_be_deleted(): void
+    {
+        $this->undoneByHand();
+        file_put_contents($this->dir.'/journal.json', '{broken');
+
+        $this->pageAt(time() + 700);
+
+        $this->assertSame('running', $this->job()['status'], 'nothing is recorded from a journal that cannot be read');
+        unlink($this->dir.'/job.json');
+        $this->assertStringContainsString('No update in progress', $this->pageAt(time() + 700)['body']);
+    }
+
     public function test_the_manual_steps_on_the_screen_match_install_md(): void
     {
         $install = (string) file_get_contents(base_path('docs/INSTALL.md'));

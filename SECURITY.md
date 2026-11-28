@@ -85,10 +85,12 @@ admin's password again (and the 2FA code when 2FA is on) and is audited, as are 
   hashed, valid for the job's start up to 30 minutes after its last step; each step answer renews the cookie for that
   long). A visitor with no cookie can only trigger what the update had already started or a person already did: the
   **undo of an update that has been idle for 10 minutes** (it only ever puts the installed release back, and never
-  installs anything), the **completion of an interrupted last step**, and **ending an update that was undone by hand**
-  (no pause files left, 10 minutes idle: it only records the job as ended). The visitor also reads the screens in plain
-  words: the result (what happened and what to do), "waiting to be finished from the command line" with the line to
-  run, and "could not be undone by itself" with what members see and the steps to do by hand. **Only the browser
+  installs anything), **ending an update left before the pause** (10 minutes idle, nothing was changed), the
+  **completion of an interrupted last step**, and **ending an update that was undone by hand** (no pause files left,
+  10 minutes idle: it only records the job as ended). The visitor also reads the screens in plain words: an update in
+  progress (the version and the time it started), the result (what happened and what to do), "waiting to be finished
+  from the command line" with the line to run, and "could not be undone by itself" with what members see and the steps
+  to do by hand. **Only the browser
   holding the update's cookie** sees the report (versions, steps and error text, never `.env` values, tokens, cookies or
   database passwords; the app folder is shown as `<app>` and the folder that holds it as `<app-parent>`), the failing
   checks, the list of the site's own files that were kept, and the reason a blocked update gives (it names the backup
