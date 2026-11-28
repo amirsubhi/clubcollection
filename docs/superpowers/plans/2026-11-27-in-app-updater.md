@@ -40,6 +40,29 @@
   every later button update runs the installed release's updater and `min_from_version` is 2.2.0.
 - **Stage 2 = Tasks 6–13.** They are to be revised against the spec's §12 and the journeys before stage 2 starts.
   Stage 1 agents implement Tasks 1–5 only and must not build anything from Tasks 6–13.
+- **Carried into stage 2 from the stage-1 reviews (28 November 2026):**
+  - Button gate is `PreChecks::canStart($checks, $dbTicked, $manualTicked)` only; `allPass()` never enables it. Show
+    checks still marks the two advice rows as "Failed", and the tight-disk warning's fix/host message is never shown:
+    fix both when Task 6 adds the ticks.
+  - `UpdaterHost::NEEDED_FUNCTIONS` is the single list of PHP functions the updater calls; extend it as Tasks 7–10 add
+    calls. `updateRunning()` treats `finished`, `undone`, `failed`, `rolled_back` as terminal and an unreadable
+    `job.json` as running; Task 6/9 must write exactly those statuses.
+  - `paymentInProgress()` = an open gateway bill opened in the last 2 minutes (no `pay:*` lock detection); the saved
+    callbacks of spec §12 cover the rest.
+  - The rename probe stages in `dirname(base_path())`; a host whose open_basedir blocks it fails the check. Decide a
+    fallback staging folder in Task 7 if needed. Sweep stray `.update-probe-*` folders in step 1.
+  - Host messages contain absolute paths and the `open_basedir` value: the copyable report (§12) must replace the app
+    path with `<app>`.
+  - `opcache.restrict_api` is compared without `realpath` (fails safe). No stampede lock on the update check (bounded
+    by the 15-minute failure cache).
+  - The installed commit shows only in Technical details, which exists only when an update is available.
+  - **release.yml:** the job-level `concurrency: release-next` covers the whole publish job, so a third tag queued
+    behind two can cancel the middle tag's pending publish, and rc order isn't guaranteed. In Task 13, move the `next`
+    step into its own job and skip it when the tag isn't the newest rc. The stale-asset loop hides a `gh` failure
+    (harmless). Task 13 is the first real run of the `next` step.
+  - `release-policy.json` floor is `2.2.0-rc.1` so rc → rc updates work; v2.2.0 keeps it.
+  - Format checks on `version`/`tag`/`released_at`/`php_requirement` and broader Version/Manifest test coverage are
+    still open (the build now validates its own manifest with `Manifest::fromJson`).
 
 ## Review Focus
 
