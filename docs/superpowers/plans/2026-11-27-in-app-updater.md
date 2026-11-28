@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - PHP `>=8.4.1`; Laravel 13; **no new Composer or npm dependencies**.
-- No cron, no queue, no background work for the updater. Checks happen on the super admin's dashboard load (cached 1 hour, failures 15 minutes) or on "Check now".
+- No cron, no queue, no background work for the updater. Checks happen on the super admin's or a club admin's dashboard load (cached 1 hour, failures 15 minutes) or on "Check now".
 - Never call `api.github.com`. Manifest URL: `https://github.com/amirsubhi/clubcollection/releases/latest/download/clubportal-manifest.json` (`UPDATE_CHANNEL=next` → `…/releases/download/next/clubportal-manifest.json`). Follow redirects; do not hard-code the CDN host.
 - Updater code uses only pure PHP: `ZipArchive`, ext-curl, `rename`, `copy`, `unlink`, `opcache_reset` (optional). No `proc_open`/`exec`/`symlink`. Each HTTP step must finish well under 30 s.
 - Never touched: `.env*`, `storage/` (except `storage/app/updater/` and `storage/framework/{down,maintenance.php,updating}`), `database/*.sqlite*`, the cPanel block `# php -- BEGIN cPanel-generated handler` … `# php -- END cPanel-generated handler` in `public/.htaccess`.
@@ -21,7 +21,7 @@
 - `public/update-guard.php` and the guard lines in `public/index.php` / `artisan` must parse on PHP 5.6 (same rules as `bootstrap/preflight.php`). The guard lives in `public/`, not `bootstrap/`, because `bootstrap/` is swapped.
 - Trust model: checksum only. `manifest.zip.url` must start with `https://github.com/amirsubhi/clubcollection/releases/download/`. `signature` must be `null` or absent (format 1).
 - Re-confirmation: password, plus a current TOTP (`User::verifyTwoFactorCode`) when `hasEnabledTwoFactor()`; password only otherwise, with a warning line.
-- Admin pages and updater pages are English only. Audit actions: `portal.update_started`, `portal.update_finished`, `portal.update_rolled_back`, `portal.update_failed_check`.
+- Admin pages and updater pages are English only (the members' pause page, stage 2, is in the portal's default language). Audit actions: `portal.update_started`, `portal.update_finished`, `portal.update_rolled_back`, `portal.update_failed_check`.
 - Public repo: no LAN addresses, host names or home paths in code, docs, commits or PR text.
 - Migrations stay additive; this feature adds **no migration** (all updater state is in files).
 - **The spec's "User journeys" (J1–J9) and its §12 are requirements.** Screens use the journeys' plain words; no
@@ -30,6 +30,16 @@
   a copyable host message.
 - Club admins see only the J2 security note (owner's decision, 28 November 2026). Members see nothing except the
   pause page.
+
+## Stages
+
+- **Stage 1 = Tasks 1–5** (owner's decision, 28 November 2026): release metadata, the check, pre-checks, the Updates
+  page, the banner and the club admin note. Stage 1 ends with **no update button**: where the button will go, the
+  page shows "To update, follow the upgrade steps" linking to `docs/RELEASE.md` §2 on GitHub. Stage 1 merges to
+  master but is **not released on its own**: v2.2.0 needs the swap guard and `public/update/` (stage 2), because
+  every later button update runs the installed release's updater and `min_from_version` is 2.2.0.
+- **Stage 2 = Tasks 6–13.** They are to be revised against the spec's §12 and the journeys before stage 2 starts.
+  Stage 1 agents implement Tasks 1–5 only and must not build anything from Tasks 6–13.
 
 ## Review Focus
 
@@ -51,7 +61,8 @@
 - Test: `tests/Unit/ReleaseManifestScriptTest.php`
 
 **Interfaces:**
-- Produces: `release_changelog_section(string $changelog, string $version): ?string`, `release_manifest(string $version, string $zipPath, string $changelog, array $policy, string $releasedAt): array` (keys exactly as the spec's §1 JSON, `format` = 1, `signature` = null, `security` = section contains `### Security`, `summary` = first line of the section's `> **Upgrade:**` note without the markup, `whats_new` = the bullet lines of
+- Produces: `release_changelog_section(string $changelog, string $version): ?string`, `release_manifest(string $version, string $zipPath, string $changelog, array $policy, string $releasedAt): array` (keys exactly as the spec's §1 JSON, `format` = 1, `signature` = null, `security` = section contains `### Security`, `last_security_version` = the newest version ≤ this one whose section has `### Security` (scan all sections; null
+  if none), `summary` = first line of the section's `> **Upgrade:**` note without the markup, `whats_new` = the bullet lines of
   the section's `### What's new` subsection as plain strings, 1–5 of them; `release_manifest` throws when the
   subsection is missing, empty or has more than 5 bullets).
 - Produces: `release-files.json` inside the zip: `{"format":1,"version":"x.y.z","files":{"<relative path>":"<sha256>",…}}`, sorted by path, excluding itself.
@@ -59,7 +70,7 @@
 - Modify: `CHANGELOG.md`: add a `### What's new` subsection (club-facing bullets) to `## [Unreleased]`. A pre-release
   version (`2.2.0-rc.1`, `2.2.0-dev.1`) with no section of its own uses the `[Unreleased]` section.
 
-- [ ] **Step 1: Write the failing tests** — `test_prerelease_falls_back_to_unreleased`, `test_section_is_extracted_for_the_version` (CHANGELOG fixture with `## [v2.2.1] — …` and `## [v2.2.0] — …` → only 2.2.1's lines), `test_security_flag_follows_the_heading`, `test_manifest_fields_and_zip_hash` (temp zip; `sha256` equals `hash_file('sha256')`, `size` equals filesize, `zip.url` = `https://github.com/amirsubhi/clubcollection/releases/download/v2.2.1/clubportal-2.2.1.zip`, `min_from_version` from the policy array), `test_missing_section_is_an_error` (returns null → CLI exits 1), `test_whats_new_bullets` (3 bullets → 3 plain strings,
+- [ ] **Step 1: Write the failing tests** — `test_prerelease_falls_back_to_unreleased`, `test_section_is_extracted_for_the_version` (CHANGELOG fixture with `## [v2.2.1] — …` and `## [v2.2.0] — …` → only 2.2.1's lines), `test_security_flag_follows_the_heading`, `test_manifest_fields_and_zip_hash` (temp zip; `sha256` equals `hash_file('sha256')`, `size` equals filesize, `zip.url` = `https://github.com/amirsubhi/clubcollection/releases/download/v2.2.1/clubportal-2.2.1.zip`, `min_from_version` from the policy array), `test_missing_section_is_an_error` (returns null → CLI exits 1), `test_last_security_version_scans_older_sections` (2.2.3 plain, 2.2.2 security → `"2.2.2"`), `test_whats_new_bullets` (3 bullets → 3 plain strings,
   Markdown `**`/backticks stripped), `test_whats_new_missing_or_over_five_fails_the_build`.
 - [ ] **Step 2: Run** `php artisan test --filter=ReleaseManifestScriptTest` → FAIL (functions undefined).
 - [ ] **Step 3: Implement** the two functions (plain PHP, `require`d by the test) and the CLI wrapper.
@@ -76,9 +87,10 @@
 
 **Interfaces:**
 - Produces: `Version::compare(string $a, string $b): int` (semver incl. pre-release: `2.2.0-rc.1 < 2.2.0`; `dev` is lower than everything), `Version::isRelease(string $v): bool` (false for `dev`).
-- Produces: `Manifest::fromJson(string $json): Manifest` throws `InvalidManifest`; public readonly `string $version, $tag, $zipName, $zipUrl, $zipSha256, $phpRequirement, $minFromVersion, $releasedAt, $notesMarkdown, $notesUrl`, `int $zipSize`, `bool $security`, `?string $summary, $manualAction`, `array $whatsNew` (list of 1–5 strings, each ≤ 200 chars); `Manifest::toArray(): array`.
+- Produces: `Manifest::fromJson(string $json): Manifest` throws `InvalidManifest`; public readonly `string $version, $tag, $zipName, $zipUrl, $zipSha256, $phpRequirement, $minFromVersion, $releasedAt, $notesMarkdown, $notesUrl`, `int $zipSize`, `bool $security`, `?string $summary, $manualAction`, `?string $lastSecurityVersion`, `array $whatsNew` (list of 1–5 strings, each ≤ 200 chars); `Manifest::toArray(): array`.
 
-- [ ] **Step 1: Failing tests** — Version: `['2.1.0','2.2.0',-1]`, `['2.2.0-rc.1','2.2.0',-1]`, `['2.2.0-rc.2','2.2.0-rc.10',-1]`, `['dev','0.0.1',-1]`, equal → 0. Manifest: valid fixture parses; each of these throws: not JSON, `app` ≠ `clubportal`, `format` ≠ 1, `signature` not null, `zip.url` on another host or repo, `sha256` not 64 hex, missing `version`, JSON over 256 KB, `whats_new` missing / empty / over 5 / not strings.
+- [ ] **Step 1: Failing tests** — Version: `['2.1.0','2.2.0',-1]`, `['2.2.0-rc.1','2.2.0',-1]`, `['2.2.0-rc.2','2.2.0-rc.10',-1]`, `['dev','0.0.1',-1]`, equal → 0. Manifest: valid fixture parses; each of these throws: not JSON, `app` ≠ `clubportal`, `format` ≠ 1, `signature` not null, `zip.url` on another host or repo, `sha256` not 64 hex, missing `version`, JSON over 256 KB, `whats_new` missing / empty / over 5 / not strings. `Manifest::isSecurityFor(string $installed): bool` = installed <
+  `lastSecurityVersion` (test: installed 2.2.1, latest 2.2.3, last security 2.2.2 → true; installed 2.2.2 → false).
 - [ ] **Step 2: Run** `php artisan test --filter='VersionTest|ManifestTest'` → FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** → PASS.
@@ -117,7 +129,7 @@
 - `disk` also warns (non-blocking) when the account's file count looks close to a quota, best effort.
 - Keys (stable, used by the UI): `version_from`, `version_newer`, `php`, `extensions`, `functions`, `opcache`, `writable`, `rename`, `disk`, `no_update_running`, `no_payment`, `migrations`, `backup_database`, `manual_action`.
 
-- [ ] **Step 1: Failing tests** — one test per key with the host fake set to fail it, asserting `ok` false and the exact `message` text (from the spec §3 wording, e.g. opcache: "Your host caches PHP code and doesn't let the app clear it: update by hand, or ask the host to allow opcache_reset."); installed below `min_from_version` → message points to `docs/RELEASE.md`; `full: false` skips `writable` and `rename` (the expensive ones); `backup_database` is non-blocking but `needsDatabaseBackupTick()` true when `mysqldump` can't run on MariaDB/MySQL;
+- [ ] **Step 1: Failing tests** — one test per key with the host fake set to fail it, asserting `ok` false and the exact `message` text (from the spec §3 wording, e.g. opcache: "Your host keeps an old copy of the portal's code in memory and doesn't let the portal refresh it, so the portal can't update itself here.", with the technical terms only in `hostMessage`); installed below `min_from_version` → message points to `docs/RELEASE.md`; `full: false` skips `writable` and `rename` (the expensive ones); `backup_database` is non-blocking but `needsDatabaseBackupTick()` true when `mysqldump` can't run on MariaDB/MySQL;
   `test_host_messages`: each host-fixable failure has a `hostMessage` naming the missing feature and the site's
   domain (e.g. extensions: "Please enable the PHP zip extension (ZipArchive) for the account that runs example.org. It is
   needed by the Club Portal web updater."); `test_no_jargon`: no `message`/`fix` contains `opcache`, `migrat`, `swap`,
@@ -154,11 +166,14 @@
 
 - [ ] **Step 1: Failing tests** — member gets 403 on all three routes; club admin gets 403 on `index` and `check`
   and the limited JSON on `status` (`security_waiting` true only for a newer security release; no `installed` or
-  `latest` keys); the club admin dashboard has the note container and no banner; super admin sees installed and latest versions, notes rendered as escaped text (a `<script>` in `notes_markdown` appears escaped), pre-check rows, and the **Update to v2.2.1** button only when all blocking checks pass; `status` JSON shape; banner markup present on `/home` for super admin only; the page shows the `whatsNew` bullets, "about 2 minutes" and
+  `latest` keys); the club admin dashboard has the note container and no banner; super admin sees installed and latest versions, notes rendered as escaped text (a `<script>` in `notes_markdown` appears escaped), pre-check rows, and, in stage 1, no update button: when all blocking checks pass, the line "To update, follow the upgrade steps" with
+  the `docs/RELEASE.md` §2 link (`test_stage_one_has_no_button_and_links_the_manual_steps`); a security banner when the
+  installed version is below `last_security_version` even though the latest release itself is not a security release; `status` JSON shape; banner markup present on `/home` for super admin only; the page shows the `whatsNew` bullets, "about 2 minutes" and
   the members line; a failing host check shows the summary line and the copyable host message, rows only under
   **Show checks**; the rendered page contains none of the jargon words from Global Constraints outside the
   Technical details block; `check` bypasses the cache (`Http::assertSentCount(2)`).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (banner: a `<div hidden>` filled by a small inline script that `fetch`es `admin.updates.status` after load; red + "security fix" when `security`). **Step 4: Run** → PASS.
+- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (banner: a `<div hidden>` filled by a small inline script that `fetch`es `admin.updates.status` after load; red when `latest->isSecurityFor(installed)`; the JSON's `latest.security` and the club admin's `security_waiting`
+  use the same rule, never the raw `security` field). **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updates: page, status endpoint and dashboard banner`.
 
 ### Task 6: Starting an update (re-confirmation, job, token cookie) and database-only backup

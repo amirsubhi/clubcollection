@@ -360,6 +360,7 @@ the strip itself is the reminder.)
   "php_requirement": ">=8.4.1",
   "min_from_version": "2.2.0",
   "security": true,
+  "last_security_version": "2.2.1",
   "summary": "Security release: …",
   "manual_action": null,
   "notes_markdown": "…the CHANGELOG section for this version…",
@@ -368,7 +369,11 @@ the strip itself is the reminder.)
 }
 ```
 
-- `security` is true when the version's CHANGELOG section has a `### Security` heading; `summary` is the first line of
+- `security` is true when the version's CHANGELOG section has a `### Security` heading. `last_security_version` is
+  the newest version, up to and including this one, whose CHANGELOG section has a `### Security` heading (null if
+  none). **A site treats the update as a security fix when its installed version is below `last_security_version`**,
+  not when `security` is true: a site on v2.2.1 offered v2.2.3 still gets the red banner and the club admin note if
+  v2.2.2 was a security release. `summary` is the first line of
   the section's upgrade note. `notes_markdown` is that CHANGELOG section (shown as plain text / safe Markdown, never
   raw HTML).
 - `signature` is always `null` for now (room for signing later).
@@ -415,15 +420,19 @@ Run by the website's PHP when the Updates page loads (cheap ones) and again at s
 - Every file and folder the update replaces is writable by this PHP user (stat the ~8,800 files; owner = current
   user), and a test folder can be created and renamed next to the app folder.
 - OPcache: if `opcache.validate_timestamps` is off and `opcache_reset()` is not allowed for this script, the
-  button is off ("Your host caches PHP code and doesn't let the app clear it: update by hand, or ask the host to allow
-  opcache_reset"). Otherwise the updater knows how long to wait (step 7).
+  button is off. Aminah reads "Your host keeps an old copy of the portal's code in memory and doesn't let the portal
+  refresh it, so the portal can't update itself here." with the fix "Send the message below to your host, or ask whoever
+  installed the portal to update it by hand."; the host message names `opcache.validate_timestamps` and
+  `opcache_reset`. Otherwise the updater knows how long to wait (step 7).
 - 2FA (owner's decision): a super admin with 2FA must enter a current code; one without 2FA (possible only when
   `REQUIRE_ADMIN_2FA=false`) confirms with the password alone, and the page shows a warning line recommending 2FA.
 - Free disk space ≥ 3× the unpacked size; a warning when the account's file count looks close to a quota (best effort).
 - Outbound HTTPS to GitHub works (the manifest fetch already proved it).
 - No update already running (journal), and no gateway payment being settled (no `pay:*` lock held and no bill opened in
   the last 2 minutes; exact test left to the builder).
-- Database: the current schema is fully migrated (`migrate:status` has nothing pending before the update).
+- Database: the current schema is fully migrated (`migrate:status` has nothing pending before the update). Aminah
+  reads "A previous update to your club's records hasn't finished." with the fix "Ask whoever installed the portal to
+  finish it (the technical details are in the report).".
 - Backups: whether `backup:run` can include the database on this host. If not, the page says so and requires a tick:
   "I have taken a cPanel backup of the database" before the button works.
 
