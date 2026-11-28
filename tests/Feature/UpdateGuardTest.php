@@ -259,10 +259,10 @@ class UpdateGuardTest extends TestCase
 
     public function test_stale_journal_after_swap_rolls_back_without_token(): void
     {
-        $this->runUpdateUntil('migrate', 660);
+        $this->runUpdateUntil('health', 660);
         $this->assertSame('<?php // new A', $this->read('app/A.php'));
 
-        $this->assertTrue(clubportal_update_guard_recover($this->site));
+        $this->assertSame('rolled_back', clubportal_update_guard_recover($this->site));
 
         $this->assertNull($this->decide('GET', '/'));
         $this->assertOldTree();
@@ -276,11 +276,69 @@ class UpdateGuardTest extends TestCase
     {
         $this->runUpdateUntil('swap', 660);
 
-        $this->assertTrue(clubportal_update_guard_recover($this->site));
+        // The swap step had begun but moved nothing: no files were put back, so the request carries on.
+        $this->assertSame('continue', clubportal_update_guard_recover($this->site));
 
         $this->assertNull($this->decide('GET', '/'));
         $this->assertMaintenanceGone();
         $this->assertSame('undone', $this->job()['status']);
+    }
+
+    public function test_a_failed_undo_is_marked_in_the_journal_and_the_portal_stays_paused(): void
+    {
+        $this->runUpdateUntil('health', 660);
+        rename($this->oldDir.'/bootstrap', $this->root.'/elsewhere');
+
+        $this->assertSame('paused', clubportal_update_guard_recover($this->site));
+
+        $journal = json_decode((string) file_get_contents($this->dir.'/journal.json'), true);
+        $this->assertIsInt($journal['meta']['recovery_error']['at']);
+        $this->assertStringContainsString('could not all be put back', $journal['meta']['recovery_error']['message']);
+        $this->assertSame(['action' => 'pause'], $this->decide('GET', '/'));
+    }
+
+    public function test_after_a_rollback_a_get_is_sent_to_the_same_address_again(): void
+    {
+        $this->assertSame(['action' => 'reload', 'location' => '/member/payments?page=2'], clubportal_update_guard_after_rollback('GET', '/member/payments?page=2'));
+        $this->assertSame(['action' => 'reload', 'location' => '/'], clubportal_update_guard_after_rollback('head', '/'));
+        foreach (['//evil.example/x', '/\\evil.example', 'https://evil.example/', "/a\r\nSet-Cookie: x=1", '/a b', ''] as $uri) {
+            $this->assertSame(['action' => 'reload', 'location' => '/'], clubportal_update_guard_after_rollback('GET', $uri), $uri);
+        }
+
+        $r = clubportal_update_guard_response($this->site, clubportal_update_guard_after_rollback('GET', '/login'));
+        $this->assertSame(302, $r['status']);
+        $this->assertSame('/login', $r['headers']['Location']);
+    }
+
+    public function test_after_a_rollback_a_post_gets_the_pause_page_reloading_home_in_2_seconds(): void
+    {
+        $this->assertSame(['action' => 'reload_pause'], clubportal_update_guard_after_rollback('POST', '/login'));
+
+        $fallback = clubportal_update_guard_response($this->site, ['action' => 'reload_pause']);
+        $this->assertSame(503, $fallback['status']);
+        $this->assertStringContainsString('<meta http-equiv="refresh" content="2;url=/">', $fallback['body']);
+
+        file_put_contents($this->dir.'/pause.html', '<html><meta http-equiv="refresh" content="30;url=/">Portal Kelab</html>');
+        $saved = clubportal_update_guard_response($this->site, ['action' => 'reload_pause']);
+        $this->assertStringContainsString('content="2;url=/"', $saved['body']);
+        $this->assertStringContainsString('Portal Kelab', $saved['body']);
+    }
+
+    public function test_the_web_guard_answers_a_redirect_after_rolling_back(): void
+    {
+        $this->runUpdateUntil('health', 660);
+        mkdir($this->site.'/public/update/lib', 0755, true);
+        foreach (glob(dirname(__DIR__, 2).'/public/update/lib/*.php') as $file) {
+            copy($file, $this->site.'/public/update/lib/'.basename($file));
+        }
+
+        [$out, $status] = $this->runPhp('$_SERVER["REQUEST_METHOD"] = "GET"; $_SERVER["REQUEST_URI"] = "/login"; require '
+            .var_export($this->site.'/public/update-guard.php', true).'; clubportal_update_guard_web('.var_export($this->site, true).'); echo "CARRIED ON";');
+
+        $this->assertSame(0, $status, $out);
+        $this->assertStringNotContainsString('CARRIED ON', $out);
+        $this->assertOldTree();
+        $this->assertMaintenanceGone();
     }
 
     public function test_without_a_journal_an_old_guard_file_is_recovered(): void
@@ -288,7 +346,7 @@ class UpdateGuardTest extends TestCase
         touch($this->site.'/storage/framework/updating', time() - 700);
         $this->assertFileDoesNotExist($this->dir.'/journal.json');
 
-        $this->assertTrue(clubportal_update_guard_recover($this->site));
+        $this->assertSame('continue', clubportal_update_guard_recover($this->site));
 
         $this->assertNull($this->decide('GET', '/'));
         $this->assertSame('undone', $this->job()['status']);
@@ -298,7 +356,7 @@ class UpdateGuardTest extends TestCase
     {
         touch($this->site.'/storage/framework/updating', time() - 100);
 
-        $this->assertFalse(clubportal_update_guard_recover($this->site));
+        $this->assertSame('paused', clubportal_update_guard_recover($this->site));
         $this->assertSame(['action' => 'pause'], $this->decide('GET', '/'));
     }
 
@@ -306,7 +364,7 @@ class UpdateGuardTest extends TestCase
     {
         $this->runUpdateUntil('migrate', 540);
 
-        $this->assertFalse(clubportal_update_guard_recover($this->site));
+        $this->assertSame('paused', clubportal_update_guard_recover($this->site));
 
         $this->assertSame(['action' => 'pause'], $this->decide('GET', '/'));
         $this->assertSame('<?php // new A', $this->read('app/A.php'));
@@ -317,7 +375,7 @@ class UpdateGuardTest extends TestCase
         $this->runUpdateUntil('migrate', 660);
         $lock = Lock::acquire($this->dir);
 
-        $this->assertFalse(clubportal_update_guard_recover($this->site));
+        $this->assertSame('paused', clubportal_update_guard_recover($this->site));
 
         $lock->release();
         $this->assertSame(['action' => 'pause'], $this->decide('GET', '/'));
@@ -330,7 +388,7 @@ class UpdateGuardTest extends TestCase
         $this->runUpdateUntil('migrate', 660);
         file_put_contents($this->dir.'/journal.json', 'broken');
 
-        $this->assertFalse(clubportal_update_guard_recover($this->site));
+        $this->assertSame('paused', clubportal_update_guard_recover($this->site));
         $this->assertSame(['action' => 'pause'], $this->decide('GET', '/'));
     }
 
@@ -415,7 +473,7 @@ class UpdateGuardTest extends TestCase
             .var_export($this->site, true).')); echo " "; var_export(clubportal_update_guard_decide('.var_export($this->site, true).', "GET", "/", null));');
 
         $this->assertSame(0, $status);
-        $this->assertStringStartsWith('false ', $out);
+        $this->assertStringStartsWith("'paused' ", $out);
         $this->assertStringContainsString("'pause'", $out);
         $this->assertSame('<?php // new A', $this->read('app/A.php'));
     }

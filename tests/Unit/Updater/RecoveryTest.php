@@ -32,7 +32,7 @@ class RecoveryTest extends TestCase
 
     public function test_after_the_switch_the_old_files_are_put_back(): void
     {
-        $this->runUpdateUntil('migrate', 660);
+        $this->runUpdateUntil('health', 660);
         $this->assertSame('<?php // new A', $this->read('app/A.php'));
 
         $this->assertSame('undone', Recovery::runIfIdle($this->site));
@@ -42,11 +42,84 @@ class RecoveryTest extends TestCase
         $this->assertSame('undone', $this->job()['status']);
         $o = $this->outcome();
         $this->assertSame('undone', $o['outcome']);
-        $this->assertSame('migrate', $o['step']);
+        $this->assertSame('health', $o['step']);
+        $this->assertSame(Recovery::REASON, $o['reason']);
         $this->assertSame(['2.2.0', '2.2.1'], [$o['from'], $o['to']]);
         $this->assertCount(1, glob($this->dir.'/history/*-2.2.0-2.2.1.json'));
         $this->assertTrue(Journal::open($this->dir)->isRecovering());
         $this->assertSame('rolled_back', Journal::open($this->dir)->get('swap')['state']);
+    }
+
+    public function test_an_update_left_part_way_through_the_database_change_ends_blocked(): void
+    {
+        $this->runUpdateUntil('migrate', 660);
+
+        $this->assertSame('blocked', Recovery::runIfIdle($this->site));
+
+        $this->assertOldTree();
+        $this->assertMaintenanceGone();
+        $o = $this->outcome();
+        $this->assertSame('blocked', $o['outcome']);
+        $this->assertSame('migrate', $o['step']);
+        $this->assertSame(Recovery::BLOCKED_REASON, $o['reason']);
+        $this->assertStringContainsString('Restore the database', $o['reason']);
+        $this->assertSame('blocked', json_decode((string) file_get_contents(glob($this->dir.'/history/*.json')[0]), true)['outcome']);
+        $this->assertSame('undone', $this->job()['status']);
+    }
+
+    public function test_a_failed_undo_is_kept_in_the_journal_and_cleared_by_a_later_success(): void
+    {
+        $this->runUpdateUntil('health', 660);
+        rename($this->oldDir.'/bootstrap', $this->root.'/elsewhere');
+        try {
+            Recovery::runIfIdle($this->site);
+            $this->fail('expected the failure');
+        } catch (UpdaterError) {
+        }
+        $error = Journal::open($this->dir)->get('recovery_error');
+        $this->assertIsInt($error['at']);
+        $this->assertStringContainsString('could not all be put back', $error['message']);
+
+        // Someone puts the folder back; the next idle request finishes the undo and clears the marker.
+        rename($this->root.'/elsewhere', $this->oldDir.'/bootstrap');
+        $this->assertSame('undone', Recovery::runIfIdle($this->site, time() + 700));
+        $this->assertNull(Journal::open($this->dir)->get('recovery_error'));
+        $this->assertOldTree();
+    }
+
+    public function test_when_the_pause_cannot_be_lifted_the_undo_waits_and_is_not_written_twice(): void
+    {
+        $this->runUpdateUntil('health', 660);
+        $framework = $this->site.'/storage/framework';
+        chmod($framework, 0555);
+        try {
+            Recovery::runIfIdle($this->site);
+            $this->fail('expected the failure');
+        } catch (UpdaterError) {
+        } finally {
+            chmod($framework, 0755);
+        }
+        $this->assertFileExists($framework.'/updating');
+        $this->assertSame('undone', $this->job()['status']);
+        $outcome = (string) file_get_contents($this->dir.'/outcome.json');
+        $this->assertNotNull(Journal::open($this->dir)->get('recovery_error'));
+
+        // The clock moved: the next request within 10 minutes does nothing.
+        chmod($framework, 0555);
+        try {
+            $this->assertNull(Recovery::runIfIdle($this->site));
+        } finally {
+            chmod($framework, 0755);
+        }
+
+        // Ten minutes later it lifts the pause without writing the outcome or the history again.
+        $history = glob($this->dir.'/history/*.json');
+        $historyBody = (string) file_get_contents($history[0]);
+        $this->assertSame('undone', Recovery::runIfIdle($this->site, time() + 700));
+        $this->assertMaintenanceGone();
+        $this->assertSame($outcome, file_get_contents($this->dir.'/outcome.json'));
+        $this->assertSame($history, glob($this->dir.'/history/*.json'));
+        $this->assertSame($historyBody, file_get_contents($history[0]));
     }
 
     public function test_before_the_switch_the_pause_is_lifted_and_the_job_undone(): void

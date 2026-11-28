@@ -17,6 +17,8 @@ final class Recovery
 
     public const REASON = 'The update page was closed, or the screen went off, and no step ran for 10 minutes, so the update was undone.';
 
+    public const BLOCKED_REASON = 'The update stopped while it was changing the club\'s records, so one change may not have finished. The old version was put back. Restore the database from the copy saved before the update (or a cPanel backup), or have it checked, before trying again.';
+
     /** Job statuses of an update that has not ended yet (every other status is final). */
     private const OPEN_JOB_STATUSES = ['ready', 'running'];
 
@@ -62,19 +64,57 @@ final class Recovery
 
     /**
      * Undoes the update. The caller holds the lock. The journal is marked first, so no step can start afterwards; the
-     * guard file is the last thing removed, so a crash part-way is simply tried again by the next idle request.
+     * guard file is the last thing removed, so a crash part-way is simply tried again by the next idle request (the
+     * journal's clock is moved first, so that is at most once per IDLE_AFTER). A failure is also kept in the journal's
+     * `recovery_error` meta ({at, message}) for the updater page.
      *
-     * @return string the outcome: `undone`, or the job's own final status when an earlier path already ended it
+     * An update left while `migrate` was begun but not done ends `blocked` (files put back, but the database may be
+     * half changed: J5 last case); otherwise `undone`. The job is marked `undone` either way.
      *
-     * @throws UpdaterError when the journal cannot be read (nothing is changed) or the old files could not all be put back
+     * @return string the outcome: `undone` or `blocked`, or the job's own final status when an earlier pass or path
+     *                already ended it (then outcome.json and the history are not written again)
+     *
+     * @throws UpdaterError when the journal cannot be read (nothing is changed), the old files could not all be put
+     *                      back, or the pause could not be lifted
      */
     public static function run(string $app): string
     {
         $f = Files::forApp($app);
         $j = Journal::open($f->dir);
+        try {
+            $result = self::undo($app, $f, $j);
+        } catch (\Throwable $e) {
+            self::noteError($j, $e->getMessage());
+            throw $e;
+        }
+        $j->set('recovery_error', null);
+
+        return $result;
+    }
+
+    /** Records a failed undo in the journal (`recovery_error` = {at, message}). Best effort: never throws. */
+    public static function noteFailure(string $app, string $message): void
+    {
+        try {
+            self::noteError(Journal::open(Files::forApp($app)->dir), $message);
+        } catch (\Throwable) {
+        }
+    }
+
+    private static function noteError(Journal $j, string $message): void
+    {
+        try {
+            $j->set('recovery_error', ['at' => time(), 'message' => mb_substr($message, 0, 1000)]);
+        } catch (\Throwable) {
+        }
+    }
+
+    private static function undo(string $app, Files $f, Journal $j): string
+    {
         $job = self::readJob($f) ?? [];
         $status = $job['status'] ?? null;
         $step = $j->firstUnfinished();
+        $migrateState = $j->steps()['migrate']['state'] ?? null;
         $j->markRecovering();
 
         $finished = $status === 'finished' || (($j->steps()['finish']['state'] ?? null) === 'done');
@@ -90,23 +130,28 @@ final class Recovery
             }
         }
 
-        $result = is_string($status) && ! in_array($status, self::OPEN_JOB_STATUSES, true) ? $status : 'undone';
-        if ($result === 'undone') {
+        $open = ! is_string($status) || in_array($status, self::OPEN_JOB_STATUSES, true);
+        $result = is_string($status) ? $status : 'undone';
+        if ($open) {
+            $blocked = $migrateState !== null && $migrateState !== 'done' && ! $finished;
+            $result = $blocked ? 'blocked' : 'undone';
             Outcome::write($f->dir, [
-                'outcome' => 'undone',
+                'outcome' => $result,
                 'from' => $job['from_version'] ?? null,
                 'to' => $job['to_version'] ?? null,
-                'step' => $step,
-                'reason' => self::REASON,
+                'step' => $blocked ? 'migrate' : $step,
+                'reason' => $blocked ? self::BLOCKED_REASON : self::REASON,
                 'at' => time(),
                 'started_at' => is_int($job['created_at'] ?? null) ? $job['created_at'] : self::firstStart($j),
-                'log' => $step !== null ? ($j->steps()[$step]['log'] ?? []) : [],
+                'log' => $j->steps()[$blocked ? 'migrate' : (string) $step]['log'] ?? [],
                 'steps' => self::timings($j),
             ]);
             $job['status'] = 'undone';
             $job['ended_at'] = time();
             Files::writeAtomic($f->jobPath, (string) json_encode($job, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
         }
+        // If lifting the pause fails, the next try waits for the 10-minute clock again instead of every request.
+        $j->touch();
         Maintenance::off($app);
 
         return $result;

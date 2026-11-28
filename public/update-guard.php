@@ -52,34 +52,78 @@ if (! function_exists('clubportal_update_guard_decide')) {
 
     /**
      * Undoes an abandoned update: the guard file is up and no step ran for 10 minutes. Needs PHP 8.4 and the updater
-     * library; takes the update lock (another request holding it means nothing happens). True when the guard is gone
-     * afterwards, so the request can carry on into the restored portal.
+     * library; takes the update lock (another request holding it means nothing happens). Returns 'paused' (the guard
+     * is still up), 'continue' (no guard file, or it was lifted without putting files back) or 'rolled_back' (this
+     * request put the old files back: it must not go on into the app, whose code may already be cached).
+     * A failure is kept in the journal as recovery_error for the updater page.
      */
     function clubportal_update_guard_recover($basePath)
     {
         $guard = $basePath.'/storage/framework/updating';
         if (! is_file($guard)) {
-            return false;
+            return 'continue';
         }
         $idle = clubportal_update_guard_idle_seconds($basePath);
         if ($idle === null || $idle < 600) {
-            return false;
+            return 'paused';
         }
         $lib = dirname(__FILE__).'/update/lib/load.php';
         if (! defined('PHP_VERSION_ID') || PHP_VERSION_ID < 80400 || ! is_file($lib)) {
-            return false;
+            return 'paused';
         }
+        $before = clubportal_update_guard_swap_state($basePath);
+        $error = null;
         try {
             require_once $lib;
             ClubPortalUpdater\Recovery::runIfIdle($basePath);
         } catch (Exception $e) {
-            @error_log('Club Portal: undoing the abandoned update failed: '.$e->getMessage());
+            $error = $e->getMessage();
         } catch (Throwable $e) {
-            @error_log('Club Portal: undoing the abandoned update failed: '.$e->getMessage());
+            $error = $e->getMessage();
+        }
+        if ($error !== null) {
+            @error_log('Club Portal: undoing the abandoned update failed: '.$error);
+            if (class_exists('ClubPortalUpdater\\Recovery', false)) {
+                ClubPortalUpdater\Recovery::noteFailure($basePath, $error);
+            }
         }
         clearstatcache();
+        if (is_file($guard)) {
+            return 'paused';
+        }
+        if ($before !== 'rolled_back' && clubportal_update_guard_swap_state($basePath) === 'rolled_back') {
+            return 'rolled_back';
+        }
 
-        return ! is_file($guard);
+        return 'continue';
+    }
+
+    /** The journal's swap state (meta.swap.state), or null. */
+    function clubportal_update_guard_swap_state($basePath)
+    {
+        $journal = clubportal_update_guard_read_json($basePath.'/storage/app/updater/journal.json');
+
+        return is_array($journal) && isset($journal['meta']['swap']['state']) && is_string($journal['meta']['swap']['state'])
+            ? $journal['meta']['swap']['state'] : null;
+    }
+
+    /**
+     * What to answer after this request put the old files back: a GET or HEAD is sent to the same address again (a
+     * fresh request runs the restored code); anything else gets the pause page, which reloads the home page in 2 s.
+     * The address is used only when it is a plain path on this site (never //host or a backslash).
+     */
+    function clubportal_update_guard_after_rollback($method, $uri)
+    {
+        $method = is_string($method) ? strtoupper($method) : '';
+        if ($method !== 'GET' && $method !== 'HEAD') {
+            return array('action' => 'reload_pause');
+        }
+        $location = '/';
+        if (is_string($uri) && preg_match('~^/(?![/\\\\])[^\\\\\x00-\x20\x7f]*$~', $uri) === 1) {
+            $location = $uri;
+        }
+
+        return array('action' => 'reload', 'location' => $location);
     }
 
     /**
@@ -270,6 +314,11 @@ if (! function_exists('clubportal_update_guard_decide')) {
     function clubportal_update_guard_response($basePath, $decision)
     {
         $action = is_array($decision) && isset($decision['action']) ? $decision['action'] : 'pause';
+        if ($action === 'reload') {
+            $location = isset($decision['location']) && is_string($decision['location']) ? $decision['location'] : '/';
+
+            return array('status' => 302, 'headers' => array('Location' => $location, 'Cache-Control' => 'no-store'), 'body' => '');
+        }
         if ($action === 'to_updater') {
             return array('status' => 302, 'headers' => array('Location' => '/update/', 'Cache-Control' => 'no-store'), 'body' => '');
         }
@@ -283,6 +332,13 @@ if (! function_exists('clubportal_update_guard_decide')) {
         $html = is_file($pause) ? @file_get_contents($pause) : false;
         if (! is_string($html) || trim($html) === '') {
             $html = clubportal_update_guard_fallback_page();
+        }
+        if ($action === 'reload_pause') {
+            $html = str_replace('content="30;url=/"', 'content="2;url=/"', $html);
+            if (strpos($html, 'content="2;url=/"') === false) {
+                $html = str_replace('content="30;url=/"', 'content="2;url=/"', clubportal_update_guard_fallback_page());
+            }
+            $headers['Retry-After'] = '2';
         }
         $headers['Content-Type'] = 'text/html; charset=UTF-8';
 
@@ -348,9 +404,14 @@ if (! function_exists('clubportal_update_guard_decide')) {
         }
         $decision = array('action' => 'pause');
         try {
-            clubportal_update_guard_recover($basePath);
+            $recovered = clubportal_update_guard_recover($basePath);
             $method = isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
-            $path = isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+            $uri = isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+            if ($recovered === 'rolled_back') {
+                clubportal_update_guard_send(clubportal_update_guard_response($basePath, clubportal_update_guard_after_rollback($method, $uri)));
+                exit;
+            }
+            $path = $uri;
             $query = strpos($path, '?');
             if ($query !== false) {
                 $path = substr($path, 0, $query);

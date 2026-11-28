@@ -102,7 +102,10 @@ final class Maintenance
 
     private static function remove(string $path): void
     {
-        if (is_file($path) && ! @unlink($path)) {
+        if (! is_file($path)) {
+            return;
+        }
+        if (! is_writable(dirname($path)) || ! @unlink($path)) {
             clearstatcache(true, $path);
             if (is_file($path)) {
                 throw new UpdaterError('Cannot remove '.basename($path).'.');
