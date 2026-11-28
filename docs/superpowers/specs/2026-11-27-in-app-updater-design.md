@@ -232,8 +232,8 @@ Halfway through, Aminah's phone locks (the wake lock is not supported on her old
   else happened. If two tabs are open, the second says "This update is running in another tab" and only watches.
 - **She presses Back or opens the dashboard in another tab** during the pause: her browser carries the maintenance
   bypass (set when the update starts), so she sees the admin, with a strip "Update in progress [Watch]".
-- **She comes back after 10 minutes, or never.** The first request after that (hers, a member's, or the every-minute
-  scheduler) undoes the update (§5 recovery): the portal is back on v2.2.0, members can use it, nothing was lost. When
+- **She comes back after 10 minutes, or never.** The first web request after that (hers or a member's; not the
+  scheduler, §12) undoes the update (§5 recovery): the portal is back on v2.2.0, members can use it, nothing was lost. When
   Aminah opens the updater page or her dashboard she sees: "The update to v2.2.1 didn't finish, because this page was
   closed or the phone's screen went off. Your portal was put back on v2.2.0 at 9:42 pm and is working normally. Nothing
   was lost. [Try again]". An email says the same, if mail is set up.
@@ -358,13 +358,14 @@ the strip itself is the reminder.)
   "released_at": "2026-12-10T03:00:00Z",
   "zip": { "name": "clubportal-2.2.1.zip", "url": "https://github.com/amirsubhi/clubcollection/releases/download/v2.2.1/clubportal-2.2.1.zip", "size": 23068672, "sha256": "…" },
   "php_requirement": ">=8.4.1",
-  "min_from_version": "2.2.0",
+  "min_from_version": "2.2.0-rc.1",
   "security": true,
   "last_security_version": "2.2.1",
   "summary": "Security release: …",
   "manual_action": null,
   "notes_markdown": "…the CHANGELOG section for this version…",
   "notes_url": "https://github.com/amirsubhi/clubcollection/releases/tag/v2.2.1",
+  "whats_new": ["Receipts now show the club's logo", "Fixed: overdue reminders sometimes went out twice"],
   "signature": null
 }
 ```
@@ -378,7 +379,7 @@ the strip itself is the reminder.)
   raw HTML).
 - `signature` is always `null` for now (room for signing later).
 - `min_from_version` and `manual_action` come from a small file kept in the repository, `release-policy.json`
-  (`{"min_from_version": "2.2.0", "manual_action": null}`), which the release prep commit updates when a release needs
+  (`{"min_from_version": "2.2.0-rc.1", "manual_action": null}`; rc.1 so release candidates can update each other), which the release prep commit updates when a release needs
   it. `manual_action` is a short text for a release that needs something the updater must not do (e.g. a new `.env`
   setting): the Updates page shows it and the button needs a tick "I have done this". A release whose upgrade cannot
   be done in place sets `min_from_version` to itself, so the button is never offered for it.
@@ -572,6 +573,21 @@ OPcache; it says so.
   only pass `index.php` at the root to PHP need a location for `/update/` (document in `docs/INSTALL.md`). The token
   cookie is `Secure` only when the site is on https, so a plain-http test install still works.
 - `docs/superpowers/` (design notes) is dropped from the release zip by `scripts/build-release.sh`.
+- **Host facts (research, 28 November 2026; used by the stage-1 pre-checks):**
+  - `disk_free_space()` reports the whole filesystem, not the cPanel account's quota, and PHP has no usable way to read
+    the quota or the file-count (inode) limit. A low reading is a real fail; a high one proves nothing, so check every
+    write's return value during staging, where a full quota shows up.
+  - OPcache settings are read with `ini_get` (never restricted). `opcache_get_status()` and `opcache_reset()` are both
+    blocked by `opcache.restrict_api`. Under LiteSpeed LSAPI a reset may not reach every worker (unverified): after
+    the swap, confirm with a fresh HTTP request that the new version is served.
+  - On PHP 8, `function_exists()` is the reliable test for disabled functions; `ini_get('disable_functions')` only
+    explains a failure.
+  - `is_writable()` is mostly right under CageFS and PHP-FPM but can be fooled by immutable files, open_basedir and a
+    full quota: a real write/rename/delete probe is the reliable test. open_basedir is unset by default on
+    EasyApache 4; a site limited to its document root or home folder would block staging in `<app>/..` (how common
+    that is could not be found: unverified). Task 7 decides a fallback staging folder.
+  - `proc_open`/`exec` are often disabled on shared hosts, so `mysqldump` from web PHP is frequently unavailable
+    (BackupRun already falls back; the pre-check asks for a person's backup then).
 
 ### 10. Testing
 

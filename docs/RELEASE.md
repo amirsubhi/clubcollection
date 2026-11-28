@@ -11,7 +11,13 @@ the built front end (`public/build/`) already inside.
 
 **Normally: download it.** Pushing a tag `v*` (e.g. `v2.0.0`) runs `.github/workflows/release.yml`: it runs the tests
 on PHP 8.4, builds the zip with `scripts/build-release.sh` and attaches `clubportal-<version>.zip` and
-`clubportal-<version>.zip.sha256` to the GitHub Release for that tag. Download both and check the zip:
+`clubportal-<version>.zip.sha256` to the GitHub Release for that tag. It also attaches `clubportal-manifest.json`, the
+release information that sites' Updates page reads. **The build fails unless the version's CHANGELOG section (or
+`[Unreleased]` for a pre-release) has a `### What's new` subsection of 1–5 plain-language bullets of at most 200
+characters each**, written for club treasurers and secretaries (security fixes first); it also fails when the tree
+contains a symbolic link. A tag containing `-` (e.g. `v2.2.0-rc.1`) is published as a pre-release and also replaces
+the assets of the pre-release `next` (the `UPDATE_CHANNEL=next` test channel). Download the zip and its checksum and
+check the zip:
 
 ```bash
 sha256sum -c clubportal-2.0.0.zip.sha256          # macOS: shasum -a 256 -c clubportal-2.0.0.zip.sha256
