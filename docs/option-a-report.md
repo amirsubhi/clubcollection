@@ -1064,3 +1064,26 @@ Run after the merge, on the exact tree of `master` (a throwaway copy at `03a0523
   - The FPX pay button (no payment gateway in the test setup).
   - Member emails in the new languages (covered by PHPUnit only).
   - The shared test install still runs v2.0.1.
+
+## Release v2.1.0 (27 Nov 2026)
+
+- **Why a security release.** A fresh `composer audit` on `master` found five Symfony advisories published on
+  25 November (`http-kernel`, `routing`, `mailer`), all in v2.0.0 and v2.0.1. PR #44 updated Symfony to 8.1.12
+  (seven patch updates in all), regenerated the licence files, set the service worker cache to `v5`, and gave the
+  changelog its v2.1.0 section with a Security entry. Before merging: SQLite 1168 passed, MariaDB 10.11 1167 passed and
+  1 skipped, `tsc` and the build pass, `composer audit` and `npm audit` are clean. CI passed on SQLite, MariaDB and
+  MySQL 8 (one re-run after a Packagist timeout during the audit step).
+- **Upgrade rehearsal before the release.** A copy of a v2.0.1 install with its MariaDB data, upgraded with a zip built
+  from `master` by following `docs/RELEASE.md` §2 step by step: backup with the database, migration, `app:doctor` shows
+  the new version, row counts unchanged, the migration rolls back and runs again, existing members get the portal
+  default language (admins English emails). The zip holds no `.env`, database, logs, tests or pseudo-language.
+- **Published:** tag `v2.1.0` on `a4c78ca`; the Release workflow built and attached `clubportal-2.1.0.zip` and its
+  `.sha256`.
+- **The published zip on the shared test install** (MariaDB, nginx, admin 2FA on), upgraded from v2.0.1 by
+  `docs/RELEASE.md` §2: checksum OK, the one migration ran, `app:doctor` shows Version 2.1.0 with only the known
+  test-install FAILs (plain http, no gateway secret).
+  - Crawl of every page reachable for the super admin, a club treasurer and a member, at 1366 px and 390 px
+    (208 page loads): no error pages, nothing wider than the page; the only console error is the known "Unable to
+    encrypt history" on plain http.
+  - A member chose Chinese in the picker: saved on the account, a fresh browser came back in Chinese; the picker lists
+    the six languages. The service worker serves cache `v5`.
