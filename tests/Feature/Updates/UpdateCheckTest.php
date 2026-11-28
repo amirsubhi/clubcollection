@@ -179,6 +179,44 @@ class UpdateCheckTest extends TestCase
         $this->assertSame('GitHub did not answer, try again later.', $this->check()->error);
     }
 
+    public function test_oversized_body_without_content_length_is_a_failure(): void
+    {
+        $big = json_encode($this->manifest() + ['padding' => str_repeat('x', 300 * 1024)]);
+        Http::fake(['*' => Http::response($big, 200, ['Content-Length' => ''])]);
+
+        $s = $this->check();
+
+        $this->assertSame('GitHub did not answer, try again later.', $s->error);
+        $this->assertFalse($s->available);
+    }
+
+    public function test_requests_are_https_only_with_bounded_redirects_and_identity_encoding(): void
+    {
+        Http::fake(['*' => Http::response($this->manifest())]);
+
+        $this->check();
+
+        Http::assertSent(fn (Request $r) => $r->hasHeader('Accept-Encoding', 'identity'));
+    }
+
+    public function test_unparseable_cache_entry_is_dropped_and_refetched(): void
+    {
+        $bad = $this->manifest();
+        $bad['zip']['url'] = 'https://evil.example/x.zip';
+        foreach ([['checked_at' => now()->toIso8601String(), 'manifest' => $bad], 'junk', ['checked_at' => 5]] as $entry) {
+            Cache::flush();
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response($this->manifest())]);
+            Cache::put('updates.status.stable', $entry, 3600);
+
+            $s = $this->check();
+
+            $this->assertNull($s->error);
+            $this->assertTrue($s->available);
+            Http::assertSentCount(1);
+        }
+    }
+
     public function test_manifest_that_fails_validation_is_a_failure(): void
     {
         $bad = $this->manifest();

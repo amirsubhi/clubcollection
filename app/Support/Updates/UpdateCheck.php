@@ -31,12 +31,21 @@ final class UpdateCheck
 
             $key = $this->cacheKey();
             $entry = $fresh ? null : Cache::get($key);
-            if (! is_array($entry) || ! array_key_exists('checked_at', $entry)) {
+            $latest = null;
+            if ($entry !== null) {
+                try {
+                    $latest = $this->parseEntry($entry);
+                } catch (Throwable) {
+                    // A cached entry that no longer parses (e.g. after a deploy) is dropped and fetched again.
+                    Cache::forget($key);
+                    $entry = null;
+                }
+            }
+            if ($entry === null) {
                 $entry = $this->fetch();
                 Cache::put($key, $entry, (int) config($entry['manifest'] === null ? 'updates.failure_cache_seconds' : 'updates.cache_seconds'));
+                $latest = $this->parseEntry($entry);
             }
-
-            $latest = $entry['manifest'] === null ? null : Manifest::fromJson((string) json_encode($entry['manifest']));
 
             return new UpdateStatus(
                 $installed,
@@ -64,21 +73,50 @@ final class UpdateCheck
         return 'updates.status.'.config('updates.channel');
     }
 
+    /** @param  mixed  $entry  a cache entry; throws when it is not a well-formed one */
+    private function parseEntry(mixed $entry): ?Manifest
+    {
+        if (! is_array($entry) || ! is_string($entry['checked_at'] ?? null) || ! array_key_exists('manifest', $entry)) {
+            throw new \UnexpectedValueException('Malformed cache entry.');
+        }
+        if ($entry['manifest'] === null) {
+            return null;
+        }
+        if (! is_array($entry['manifest'])) {
+            throw new \UnexpectedValueException('Malformed cache entry.');
+        }
+
+        return Manifest::fromJson((string) json_encode($entry['manifest']));
+    }
+
     /** @return array{checked_at: string, manifest: array<string, mixed>|null} */
     private function fetch(): array
     {
         $now = CarbonImmutable::now()->toIso8601String();
         try {
             $response = Http::timeout((int) config('updates.timeout'))
-                ->withOptions(['allow_redirects' => true])
+                ->connectTimeout(2)
+                ->withOptions([
+                    'allow_redirects' => ['max' => 3, 'protocols' => ['https']],
+                    'stream' => true,
+                    'decode_content' => false,
+                ])
+                ->withHeaders(['Accept-Encoding' => 'identity'])
                 ->accept('application/json')
                 ->get($this->manifestUrl());
-            $length = (int) $response->header('Content-Length');
-            if (! $response->successful() || $length > Manifest::MAX_BYTES) {
+            if (! $response->successful() || (int) $response->header('Content-Length') > Manifest::MAX_BYTES) {
                 return ['checked_at' => $now, 'manifest' => null];
             }
 
-            return ['checked_at' => $now, 'manifest' => Manifest::fromJson($response->body())->toArray()];
+            // Read at most one byte more than the cap, so a large or endless body never fills memory.
+            $stream = $response->toPsrResponse()->getBody();
+            $body = '';
+            while (! $stream->eof() && strlen($body) <= Manifest::MAX_BYTES) {
+                $body .= $stream->read(Manifest::MAX_BYTES + 1 - strlen($body));
+            }
+            $stream->close();
+
+            return ['checked_at' => $now, 'manifest' => Manifest::fromJson($body)->toArray()];
         } catch (Throwable) {
             return ['checked_at' => $now, 'manifest' => null];
         }
