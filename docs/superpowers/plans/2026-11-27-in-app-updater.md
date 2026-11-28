@@ -240,8 +240,12 @@ section wins.
 - **Admin bypass.** Step `maintenance` writes Laravel's `down` file with a random `secret` and `except: ["webhook/*"]`,
   and sets Laravel's maintenance bypass cookie (`laravel_maintenance`, same format as
   `Illuminate\Foundation\Http\MaintenanceModeBypassCookie`, read from vendor before the switch) on the updating admin's
-  browser. While the guard file exists the guard answers before Laravel, so the bypass only matters once the guard is
-  gone (from `opcache` until `finish`).
+  browser. **The guard file stays from `maintenance` until `finish`** (lifting it earlier would leave Laravel's
+  maintenance page up for good if the tab closes, with no idle recovery). The guard verifies the bypass cookie itself
+  (PHP 5.6: `base64_decode`, `json_decode`, `hash_hmac('sha256', expires_at, secret)` with the secret from the `down`
+  file, and `expires_at` in the future): a valid cookie before the journal has `opcache` done → `302` to `/update/`
+  (she pressed Back mid-switch, J4); a valid cookie after → the request continues into Laravel (the admin's Watch strip,
+  the `migrate` boot and the browser's health requests). Everyone else gets the pause page.
 - **Saved payment callbacks.** While the guard file exists, a `POST` to `/webhook/toyyibpay` or `/webhook/billplz` is
   saved as `webhooks/<microtime>-<random>.json` (`{path, body, headers: {content-type, x-signature,
   x-toyyibpay-*, x-billplz-*}, at}`; body at most 64 KB; at most 200 files, then refused with 503 unsaved) and answered
@@ -367,8 +371,10 @@ section wins.
 - Test: `tests/Unit/Updater/{Maintenance,Recovery,Outcome}Test.php`, `tests/Feature/UpdateGuardTest.php`
 
 **Interfaces:**
-- `clubportal_update_guard_decide($basePath, $method, $path)` (pure, testable): returns `null` (no guard file, or
-  recovery ran and the request continues), `array('action'=>'save_webhook')`, or `array('action'=>'pause')`.
+- `clubportal_update_guard_decide($basePath, $method, $path, $bypassCookie)` (pure apart from reading files,
+  testable): returns `null` (no guard file; or recovery ran; or a valid bypass cookie after `opcache` is done, and the
+  request continues), `array('action'=>'save_webhook')`, `array('action'=>'to_updater')` (valid bypass cookie, switch
+  not done) or `array('action'=>'pause')`.
   `clubportal_update_guard_web($basePath)` acts on it: `pause` → 503, `Retry-After: 120`, `pause.html` (or the
   built-in fallback) and `exit`; `save_webhook` → save per Stage 2 rules, 503, `exit`; idle ≥ 600 s and the updater
   lib present → `require public/update/lib/load.php; ClubPortalUpdater\Recovery::run($basePath)` under the lock, then
@@ -386,7 +392,7 @@ section wins.
   from `Report::text`), temp + rename; also writes the history file.
 
 - [ ] **Step 1: Failing tests** — decide: no guard file → null; guard + GET → pause; guard + POST `/webhook/billplz`
-  → save_webhook; guard + POST elsewhere → pause; save caps (65 KB body refused, 201st file refused, only the listed
+  → save_webhook; guard + POST elsewhere → pause; valid bypass cookie before `opcache` done → to_updater, after → null; a forged or expired cookie → pause; save caps (65 KB body refused, 201st file refused, only the listed
   headers kept, file name never from input); pause headers 503 + `Retry-After: 120` and the fallback when
   `pause.html` is missing; **`test_stale_journal_after_swap_rolls_back_without_token`** (guard + journal switch
   started + `last_step_at` 11 min ago → old tree restored, guard, down and maintenance.php gone, outcome `undone`,
