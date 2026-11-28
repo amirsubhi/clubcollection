@@ -218,6 +218,24 @@ class StepsTest extends TestCase
         $this->assertNotPaused();
     }
 
+    public function test_after_an_interrupted_put_back_no_step_runs_on_half_restored_files(): void
+    {
+        $c = $this->context();
+        $this->runSteps($c, 'migrate');
+        $j = Journal::open($this->dir);
+        $swap = $j->get('swap');
+        $swap['state'] = 'rolling_back';
+        $j->set('swap', $swap);
+
+        $r = Steps::run('migrate', $c);
+
+        $this->assertSame('failed', $r['status']);
+        $this->assertNotContains('migrate --force', $this->laravel->calls);
+        $this->assertOldSite();
+        $this->assertNotPaused();
+        $this->assertSame('rolled_back', $this->outcome()['outcome']);
+    }
+
     public function test_failed_prechecks_end_the_update_with_their_lines(): void
     {
         $this->laravel->failedChecks = ['No member is paying right now: A member is paying a fee right now.'];

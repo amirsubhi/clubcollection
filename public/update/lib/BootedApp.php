@@ -41,6 +41,12 @@ final class LaravelApp implements BootedApp
 {
     private function __construct(private readonly object $kernel) {}
 
+    /** An app whose console kernel is already bootstrapped (the feature tests use the running one). */
+    public static function forKernel(object $kernel): self
+    {
+        return new self($kernel);
+    }
+
     public static function boot(string $app): self
     {
         $app = rtrim($app, '/\\');
@@ -90,7 +96,7 @@ final class LaravelApp implements BootedApp
     public function health(string $version): ?string
     {
         $installed = (new UpdaterHost)->installedVersion();
-        if ($installed !== $version) {
+        if (ltrim($installed, 'vV') !== ltrim($version, 'vV')) {
             return "The new version reports itself as $installed, not $version.";
         }
         try {

@@ -176,6 +176,37 @@ class UpdaterPageTest extends TestCase
 
     // ------------------------------------------------------------------ result screens
 
+    public function test_a_running_second_attempt_is_shown_instead_of_the_first_attempts_result(): void
+    {
+        $this->writeHistory(['outcome' => 'rolled_back', 'step' => 'health', 'reason' => 'x']);
+        $this->writeReadyJob(['status' => 'running']);
+
+        $text = $this->visibleText($this->page()['body']);
+
+        $this->assertStringContainsString('is updating the portal', $text);
+        $this->assertStringNotContainsString('put it back', $text);
+    }
+
+    public function test_a_failed_step_tells_the_page_whether_the_update_has_ended(): void
+    {
+        $this->laravel->codes['backup:run'] = 1;
+        $next = 'prechecks';
+        for ($i = 0; $i < 10 && $next !== null; $i++) {
+            $r = $this->step($next, $this->token);
+            $next = $r['json']['next'];
+        }
+
+        $this->assertSame(['failed', true], [$r['json']['status'], $r['json']['ended']]);
+        $this->assertStringContainsString("j.status === 'failed' && j.ended", $this->runnerHtml());
+    }
+
+    private function runnerHtml(): string
+    {
+        $this->writeReadyJob();
+
+        return $this->page($this->token)['body'];
+    }
+
     public function test_without_an_update_the_page_says_so(): void
     {
         unlink($this->dir.'/job.json');
@@ -192,7 +223,8 @@ class UpdaterPageTest extends TestCase
 
         $text = $this->visibleText($this->page()['body']);
 
-        $this->assertStringContainsString('Aminah is updating the portal to v2.2.1', $text);
+        $this->assertStringContainsString('A super admin is updating the portal to v2.2.1', $text);
+        $this->assertStringNotContainsString('Aminah', $text, 'no names for visitors who are not signed in');
         $this->assertStringNotContainsString('Keep this page open', $text);
     }
 

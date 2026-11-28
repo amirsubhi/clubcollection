@@ -22,6 +22,12 @@ final class Page
     /** A result older than this is not shown any more ("No update in progress"). */
     public const RESULT_FOR = 86400;
 
+    /**
+     * What the browser looks for in the portal page it gets from /login with the bypass cookie: the sign-in form's
+     * token field, or the app's csrf-token meta when the signed-in admin is sent on to the dashboard.
+     */
+    public const LOGIN_MARKER = 'name="(csrf-token|_token)"';
+
     /** `swap` and `opcache` share one row on the screen. */
     private const SHARED_ROWS = ['swap' => 'switch', 'opcache' => 'switch'];
 
@@ -72,8 +78,22 @@ final class Page
         $c->input = is_array($input) ? $input : [];
 
         $result = Steps::run($step, $c);
+        $result['ended'] = self::ended($c);
 
         return self::json($result, 200, $c->cookies);
+    }
+
+    /** True when the page should reload to show a result: the job has ended, or the undo needs a person. */
+    private static function ended(Context $c): bool
+    {
+        $job = Auth::job($c->files->dir) ?? [];
+        if (! in_array($job['status'] ?? null, ['ready', 'running'], true)) {
+            return true;
+        }
+        $raw = @file_get_contents($c->files->journalPath);
+        $journal = is_string($raw) ? json_decode($raw, true) : null;
+
+        return is_array($journal) && ($journal['meta']['recovery_error'] ?? null) !== null;
     }
 
     // ---------------------------------------------------------------- GET
@@ -92,15 +112,15 @@ final class Page
         if (Auth::check($c->files->dir, $cookie, $c->now())) {
             return self::html(self::runner($c, $nonce), $nonce);
         }
-        $result = self::latestResult($c);
-        if ($result !== null) {
-            return self::html(self::resultScreen($result, Auth::isTokenHolder($c->files->dir, $cookie), $nonce), $nonce);
-        }
         $job = Auth::job($c->files->dir) ?? [];
         $open = in_array($job['status'] ?? null, ['ready', 'running'], true)
             && ! (($job['status'] ?? null) === 'ready' && is_int($job['expires_at'] ?? null) && $job['expires_at'] < $c->now());
         if ($open || is_file($c->files->guardPath)) {
             return self::html(self::inProgress($c, $job, $nonce), $nonce);
+        }
+        $result = self::latestResult($c);
+        if ($result !== null) {
+            return self::html(self::resultScreen($result, Auth::isTokenHolder($c->files->dir, $cookie), $nonce), $nonce);
         }
 
         return self::html(self::screen('No update in progress',
@@ -199,7 +219,7 @@ final class Page
             $rows .= '<li data-row="'.self::e($row).'" class="state-'.$state.'"><span class="mark" aria-hidden="true">'
                 .self::MARKS[$state].'</span> '.self::e(Steps::screenName($step, (string) ($job['to_version'] ?? ''))).'</li>';
         }
-        $state = ['next' => $next, 'swapStarted' => $swapStarted];
+        $state = ['next' => $next, 'swapStarted' => $swapStarted, 'loginMarker' => self::LOGIN_MARKER];
         $keep = 'keep'.($c->https ? '' : ' bold');
 
         $body = '<h1>Updating to '.self::e($to).' — about 2 minutes</h1>'
@@ -363,10 +383,9 @@ final class Page
     {
         $to = self::version($job['to_version'] ?? null);
         $tz = is_string($job['timezone'] ?? null) ? $job['timezone'] : 'UTC';
-        $who = is_string($job['user_name'] ?? null) && $job['user_name'] !== '' ? $job['user_name'] : 'A super admin';
         $when = self::time($job['created_at'] ?? null, $tz, 'g:i a');
         $body = '<h1>An update is in progress</h1>'
-            .'<p>'.self::e($who.' is updating the portal'.($to === null ? '' : " to $to").($when === null ? '' : " (started $when)").'.').'</p>';
+            .'<p>'.self::e('A super admin is updating the portal'.($to === null ? '' : " to $to").($when === null ? '' : " (started $when)").'.').'</p>';
         if (is_file($c->files->guardPath)) {
             $body .= '<p>Members see a "back in a few minutes" page until it is done.</p>';
         }
@@ -562,7 +581,7 @@ JS;
   var MARK = { done: '✓', running: '●', pending: '○', failed: '✗' };
   var RETRY_DELAYS = [5000, 10000, 15000];
   var FROM_SWITCH = ['swap', 'opcache', 'migrate', 'health'];
-  var LOGIN_MARKER = /name="(csrf-token|_token)"/;
+  var LOGIN_MARKER = new RegExp(state.loginMarker);
   var ended = false, inFlight = false, watching = false, stalled = false;
   var wakeLock = null, timer = null, watchTimer = null, hiddenAt = 0;
 
@@ -632,7 +651,14 @@ JS;
     if (j.detail) { log('  ' + j.detail); }
     if (j.swap_started) { state.swapStarted = true; }
     if (j.status === 'busy') { watch(); return; }
-    if (j.status === 'denied' || j.status === 'failed') { end(); location.reload(); return; }
+    if (j.status === 'denied' || (j.status === 'failed' && j.ended)) { end(); location.reload(); return; }
+    if (j.status === 'failed') {
+      // The update is still open (this step can be tried again): stop here rather than repeat it in a loop.
+      mark(j.step, 'failed');
+      end();
+      say(j.message + ' Reload this page to try again.');
+      return;
+    }
     say(j.status === 'more' && j.message ? j.message : '');
     if (j.status === 'done') { mark(j.step, 'done'); }
     if (!j.next) {

@@ -56,6 +56,8 @@ final class Steps
 
     private const LOST = 'The connection to your site was lost while the update was running.';
 
+    private const INTERRUPTED = 'The update was interrupted while it was switching versions, so the old version was put back.';
+
     /** @return array<string, mixed> */
     public static function run(string $name, Context $c): array
     {
@@ -230,6 +232,11 @@ final class Steps
         }
         if ($j->isRecovering()) {
             return self::reply($name, 'failed', null, 'The update stopped for too long and was undone.', $j);
+        }
+        $swap = $j->get('swap');
+        if (is_array($swap) && ($swap['state'] ?? '') === 'rolling_back') {
+            // Putting the old files back started and stopped part-way: only finishing that is allowed now.
+            return self::putBack($c, $j, 'swap', self::INTERRUPTED, 'Putting the old files back had started and was interrupted.');
         }
         if ($name === 'rollback') {
             return self::rollbackRequested($c, $j);
@@ -417,9 +424,6 @@ final class Steps
     private static function swap(Context $c, Journal $j): array
     {
         $swap = $j->get('swap');
-        if (is_array($swap) && ($swap['state'] ?? '') === 'rolling_back') {
-            return self::putBack($c, $j, 'swap', self::FAILED['swap'], 'Putting the old files back had started.');
-        }
         self::beginOnce($j, 'swap');
         $staging = is_string($j->get('staging')) ? $j->get('staging') : Unpack::stagingDir($c->app, $c->to());
         $oldDir = Swap::oldDir($c->app, $c->from());
@@ -707,6 +711,19 @@ final class Steps
      * @return array<string, mixed>
      */
     private static function putBack(Context $c, Journal $j, string $step, string $reason, string $error): array
+    {
+        // A Laravel booted earlier in this request turns every warning into an exception; the put-back must not stop
+        // part-way because of one, so PHP's own handling applies until it is done.
+        set_error_handler(null);
+        try {
+            return self::putBackFiles($c, $j, $step, $reason, $error);
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private static function putBackFiles(Context $c, Journal $j, string $step, string $reason, string $error): array
     {
         $blocked = is_int($j->get('migrate_started')) && $j->get('migrated') !== true;
         try {
