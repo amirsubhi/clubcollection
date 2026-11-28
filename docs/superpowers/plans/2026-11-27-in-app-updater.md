@@ -478,6 +478,15 @@ section wins.
   otherwise "No update in progress" + link to `/admin/updates`. Visiting `/update/` runs the same idle-recovery check
   as the guard.
 - Jargon rule: none of the forbidden words outside **Show details** and the report.
+- **No dead end when the undo itself fails** (review of Task 9): when the guard file is up and either `journal.json`
+  can't be read, or the journal has `recovery_error` (or `swap.state` = `rolling_back`) and is idle, `/update/`
+  (without a cookie) shows "The update could not be undone by itself" with what members see, **Copy report** and plain
+  manual steps for whoever has file access (put the `.clubportal-old-<v>` folders back, then delete
+  `storage/framework/updating`, `down` and `maintenance.php`). The bypass cookie is set with `setcookie` (url-encoded),
+  never `setrawcookie`. `finish` never leaves the guard file up while `public/update/lib/` is missing.
+- An abandoned `running` job from before the pause (no guard file) expires like a `ready` one: idle ≥ 600 s → job
+  `failed`, outcome `failed`, staging and the zip removed by the next start's `prechecks`, which also resets a journal
+  left `recovering`.
 
 - [ ] **Step 1: Failing tests** — Auth: wrong token, expired, finished → false; order enforced; a step while
   recovering → refused; busy when the lock is held; migrate failure → files rolled back, outcome `blocked`, message
@@ -517,7 +526,7 @@ section wins.
 
 **Stage 2 addition:** `CHANGELOG.md` `[Unreleased]` `### What's new` bullets for the button (plain words,
 at most 5 in total); `docs/USER-GUIDE.md` covers the result screens, Copy report, the blocked case and what members
-see; `SECURITY.md` lists the unauthenticated surface (`/update/`, the guard, saved callbacks) and its limits.
+see; `SECURITY.md` lists the unauthenticated surface (`/update/`, the guard, saved callbacks) and its limits. `docs/INSTALL.md`: the manual way out of a stuck pause (same steps as the Task 11 screen), and that the updater needs the portal at the domain root (no subfolder install).
 
 ### Task 14: End-to-end proof on a real install (before v2.2.0 is tagged)
 
