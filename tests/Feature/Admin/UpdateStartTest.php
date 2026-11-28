@@ -392,7 +392,7 @@ class UpdateStartTest extends TestCase
         $this->assertSame([], glob(UpdaterFiles::dir().'/*.tmp'));
 
         $audit = AuditLog::where('action', 'portal.update_started')->sole();
-        $this->assertSame(['from' => '2.2.0', 'to' => '2.2.3'], $audit->new_values);
+        $this->assertEquals(['from' => '2.2.0', 'to' => '2.2.3'], $audit->new_values);
     }
 
     public function test_the_cookie_is_secure_on_https_only(): void

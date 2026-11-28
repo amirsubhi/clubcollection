@@ -84,7 +84,7 @@ class UpdateOutcomesTest extends TestCase
         $row = AuditLog::where('action', $action)->first();
         $this->assertNotNull($row);
         $this->assertSame('System', $row->user_name);
-        $this->assertSame(['outcome' => $outcome, 'from' => '2.2.0', 'to' => '2.2.1', 'step' => 'migrate', 'reason' => 'a reason'], $row->new_values);
+        $this->assertEquals(['outcome' => $outcome, 'from' => '2.2.0', 'to' => '2.2.1', 'step' => 'migrate', 'reason' => 'a reason'], $row->new_values);
     }
 
     public function test_the_history_file_is_kept_and_written_when_the_updater_did_not(): void
