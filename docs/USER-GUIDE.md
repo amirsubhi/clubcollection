@@ -14,7 +14,7 @@ pages are in English. Everyone in the screenshots is fictional.
   [bank charges](#bank-and-gateway-charges) · [ledger and the AGM](#the-ledger-and-the-agm) · [reminders](#overdue-reminders) ·
   [job levels](#set-up-job-levels-before-fee-rates)
 - [Super admin](#super-admin): [install](#install-the-app) · [create a club](#create-a-club) · [grant club admin](#make-someone-a-club-admin) ·
-  [portal settings](#portal-settings) · [privacy notice](#privacy-notice)
+  [portal settings](#portal-settings) · [updates](#update-club-portal-updates) · [privacy notice](#privacy-notice)
 
 ---
 
@@ -601,6 +601,56 @@ show that club's name and logo instead, with the portal name under it. Changes a
 - **Default language** (Bahasa Melayu unless changed): the language of the member app, the sign-in pages and member
   emails for members who have not chosen one with the **BM / EN** switch. A member's own choice is remembered and
   always wins. Admin pages and admin emails stay in English. Changes are audited ("default language: English").
+
+### Update Club Portal (Updates)
+
+**Updates** (super admin section of the sidebar) shows the version your portal is on and the newest one, with what is new
+in it in plain words. When a newer version is out, a blue strip also shows above your dashboard; for a security fix
+the strip is red and the page says so. Club admins see only a short note for security fixes, naming the super admins
+who can install it (no button, no link). Ordinary updates show club admins nothing.
+
+**Before you press the button.** Updating takes about 2 minutes. While it runs, members see a page saying the portal is
+being updated and will be back in a few minutes; they can't sign in or pay on the portal, but a payment they have
+just made is safe and its confirmation is kept and processed afterwards. Pick a quiet time, such as late evening.
+Under **Show checks** the page lists what it looked at (all passes, or a message for what is missing). If your host
+can't do something the update needs, the button is replaced by a message you can copy and send to your hosting
+company's support, or you can ask whoever installed the portal to update it by hand.
+Some updates ask you to tick a box first ("Your club's data can be copied automatically" or "It's been done"):
+tick it only after that has really been done.
+
+**Updating.** Press **Update to v...**, then type your password (and the 6-digit code from your authenticator app, if you
+use one). A new screen lists each step and ticks it off. **Keep that page open and your phone's screen on until it says
+Done.** If the screen goes off or the signal drops, open the page again within 10 minutes and it carries on by itself.
+If you stay away longer, the portal puts the old version back by itself the next time anyone opens it.
+If another super admin is already updating, the page says who and since when, and no button is shown.
+
+**What you see at the end.** The updater page and the Updates page show one of these:
+
+- **Done.** The portal is on the new version, with what is new. A copy of your club's data from before the update is
+  kept on your site with your other backups. If mail is set up you also get an email.
+- **We put it back.** The new version didn't work on your site, so the old one was restored. Nothing was lost and
+  members can use the portal. You can try again after the next release.
+- **Stopped before anything was changed.** A check failed (for example not enough space). It tells you what to fix.
+  **Try again** is shown.
+- **Closed or screen went off.** The update didn't finish, and the portal was put back on its earlier version.
+- **One change to your club's records didn't finish.** The portal is back on its earlier version and members can still use
+  it, but the button is switched off. Send the report to whoever looks after the portal: they may need to restore the
+  copy of your data saved before the update. After the data has been restored or checked, type your password on the Updates
+  page and press **The database was restored or checked** to switch the button back on.
+- **The update could not be undone by itself.** Very rare. Members still see the "back in a few minutes" page. Send the
+  report to whoever installed the portal; the steps for them are in [INSTALL.md](INSTALL.md#an-update-that-could-not-be-undone).
+
+When something didn't work, **Copy report** puts a short report on your clipboard (it never holds passwords, keys or
+member details), and **Report a problem** opens a pre-filled message to the Club Portal team. Every super admin also sees a
+notice on the dashboard until they dismiss it, and the update is in the **Audit log**. The Updates page keeps the
+last attempt with **View report**.
+
+**What members see.** During the update, a page in the portal's default language: "<portal name> is being updated. Back in a
+few minutes." It reloads by itself. It also says that a payment just made is safe and that a form or transfer slip being
+sent must be sent again. Nothing else changes for them.
+
+The first version with this button is v2.2.0. A portal on an older version is updated by hand once (see
+[RELEASE.md](RELEASE.md#2-upgrade-a-site)).
 
 ### Privacy notice
 

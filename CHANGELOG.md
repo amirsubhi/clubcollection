@@ -9,9 +9,45 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### What's new
-- The super admin's dashboard now tells you when a newer version of Club Portal is out, with what is new in it.
-- A new **Updates** page shows the installed and latest version and checks whether this site is ready to update.
+- The super admin can now update Club Portal from the **Updates** page with one button (password and, if set up, the 6-digit code): the portal downloads, checks and installs the new version in about 2 minutes.
+- If an update goes wrong, or the page is closed, the portal puts the old version back by itself. Members see a "back in a few minutes" page meanwhile, and payment confirmations that arrive then are kept and processed afterwards.
+- The dashboard tells the super admin when a newer version is out, with what is new in it, and the Updates page checks that the site is ready before the button turns on.
 - Club admins see a short note when a security fix is waiting, and who to ask to install it.
+
+### Added
+- **Update from the admin** (super admin, **Updates** in the sidebar): the page shows the installed and latest version and
+  the checks (PHP, the zip and curl extensions, a writable app folder, free disk space, no member paying right now).
+  Pressing the button opens the standalone updater at `/update/` (own page, no database, token cookie), which downloads the
+  release zip from this repository's GitHub release, verifies its SHA-256 against `clubportal-manifest.json`, unpacks it
+  beside the app, saves a database copy (the `backup:run` rule, or asks for a cPanel backup when PHP may not start
+  programs), pauses the portal, swaps the code folders with a journaled rollback, runs `migrate --force` and
+  `optimize`, checks the new version over HTTP and opens the portal again. Closing the page for 10 minutes, or any failed
+  step, puts the old files back (a failed migration is the one case that needs a person: the button then stays off
+  until a super admin confirms the data was checked). Never touched: `.env*`, `storage/`, `database/` except
+  migrations, seeders and factories, and files that belong to the site.
+- `php artisan app:update` does the same from the terminal (`--check` shows the versions, `--yes` skips the question).
+  If the server does not let PHP start programs it stops after the switch and prints
+  `php artisan migrate --force && php artisan optimize && php artisan app:update --finish`; run that to finish.
+- **Swap guard** (`public/update-guard.php`, the first lines of `public/index.php` and `artisan`): written for PHP 5.6 and
+  later so that it can still run while files are being switched. During an update it shows the members' pause page
+  (503, `Retry-After: 120`), saves at most 200 payment callbacks of 64 KB to `storage/app/updater/webhooks/`
+  (`/webhook/toyyibpay`, `/webhook/billplz` only) and the portal processes them after it opens again.
+- **Result screens, history and email**: the outcome (done, put back, stopped before anything changed, could not be
+  undone) shows on the updater page and the Updates page with **Copy report** and **Report a problem**, in the audit log,
+  in a notice for every super admin until dismissed, and in an email when mail is set up. The report never contains
+  `.env` values, tokens, cookies or database passwords.
+- `release-policy.json`: a release can say which version a site must be on before it can use the button
+  (`min_from_version`) and a thing to do by hand first (`manual_action`); the release build puts both into the manifest.
+- `docs/INSTALL.md`: what the updater needs from the host (zip and curl extensions, writable app folder and its
+  parent, free space, an nginx location for `/update/`, the portal at the domain root) and the manual steps when an
+  update could not be undone. `docs/USER-GUIDE.md`: the Updates page. `SECURITY.md`: the trust model and the
+  pages that need no sign-in.
+
+### Upgrade note
+- **v2.2.0 is the first release with the button.** A site on v2.1.0 or earlier gets there by the manual zip steps in
+  `docs/RELEASE.md` §2 (no new required `.env` settings; the optional `UPDATE_CHANNEL=next` is for testing release candidates). From v2.2.0 on, updates
+  can use the button. Every later release's updater is the one already installed, so a fix to the updater itself reaches
+  a site one release later.
 
 ## [v2.1.0] — 2026-11-27
 

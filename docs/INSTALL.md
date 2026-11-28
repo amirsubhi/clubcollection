@@ -433,11 +433,62 @@ Test a restore at least once, on a staging copy.
 
 ## 7. Upgrading
 
-Every later release ships as the same zip. Upgrading is: upload and unzip it next to the app, `php artisan down`,
+**From v2.2.0 on, the super admin can update the portal from the admin** (**Updates** in the sidebar, about 2 minutes;
+`php artisan app:update` does the same from the Terminal). A site on an older version, or one the Updates page says
+cannot update itself, is upgraded with the zip: upload and unzip it next to the app, `php artisan down`,
 back up, `cp -a` it over the app folder (keeping `.env` and `storage/`), restore cPanel's PHP-version lines in
 `public/.htaccess`, delete the files the CHANGELOG lists as removed, `migrate --force`, `optimize:clear` + `optimize`,
 `php artisan up`, then `app:doctor`. The step-by-step version (including the cPanel File Manager steps) is in
-[RELEASE.md](RELEASE.md#2-upgrade-a-site-with-the-zip).
+[RELEASE.md](RELEASE.md#2-upgrade-a-site).
+
+### What the in-app updater needs
+
+The Updates page checks all of this and, if something is missing, shows a message you can send to your host. Nothing here
+is needed for a site that is only ever upgraded by hand.
+
+- **PHP extensions `zip` and `curl`** (cPanel → **Select PHP Version → Extensions**), and PHP allowed to rename, copy and
+  delete files (hosts that list such functions in `disable_functions` cannot update from the admin).
+- **A writable app folder, and a writable folder above it.** The new version is unpacked next to the app (for
+  `~/clubportal`, in `~/`), and the old version is kept there until the next update. If the parent folder cannot be
+  written, the updater falls back to `storage/app/updater/` inside the app, which works only when that is on the same
+  disk.
+- **Free disk space** of several times the size of the release zip (the Updates page says how much it needs). The check
+  reads the whole disk, not your hosting quota, so a full quota can still make an update fail; it is then put back by itself.
+- **The portal at the domain root** (`https://club.example.com/`, or a subdomain), not in a subfolder such as
+  `https://example.com/club/`. The updater lives at `/update/` and checks the new version through the home page, so
+  a subfolder install cannot use it (update those by hand).
+- **nginx:** Apache and cPanel need nothing. On nginx the usual `location / { try_files ... /index.php }` rule is
+  enough for the portal but `/update/` is its own PHP file (`public/update/index.php`), so add a location that passes it to PHP (the same `fastcgi_pass` as your main PHP location):
+
+  ```nginx
+  location ^~ /update/ {
+      index index.php;
+      location ~ \.php$ { include fastcgi_params; fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; fastcgi_pass <your PHP-FPM socket>; }
+  }
+  ```
+
+  Without it, **Update** ends on a 404 page after the password check. Do not serve any other file under `/update/`.
+- Outgoing HTTPS to `github.com` (the release zip comes from this project's GitHub releases; its SHA-256 is checked).
+  A host that blocks outgoing connections cannot update from the admin.
+
+### An update that could not be undone
+
+If an update stops part-way, the portal puts the old version back by itself (when the page is closed, the first visit
+after 10 minutes does it). In the rare case that this fails too, `/update/` shows **"The update could not be undone by
+itself"** and members see the "back in a few minutes" page. Your club's records and uploaded files are untouched. Someone with
+access to the site's files (cPanel File Manager with **Show Hidden Files**, or the Terminal) does this by hand; it is
+the same list as on that screen:
+
+1. Open the folder the screen names: `.clubportal-old-<version>` in the folder that holds the portal's folder (for
+   `~/clubportal`, that is `~/`), or `old-<version>` inside `storage/app/updater/` of the portal. Move everything in it
+   **except the file `.clubportal-owner`** (leave that behind) back into the portal's folder, to the same place,
+   replacing what is there. What is in its `public` folder goes into the portal's `public` folder.
+2. In the portal's `storage/framework` folder, delete the files `updating`, `down` and `maintenance.php`.
+3. Open the portal's home page and check that it works.
+
+Do not delete the old-version folder until the portal works. Send the report on that screen (**Copy report**) to
+whoever supports the portal if something is unclear. If a database change had started, restore the database copy
+the update saved (`storage/app/backups`, see [section 6](#6-backups)) before step 3.
 
 ---
 

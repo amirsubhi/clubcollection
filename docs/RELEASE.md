@@ -65,7 +65,52 @@ The script regenerates `docs/THIRD-PARTY-LICENSES.md` and `public/licenses.txt` 
 serves the licences of the code it runs at `/licenses.txt`. If they differ from the committed ones it prints a
 warning: run `npm run licenses` (needs `vendor/` and `node_modules/` installed) and commit both files.
 
-## 2. Upgrade a site with the zip
+### Publishing a release
+
+Do these before and after the tag, in this order:
+
+1. **Release notes.** The version's CHANGELOG section needs the `### What's new` subsection (above). Security fixes first.
+2. **`release-policy.json`** (repository root) is read by the release build and written into the manifest:
+   `min_from_version` is the oldest version whose site may use the button to reach this release (a site older than
+   that is told to update by hand once), and `manual_action` is a plain sentence about something the person must do
+   first, or `null`. Leave `manual_action` `null` unless the release really needs it: it makes every site tick a box.
+3. **Never edit a migration that a release has shipped**, and keep new migrations additive (new nullable columns and
+   new tables; no drop, rename or type change in the same release that the old code still reads). While an update
+   runs, the previous release's code is what undoes it, so it must still work with the new tables.
+4. **Test the update before you publish.** Push a release candidate tag (`v2.2.1-rc.1`): CI publishes it to the
+   pre-release `next`. On a test install of the *previous* release set `UPDATE_CHANNEL=next` in `.env`, press
+   **Update** on the Updates page and check that it ends on "Done" and that the portal works on the new version.
+   Do this for every release: a broken updater strands every site that has one.
+5. **After the tag is published**, open the release on GitHub and check that it carries `clubportal-<version>.zip`,
+   its `.sha256` and `clubportal-manifest.json` (the manifest's `zip.sha256` must equal the `.sha256` file). Sites read
+   the manifest of the **latest** release; if it is missing, no site is told about the update.
+
+The owner's GitHub account keeps two-factor sign-in on, and a tag ruleset (only the owner may create `v*` tags) is
+switched on, because a site installs whatever the latest release's checksum matches (see [SECURITY.md](../SECURITY.md)).
+Release creation happens only in `release.yml`; never attach files to a release by hand.
+
+## 2. Upgrade a site
+
+### Update from the admin
+
+From **v2.2.0** the super admin can update a site without a Terminal: **Updates** in the sidebar shows the latest
+version, what is new in it and whether the site is ready; **Update to v...** (password and 6-digit code) does the rest in
+about 2 minutes while the portal shows members a "back in a few minutes" page. The person must keep the page open
+until it says Done. If it goes wrong it puts the old version back by itself. The same steps run from the terminal with
+`php artisan app:update` (`--check` only compares versions; `--yes` skips the question). If the server does not let PHP
+start programs the command stops after switching the files and prints the line to finish by hand:
+`php artisan migrate --force && php artisan optimize && php artisan app:update --finish`.
+
+What the host must allow (zip and curl extensions, a writable app folder, free space, an nginx location for `/update/`)
+is in [INSTALL.md](INSTALL.md#what-the-in-app-updater-needs). If an update stops in the middle and cannot be undone by
+itself, follow [INSTALL.md](INSTALL.md#an-update-that-could-not-be-undone).
+
+A site older than v2.2.0 has no button: do the manual steps below once. They are also the way when the Updates page
+says the site cannot update itself, or when a release's notes ask for something to be done by hand.
+
+<a id="2-upgrade-a-site-with-the-zip"></a>
+
+### Upgrade by hand with the zip
 
 > **`v1.0.0` (the March 2026 GitHub release) is superseded and must not be upgraded in place.** Its migrations were
 > later edited (there was no live data yet), so `migrate` cannot bring a `v1.0.0` database, or one from any build
@@ -138,9 +183,6 @@ If something goes wrong before step 6, the site is still in maintenance mode: fi
 the **database restore** from the step 2 backup (see [INSTALL.md](INSTALL.md#restore)), because migrations are not
 reversed; then copy the previous release's zip over the site the same way and run `rm -f bootstrap/cache/*.php`.
 Copying an older zip does not remove files the newer release added, so delete those (see its CHANGELOG entry) too.
-
-A one-command `php artisan app:update` (download, verify, extract, migrate) from the original plan is **still
-deferred**; until then the steps above are the upgrade path.
 
 Also:
 
