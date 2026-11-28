@@ -421,6 +421,49 @@ class SwapTest extends TestCase
         Swap::plan($this->app, $this->staging, ['../evil' => 'x'], []);
     }
 
+    public function test_plan_and_site_local_refuse_an_empty_old_list(): void
+    {
+        foreach ([fn () => Swap::plan($this->app, $this->staging, [], $this->newFiles),
+            fn () => Swap::siteLocalFiles($this->app, [], $this->plan())] as $call) {
+            try {
+                $call();
+                $this->fail('expected an UpdaterError');
+            } catch (UpdaterError $e) {
+                $this->assertStringContainsString('cannot be updated from the admin', $e->getMessage());
+            }
+        }
+        $this->assertFileDoesNotExist($this->staging.'/app/Gone.php');
+    }
+
+    public function test_plan_refuses_empty_and_dot_segments(): void
+    {
+        foreach (['/abs/x', 'a//b', './a', 'public//update/index.php', 'public/./update/index.php', 'a/../b', 'a\\b'] as $bad) {
+            foreach ([[[$bad => 'x'], ['ok' => 'x']], [['ok' => 'x'], [$bad => 'x']]] as [$old, $new]) {
+                try {
+                    Swap::plan($this->app, $this->staging, $old, $new);
+                    $this->fail("accepted $bad");
+                } catch (UpdaterError) {
+                    $this->addToAssertionCount(1);
+                }
+            }
+        }
+    }
+
+    public function test_run_after_rolled_back_records_a_fresh_plan_and_completes(): void
+    {
+        $reference = $this->completedTree();
+        $before = $this->tree($this->app);
+        Swap::run($this->journal(), $this->plan(), $this->oldDir);
+        Swap::rollback($this->journal());
+        $this->assertSame($before, $this->tree($this->app));
+        $this->assertSame('rolled_back', $this->journal()->get('swap')['state']);
+
+        Swap::run($this->journal(), $this->plan(), $this->oldDir);
+
+        $this->assertSame($reference, $this->tree($this->app));
+        $this->assertSame('done', $this->journal()->get('swap')['state']);
+    }
+
     public function test_old_folder_is_next_to_the_app(): void
     {
         $this->assertSame($this->root.'/.clubportal-old-2.2.0', Swap::oldDir($this->app, '2.2.0'));

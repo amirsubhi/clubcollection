@@ -47,7 +47,7 @@ final class Swap
     {
         $app = rtrim($app, '/\\');
         $staging = rtrim($staging, '/\\');
-        $oldPaths = self::paths($oldFiles);
+        $oldPaths = self::oldPaths($oldFiles);
         $newPaths = self::paths($newFiles);
 
         $units = ['release-files.json' => true];
@@ -121,6 +121,10 @@ final class Swap
      * Does the moves. The first call writes the whole list to the journal; a later call (after an interruption) carries on
      * with that recorded list, whatever $plan now says, because the tree is half swapped and could not be planned again.
      *
+     * Order contract: once rollback() has started (state `rolling_back`) this throws and the caller must call rollback(),
+     * never run(). After a finished rollback (`rolled_back`) run() records a fresh plan, and the check that the old
+     * folder is empty applies again.
+     *
      * @param  list<array<string, mixed>>  $plan
      * @param  ?callable(int, string): void  $afterMove  test seam, called with (move index, 'before'|'performed'|'done')
      */
@@ -156,7 +160,8 @@ final class Swap
 
     /**
      * Puts the old release back from the journal, newest move first, then clears the cached framework files.
-     * Safe to repeat and safe from any interruption: each move is judged by what is on disk.
+     * Safe to repeat and safe from any interruption: each move is judged by what is on disk. Once it has started, run()
+     * refuses to continue; an interrupted rollback is finished by calling rollback() again.
      *
      * @throws UpdaterError after trying everything, when something could not be restored
      */
@@ -193,6 +198,9 @@ final class Swap
      * Copies files that sit in a folder about to be replaced but are not in the old release (a .user.ini, a host's
      * error_log) into the staged folder, so they are still there after the swap. Release files win on a clash. Call it
      * before run(); afterwards it finds no staged folder and does nothing. The database file is not in a replaced folder.
+     * Order contract: call it once, before the first run(), and save the returned list (a call after an interrupted run
+     * returns only the folders not yet swapped). An empty old list is refused. Only files inside replaced folders are
+     * listed; loose files such as public/.user.ini or error_log stay in place and are not reported.
      *
      * @param  array<int|string, string>  $oldFiles
      * @param  list<array<string, mixed>>  $plan
@@ -201,7 +209,7 @@ final class Swap
     public static function siteLocalFiles(string $app, array $oldFiles, array $plan): array
     {
         $app = rtrim($app, '/\\');
-        $known = array_flip(self::paths($oldFiles));
+        $known = array_flip(self::oldPaths($oldFiles));
         $found = [];
         foreach ($plan as $m) {
             if ($m['role'] !== 'aside' || ! $m['dir']) {
@@ -418,6 +426,24 @@ final class Swap
     }
 
     /**
+     * The installed release's file list; without it every old file the new release lacks would look site-local.
+     *
+     * @param  array<int|string, string>  $files
+     * @return list<string>
+     */
+    private static function oldPaths(array $files): array
+    {
+        if ($files === []) {
+            throw new UpdaterError(
+                'This copy of the portal has no list of its release files, so it cannot be updated from the admin.',
+                'Please update it by hand: upload the new release over the old files as described in the install guide.',
+            );
+        }
+
+        return self::paths($files);
+    }
+
+    /**
      * @param  array<int|string, string>  $files
      * @return list<string>
      */
@@ -427,7 +453,7 @@ final class Swap
         $out = [];
         foreach ($paths as $path) {
             $path = (string) $path;
-            if ($path === '' || $path[0] === '/' || str_contains($path, '\\') || in_array('..', explode('/', $path), true)) {
+            if ($path === '' || $path[0] === '/' || str_contains($path, '\\') || array_intersect(['', '.', '..'], explode('/', $path)) !== []) {
                 throw new UpdaterError('The release lists an unsafe path.');
             }
             $out[] = $path;
