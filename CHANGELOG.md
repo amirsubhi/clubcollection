@@ -9,8 +9,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### What's new
-- The super admin can now update Club Portal from the **Updates** page with one button (password and, if set up, the 6-digit code): the portal downloads, checks and installs the new version in about 2 minutes.
-- If an update goes wrong, or the page is closed, the portal puts the old version back by itself. Members see a "back in a few minutes" page meanwhile, and payment confirmations that arrive then are kept and processed afterwards.
+- The super admin can now update Club Portal from the **Updates** page with one button. The portal downloads, checks and installs the new version in about 2 minutes.
+- If an update goes wrong or the page is closed, the old version is put back by itself. Members see a "back in a few minutes" page, and payment confirmations received meanwhile are kept.
 - The dashboard tells the super admin when a newer version is out, with what is new in it, and the Updates page checks that the site is ready before the button turns on.
 - Club admins see a short note when a security fix is waiting, and who to ask to install it.
 
