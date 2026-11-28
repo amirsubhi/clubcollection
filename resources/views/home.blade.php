@@ -6,6 +6,7 @@
 <p class="text-muted mb-4">Welcome back, <strong>{{ auth()->user()->name }}</strong>.</p>
 
 @if(auth()->user()->isSuperAdmin())
+@include('admin.updates._banner')
 <div class="row g-4 mb-4">
     <div class="col-md-4">
         <div class="card shadow-sm border-0">
@@ -65,6 +66,7 @@
 </div>
 
 @else
+@include('admin.updates._club-note')
 <div class="row g-4">
     @foreach($clubs as $club)
     <div class="col-md-6 col-lg-4">
