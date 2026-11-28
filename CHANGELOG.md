@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### What's new
+- The super admin's dashboard now tells you when a newer version of Club Portal is out, with what is new in it.
+- A new **Updates** page shows the installed and latest version and checks whether this site is ready to update.
+- Club admins see a short note when a security fix is waiting, and who to ask to install it.
+
 ## [v2.1.0] — 2026-11-27
 
 > **Upgrade:** from v2.0.0 or v2.0.1 with the release zip and `docs/RELEASE.md` §2. One new migration

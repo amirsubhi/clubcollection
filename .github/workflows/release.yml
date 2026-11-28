@@ -1,5 +1,7 @@
 # G3: on a v* tag, run the tests, build the cPanel release zip with scripts/build-release.sh and attach
-# the zip and its .sha256 to the GitHub Release for that tag (created if it doesn't exist yet).
+# the zip, its .sha256 and clubportal-manifest.json (what the in-app updater reads) to the GitHub Release for
+# that tag (created if it doesn't exist yet). A tag with a dash (a release candidate) also replaces the assets
+# of the pre-release `next`, which sites with UPDATE_CHANNEL=next read.
 # The build job is read-only; only the small publish job can write to the repository.
 # Upgrade steps for the zip: docs/RELEASE.md.
 name: Release
@@ -63,6 +65,7 @@ jobs:
           path: |
             dist/clubportal-*.zip
             dist/clubportal-*.zip.sha256
+            dist/clubportal-manifest.json
           if-no-files-found: error
           retention-days: 7
 
@@ -91,4 +94,23 @@ jobs:
           files: |
             dist/clubportal-*.zip
             dist/clubportal-*.zip.sha256
+            dist/clubportal-manifest.json
           fail_on_unmatched_files: true
+
+      # The testing channel: the pre-release `next` always carries the newest release candidate's assets.
+      - name: Replace the assets of the pre-release "next"
+        if: contains(github.ref_name, '-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view next >/dev/null 2>&1; then
+            gh release create next --prerelease --target "$GITHUB_SHA" \
+              --title "next (testing channel)" \
+              --notes "Assets of the newest release candidate, for sites with UPDATE_CHANNEL=next. Not a release to install by hand."
+          fi
+          # Drop the previous candidate's files so only this one's remain.
+          for asset in $(gh release view next --json assets --jq '.assets[].name'); do
+            gh release delete-asset next "$asset" --yes
+          done
+          gh release upload next dist/clubportal-*.zip dist/clubportal-*.zip.sha256 dist/clubportal-manifest.json --clobber
