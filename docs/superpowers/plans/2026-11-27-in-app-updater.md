@@ -210,7 +210,8 @@ section wins.
 - **Files, fixed names** (all under `storage/app/updater/`, the "updater dir"): `job.json`, `journal.json`, `lock`
   (the one `flock` file), `pause.html` (members' pause page), `outcome.json` (written by code without Laravel, consumed
   once by Laravel), `history/<YmdHis>-<from>-<to>.json`, `blocked` (a failed migration switches the button off),
-  `webhooks/` (saved payment callbacks), `clubportal-<v>.zip`. Marker: `storage/framework/updating` (the swap guard).
+  `webhooks/` (saved payment callbacks), `clubportal-<v>.zip`, `cli-pass` (app:update's one-time pass for its child
+  commands, matched with env `CLUBPORTAL_UPDATER_PASS`; deleted when they end). Marker: `storage/framework/updating` (the swap guard).
 - **Statuses, exact strings.** `job.json` `status`: `ready`, `running`, `finished`, `undone`, `failed`,
   `rolled_back` (the last four are `UpdaterHost::TERMINAL_JOB_STATUSES`). `outcome.json` / history `outcome`:
   `finished`, `rolled_back` (a step from the switch on failed and the files were put back), `undone` (abandoned and

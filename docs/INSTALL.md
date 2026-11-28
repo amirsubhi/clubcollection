@@ -490,7 +490,9 @@ the same list as on that screen:
 Do not delete the old-version folder until the portal works. Send the report on that screen (**Copy report**, shown
 in the browser that ran the update) to whoever supports the portal if something is unclear. If a database change had
 started, restore the database copy the update saved (`storage/app/backups`, see [section 6](#6-backups)) before
-step 4. If `job.json` is left behind, the next visit to `/update/` after 10 minutes ends that update for you.
+step 4. Do not skip step 3: while `job.json` says the update is running, the Updates page and `app:update` refuse to
+start another one. (When the screen came from a failed undo and the old version is back, a visit to `/update/` 10
+minutes later also ends that update, but not when the update's record itself could not be read.)
 
 ### An update from the command line that stopped after the switch
 
