@@ -378,7 +378,9 @@ final class UpdateOutcomes
                     'lines' => array_merge(
                         ['Members can use the portal again.'],
                         array_map(fn ($l) => '• '.$l, array_slice(array_values(array_filter((array) ($h['whats_new'] ?? []), 'is_string')), 0, 5)),
-                        ["A copy of your club's data from before the update is kept on your site (with your other backups)."],
+                        [($h['database_in_backup'] ?? null) === false
+                            ? "Your club's data could not be copied automatically on this host; the cPanel backup taken before the update is your copy."
+                            : "A copy of your club's data from before the update is kept on your site (with your other backups)."],
                     ),
                     'notice' => '',
                     'label' => 'installed',

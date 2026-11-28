@@ -57,13 +57,33 @@ class OutcomeTest extends TestCase
         Outcome::write($this->dir, $this->sample());
 
         $o = json_decode((string) file_get_contents($this->dir.'/outcome.json'), true);
-        $this->assertSame(['outcome', 'from', 'to', 'step', 'reason', 'at', 'started_at', 'report'], array_keys($o));
+        $this->assertSame(['outcome', 'from', 'to', 'step', 'reason', 'at', 'started_at', 'database_in_backup', 'report'], array_keys($o));
+        $this->assertNull($o['database_in_backup'], 'unknown when the caller does not say');
         $this->assertSame('undone', $o['outcome']);
         $this->assertSame(1764300000, $o['at']);
         $this->assertStringContainsString('Outcome: undone', $o['report']);
         $this->assertStringContainsString('moved <app>/vendor aside', $o['report']);
         $this->assertStringNotContainsString($this->app, (string) file_get_contents($this->dir.'/outcome.json'));
         $this->assertSame([], glob($this->dir.'/*.tmp'));
+    }
+
+    public function test_whether_the_backup_holds_the_database_reaches_the_outcome_and_the_history(): void
+    {
+        Outcome::write($this->dir, $this->sample(['outcome' => 'finished', 'database_in_backup' => false]));
+
+        $this->assertFalse(json_decode((string) file_get_contents($this->dir.'/outcome.json'), true)['database_in_backup']);
+        $this->assertFalse(json_decode((string) file_get_contents(glob($this->dir.'/history/*.json')[0]), true)['database_in_backup']);
+    }
+
+    public function test_a_blocked_outcome_switches_the_button_off_at_once(): void
+    {
+        Outcome::write($this->dir, $this->sample(['outcome' => 'rolled_back']));
+        $this->assertFileDoesNotExist($this->dir.'/blocked');
+
+        Outcome::write($this->dir, $this->sample(['outcome' => 'blocked', 'reason' => 'Restore the database first.']));
+
+        $flag = json_decode((string) file_get_contents($this->dir.'/blocked'), true);
+        $this->assertSame(['at' => 1764300000, 'reason' => 'Restore the database first.'], $flag);
     }
 
     public function test_it_writes_the_history_file_named_by_start_time_and_versions(): void

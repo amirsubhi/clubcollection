@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace ClubPortalUpdater;
 
-/** The text a super admin copies, mails or stores for one update attempt. Never carries secrets or the server's paths. */
+/**
+ * The text a super admin copies, mails or stores for one update attempt. Never carries secrets or the server's paths:
+ * the app folder shows as `<app>` and the folder that holds it as `<app-parent>`.
+ */
 final class Report
 {
     private const LOG_LINES = 20;
@@ -51,10 +54,15 @@ final class Report
 
     private static function clean(string $text, string $appPath): string
     {
-        $paths = array_filter(array_unique([rtrim($appPath, '/\\'), (string) realpath($appPath)]), static fn (string $p): bool => strlen($p) > 1);
-        usort($paths, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
-        foreach ($paths as $path) {
-            $text = str_replace($path, '<app>', $text);
+        // The app folder first, then the folder that holds it (the new version is unpacked and the old one kept there).
+        $app = rtrim($appPath, '/\\');
+        $parent = dirname($app);
+        foreach (['<app>' => [$app, (string) realpath($app)], '<app-parent>' => [$parent, (string) realpath($parent)]] as $mask => $paths) {
+            $paths = array_filter(array_unique($paths), static fn (string $p): bool => strlen($p) > 1 && $p !== '.');
+            usort($paths, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+            foreach ($paths as $path) {
+                $text = str_replace($path, $mask, $text);
+            }
         }
         $kept = array_filter(explode("\n", $text), static fn (string $line): bool => preg_match(self::SECRET_LINE, $line) !== 1);
 

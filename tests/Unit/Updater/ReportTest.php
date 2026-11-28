@@ -88,6 +88,20 @@ class ReportTest extends TestCase
         }
     }
 
+    public function test_the_folder_that_holds_the_app_is_hidden_too(): void
+    {
+        $parent = $this->tempDir();
+        $app = $parent.'/clubportal';
+        mkdir($app);
+        $text = Report::text(['outcome' => 'rolled_back', 'reason' => "Could not move $parent/.clubportal-old-2.2.0/vendor",
+            'log' => ["staging $parent/.clubportal-new-2.2.1 for $app/vendor", "real ".realpath($parent).'/x']], $app);
+
+        $this->assertStringNotContainsString($parent, $text);
+        $this->assertStringContainsString('<app-parent>/.clubportal-old-2.2.0/vendor', $text);
+        $this->assertStringContainsString('staging <app-parent>/.clubportal-new-2.2.1 for <app>/vendor', $text);
+        $this->assertStringContainsString('real <app-parent>/x', $text);
+    }
+
     public function test_only_the_last_log_lines_are_kept_and_a_bare_history_still_works(): void
     {
         $log = [];

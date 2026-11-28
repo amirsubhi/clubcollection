@@ -135,6 +135,7 @@ final class Recovery
         if ($open) {
             $blocked = $migrateState !== null && $migrateState !== 'done' && ! $finished;
             $result = $blocked ? 'blocked' : 'undone';
+            $backup = $j->get('backup');
             Outcome::write($f->dir, [
                 'outcome' => $result,
                 'from' => $job['from_version'] ?? null,
@@ -145,6 +146,10 @@ final class Recovery
                 'started_at' => is_int($job['created_at'] ?? null) ? $job['created_at'] : self::firstStart($j),
                 'log' => $j->steps()[$blocked ? 'migrate' : (string) $step]['log'] ?? [],
                 'steps' => self::timings($j),
+                // the same as an outcome the steps write: the screens show times in the portal's timezone
+                'timezone' => is_string($job['timezone'] ?? null) ? $job['timezone'] : 'UTC',
+                'database_in_backup' => is_array($backup) ? ($backup['database'] ?? null) : null,
+                'backup_at' => is_array($backup) ? ($backup['at'] ?? null) : null,
             ]);
             $job['status'] = 'undone';
             $job['ended_at'] = time();

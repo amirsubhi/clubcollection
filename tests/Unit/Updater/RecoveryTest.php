@@ -67,6 +67,35 @@ class RecoveryTest extends TestCase
         $this->assertSame('undone', $this->job()['status']);
     }
 
+    public function test_the_outcome_carries_the_timezone_and_what_the_backup_holds(): void
+    {
+        $this->writeJob(['timezone' => 'Asia/Kuala_Lumpur']);
+        $this->runUpdateUntil('migrate', 660);
+        Journal::open($this->dir)->set('backup', ['database' => false, 'at' => 1764299100, 'file' => 'x.zip']);
+
+        $this->assertSame('blocked', Recovery::runIfIdle($this->site));
+
+        $o = $this->outcome();
+        $this->assertFalse($o['database_in_backup']);
+        $history = json_decode((string) file_get_contents(glob($this->dir.'/history/*.json')[0]), true);
+        $this->assertSame('Asia/Kuala_Lumpur', $history['timezone']);
+        $this->assertSame(1764299100, $history['backup_at']);
+        $this->assertFalse($history['database_in_backup']);
+        $this->assertFileExists($this->dir.'/blocked', 'the button is off before Laravel ever sees the outcome');
+    }
+
+    public function test_a_job_without_a_timezone_records_utc(): void
+    {
+        $this->runUpdateUntil('health', 660);
+
+        Recovery::runIfIdle($this->site);
+
+        $history = json_decode((string) file_get_contents(glob($this->dir.'/history/*.json')[0]), true);
+        $this->assertSame('UTC', $history['timezone']);
+        $this->assertNull($history['database_in_backup']);
+        $this->assertFileDoesNotExist($this->dir.'/blocked');
+    }
+
     public function test_a_failed_undo_is_kept_in_the_journal_and_cleared_by_a_later_success(): void
     {
         $this->runUpdateUntil('health', 660);

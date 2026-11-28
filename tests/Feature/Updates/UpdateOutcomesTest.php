@@ -186,6 +186,23 @@ class UpdateOutcomesTest extends TestCase
         $this->assertStringContainsString('Faster pages', $html);
     }
 
+    public function test_the_done_text_says_where_the_data_copy_is(): void
+    {
+        $kept = "A copy of your club's data from before the update is kept on your site (with your other backups).";
+        $cpanel = "Your club's data could not be copied automatically on this host; the cPanel backup taken before the update is your copy.";
+
+        $inBackup = UpdateOutcomes::describe(['outcome' => 'finished', 'to' => '2.2.1', 'database_in_backup' => true]);
+        $this->assertContains($kept, $inBackup['lines']);
+        $this->assertNotContains($cpanel, $inBackup['lines']);
+
+        $notInBackup = UpdateOutcomes::describe(['outcome' => 'finished', 'to' => '2.2.1', 'database_in_backup' => false]);
+        $this->assertContains($cpanel, $notInBackup['lines']);
+        $this->assertNotContains($kept, $notInBackup['lines']);
+        $this->assertStringContainsString('cPanel backup', (new PortalUpdateResult($notInBackup, ''))->render());
+
+        $this->assertContains($kept, UpdateOutcomes::describe(['outcome' => 'finished'])['lines'], 'an older outcome without the key');
+    }
+
     public function test_the_texts_follow_the_journeys_and_cope_with_unknown_versions(): void
     {
         $undone = UpdateOutcomes::describe(['outcome' => 'undone', 'from' => '2.2.0', 'to' => '2.2.1', 'at' => 1796330000, 'timezone' => 'UTC']);

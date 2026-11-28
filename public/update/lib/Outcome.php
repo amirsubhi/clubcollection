@@ -13,15 +13,17 @@ final class Outcome
     /** outcome.json / history `outcome` values (constraints, Stage 2 rules). */
     public const OUTCOMES = ['finished', 'rolled_back', 'undone', 'failed', 'blocked'];
 
-    private const KEYS = ['outcome', 'from', 'to', 'step', 'reason', 'at', 'started_at', 'report', 'whats_new'];
+    private const KEYS = ['outcome', 'from', 'to', 'step', 'reason', 'at', 'started_at', 'database_in_backup', 'report', 'whats_new'];
 
     /**
      * Writes history/<YmdHis>-<from>-<to>.json first (YmdHis is started_at, or at, in UTC: one attempt keeps one file
      * even when it is written again), then outcome.json. Extra keys (e.g. `steps`) go to the history only; `log` lines
      * go only into the report, which Report::text cleans.
      *
-     * @param  array<string, mixed>  $o  outcome, from, to, step, reason, at, started_at, plus optional log, php_version,
-     *                                   prechecks_failed and extra history keys
+     * A `blocked` outcome also writes the `blocked` flag file (the Update button is switched off) before outcome.json.
+     *
+     * @param  array<string, mixed>  $o  outcome, from, to, step, reason, at, started_at, database_in_backup, plus
+     *                                   optional log, php_version, prechecks_failed and extra history keys
      */
     public static function write(string $updaterDir, array $o): void
     {
@@ -42,6 +44,8 @@ final class Outcome
             'reason' => isset($o['reason']) && is_string($o['reason']) ? $o['reason'] : null,
             'at' => $at,
             'started_at' => $startedAt,
+            // false: the backup step could not copy the database on this host (the cPanel backup is the copy)
+            'database_in_backup' => is_bool($o['database_in_backup'] ?? null) ? $o['database_in_backup'] : null,
         ];
         $whatsNew = [];
         foreach (is_array($o['whats_new'] ?? null) ? $o['whats_new'] : [] as $line) {
@@ -67,6 +71,11 @@ final class Outcome
         }
         $name = gmdate('YmdHis', $startedAt ?? $at).'-'.self::safe($out['from']).'-'.self::safe($out['to']).'.json';
         Files::writeAtomic($historyDir.'/'.$name, self::json($history));
+        if ($outcome === 'blocked') {
+            // Switched off now, not when Laravel takes the outcome: another update must never start on a half-changed
+            // database (the same file and shape Laravel writes, App\Support\Updates\UpdateOutcomes).
+            Files::writeAtomic($updaterDir.'/blocked', json_encode(['at' => $at, 'reason' => $out['reason']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)."\n");
+        }
         Files::writeAtomic($updaterDir.'/outcome.json', self::json($out));
     }
 

@@ -92,7 +92,8 @@ class AppUpdateCommandTest extends TestCase
 
     private function fakeGithub(string $version = '2.2.1'): void
     {
-        Http::fake(['*' => Http::response($this->manifest($version))]);
+        // A fresh response per request: a streamed body can be read only once.
+        Http::fake(fn () => Http::response($this->manifest($version)));
     }
 
     private function superAdmin(): User
@@ -442,6 +443,16 @@ class AppUpdateCommandTest extends TestCase
         $this->assertSame('blocked', $this->outcome()['outcome']);
         $this->assertStringContainsString('Column already exists', $this->outcome()['report']);
         $this->assertSame('rolled_back', $this->job()['status']);
+
+        // Nothing has taken the outcome yet (no web request): a second run is still refused.
+        $this->assertFileExists($this->dir.'/outcome.json');
+        $this->childCalls = [];
+        $this->assertFileExists($this->dir.'/blocked');
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain('The update is switched off until a failed update has been looked at')
+            ->assertExitCode(1);
+        $this->assertSame([], $this->childCalls);
+        $this->assertOldSite();
     }
 
     public function test_a_step_failure_prints_the_plain_message_and_the_report_path(): void
