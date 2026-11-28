@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use ClubPortalUpdater\Context;
 use ClubPortalUpdater\Journal;
+use ClubPortalUpdater\LaravelApp;
+use ClubPortalUpdater\Lock;
 use ClubPortalUpdater\Maintenance;
 use ClubPortalUpdater\Outcome;
 use ClubPortalUpdater\Page;
+use ClubPortalUpdater\Steps;
 use Tests\TestCase;
 use Tests\Unit\Updater\UpdateRunFixture;
 
@@ -524,6 +527,41 @@ class UpdaterPageTest extends TestCase
         file_put_contents($this->dir.'/journal.json', json_encode($journal));
         $this->pageAt(time() + 700);
         $this->assertNotSame('failed', $this->job()['status'], 'the finish had begun: completing it is another path');
+    }
+
+    public function test_the_manual_steps_on_the_screen_match_install_md(): void
+    {
+        $install = (string) file_get_contents(base_path('docs/INSTALL.md'));
+        file_put_contents($this->site.'/storage/framework/updating', (string) time());
+        file_put_contents($this->dir.'/journal.json', '{broken');
+        $text = $this->visibleText($this->page()['body']);
+
+        foreach ([
+            "In the portal's `storage/framework` folder, delete the files `updating`, `down` and `maintenance.php`.",
+            "In the portal's `storage/app/updater` folder, delete the file `job.json`.",
+            "Open the portal's home page and check that it works.",
+        ] as $step) {
+            $this->assertStringContainsString($step, $install);
+            $this->assertStringContainsString(str_replace('`', '', $step), $text);
+        }
+    }
+
+    /** `app:update --finish` of the NEXT release calls these in THIS lib (CLAUDE.MD, Steps' docblock): keep them. */
+    public function test_the_lib_api_the_next_releases_finish_command_calls_is_there(): void
+    {
+        foreach ([
+            [Context::class, '__construct'], [Context::class, 'load'], [Context::class, 'journal'],
+            [Lock::class, 'acquire'], [Lock::class, 'release'],
+            [Journal::class, 'steps'], [Journal::class, 'begin'], [Journal::class, 'finish'], [Journal::class, 'log'], [Journal::class, 'isRecovering'],
+            [Steps::class, 'isThisAttempt'], [Steps::class, 'completeFinishing'], [Steps::class, 'screenName'],
+            [Maintenance::class, 'liftGuard'], [LaravelApp::class, 'forKernel'], [LaravelApp::class, 'health'],
+        ] as [$class, $method]) {
+            $this->assertTrue(method_exists($class, $method), "$class::$method");
+            $this->assertTrue((new \ReflectionMethod($class, $method))->isPublic(), "$class::$method is public");
+        }
+        foreach (['boot', 'files', 'job', 'app'] as $property) {
+            $this->assertTrue(property_exists(Context::class, $property), "Context::\$$property");
+        }
     }
 
     // ------------------------------------------------------------------ the report link and index.php    // ------------------------------------------------------------------ the report link and index.php
