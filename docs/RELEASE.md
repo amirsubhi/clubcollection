@@ -97,7 +97,7 @@ From **v2.2.0** the super admin can update a site without a Terminal: **Updates*
 version, what is new in it and whether the site is ready; **Update to v...** (password and 6-digit code) does the rest in
 about 2 minutes while the portal shows members a "back in a few minutes" page. The person must keep the page open
 until it says Done. If it goes wrong it puts the old version back by itself. The same steps run from the terminal with
-`php artisan app:update` (`--check` only compares versions; `--yes` skips the question). If the server does not let PHP
+`php artisan app:update` (`--check` only compares versions; `--yes` skips the question but never assumes a database backup: add `--database-backed-up` when the page would ask for one, and `--manual-action-done` when a release asks for something to be done first). If the server does not let PHP
 start programs the command stops after switching the files and prints the line to finish by hand:
 `php artisan migrate --force && php artisan optimize && php artisan app:update --finish`.
 

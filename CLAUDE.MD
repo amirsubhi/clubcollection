@@ -61,7 +61,7 @@ database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSee
 public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release); the live manifest is the routed /app.webmanifest, the static file a fallback
 public/update/                 the standalone updater (index.php + lib/, namespace ClubPortalUpdater, plain PHP, no Composer); public/update-guard.php = swap guard
 app/Support/Updates/           Manifest, UpdateCheck, PreChecks, UpdateJob, UpdateOutcomes, PausePage, UpdaterFiles, UpdaterHost (the Laravel side of the updater)
-app/Console/Commands/AppUpdate app:update [--check|--yes|--finish]; release-policy.json + scripts/{build-release.sh,release-manifest.php} build the manifest
+app/Console/Commands/AppUpdate app:update [--check|--yes [--database-backed-up] [--manual-action-done]|--finish]; release-policy.json + scripts/{build-release.sh,release-manifest.php} build the manifest
 scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)
 mockup/                        standalone design mockup (sample data only; see mockup/README.md)
 tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.mjs (Playwright)

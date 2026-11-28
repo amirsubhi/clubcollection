@@ -25,7 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   step, puts the old files back (a failed migration is the one case that needs a person: the button then stays off
   until a super admin confirms the data was checked). Never touched: `.env*`, `storage/`, `database/` except
   migrations, seeders and factories, and files that belong to the site.
-- `php artisan app:update` does the same from the terminal (`--check` shows the versions, `--yes` skips the question).
+- `php artisan app:update` does the same from the terminal (`--check` shows the versions, `--yes` skips the question; `--database-backed-up` and `--manual-action-done` answer the two "has this been done" questions when `--yes` is used).
   If the server does not let PHP start programs it stops after the switch and prints
   `php artisan migrate --force && php artisan optimize && php artisan app:update --finish`; run that to finish.
 - **Swap guard** (`public/update-guard.php`, the first lines of `public/index.php` and `artisan`): written for PHP 5.6 and

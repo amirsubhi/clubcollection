@@ -38,6 +38,7 @@ class AppUpdateCommandTest extends TestCase
         config(['updates.release_file' => $this->site.'/release-files.json']);
         Cache::flush();
         $this->childCalls = [];
+        AppUpdate::$needsDatabaseTick = static fn (): bool => false; // the same on SQLite and MariaDB
 
         AppUpdate::$tune = function (Context $c): void {
             $f = $this->context();
@@ -63,6 +64,7 @@ class AppUpdateCommandTest extends TestCase
         AppUpdate::$child = null;
         AppUpdate::$opcacheTimestamps = null;
         AppUpdate::$lockAfterSwitch = null;
+        AppUpdate::$needsDatabaseTick = null;
         BackupRun::$processAvailable = null;
         $this->app->setBasePath($this->originalBase);
         $this->cleanTempDirs();
@@ -321,6 +323,47 @@ class AppUpdateCommandTest extends TestCase
         $this->assertSame([], $this->childCalls);
         $this->assertSame('<?php // new A', $this->read('app/A.php'), 'nothing is put back from here');
         $this->assertSame('running', $this->job()['status']);
+    }
+
+    public function test_yes_never_assumes_the_database_backup(): void
+    {
+        AppUpdate::$needsDatabaseTick = static fn (): bool => true;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain('--database-backed-up')
+            ->assertExitCode(1);
+
+        $this->assertFileDoesNotExist($this->dir.'/job.json');
+        $this->assertOldSite();
+    }
+
+    public function test_yes_with_the_backup_option_goes_ahead_without_a_prompt(): void
+    {
+        AppUpdate::$needsDatabaseTick = static fn (): bool => true;
+        BackupRun::$processAvailable = static fn (): bool => false;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true, '--database-backed-up' => true])->assertExitCode(0);
+
+        $this->assertTrue($this->job()['db_backup_ticked']);
+    }
+
+    public function test_yes_never_assumes_the_manual_action(): void
+    {
+        Http::fake(['*' => Http::response(['manual_action' => 'Ask your host to raise memory_limit.'] + $this->manifest())]);
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain('--manual-action-done')
+            ->assertExitCode(1);
+
+        $this->assertFileDoesNotExist($this->dir.'/job.json');
     }
 
     public function test_the_job_belongs_to_the_first_super_admin_and_is_audited(): void

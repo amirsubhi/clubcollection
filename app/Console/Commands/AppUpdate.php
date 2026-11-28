@@ -33,7 +33,7 @@ use Throwable;
  * `optimize` therefore run in a child `php artisan` (only when PHP may start programs), and the website's PHP cache
  * cannot be reset from the command line (the CLI and the web pool have separate caches).
  */
-#[Signature('app:update {--check : Only show the installed and the latest version} {--yes : Do not ask before updating} {--finish : Finish an update that stopped after the switch, once the manual commands have been run}')]
+#[Signature('app:update {--check : Only show the installed and the latest version} {--yes : Do not ask before updating} {--database-backed-up : With --yes: I have just taken a full backup of the database} {--manual-action-done : With --yes: the thing the release asks to be done first has been done} {--finish : Finish an update that stopped after the switch, once the manual commands have been run}')]
 #[Description('Update Club Portal to the latest release (the same steps as the Updates page)')]
 class AppUpdate extends Command
 {
@@ -48,6 +48,9 @@ class AppUpdate extends Command
 
     /** Test seam: takes the update lock after the switch, fn(string $dir): ?Lock. */
     public static ?\Closure $lockAfterSwitch = null;
+
+    /** Test seam: whether a person must confirm a database backup (null: ask PreChecks). */
+    public static ?\Closure $needsDatabaseTick = null;
 
     private const BUSY = 'An update is already running (in a browser or another terminal). Try again later.';
 
@@ -106,19 +109,28 @@ class AppUpdate extends Command
             $this->line('  - '.$line);
         }
         $dbTicked = false;
-        if (PreChecks::needsDatabaseBackupTick()) {
-            $dbTicked = $this->confirm("This server can't copy your club's data by itself. Have you just taken a full backup of the database (cPanel Backup, or phpMyAdmin Export)?", false);
+        if (self::$needsDatabaseTick !== null ? (bool) (self::$needsDatabaseTick)() : PreChecks::needsDatabaseBackupTick()) {
+            // --yes never assumes a backup was taken: it needs --database-backed-up.
+            $dbTicked = $this->option('yes')
+                ? (bool) $this->option('database-backed-up')
+                : $this->confirm("This server can't copy your club's data by itself. Have you just taken a full backup of the database (cPanel Backup, or phpMyAdmin Export)?", false);
             if (! $dbTicked) {
-                $this->line('The update was not started. Take a backup of the database, then run it again.');
+                $this->line($this->option('yes')
+                    ? "The update was not started: this server can't copy your club's data by itself. Take a full backup of the database (cPanel Backup, or phpMyAdmin Export), then run it again with --database-backed-up."
+                    : 'The update was not started. Take a backup of the database, then run it again.');
 
                 return self::FAILURE;
             }
         }
         $manualTicked = false;
         if (PreChecks::needsManualActionTick($m)) {
-            $manualTicked = $this->confirm("This update needs one thing done first: {$m->manualAction} Has that been done?", false);
+            $manualTicked = $this->option('yes')
+                ? (bool) $this->option('manual-action-done')
+                : $this->confirm("This update needs one thing done first: {$m->manualAction} Has that been done?", false);
             if (! $manualTicked) {
-                $this->line('The update was not started. Do that first, then run it again.');
+                $this->line($this->option('yes')
+                    ? 'The update was not started: this update needs one thing done first ('.$m->manualAction.'). Do that, then run it again with --manual-action-done.'
+                    : 'The update was not started. Do that first, then run it again.');
 
                 return self::FAILURE;
             }
