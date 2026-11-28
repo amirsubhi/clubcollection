@@ -24,7 +24,7 @@ use ZipArchive;
  * - Never includes .env or APP_KEY: the uploaded files are encrypted with
  *   APP_KEY, so keep the key separately, off the server (docs/INSTALL.md).
  */
-#[Signature('backup:run {--keep=14 : How many backup zips to keep (older ones are deleted)}')]
+#[Signature('backup:run {--keep=14 : How many backup zips to keep (older ones are deleted)} {--database-only : Only the database, no uploaded files (the updater uses this)}')]
 #[Description('Back up the database and uploaded files to storage/app/backups')]
 class BackupRun extends Command
 {
@@ -95,13 +95,14 @@ class BackupRun extends Command
                 $zip->addFile($dbFile, $dbEntry);
             }
             $files = 0;
-            foreach ([
+            $databaseOnly = (bool) $this->option('database-only');
+            foreach ($databaseOnly ? [] : [
                 'storage/app/private' => (string) config('filesystems.disks.local.root'),
                 'storage/app/public' => (string) config('filesystems.disks.public.root'),
             ] as $entryRoot => $root) {
                 $files += $this->addFolder($zip, $root, $entryRoot);
             }
-            $zip->addFromString('README.txt', $this->readme($dbEntry, $dbNote));
+            $zip->addFromString('README.txt', $this->readme($dbEntry, $dbNote, $databaseOnly));
             if (! $zip->close()) {
                 $this->error('Writing the zip failed (disk full?).');
 
@@ -130,9 +131,9 @@ class BackupRun extends Command
 
         AuditService::asSystem(fn () => AuditService::log(
             'system.backup',
-            "Backup {$name} created (".($dbEntry ?? 'no database copy').", {$files} file(s), ".number_format($size / 1048576, 1).' MB).',
+            "Backup {$name} created (".($dbEntry ?? 'no database copy').", {$files} file(s)".($databaseOnly ? ', database only' : '').', '.number_format($size / 1048576, 1).' MB).',
             null, null, [],
-            ['file' => $name, 'bytes' => $size, 'files' => $files, 'database' => $dbEntry !== null, 'pruned' => count($pruned)]
+            ['file' => $name, 'bytes' => $size, 'files' => $files, 'database' => $dbEntry !== null, 'pruned' => count($pruned), 'database_only' => $databaseOnly]
         ));
 
         $this->info("Backup written: storage/app/backups/{$name} (".number_format($size / 1048576, 1)." MB, database: ".($dbEntry ?? 'not included').", {$files} file(s)).");
@@ -290,15 +291,17 @@ class BackupRun extends Command
         return $deleted;
     }
 
-    private function readme(?string $dbEntry, ?string $dbNote): string
+    private function readme(?string $dbEntry, ?string $dbNote, bool $databaseOnly = false): string
     {
         return implode("\n", [
             'Club Portal backup, made '.now()->toDateTimeString().' ('.config('app.timezone').').',
             '',
             'Contents:',
             '- '.($dbEntry ?? 'no database copy').($dbNote ? " ({$dbNote})" : ''),
-            '- storage/app/private: uploaded documents and slips (encrypted with APP_KEY)',
-            '- storage/app/public: club logos',
+            ...($databaseOnly ? ['- (database only: the uploaded files are not in this backup)'] : [
+                '- storage/app/private: uploaded documents and slips (encrypted with APP_KEY)',
+                '- storage/app/public: club logos',
+            ]),
             '',
             'NOT included: .env and APP_KEY. Without the same APP_KEY the documents, slips, welfare details and',
             'club gateway keys cannot be read. Restore steps: docs/INSTALL.md, section "Backups".',

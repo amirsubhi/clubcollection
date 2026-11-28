@@ -148,7 +148,7 @@ class PreflightTest extends TestCase
     {
         $newer = array_filter(array_map(fn (string $t) => defined($t) ? constant($t) : null,
             ['T_FN', 'T_MATCH', 'T_NULLSAFE_OBJECT_OPERATOR', 'T_ATTRIBUTE', 'T_COALESCE', 'T_COALESCE_EQUAL', 'T_SPACESHIP', 'T_ENUM', 'T_READONLY']));
-        foreach (['bootstrap/preflight.php', 'bootstrap/requirements.php', 'public/index.php'] as $file) {
+        foreach (['bootstrap/preflight.php', 'bootstrap/requirements.php', 'public/index.php', 'public/update-guard.php', 'artisan'] as $file) {
             $code = (string) file_get_contents(dirname(__DIR__, 2).'/'.$file);
             foreach (\PhpToken::tokenize($code) as $token) {
                 $this->assertNotContains($token->id, $newer, "{$file}:{$token->line} uses {$token->getTokenName()}");
@@ -157,6 +157,48 @@ class PreflightTest extends TestCase
             $this->assertDoesNotMatchRegularExpression('/function\s*\w*\s*\(\s*\??[\w\\\\]+\s+&?\$/', $code, "{$file}: no parameter types");
             $this->assertDoesNotMatchRegularExpression('/\$\w+\s*::\s*class\b/', $code, "{$file}: no ::class on an object");
         }
+    }
+
+    /**
+     * The swap guard runs before anything from bootstrap/ or vendor/ (those folders are renamed during an update), so
+     * its two lines are the first statements of public/index.php and artisan.
+     */
+    public function test_the_swap_guard_lines_come_first(): void
+    {
+        $expect = [
+            'public/index.php' => ["require __DIR__.'/update-guard.php';", 'clubportal_update_guard_web(dirname(__DIR__));'],
+            'artisan' => ["require __DIR__.'/public/update-guard.php';", 'clubportal_update_guard_cli(__DIR__);'],
+        ];
+        foreach ($expect as $file => $lines) {
+            $this->assertSame($lines, array_slice(self::statements(dirname(__DIR__, 2).'/'.$file), 0, 2), $file);
+        }
+    }
+
+    /** @return list<string> the file's top-level statements, `use` imports left out, whitespace and comments dropped */
+    private static function statements(string $path): array
+    {
+        $out = [];
+        $current = '';
+        foreach (\PhpToken::tokenize((string) file_get_contents($path)) as $token) {
+            if ($token->is([T_OPEN_TAG, T_INLINE_HTML, T_COMMENT, T_DOC_COMMENT])) {
+                continue;
+            }
+            if ($token->is(T_WHITESPACE)) {
+                $current .= $current === '' ? '' : ' ';
+
+                continue;
+            }
+            $current .= $token->text;
+            if ($token->text === ';') {
+                $statement = trim(str_replace([' (', '( ', ' )', ' ;'], ['(', '(', ')', ';'], $current));
+                if (! str_starts_with($statement, 'use ')) {
+                    $out[] = $statement;
+                }
+                $current = '';
+            }
+        }
+
+        return $out;
     }
 
     public function test_the_page_is_sent_with_its_headers(): void

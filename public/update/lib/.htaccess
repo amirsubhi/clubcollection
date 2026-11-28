@@ -1,0 +1,4 @@
+# The updater's library is only ever loaded by public/update/index.php, never requested by a browser.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>

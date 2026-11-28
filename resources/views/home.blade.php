@@ -7,6 +7,7 @@
 
 @if(auth()->user()->isSuperAdmin())
 @include('admin.updates._banner')
+@include('admin.updates._outcome-notice')
 <div class="row g-4 mb-4">
     <div class="col-md-4">
         <div class="card shadow-sm border-0">

@@ -104,7 +104,8 @@ class LaravelLangFilesTest extends TestCase
         }
         foreach (glob(self::root().'/lang/*', GLOB_ONLYDIR) ?: [] as $dir) {
             $code = basename($dir);
-            if (in_array($code, ['ms', 'member'], true)) {
+            // en holds only what Laravel has no file for (updater.php): its auth, passwords and validation are the framework's.
+            if (in_array($code, ['ms', 'member', 'en'], true)) {
                 continue;
             }
             foreach (self::PHP_FILES as $name) {

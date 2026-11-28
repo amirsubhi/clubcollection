@@ -65,6 +65,48 @@ Upgrade with the steps in [docs/RELEASE.md](docs/RELEASE.md).
 - **Audit log** of every write, with old and new values, user, IP and user agent, plus sign-in events (wrong
   passwords, lockouts, account pauses, resets and password changes; never the password).
 
+## The in-app updater (v2.2.0 and later)
+
+The super admin can update the portal from the Updates page. That means the portal downloads and runs code, so the
+trust it relies on, and the pages that need no sign-in, are written down here.
+
+**Trust model.** A site installs a release when it is the `latest` release of this repository on GitHub and its zip
+matches the SHA-256 in that release's `clubportal-manifest.json`, fetched over HTTPS (the zip's address must be on
+`github.com`, under this repository's releases). That is a **checksum only**: there is no signature yet (the manifest has a
+`signature` field for a later release). Whoever controls the owner's GitHub account or the release workflow could ship code to
+every site that presses **Update**. What reduces that risk is outside the code: the owner keeps two-factor sign-in on the
+GitHub account, a tag ruleset lets only the owner create `v*` tags, and releases are created only by `.github/workflows/release.yml`.
+The updater refuses zips with path traversal, absolute paths or symbolic links. Starting an update needs the super
+admin's password again (and the 2FA code when 2FA is on) and is audited, as are its end and any rollback.
+
+**Pages that need no sign-in** (they have to work while the portal's own code is being switched):
+
+- `/update/` (the standalone updater). Its steps run only with the update's secret token cookie (`cp_update`, stored
+  hashed, valid for the job's start up to 30 minutes after its last step; each step answer renews the cookie for that
+  long). A visitor with no cookie can only trigger what the update had already started or a person already did: the
+  **undo of an update that has been idle for 10 minutes** (it only ever puts the installed release back, and never
+  installs anything), **ending an update left before the pause** (10 minutes idle, nothing was changed), the
+  **completion of an interrupted last step**, and **ending an update that was undone by hand** (no pause files left,
+  10 minutes idle: it only records the job as ended). The visitor also reads the screens in plain words: an update in
+  progress (the version and the time it started), the result (what happened and what to do), "waiting to be finished
+  from the command line" with the line to run, and "could not be undone by itself" with what members see and the steps
+  to do by hand. **Only the browser
+  holding the update's cookie** sees the report (versions, steps and error text, never `.env` values, tokens, cookies or
+  database passwords; the app folder is shown as `<app>` and the folder that holds it as `<app-parent>`), the failing
+  checks, the list of the site's own files that were kept, and the reason a blocked update gives (it names the backup
+  file). It never serves a file.
+- **The swap guard** (`public/update-guard.php`, run first by `public/index.php` and `artisan`). While an update is
+  switching files it answers every visitor with the pause page (503). It also saves a POST to `/webhook/toyyibpay` or
+  `/webhook/billplz` to `storage/app/updater/webhooks/` so a payment confirmation isn't lost: **at most 200 callbacks,
+  each at most 64 KB**, in a folder outside the web root, under a name the server chooses (never one from the request).
+  Saved callbacks are replayed after the update through the normal handler, so the ToyyibPay token check and the Billplz
+  signature check still apply and a forged one is refused as usual. Limits: it only runs while an update is in progress; when
+  200 are waiting further callbacks get the 503 and are not kept (ToyyibPay payments are re-checked by the
+  scheduler anyway; Billplz retries by its own policy). The guard is plain old-PHP code that reads only fixed paths.
+
+The updater needs the portal at the domain root, keeps its state in `storage/app/updater/` (outside the web root) and
+never touches `.env`, `storage/` or the uploaded files.
+
 ## Your responsibilities when you deploy it
 
 The software can't secure the server it runs on. Before going live:

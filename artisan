@@ -4,6 +4,10 @@
 use Illuminate\Foundation\Application;
 use Symfony\Component\Console\Input\ArgvInput;
 
+// First of all: while an update switches versions, print one line and stop (the every-minute schedule:run included).
+require __DIR__.'/public/update-guard.php';
+clubportal_update_guard_cli(__DIR__);
+
 define('LARAVEL_START', microtime(true));
 
 // Register the Composer autoloader...

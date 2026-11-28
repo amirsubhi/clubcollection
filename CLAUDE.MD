@@ -59,6 +59,9 @@ routes/web.php                 all HTTP routes; routes/console.php schedules ove
                                (SchedulerHeartbeat, read by app:doctor) and backup:run daily 02:15 Asia/Kuala_Lumpur
 database/seeders/              DatabaseSeeder (demo, local/testing only), E2eSeeder (e2e fixtures)
 public/sw.js, manifest.webmanifest   PWA (bump CACHE_VERSION every release); the live manifest is the routed /app.webmanifest, the static file a fallback
+public/update/                 the standalone updater (index.php + lib/, namespace ClubPortalUpdater, plain PHP, no Composer); public/update-guard.php = swap guard
+app/Support/Updates/           Manifest, UpdateCheck, PreChecks, UpdateJob, UpdateOutcomes, PausePage, UpdaterFiles, UpdaterHost (the Laravel side of the updater)
+app/Console/Commands/AppUpdate app:update [--check|--yes [--database-backed-up] [--manual-action-done]|--finish]; release-policy.json + scripts/{build-release.sh,release-manifest.php} build the manifest
 scripts/licenses.mjs           writes docs/THIRD-PARTY-LICENSES.md (npm run licenses)
 mockup/                        standalone design mockup (sample data only; see mockup/README.md)
 tests/Feature/{Admin,Member}, tests/Feature/*.php, tests/Unit, tests/e2e/smoke.mjs (Playwright)
@@ -287,6 +290,40 @@ missing": a locking read of a missing row takes a gap lock and two first receipt
   a slip or attachment (member slip, `admin.attachments.show`) `throttle:60,1`, attachment thumbnails `throttle:300,1`.
 - **Exports**: `Cache-Control: no-store`, attachment disposition, `CsvSafe` for formula cells.
 - **Gateway access** goes through `PaymentGatewayManager::for($club)`, never a concrete gateway.
+
+## In-app updater (v2.2.0+)
+
+Spec `docs/superpowers/specs/2026-11-27-in-app-updater-design.md`; user/host docs in `docs/RELEASE.md` §2, `docs/INSTALL.md` §7, `SECURITY.md`.
+
+- **Layout.** The Updates page and routes (`/admin/updates*`, super admin) and `app/Support/Updates/*` live in Laravel. The
+  engine is `public/update/lib/*` (`Steps`, `Journal`, `Lock`, `Swap`, `Unpack`, `Download`, `ZipSafety`, `Recovery`, `Outcome`,
+  `Report`, `Page` for every screen, `Auth` for the `cp_update` token) behind `public/update/index.php`. It must not use
+  Laravel, Composer or the database except in the steps that boot the new app on purpose (`BootedApp`/`LaravelApp`).
+  `app:update` drives the same `Steps`. State is files under `storage/app/updater/` (`job.json`, `journal.json`, `lock`,
+  `outcome.json`, `history/`, `webhooks/`, `blocked`); one `flock` serialises every step and recovery.
+- **The installed release's updater runs every update**, never the new one: a bug fix to the engine reaches a site one
+  release later, and the engine must keep working with the next release's zip layout. `public/update/` and
+  `public/update-guard.php` are moved in by the last step (`finish`), not by the swap.
+- **Two seams cross versions, so keep their APIs stable for at least one release:** `app:update --finish` runs the NEW
+  release's command against the installed release's `public/update/lib` (Context, Lock, Journal,
+  `Steps::isThisAttempt`/`completeFinishing`, `Maintenance::liftGuard`, `LaravelApp::forKernel`); and the old lib's
+  `LaravelApp::health` and `migrate` call the new app's `UpdaterHost` and migrations. app:update's child commands get
+  past the guard with a one-time pass (`storage/app/updater/cli-pass` + env `CLUBPORTAL_UPDATER_PASS`).
+- **The guard** (`public/update-guard.php`, first lines of `public/index.php` and `artisan`) must **parse and run on PHP
+  5.6**: no short arrays, type declarations, `??`, arrow functions, `match`, named arguments. CI job `old-php-parse`
+  (`.github/workflows/tests.yml`) runs `php -l` on it under 5.6 and 7.4; add any new file that runs before PHP 8.4 is
+  checked to that list. It reads only fixed paths, never a path from the request.
+- **`release-policy.json`** (`min_from_version`, `manual_action`) is read by `scripts/release-manifest.php` into the
+  manifest; change it per release deliberately. `### What's new` in the CHANGELOG (1-5 bullets, 200 characters) is
+  required by the release build.
+- **Never touched by a swap:** `.env*`, `storage/`, `database/` except migrations/seeders/factories, `public/update/`,
+  `public/update-guard.php`, and files that are not in the old release's `release-files.json` (site-local files are kept
+  and reported). `public/.htaccess` is carried over last.
+- **Never edit a shipped migration**, and keep migrations additive: the previous release's code undoes a failed update
+  against the new schema, and a failed migration blocks the button (`storage/app/updater/blocked`).
+- **Public-repo rule for the updater:** no host names, LAN addresses or home paths in code, tests or docs.
+- Tests: `tests/Unit/Updates`, `tests/Feature/UpdateGuardTest.php`, `tests/Feature/Admin/UpdatesPageTest.php`, `tests/Feature/AppUpdateCommandTest.php`; they use a
+  scratch app folder (`CLUBPORTAL_UPDATER_APP`) and the `AppUpdate::$tune/$child` seams, never the real tree.
 
 ## Dev workflow
 

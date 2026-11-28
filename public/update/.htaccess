@@ -1,0 +1,5 @@
+# The updater's library is only ever required by index.php; never serve it.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^lib/ - [F,L]
+</IfModule>

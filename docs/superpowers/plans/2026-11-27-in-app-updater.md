@@ -38,7 +38,7 @@
   page shows "To update, follow the upgrade steps" linking to `docs/RELEASE.md` §2 on GitHub. Stage 1 merges to
   master but is **not released on its own**: v2.2.0 needs the swap guard and `public/update/` (stage 2), because
   every later button update runs the installed release's updater and `min_from_version` is 2.2.0.
-- **Stage 2 = Tasks 6–13.** They are to be revised against the spec's §12 and the journeys before stage 2 starts.
+- **Stage 2 = Tasks 6–14** (revised 28 November 2026 against the spec's §12 and the journeys; see "Stage 2 rules").
   Stage 1 agents implement Tasks 1–5 only and must not build anything from Tasks 6–13.
 - **Carried into stage 2 from the stage-1 reviews (28 November 2026):**
   - **No release ships stage 1 on its own** until the wording matches the manual path: the red banner says "It
@@ -202,38 +202,145 @@
   use the same rule, never the raw `security` field). **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updates: page, status endpoint and dashboard banner`.
 
-### Task 6: Starting an update (re-confirmation, job, token cookie) and database-only backup
+### Stage 2 rules (revised 28 November 2026, against the journeys and spec §12)
+
+These bind every stage-2 task, on top of Global Constraints. Where an older line in a stage-2 task disagrees, this
+section wins.
+
+- **Files, fixed names** (all under `storage/app/updater/`, the "updater dir"): `job.json`, `journal.json`, `lock`
+  (the one `flock` file), `pause.html` (members' pause page), `outcome.json` (written by code without Laravel, consumed
+  once by Laravel), `history/<YmdHis>-<from>-<to>.json`, `blocked` (a failed migration switches the button off),
+  `webhooks/` (saved payment callbacks), `clubportal-<v>.zip`, `cli-pass` (app:update's one-time pass for its child
+  commands, matched with env `CLUBPORTAL_UPDATER_PASS`; deleted when they end). Marker: `storage/framework/updating` (the swap guard).
+- **Statuses, exact strings.** `job.json` `status`: `ready`, `running`, `finished`, `undone`, `failed`,
+  `rolled_back` (the last four are `UpdaterHost::TERMINAL_JOB_STATUSES`). `outcome.json` / history `outcome`:
+  `finished`, `rolled_back` (a step from the switch on failed and the files were put back), `undone` (abandoned and
+  undone by recovery, J4), `failed` (failed before the pause; nothing changed), `blocked` (a migration failed part-way,
+  J5 last case). `journal.json` `recovering: true` once recovery starts; no step runs after that.
+- **Steps, fixed order and screen names** (journal keys → what Aminah sees):
+  `prechecks` "Checking your site is ready"; `download` "Downloading Club Portal v<to>"; `backup` "Saving a copy of
+  your club's data"; `unpack` "Checking the new files"; `maintenance` "Pausing the portal for members"; `swap` and
+  `opcache` together "Switching to the new version"; `migrate` "Updating your club's records to the new version";
+  `health` "Checking everything works"; `finish` "Opening the portal again".
+- **Locking.** Every step, slice and recovery takes `flock(LOCK_EX | LOCK_NB)` on `lock`; a request that can't get it
+  answers `{status:"busy"}` and the page only watches ("This update is running in another tab"). Each finished step or
+  slice sets `last_step_at`, which is the 10-minute clock.
+- **Recovery runs from web requests only:** the guard in `artisan` prints one line and exits 0, nothing else.
+- **No Laravel, no database, no mail** in `public/update/` and the guard, except the steps that boot Laravel
+  in-process on purpose (`backup` on the old code; `migrate` and the boot part of `health` on the new code). Outcomes
+  reach the audit log, history, notices and email through `outcome.json` (Task 10).
+- **Report text** (Copy report, history, email): versions, PHP version, failing pre-checks, the step, the error and the
+  step's last log lines; the app path replaced by `<app>`; never `.env` values, tokens, cookies or database
+  credentials. One builder function: `ClubPortalUpdater\Report::text(array $history, string $appPath): string`.
+- **Members' pause page** (J6, Malay approved by the owner 28 November 2026; copy it exactly). Rendered in step
+  `backup` from the lang files (new keys `updater.pause_title` = ":portal sedang dikemas kini" / ":portal is being
+  updated", `updater.pause_back`, `updater.pause_paid`, `updater.pause_form`) in the portal's default language, with the
+  portal name from Portal settings; inline CSS, no external files, `<meta http-equiv="refresh" content="30;url=/">`.
+  Served with 503 and `Retry-After: 120` by the guard and by Laravel's `maintenance.php` (the `down` file's
+  `template`). When `pause.html` is missing the guard serves a built-in bilingual fallback with the same headers.
+- **Admin bypass.** Step `maintenance` writes Laravel's `down` file with a random `secret` and `except: ["webhook/*"]`,
+  and sets Laravel's maintenance bypass cookie (`laravel_maintenance`, same format as
+  `Illuminate\Foundation\Http\MaintenanceModeBypassCookie`, read from vendor before the switch) on the updating admin's
+  browser. **The guard file stays from `maintenance` until `finish`** (lifting it earlier would leave Laravel's
+  maintenance page up for good if the tab closes, with no idle recovery). The guard verifies the bypass cookie itself
+  (PHP 5.6: `base64_decode`, `json_decode`, `hash_hmac('sha256', expires_at, secret)` with the secret from the `down`
+  file, and `expires_at` in the future): a valid cookie before the journal has `opcache` done → `302` to `/update/`
+  (she pressed Back mid-switch, J4); a valid cookie after → the request continues into Laravel (the admin's Watch strip,
+  the `migrate` boot and the browser's health requests). Everyone else gets the pause page.
+- **Saved payment callbacks.** While the guard file exists, a `POST` to `/webhook/toyyibpay` or `/webhook/billplz` is
+  saved as `webhooks/<microtime>-<random>.json` (`{path, body, headers: {content-type, x-signature,
+  x-toyyibpay-*, x-billplz-*}, at}`; body at most 64 KB; at most 200 files, then refused with 503 unsaved) and answered
+  503. Laravel replays them (Task 10).
+- **`TERMINAL_JOB_STATUSES` and `NEEDED_FUNCTIONS`** in `UpdaterHost` stay the single lists: extend
+  `NEEDED_FUNCTIONS` with every PHP function the updater calls (curl_*, flock, hash_file, ZipArchive is an extension).
+- **Tests need PHP 8.4 with vendor installed** (the full suite, plus the MariaDB run CLAUDE.MD describes for
+  anything touching the database or migrations).
+- **Rulings made in the revision** (record in the ledger; the owner can overturn):
+  - The fresh-request "new version is served" check (LiteSpeed workers, §9) is not automated: Task 14 checks it by
+    hand on the test host. Cost if wrong: a LiteSpeed host might serve old bytecode until its workers recycle.
+  - J7's Dismiss is per admin and stored in the history file (`dismissed_by: [user ids]`), because no migration is
+    allowed.
+  - Inertia: a 503 during a member's page visit sends the browser to `/` (a normal GET), which shows the pause page
+    full-screen; never re-posts a form.
+
+### Task 6: Starting an update (re-confirmation, job, ticks, button) and database-only backup
 
 **Files:**
-- Create: `app/Support/Updates/UpdateJob.php`
-- Modify: `UpdatesController` (`POST updates/start` → `start`, `admin.updates.start`, `throttle:5,1,updates.start|`), the Updates view (password field, TOTP field when 2FA is on, warning line when off, ticks for `backup_database` and `manual_action`), `app/Console/Commands/BackupRun.php` (`--database-only`)
-- Test: `tests/Feature/Admin/UpdateStartTest.php`, `tests/Feature/BackupRunTest.php` (new cases)
+- Create: `app/Support/Updates/UpdateJob.php`, `app/Support/Updates/UpdaterFiles.php` (paths of the fixed files above;
+  `dir()`, `jobPath()`, `journalPath()`, `historyDir()`, `blockedPath()`, `guardPath()`)
+- Modify: `UpdatesController` (`POST updates/start` → `start`, `admin.updates.start`, `throttle:5,1,updates.start|`),
+  the Updates view (button replaces the stage-1 manual link; password field; TOTP field when 2FA is on; warning line
+  when off; the J3-style "It's been done" screens for `backup_database` and `manual_action`; J8 line), `PreChecks`
+  (the two advice rows render as advice, not "Failed"; the tight-disk warning shows its fix and host message),
+  `UpdaterHost::updateRunning()` reads through `UpdaterFiles`, `app/Console/Commands/BackupRun.php`
+  (`--database-only`)
+- Test: `tests/Feature/Admin/UpdateStartTest.php`, `tests/Feature/BackupRunTest.php` (new cases),
+  `tests/Feature/Admin/UpdatesPageTest.php` (update the stage-1 manual-link test)
 
 **Interfaces:**
-- Produces: `UpdateJob::create(Manifest $m, User $u, bool $dbBackupTicked): string` (returns the plain token; writes `storage/app/updater/job.json` with `{manifest, token_hash (sha256), user_id, created_at, last_step_at, expires_at (+30 min), status:"ready", db_backup_ticked}` atomically); `UpdateJob::dir(): string` = `storage_path('app/updater')`; cookie name `cp_update`, path `/update/`, HttpOnly, SameSite=Strict, `Secure` only when the request is https.
-- `backup:run --database-only`: same zip naming, database only, no file folders, still prunes with `--keep`.
+- Produces: `UpdateJob::create(Manifest $m, User $u, bool $dbBackupTicked, bool $manualTicked): string` returns the
+  plain token (32 random bytes, hex) and writes `job.json` atomically (temp + rename):
+  `{manifest, token_hash (sha256 hex), user_id, user_name, created_at, last_step_at, expires_at (+30 min from
+  last_step_at), status:"ready", db_backup_ticked, manual_ticked, from_version, to_version, timezone, locale,
+  portal_name}` (timezone = `config('app.timezone')`, locale = the portal's default language, portal_name from Portal
+  settings). `UpdateJob::current(): ?array` (null when absent; an unreadable file counts as running).
+- Cookie `cp_update` = token, path `/update/`, HttpOnly, SameSite=Strict, `Secure` only on https, lifetime 60 min.
+- `start` refuses (back with a plain error, no job) when: password wrong (audit `portal.update_failed_check`); 2FA on
+  and the code is missing, wrong or replayed; a blocking pre-check fails at submit (`PreChecks::run($m, true)`); a job
+  is running; `blocked` exists; a needed tick is missing (`PreChecks::canStart`). Success: audit `portal.update_started`
+  `{from, to}`, redirect to `/update/`.
+- The tick screens (J3 style, spec rule "No ticks she can't honestly give"): what is needed, **Copy message** for the
+  host or installer, and a tick "It's been done (ticked by the person who did it)".
+- J8: while a job is running, the page shows "<user_name> is updating the portal to v<to> (started <time in job
+  timezone>)" and no button.
+- `backup:run --database-only`: same zip naming and `--keep` pruning, database only, no file folders.
 
-- [ ] **Step 1: Failing tests** — wrong password → back with error, no job, audit `portal.update_failed_check`; 2FA on + missing/wrong/replayed code → refused; 2FA off + right password → job created, redirect to `/update/`, cookie set with path `/update/`, audit `portal.update_started` with from/to; blocking pre-check failing at submit → refused; job already running → refused; `backup_database` tick required when `needsDatabaseBackupTick()`; BackupRun `--database-only` zip contains `database/database.sql` (or the SQLite copy) and no `storage/app/private` entries.
+- [ ] **Step 1: Failing tests** — every refusal above; success sets the cookie with path `/update/`, writes the job
+  with the hashed token (plain token never on disk), audits from/to and redirects to `/update/`; advice rows are not
+  labelled "Failed"; tight-disk shows its fix; J8 line and no button while a job runs; `blocked` hides the button with
+  the J5 line; `--database-only` zip has the database dump (or SQLite copy) and no `storage/app/private` entries.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updates: re-confirmed start, update job and database-only backup`.
 
-### Task 7: Updater library — journal, download, zip safety, unpack
+### Task 7: Updater library — lock, journal, download, zip safety, unpack
 
 **Files:**
-- Create: `public/update/lib/Journal.php`, `public/update/lib/Download.php`, `public/update/lib/ZipSafety.php`, `public/update/lib/Unpack.php`, `public/update/lib/load.php` (requires the lib files; namespace `ClubPortalUpdater`, no Composer)
-- Create: `public/update/.htaccess` (deny everything under `lib/`)
-- Test: `tests/Unit/Updater/JournalTest.php`, `DownloadTest.php`, `ZipSafetyTest.php`, `UnpackTest.php` (require `public/update/lib/load.php`; temp dirs)
+- Create: `public/update/lib/load.php` (requires the lib files; namespace `ClubPortalUpdater`, no Composer, PHP 8.4),
+  `public/update/lib/{UpdaterError,Files,Lock,Journal,Download,ZipSafety,Unpack,Report}.php`,
+  `public/update/.htaccess` (deny everything under `lib/`)
+- Test: `tests/Unit/Updater/{Lock,Journal,Download,ZipSafety,Unpack,Report}Test.php` (require `public/update/lib/load.php`; temp dirs)
 
 **Interfaces:**
-- Produces: `Journal::open(string $dir): Journal`; `->steps(): array` (`[name => ['state'=>'done|running|failed','started_at'=>int,'detail'=>mixed]]`), `->begin(string $step)`, `->finish(string $step, mixed $detail = null)`, `->fail(string $step, string $message)`, `->set(string $key, mixed $v)`, `->get(string $key)`, `->idleSeconds(): int`, `->isSwapStarted(): bool`; every write is temp file + `rename`.
-- Step names (fixed order): `prechecks, download, backup, unpack, maintenance, swap, opcache, migrate, health, finish`.
-- `Download::slice(string $url, string $dest, int $maxSeconds = 20): array{done:bool, bytes:int}` (curl, follow redirects, `Range` resume from current size); `Download::verify(string $file, int $size, string $sha256): bool`.
-- `ZipSafety::check(\ZipArchive $z, string $topFolder): void` throws `UpdaterError` on `..`, absolute path, symlink (external attributes `0120000`), entry outside `<topFolder>/`.
-- `Unpack::slice(string $zip, string $staging, int $from, int $count): int` (returns next index or -1 when done); `Unpack::verify(string $staging): array` (paths whose hash ≠ `release-files.json`, or listed but missing).
+- `Files::forApp(string $app)`: the same fixed paths as `App\Support\Updates\UpdaterFiles`, derived from the updater's
+  own location (`dirname(__DIR__, 3)` from `lib/`), never from request input.
+- `Lock::acquire(string $updaterDir): ?Lock` (non-blocking; null when held), `->release()`.
+- `Journal::open(string $dir): Journal`; `->steps()` (`[name => ['state'=>'done|running|failed','started_at'=>int,
+  'finished_at'=>?int,'detail'=>mixed,'log'=>string[]]]`), `->begin($step)`, `->finish($step, $detail = null)`,
+  `->fail($step, $message)`, `->set($k, $v)`, `->get($k)`, `->touch()` (sets `last_step_at`), `->idleSeconds()`,
+  `->isSwapStarted()`, `->isRecovering()`, `->markRecovering()`, `->firstUnfinished(): ?string`; `begin` refuses when
+  recovering or when an earlier step is not done; a step `running` for over 120 s counts as interrupted and may be
+  begun again. Every write is temp file + `rename`.
+- `Download::slice(string $url, string $dest, int $maxSeconds = 20): array{done:bool, bytes:int}` (curl, https only,
+  follow at most 3 redirects, `Range` resume from the current size, checks every `fwrite`); `Download::verify(string
+  $file, int $size, string $sha256): bool`.
+- `ZipSafety::check(\ZipArchive $z, string $topFolder): void` throws `UpdaterError` on `..`, absolute path, a
+  backslash, symlink (external attributes `0120000`), entry outside `<topFolder>/`, or a file not in the zip's
+  `release-files.json`.
+- `Unpack::slice(string $zip, string $staging, int $from, int $count): int` (next index, or -1 when done; every write
+  checked, a failed write throws and removes the staging folder); `Unpack::verify(string $staging): array` (paths whose
+  hash ≠ `release-files.json`, or listed but missing).
+- Staging folder `<app>/../.clubportal-update-<v>/`; when the parent can't be written (open_basedir), fall back to
+  `storage/app/updater/staging-<v>/` only if it is on the same filesystem as the app (compare `stat()['dev']`),
+  else fail with the J3 host message. Step `prechecks` sweeps stray `.update-probe-*` folders.
+- `Report::text(array $history, string $appPath): string` (Stage 2 rules).
 
-- [ ] **Step 1: Failing tests** — journal round-trip and atomic write (no `.tmp` left), `idleSeconds` from `last_step_at`; download resume (local HTTP server via `php -S` in the test, or a `file://` seam) and hash mismatch → false; ZipSafety each bad case; unpack in slices equals a full extract; verify flags a tampered file; **`test_write_failure_leaves_site_untouched`** (staging parent not writable → `UpdaterError`, app folder unchanged, no staging dir left).
+- [ ] **Step 1: Failing tests** — lock held → second acquire null; journal round-trip, atomic write (no `.tmp` left),
+  idle clock, order refusal, 120 s interrupted rule, recovering refusal; download resume via a `php -S` server started
+  in the test, and a size/hash mismatch → false; each ZipSafety bad case; unpack in slices equals a full extract;
+  verify flags a tampered file; **`test_write_failure_leaves_site_untouched`**; report replaces the app path with
+  `<app>` and contains no `APP_KEY`, `DB_PASSWORD` or token text from a fixture.
 - [ ] **Step 2: Run** `--filter=Updater` → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `Updater: journal, download, zip safety and unpack`.
+- [ ] **Step 5: Commit** `Updater: lock, journal, download, zip safety and unpack`.
 
 ### Task 8: Updater library — swap and rollback
 
@@ -250,38 +357,148 @@
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updater: folder swap with journaled rollback`.
 
-### Task 9: Swap guard, maintenance files and token-free recovery
+**Stage 2 addition:** `Swap::run` and
+`Swap::rollback` call `Journal::touch()` after every move; `rollback` also restores `public/.htaccess` and removes
+`bootstrap/cache/*.php` so the old code never loads the new cached config.
+
+### Task 9: Swap guard, maintenance files, saved callbacks and web-only recovery
 
 **Files:**
-- Create: `public/update-guard.php` (old-PHP syntax), `public/update/lib/Maintenance.php`, `public/update/lib/Recovery.php`
-- Modify: `public/index.php` (first statements, before `bootstrap/preflight.php`: `require __DIR__.'/update-guard.php';` and the 503 send) and `artisan` (first statements, before the autoloader: `require __DIR__.'/public/update-guard.php';`), the PHP 5.6 / 7.4 parse list in `.github/workflows/tests.yml` (`old-php-parse`) and `PreflightTest`'s token scan
-- Test: `tests/Unit/Updater/MaintenanceTest.php`, `RecoveryTest.php`, `tests/Feature/UpdateGuardTest.php`
+- Create: `public/update-guard.php` (PHP 5.6 syntax), `public/update/lib/{Maintenance,Recovery,Outcome}.php`
+- Modify: `public/index.php` (first statements, before `bootstrap/preflight.php`: `require __DIR__.'/update-guard.php';`
+  then `clubportal_update_guard_web(dirname(__DIR__));`), `artisan` (first statements, before the autoloader:
+  `require __DIR__.'/public/update-guard.php'; clubportal_update_guard_cli(__DIR__);`), the PHP 5.6 / 7.4 parse list in
+  `.github/workflows/tests.yml` (`old-php-parse`), `PreflightTest`'s token scan
+- Test: `tests/Unit/Updater/{Maintenance,Recovery,Outcome}Test.php`, `tests/Feature/UpdateGuardTest.php`
 
 **Interfaces:**
-- Produces: `public/update-guard.php` defines `clubportal_update_guard($basePath)`: returns null when `storage/framework/updating` is absent; otherwise, if the journal is idle ≥ 600 s, requires `public/update/lib/load.php` and runs `Recovery::run($basePath)` then returns null (request continues normally); else returns `array('status'=>503,'body'=>…)` ("Updating Club Portal, back in a few minutes", `Retry-After: 60`). In `artisan`, a non-null result prints one line and `exit(0)`.
-- `Maintenance::on(string $app, string $secret)` writes `storage/framework/down` (Laravel JSON incl. a pre-rendered template), `storage/framework/maintenance.php` (copied from Laravel's stub in `vendor/laravel/framework/src/Illuminate/Foundation/Console/stubs/maintenance-mode.stub`, read **before** the swap) and `storage/framework/updating`; `Maintenance::off(string $app)` removes all three.
-- `Recovery::run(string $app): string` — before the swap: drop job, `Maintenance::off`; from the swap on: `Swap::rollback`, opcache reset (if allowed), `Maintenance::off`; writes `storage/app/updater/last-result.json` (`{outcome:"rolled_back"|"abandoned", reason, at}`) which the Updates page shows and audits on next load.
+- `clubportal_update_guard_decide($basePath, $method, $path, $bypassCookie)` (pure apart from reading files,
+  testable): returns `null` (no guard file; or recovery ran; or a valid bypass cookie after `opcache` is done, and the
+  request continues), `array('action'=>'save_webhook')`, `array('action'=>'to_updater')` (valid bypass cookie, switch
+  not done) or `array('action'=>'pause')`.
+  `clubportal_update_guard_web($basePath)` acts on it: `pause` → 503, `Retry-After: 120`, `pause.html` (or the
+  built-in fallback) and `exit`; `save_webhook` → save per Stage 2 rules, 503, `exit`; idle ≥ 600 s and the updater
+  lib present → `require public/update/lib/load.php; ClubPortalUpdater\Recovery::run($basePath)` under the lock, then
+  continue. `clubportal_update_guard_cli($basePath)`: guard file present → print "Club Portal is being updated; try
+  again in a few minutes." and `exit(0)`; never runs recovery.
+- `Maintenance::on(string $app, string $secret, string $pauseHtml)` writes `storage/framework/down` (Laravel's JSON:
+  `except: ["webhook/*"]`, `secret`, `status: 503`, `retry: 120`, `template: $pauseHtml`), `storage/framework/maintenance.php`
+  (from Laravel's `maintenance-mode.stub`, read before the switch) and the guard file; `Maintenance::liftGuard(string
+  $app)` removes only the guard file; `Maintenance::off(string $app)` removes all three.
+  `Maintenance::bypassCookie(string $secret): array{name, value, expires}`.
+- `Recovery::run(string $app): string` (outcome): marks the journal `recovering` first; before the switch: job status
+  `undone`, `Maintenance::off`; from the switch on: `Swap::rollback`, `opcache_reset` when allowed,
+  `Maintenance::off`, job status `undone`; writes `outcome.json` via `Outcome::write`.
+- `Outcome::write(string $updaterDir, array $o)`: `{outcome, from, to, step, reason, at, started_at, report}` (report
+  from `Report::text`), temp + rename; also writes the history file.
 
-- [ ] **Step 1: Failing tests** — guard: no marker → null; marker + fresh journal → 503 array; **`test_stale_journal_after_swap_rolls_back_without_token`** (marker + journal swap-started + `last_step_at` 11 min ago → old tree restored, marker gone, `last-result.json` outcome `rolled_back`); stale before swap → maintenance lifted, job removed; `artisan` with the marker prints the line and exits 0 (run `php artisan list` against a temp copy is too heavy: test the guard function and assert the two `require` lines are the first statements via token scan, like `PreflightTest`); `public/update-guard.php` passes the old-PHP token scan.
+- [ ] **Step 1: Failing tests** — decide: no guard file → null; guard + GET → pause; guard + POST `/webhook/billplz`
+  → save_webhook; guard + POST elsewhere → pause; valid bypass cookie before `opcache` done → to_updater, after → null; a forged or expired cookie → pause; save caps (65 KB body refused, 201st file refused, only the listed
+  headers kept, file name never from input); pause headers 503 + `Retry-After: 120` and the fallback when
+  `pause.html` is missing; **`test_stale_journal_after_swap_rolls_back_without_token`** (guard + journal switch
+  started + `last_step_at` 11 min ago → old tree restored, guard, down and maintenance.php gone, outcome `undone`,
+  history written); stale before the switch → maintenance lifted, job `undone`; recovery while another request holds
+  the lock → nothing happens; the CLI guard prints and exits and never touches files; the `down` file has
+  `except: ["webhook/*"]` and the bypass cookie verifies with Laravel's `MaintenanceModeBypassCookie::isValid`; the
+  token scan: the two `require` lines are the first statements of `public/index.php` and `artisan`, and
+  `public/update-guard.php` passes the old-PHP scan.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `Updater: swap guard, maintenance files and token-free recovery`.
+- [ ] **Step 5: Commit** `Updater: swap guard, pause page, saved callbacks and web-only recovery`.
 
-### Task 10: Updater page and step runner (cache reset, migrate, health, finish)
+### Task 10: Laravel side of outcomes — history, notices, email, replay, pause page, member 503
 
 **Files:**
-- Create: `public/update/index.php` (page + `POST ?step=` JSON endpoint), `public/update/lib/Steps.php`, `public/update/lib/Auth.php`
-- Test: `tests/Unit/Updater/StepsTest.php`, `AuthTest.php`
+- Create: `app/Support/Updates/UpdateOutcomes.php`, `app/Support/Updates/PausePage.php`,
+  `app/Http/Middleware/ConsumeUpdaterOutcome.php` (appended to the `web` group; cheap: two `file_exists` calls when
+  there is nothing to do), `app/Mail/PortalUpdateResult.php` (never `ShouldQueue`), `lang/{ms,en}/updater.php`
+- Modify: the Updates page (last attempt line with time in the job timezone + **View report**; the `blocked` J5
+  screen with "The database was restored or checked" confirm button (`POST updates/unblock`, super admin, re-confirm
+  password); J7 notice on the super admin dashboard with **Try again** / **Dismiss** (`POST updates/dismiss`)), the
+  banner (security release + last outcome not `finished` → the J5 red-strip variant "The security update couldn't be
+  installed on this host. Your portal still works. [What to do]"; "Update in progress [Watch]" strip while a job
+  runs), the member app's Inertia setup (`router.on('invalid')`: a 503 → `window.location.assign('/')`)
+- Test: `tests/Feature/Updates/{UpdateOutcomes,PausePage,WebhookReplay}Test.php`, `UpdatesPageTest` (new cases)
 
 **Interfaces:**
-- Consumes: Tasks 6–9.
-- Produces: `Auth::check(string $updaterDir, ?string $cookie): bool` (hash compare, expiry, status not finished); `Steps::run(string $name, Context $c): array{step:string,status:'done'|'more'|'failed',next:?string,message:string}`; Context holds app path, journal, job. Step behaviour exactly as the spec §5 steps 1–10, with these fixed choices: download/unpack return `more` until done; `backup` and `migrate` boot Laravel in-process (`require vendor/autoload.php; $app = require bootstrap/app.php; $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class); $kernel->call(...)`) — `backup` before the swap (old code), `migrate` after `opcache` (new code), then `optimize:clear` and `optimize`; `opcache` returns `{wait: revalidate_freq+2}` when the reset is not allowed and the page waits that long; `health` is answered by the browser (it fetches `/up` and `/login` with the bypass cookie and POSTs the result as `?step=health`), plus an in-process boot check; `finish` = boot Laravel once more and create the `AuditLog` row `portal.update_finished`, maintenance off, move the new `public/update/` and `public/update-guard.php` into place, delete the zip and staging, delete any `.clubportal-old-*` folder older than this update's.
-- Page behaviour: lists the 10 steps; runs them in order; a non-JSON reply or HTTP error → one retry, then (from `swap` on) POST `?step=rollback` and show "Update failed, your site is back on v<old>" with the reason; reload reads the journal and shows **Continue** / **Roll back**; without a valid cookie: "No update in progress" + link to `/admin/updates` (and the guard's recovery covers abandoned runs).
+- `UpdateOutcomes::consume(): void` — when `outcome.json` exists and no guard file: take it (rename to a temp name
+  first, so two requests never both consume), write the audit row (`portal.update_finished` /
+  `portal.update_rolled_back` / `portal.update_failed_check`, with from, to, step, reason), make sure the history file
+  exists, write `blocked` when outcome is `blocked`, send `PortalUpdateResult` to every super admin synchronously
+  inside try/catch (skipped silently when sending throws), and replay saved webhooks.
+- Webhook replay: for each file in `webhooks/` (oldest first, at most 50 per request), build the Request from the
+  saved path, body and headers and call `WebhookController@toyyibpay|billplz` through the container (so signature
+  checks and the "already processed" check run; the route throttle is skipped). Delete the file on a 2xx; after 3
+  failed tries move it to `webhooks/failed/` and log a warning. Runs whenever `webhooks/` has files and there is no
+  guard file, even without an outcome.
+- `PausePage::render(string $locale, string $portalName): string` (Stage 2 rules); used by the `backup` step (Task 11)
+  through the booted app.
+- Email text = the screen text of the outcome (J1 done, J4 undone, J5 rolled back, J5 blocked) plus the report.
 
-- [ ] **Step 1: Failing tests** — Auth: wrong token, expired, finished → false; Steps on a fixture app (fake Laravel boot via an injectable `Context::$boot` closure): order enforced (`swap` before `unpack` done → failed); a `migrate` failure → file rollback and the message tells the admin to restore the database from the step 3 backup (spec §6); a health failure → rollback; finish removes staging and the zip and moves `public/update` last.
+- [ ] **Step 1: Failing tests** — consume once (second request finds nothing), audit row per outcome, history kept,
+  `blocked` written and the button off with the J5 screen, unblock needs the password and removes `blocked`, J7
+  notice shown to every super admin until each dismisses it (and gone after a later `finished`), never to club admins;
+  mail sent synchronously and a throwing mailer doesn't break the request; replay calls the handler with the saved body
+  (a Billplz fixture with a valid signature settles the payment; a replayed duplicate does not settle twice; a bad
+  signature is not settled and the file ends in `failed/` after 3 tries); `PausePage` Malay text exactly as J6 with
+  the portal name, 30 s refresh to `/`, no external URLs; the security red-strip failure variant; the Watch strip.
+- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm run typecheck && npm run build`
+  (on the VM) → pass.
+- [ ] **Step 5: Commit** `Updates: outcomes, history, notices, email, saved callback replay and pause page`.
+
+### Task 11: Updater page and step runner
+
+**Files:**
+- Create: `public/update/index.php` (page + `POST ?step=` JSON endpoint), `public/update/lib/{Auth,Context,Steps}.php`,
+  `public/update/app.js` and `app.css` are inline in the page (no build step, no external files)
+- Test: `tests/Unit/Updater/{Steps,Auth}Test.php`, `tests/Feature/UpdaterPageTest.php` (runs `public/update/index.php`
+  in a subprocess or via an include seam)
+
+**Interfaces:**
+- `Auth::check(string $updaterDir, ?string $cookie): bool` (`hash_equals` on sha256, expiry from `last_step_at`, job
+  status `ready` or `running`).
+- `Steps::run(string $name, Context $c): array{step, status:'done'|'more'|'failed'|'busy', next:?string, message,
+  wait?:int}`; `Context` holds app path, journal, job and an injectable `$boot` closure (Laravel boot seam for tests).
+- Step behaviour = spec §5 steps 1–10 with Stage 2 rules: `prechecks` re-runs the checks through the booted old app
+  (`PreChecks::run($m, true)`), sweeps probes and old `.clubportal-old-*` folders; `download`/`unpack` return `more`
+  until done; `backup` boots the old app, runs `backup:run --database-only` (or records "database not in backup" when
+  the tick covered it) and writes `pause.html` with `PausePage::render`; `maintenance` writes the down files and sets
+  the bypass cookie; `swap` per Task 8; `opcache` resets or returns `wait: revalidate_freq + 2`; `migrate` boots the
+  new code, runs `migrate --force`, `optimize:clear`, `optimize` (a migrate failure → files rolled back, outcome
+  `blocked`); `health` gets the browser's `/up` and `/login` results (200 and markers) plus an in-process boot of the
+  new app; a failure → rollback, outcome `rolled_back`; `finish` = `Maintenance::off`, move the new `public/update/` and
+  `public/update-guard.php` into place, delete the zip and staging, outcome `finished`, job `finished`. A step before
+  the switch that fails → outcome `failed`, job `failed`, maintenance off. Every response sets `last_step_at`.
+- Page (spec §12 and J1, J4, J5, J8): the 9 screen steps with ticks; "Keep this page open and your screen on until it
+  says Done."; Screen Wake Lock on https (otherwise that line is bold); `beforeunload` warning while running; on
+  `visibilitychange` back to visible it re-reads the journal and carries on ("Welcome back, carrying on…"); a request
+  that fails is retried 3 times over about 30 seconds ("Connection lost, retrying…"), then, from the switch on, POSTs
+  `?step=rollback`; `busy` → "This update is running in another tab" and it only polls; result screens exactly as J1
+  (Done), J4 (undone), J5 (rolled back, and the blocked case), each with **Copy report**, **Report a problem** (GitHub
+  new-issue URL with the report in the body, trimmed to fit) and **Back to the dashboard**; all times in the job
+  timezone. Without a valid cookie: if `outcome.json` or the latest history says what happened, show that screen;
+  otherwise "No update in progress" + link to `/admin/updates`. Visiting `/update/` runs the same idle-recovery check
+  as the guard.
+- Jargon rule: none of the forbidden words outside **Show details** and the report.
+- **No dead end when the undo itself fails** (review of Task 9): when the guard file is up and either `journal.json`
+  can't be read, or the journal has `recovery_error` (or `swap.state` = `rolling_back`) and is idle, `/update/`
+  (without a cookie) shows "The update could not be undone by itself" with what members see, **Copy report** and plain
+  manual steps for whoever has file access (put the `.clubportal-old-<v>` folders back, then delete
+  `storage/framework/updating`, `down` and `maintenance.php`). The bypass cookie is set with `setcookie` (url-encoded),
+  never `setrawcookie`. `finish` never leaves the guard file up while `public/update/lib/` is missing.
+- An abandoned `running` job from before the pause (no guard file) expires like a `ready` one: idle ≥ 600 s → job
+  `failed`, outcome `failed`, staging and the zip removed by the next start's `prechecks`, which also resets a journal
+  left `recovering`.
+
+- [ ] **Step 1: Failing tests** — Auth: wrong token, expired, finished → false; order enforced; a step while
+  recovering → refused; busy when the lock is held; migrate failure → files rolled back, outcome `blocked`, message
+  tells the admin to restore the database from the step 3 backup; health failure → rollback, outcome `rolled_back`;
+  pre-switch failure → outcome `failed`, maintenance off; finish removes staging and the zip and moves
+  `public/update` last; the page HTML has the 9 names, the wake-lock/visibility/retry code, no jargon outside details,
+  and no external URLs except the GitHub issue link.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `Updater: browser-driven steps with health check and rollback`.
+- [ ] **Step 5: Commit** `Updater: browser-driven steps, result screens and report`.
 
-### Task 11: `php artisan app:update`
+### Task 12: `php artisan app:update`
 
 **Files:**
 - Create: `app/Console/Commands/AppUpdate.php` (`app:update {--check} {--yes}`)
@@ -295,7 +512,10 @@
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updates: app:update command`.
 
-### Task 12: Docs, changelog and project notes
+**Stage 2 addition:** it takes the same `flock` (refuses with a plain line when held), uses
+`Steps::run` for `prechecks` … `swap`, writes `outcome.json` like the page, and its output uses the plain step names.
+
+### Task 13: Docs, changelog and project notes
 
 **Files:**
 - Modify: `docs/RELEASE.md` (§2 starts with "Update from the admin"; zip steps stay as the manual path and for sites before v2.2.0; release publishing: check the manifest asset; before publishing, update the previous release to the candidate through the `next` channel), `docs/USER-GUIDE.md` (Updates page), `docs/INSTALL.md` (zip + curl extensions, writable app folder, disk headroom, nginx location for `/update/`), `CHANGELOG.md` (Unreleased: Added / Upgrade note "first release with the button; reach it by hand"), `CLAUDE.MD` (updater layout, guard rule, release-policy.json, never edit a shipped migration), `SECURITY.md` (trust model: checksum only; owner keeps GitHub 2FA and a tag ruleset)
@@ -305,7 +525,11 @@
 - [ ] **Step 2: Run** `php artisan test` (SQLite) and the MariaDB run (CLAUDE.MD) → all pass; `npm run typecheck && npm run build` → pass.
 - [ ] **Step 3: Commit** `Docs: in-app updater`.
 
-### Task 13: End-to-end proof on a real install (before v2.2.0 is tagged)
+**Stage 2 addition:** `CHANGELOG.md` `[Unreleased]` `### What's new` bullets for the button (plain words,
+at most 5 in total); `docs/USER-GUIDE.md` covers the result screens, Copy report, the blocked case and what members
+see; `SECURITY.md` lists the unauthenticated surface (`/update/`, the guard, saved callbacks) and its limits. `docs/INSTALL.md`: the manual way out of a stuck pause (same steps as the Task 11 screen), and that the updater needs the portal at the domain root (no subfolder install).
+
+### Task 14: End-to-end proof on a real install (before v2.2.0 is tagged)
 
 Not code: a recorded test run. Pushing pre-release tags publishes them on GitHub, so **ask the owner before pushing any `-rc` tag**.
 
@@ -313,3 +537,8 @@ Not code: a recorded test run. Pushing pre-release tags publishes them on GitHub
 - [ ] **Step 2:** Tag `v2.2.0-rc.2` (any harmless change, plus one additive test migration on a throwaway branch build only if needed) and update rc.1 → rc.2 with the button. Expected: all steps green, `app:doctor` Version 2.2.0-rc.2, audit rows.
 - [ ] **Step 3:** Forced failures, each followed by a check that the site serves the previous version and `app:doctor` passes: tab closed at every step and resumed; tab closed > 10 minutes (token-free recovery); `schedule:run` fired mid-swap (exits at once); corrupt download (sha mismatch); disk full during unpack (small loop-mounted quota or a full temp dir); a failing migration (rollback + database-restore message); health check 500 (rollback); `opcache_reset` blocked (`opcache.restrict_api`) with `validate_timestamps=1` (waits) and with `=0` (button off).
 - [ ] **Step 4:** Write the results in the step log (`docs/option-a-report.md`, no environment details) and open the PR for the owner.
+
+**Stage 2 addition:** Farid's journey (a Billplz sandbox
+callback sent while the guard is up is saved and settled after the update, on success and after a rollback); a member
+tab open during the update reloads cleanly; two tabs (the second only watches); the LiteSpeed "new version served"
+check by hand; the release.yml `next` job split from the carried-over list.

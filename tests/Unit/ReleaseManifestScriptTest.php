@@ -191,6 +191,20 @@ MD;
         $this->assertTrue($rc['security']);
     }
 
+    public function test_the_real_changelog_unreleased_whats_new_is_accepted_by_the_app(): void
+    {
+        $changelog = (string) file_get_contents(dirname(__DIR__, 2).'/CHANGELOG.md');
+        $m = release_manifest('9.9.9-rc.1', $this->zip(), $changelog, $this->policy(), '2026-12-30T03:00:00Z');
+
+        $parsed = \App\Support\Updates\Manifest::fromJson(json_encode($m, JSON_THROW_ON_ERROR));
+
+        $this->assertGreaterThanOrEqual(1, count($parsed->whatsNew));
+        $this->assertLessThanOrEqual(5, count($parsed->whatsNew));
+        foreach ($parsed->whatsNew as $bullet) {
+            $this->assertLessThanOrEqual(200, mb_strlen($bullet));
+        }
+    }
+
     public function test_a_bullet_over_200_characters_fails_the_build(): void
     {
         $long = "## [v2.3.0] — 2026-12-30\n\n### What's new\n- ".str_repeat('x', 201)."\n";

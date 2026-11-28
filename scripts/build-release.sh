@@ -118,7 +118,7 @@ php -r 'require $argv[1]; file_put_contents("release-files.json", json_encode(re
   "$WORK/release-scripts/lib/release_manifest.php" "$VERSION"
 
 echo "==> Checking the tree"
-for required in vendor/autoload.php public/build/manifest.json bootstrap/requirements.php bootstrap/preflight.php artisan .env.example storage/app/private/.gitignore storage/framework/views/.gitignore bootstrap/cache/.gitignore; do
+for required in vendor/autoload.php public/build/manifest.json bootstrap/requirements.php bootstrap/preflight.php public/update-guard.php public/update/index.php public/update/lib/load.php artisan .env.example storage/app/private/.gitignore storage/framework/views/.gitignore bootstrap/cache/.gitignore; do
   [[ -e "$required" ]] || { echo "Missing from the release: $required" >&2; exit 1; }
 done
 # The guard in public/index.php must refuse exactly what Composer's platform check refuses.

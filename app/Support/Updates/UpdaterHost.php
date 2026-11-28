@@ -20,7 +20,10 @@ class UpdaterHost
 {
     /** PHP functions the updater calls (opcache_reset is optional and not listed). Later tasks extend this list. */
     public const NEEDED_FUNCTIONS = ['rename', 'copy', 'unlink', 'mkdir', 'rmdir', 'file_put_contents', 'fopen', 'fwrite',
-        'flock', 'hash_file', 'scandir', 'curl_init', 'curl_setopt', 'curl_exec'];
+        'flock', 'hash_file', 'scandir', 'curl_init', 'curl_setopt', 'curl_exec', 'curl_errno', 'curl_error', 'curl_getinfo',
+        'fread', 'fclose', 'filesize', 'file_get_contents', 'clearstatcache', 'stat', 'random_bytes', 'chmod', 'fileperms',
+        'filemtime', 'hash_hmac', 'hash_equals', 'stream_get_contents', 'http_response_code', 'setcookie', 'header',
+        'headers_sent', 'hash', 'ini_get', 'glob', 'json_encode', 'json_decode', 'getenv'];
 
     /** A job in one of these states is over and no longer blocks a new update. */
     public const TERMINAL_JOB_STATUSES = ['finished', 'undone', 'failed', 'rolled_back'];
@@ -187,16 +190,10 @@ class UpdaterHost
             ->exists();
     }
 
-    /** storage/app/updater/job.json exists and its status is not a terminal one (finished, undone, failed, rolled_back). */
+    /** The job file exists and its status is not a terminal one; an unreadable file counts as running. */
     public function updateRunning(): bool
     {
-        $file = storage_path('app/updater/job.json');
-        if (! is_file($file)) {
-            return false;
-        }
-        $job = json_decode((string) @file_get_contents($file), true);
-
-        return ! (is_array($job) && in_array($job['status'] ?? null, self::TERMINAL_JOB_STATUSES, true));
+        return UpdateJob::isRunning();
     }
 
     public function databaseDriver(): string

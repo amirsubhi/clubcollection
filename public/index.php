@@ -3,9 +3,14 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
+// First of all: while an update switches versions (bootstrap/ and vendor/ are renamed), the swap guard answers
+// with the members' pause page, saves payment callbacks, or undoes an abandoned update. Parseable by old PHP.
+require __DIR__.'/update-guard.php';
+clubportal_update_guard_web(dirname(__DIR__));
+
 define('LARAVEL_START', microtime(true));
 
-// Before anything else (the autoloader refuses an old PHP with a bare error): a server that can't run the
+// Then, before the autoloader (it refuses an old PHP with a bare error): a server that can't run the
 // app gets a short page saying what to change. Keep this file parseable by old PHP (bootstrap/preflight.php).
 require __DIR__.'/../bootstrap/preflight.php';
 if (($preflight = clubportal_preflight(dirname(__DIR__))) !== null) {
