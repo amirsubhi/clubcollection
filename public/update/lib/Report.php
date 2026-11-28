@@ -9,7 +9,11 @@ final class Report
 {
     private const LOG_LINES = 20;
 
-    private const SECRET_LINE = '/(APP_KEY|DB_PASSWORD|PASSWORD|SECRET|TOKEN)\s*[=:]/i';
+    /** A line that names a secret (also JSON-quoted), carries credentials, a cookie, a bearer token, URL userinfo or a base64: key. */
+    private const SECRET_LINE = '~(APP_KEY|DB_PASSWORD|PASSWORD|SECRET|TOKEN)["\']?\s*[=:]|authorization|cookie|bearer|://[^/\s@]+:[^@\s]+@|base64:~i';
+
+    /** Lines about a checksum keep their 64-hex values: support needs them, and they are public release hashes. */
+    private const CHECKSUM_LINE = '/sha-?256|checksum|hash|mismatch/i';
 
     /**
      * @param  array{outcome?: string, from?: string, to?: string, step?: ?string, reason?: ?string, at?: int|string|null, started_at?: int|string|null, php_version?: string, prechecks_failed?: list<string>, log?: list<string>}  $history
@@ -54,7 +58,14 @@ final class Report
         }
         $kept = array_filter(explode("\n", $text), static fn (string $line): bool => preg_match(self::SECRET_LINE, $line) !== 1);
 
-        return preg_replace('/[0-9a-fA-F]{64}/', '[removed]', implode("\n", $kept)) ?? '';
+        $clean = array_map(
+            static fn (string $line): string => preg_match(self::CHECKSUM_LINE, $line) === 1
+                ? $line
+                : (preg_replace('/[0-9a-fA-F]{64}/', '[removed]', $line) ?? ''),
+            $kept,
+        );
+
+        return implode("\n", $clean);
     }
 
     private static function time(int|string|null $value): string

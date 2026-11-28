@@ -49,6 +49,31 @@ class ReportTest extends TestCase
         }
     }
 
+    public function test_more_secret_shapes_are_dropped_and_checksums_survive(): void
+    {
+        $a = str_repeat('a1', 32);
+        $b = str_repeat('b2', 32);
+        $text = Report::text(['outcome' => 'failed', 'log' => [
+            '{"secret": "s3cr3tvalue"}',
+            '{"password":"pw-value"}',
+            "'token' : 'tok-value'",
+            'Authorization: Basic dXNlcjpwYXNz',
+            'Authorization: Bearer abc.def.ghi',
+            'Cookie: laravel_maintenance=eyJleHBpcmVz',
+            'Set-Cookie: session=zzz',
+            'connecting to mysql://dbuser:dbpass@localhost/club',
+            'key is base64:QUJDREVGRw==',
+            "sha256 mismatch: expected $a got $b",
+            'kept line',
+        ]], '/nowhere');
+
+        foreach (['s3cr3tvalue', 'pw-value', 'tok-value', 'dXNlcjpwYXNz', 'abc.def.ghi', 'laravel_maintenance', 'session=zzz', 'dbpass', 'QUJDREVGRw'] as $gone) {
+            $this->assertStringNotContainsString($gone, $text);
+        }
+        $this->assertStringContainsString("sha256 mismatch: expected $a got $b", $text);
+        $this->assertStringContainsString('kept line', $text);
+    }
+
     public function test_the_realpath_of_the_app_is_hidden_too(): void
     {
         $real = $this->tempDir();
