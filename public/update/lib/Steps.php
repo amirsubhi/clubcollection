@@ -196,6 +196,30 @@ final class Steps
         }
     }
 
+    /**
+     * A step that ran outside Steps::run (the command line's migrate in a child process) failed: the same handling as a
+     * failure inside the step. From the switch on that puts the old files back and writes `rolled_back`, or `blocked`
+     * when the database changes began and did not finish. Takes the lock; the caller must not hold it.
+     *
+     * @return array<string, mixed>
+     */
+    public static function abort(string $step, Context $c, string $error): array
+    {
+        $lock = Lock::acquire($c->files->dir);
+        if ($lock === null) {
+            return self::reply($step, 'busy', null, 'This update is running in another tab.');
+        }
+        try {
+            $c->load();
+
+            return self::failStep($c, $c->journal(), $step, $error);
+        } catch (\Throwable $e) {
+            return self::reply($step, 'failed', null, 'Something went wrong on your site.') + ['detail' => $e->getMessage()];
+        } finally {
+            $lock->release();
+        }
+    }
+
     /** The screen line of a step. */
     public static function screenName(string $step, string $to): string
     {
