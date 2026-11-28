@@ -24,10 +24,16 @@
 - Admin pages and updater pages are English only. Audit actions: `portal.update_started`, `portal.update_finished`, `portal.update_rolled_back`, `portal.update_failed_check`.
 - Public repo: no LAN addresses, host names or home paths in code, docs, commits or PR text.
 - Migrations stay additive; this feature adds **no migration** (all updater state is in files).
+- **The spec's "User journeys" (J1–J9) and its §12 are requirements.** Screens use the journeys' plain words; no
+  "swap", "migrate", "unpack", "opcache", "journal" or "maintenance mode" on any screen outside **Show details** and the
+  copyable report. Pre-checks are pass or fail, never "unknown". Every failure line has a fix, and host-side fixes have
+  a copyable host message.
+- Club admins see only the J2 security note (owner's decision, 28 November 2026). Members see nothing except the
+  pause page.
 
 ## Review Focus
 
-- **A tab closed after the swap and never reopened:** after 10 idle minutes the next web request or `artisan` run restores the previous release and lifts maintenance → test `RecoveryTest::test_stale_journal_after_swap_rolls_back_without_token` (Task 9).
+- **A tab closed after the swap and never reopened:** after 10 idle minutes the next web request restores the previous release and lifts maintenance → test `RecoveryTest::test_stale_journal_after_swap_rolls_back_without_token` (Task 9).
 - **GitHub returns an HTML rate-limit page, a 429 or times out:** the banner shows nothing, the Updates page says "GitHub did not answer, try again later", no exception → `UpdateCheckTest::test_non_json_and_429_are_cached_as_failure` (Task 3).
 - **Disk full or a folder not writable during unpack:** the step fails before maintenance is on, the site keeps running the old release, staging is removed → `UnpackTest::test_write_failure_leaves_site_untouched` (Task 7).
 - **A malicious or broken zip** (`../`, absolute path, symlink entry, file not in `release-files.json`, hash mismatch) is refused → `ZipSafetyTest` (Task 7).
@@ -45,10 +51,16 @@
 - Test: `tests/Unit/ReleaseManifestScriptTest.php`
 
 **Interfaces:**
-- Produces: `release_changelog_section(string $changelog, string $version): ?string`, `release_manifest(string $version, string $zipPath, string $changelog, array $policy, string $releasedAt): array` (keys exactly as the spec's §1 JSON, `format` = 1, `signature` = null, `security` = section contains `### Security`, `summary` = first line of the section's `> **Upgrade:**` note without the markup).
+- Produces: `release_changelog_section(string $changelog, string $version): ?string`, `release_manifest(string $version, string $zipPath, string $changelog, array $policy, string $releasedAt): array` (keys exactly as the spec's §1 JSON, `format` = 1, `signature` = null, `security` = section contains `### Security`, `summary` = first line of the section's `> **Upgrade:**` note without the markup, `whats_new` = the bullet lines of
+  the section's `### What's new` subsection as plain strings, 1–5 of them; `release_manifest` throws when the
+  subsection is missing, empty or has more than 5 bullets).
 - Produces: `release-files.json` inside the zip: `{"format":1,"version":"x.y.z","files":{"<relative path>":"<sha256>",…}}`, sorted by path, excluding itself.
 
-- [ ] **Step 1: Write the failing tests** — `test_section_is_extracted_for_the_version` (CHANGELOG fixture with `## [v2.2.1] — …` and `## [v2.2.0] — …` → only 2.2.1's lines), `test_security_flag_follows_the_heading`, `test_manifest_fields_and_zip_hash` (temp zip; `sha256` equals `hash_file('sha256')`, `size` equals filesize, `zip.url` = `https://github.com/amirsubhi/clubcollection/releases/download/v2.2.1/clubportal-2.2.1.zip`, `min_from_version` from the policy array), `test_missing_section_is_an_error` (returns null → CLI exits 1).
+- Modify: `CHANGELOG.md`: add a `### What's new` subsection (club-facing bullets) to `## [Unreleased]`. A pre-release
+  version (`2.2.0-rc.1`, `2.2.0-dev.1`) with no section of its own uses the `[Unreleased]` section.
+
+- [ ] **Step 1: Write the failing tests** — `test_prerelease_falls_back_to_unreleased`, `test_section_is_extracted_for_the_version` (CHANGELOG fixture with `## [v2.2.1] — …` and `## [v2.2.0] — …` → only 2.2.1's lines), `test_security_flag_follows_the_heading`, `test_manifest_fields_and_zip_hash` (temp zip; `sha256` equals `hash_file('sha256')`, `size` equals filesize, `zip.url` = `https://github.com/amirsubhi/clubcollection/releases/download/v2.2.1/clubportal-2.2.1.zip`, `min_from_version` from the policy array), `test_missing_section_is_an_error` (returns null → CLI exits 1), `test_whats_new_bullets` (3 bullets → 3 plain strings,
+  Markdown `**`/backticks stripped), `test_whats_new_missing_or_over_five_fails_the_build`.
 - [ ] **Step 2: Run** `php artisan test --filter=ReleaseManifestScriptTest` → FAIL (functions undefined).
 - [ ] **Step 3: Implement** the two functions (plain PHP, `require`d by the test) and the CLI wrapper.
 - [ ] **Step 4: Run** the filter → PASS.
@@ -64,9 +76,9 @@
 
 **Interfaces:**
 - Produces: `Version::compare(string $a, string $b): int` (semver incl. pre-release: `2.2.0-rc.1 < 2.2.0`; `dev` is lower than everything), `Version::isRelease(string $v): bool` (false for `dev`).
-- Produces: `Manifest::fromJson(string $json): Manifest` throws `InvalidManifest`; public readonly `string $version, $tag, $zipName, $zipUrl, $zipSha256, $phpRequirement, $minFromVersion, $releasedAt, $notesMarkdown, $notesUrl`, `int $zipSize`, `bool $security`, `?string $summary, $manualAction`; `Manifest::toArray(): array`.
+- Produces: `Manifest::fromJson(string $json): Manifest` throws `InvalidManifest`; public readonly `string $version, $tag, $zipName, $zipUrl, $zipSha256, $phpRequirement, $minFromVersion, $releasedAt, $notesMarkdown, $notesUrl`, `int $zipSize`, `bool $security`, `?string $summary, $manualAction`, `array $whatsNew` (list of 1–5 strings, each ≤ 200 chars); `Manifest::toArray(): array`.
 
-- [ ] **Step 1: Failing tests** — Version: `['2.1.0','2.2.0',-1]`, `['2.2.0-rc.1','2.2.0',-1]`, `['2.2.0-rc.2','2.2.0-rc.10',-1]`, `['dev','0.0.1',-1]`, equal → 0. Manifest: valid fixture parses; each of these throws: not JSON, `app` ≠ `clubportal`, `format` ≠ 1, `signature` not null, `zip.url` on another host or repo, `sha256` not 64 hex, missing `version`, JSON over 256 KB.
+- [ ] **Step 1: Failing tests** — Version: `['2.1.0','2.2.0',-1]`, `['2.2.0-rc.1','2.2.0',-1]`, `['2.2.0-rc.2','2.2.0-rc.10',-1]`, `['dev','0.0.1',-1]`, equal → 0. Manifest: valid fixture parses; each of these throws: not JSON, `app` ≠ `clubportal`, `format` ≠ 1, `signature` not null, `zip.url` on another host or repo, `sha256` not 64 hex, missing `version`, JSON over 256 KB, `whats_new` missing / empty / over 5 / not strings.
 - [ ] **Step 2: Run** `php artisan test --filter='VersionTest|ManifestTest'` → FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** → PASS.
@@ -98,11 +110,19 @@
 
 **Interfaces:**
 - Consumes: `Manifest`, `Version`, `BackupRun::canStartProcesses()`.
-- Produces: `PreCheck` readonly `string $key, bool $ok, string $message, ?string $fix, bool $blocking`; `PreChecks::run(Manifest $m, bool $full = false): array<PreCheck>`; `PreChecks::allPass(array $checks): bool`; `PreChecks::needsDatabaseBackupTick(): bool`. `UpdaterHost` methods (all overridable in tests via `PreChecks::$host`): `phpVersion(), extensionLoaded(string), disabledFunctions(): array, opcacheValidatesTimestamps(): bool, opcacheResetAllowed(): bool, freeBytes(string $path): float, unwritablePaths(string $base, array $relativePaths): array, canCreateAndRename(string $parent): bool, pendingMigrations(): int, paymentInProgress(): bool, updateRunning(): bool`.
+- Produces: `PreCheck` readonly `string $key, bool $ok, string $message, ?string $fix, ?string $hostMessage, bool $blocking`
+  (`message` and `fix` are the plain lines Aminah reads, J3; `hostMessage` is the copyable text for the hosting
+  company's support, set for every check the host can fix: `php`, `extensions`, `functions`, `opcache`, `writable`,
+  `rename`, `disk`); `PreChecks::run(Manifest $m, bool $full = false): array<PreCheck>`; `PreChecks::allPass(array $checks): bool`; `PreChecks::needsDatabaseBackupTick(): bool`. `UpdaterHost` methods (all overridable in tests via `PreChecks::$host`): `phpVersion(), extensionLoaded(string), disabledFunctions(): array, opcacheValidatesTimestamps(): bool, opcacheResetAllowed(): bool, freeBytes(string $path): float, unwritablePaths(string $base, array $relativePaths): array, canCreateAndRename(string $parent): bool, pendingMigrations(): int, paymentInProgress(): bool, updateRunning(): bool`.
 - `disk` also warns (non-blocking) when the account's file count looks close to a quota, best effort.
 - Keys (stable, used by the UI): `version_from`, `version_newer`, `php`, `extensions`, `functions`, `opcache`, `writable`, `rename`, `disk`, `no_update_running`, `no_payment`, `migrations`, `backup_database`, `manual_action`.
 
-- [ ] **Step 1: Failing tests** — one test per key with the host fake set to fail it, asserting `ok` false and the exact `message` text (from the spec §3 wording, e.g. opcache: "Your host caches PHP code and doesn't let the app clear it: update by hand, or ask the host to allow opcache_reset."); installed below `min_from_version` → message points to `docs/RELEASE.md`; `full: false` skips `writable` and `rename` (the expensive ones); `backup_database` is non-blocking but `needsDatabaseBackupTick()` true when `mysqldump` can't run on MariaDB/MySQL.
+- [ ] **Step 1: Failing tests** — one test per key with the host fake set to fail it, asserting `ok` false and the exact `message` text (from the spec §3 wording, e.g. opcache: "Your host caches PHP code and doesn't let the app clear it: update by hand, or ask the host to allow opcache_reset."); installed below `min_from_version` → message points to `docs/RELEASE.md`; `full: false` skips `writable` and `rename` (the expensive ones); `backup_database` is non-blocking but `needsDatabaseBackupTick()` true when `mysqldump` can't run on MariaDB/MySQL;
+  `test_host_messages`: each host-fixable failure has a `hostMessage` naming the missing feature and the site's
+  domain (e.g. extensions: "Please enable the PHP zip extension (ZipArchive) for the account that runs example.org. It is
+  needed by the Club Portal web updater."); `test_no_jargon`: no `message`/`fix` contains `opcache`, `migrat`, `swap`,
+  `journal`, `maintenance mode` (the `hostMessage` may); `test_undecidable_check_is_never_unknown`: a host fact that
+  throws yields pass-with-no-line or fail-with-fix, never a third state.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (`paymentInProgress`: any `pay:*` cache lock held or a `payment_bills` row created in the last 2 minutes with status open — builder confirms column names in `app/Models/PaymentBill.php`). **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updates: pre-checks with plain-language fixes`.
 
@@ -110,14 +130,34 @@
 
 **Files:**
 - Create: `app/Http/Controllers/Admin/UpdatesController.php`, `resources/views/admin/updates/index.blade.php`, `resources/views/admin/updates/_banner.blade.php`
-- Modify: `routes/web.php` (super admin group: `GET updates` → `index` `admin.updates.index`; `GET updates/status` → `status` `admin.updates.status`; `POST updates/check` → `check` `admin.updates.check`, `throttle:10,1,updates.check|`), `resources/views/home.blade.php` (include the banner only for `super_admin`), the super admin menu partial (link "Updates")
+- Modify: `routes/web.php` (super admin group: `GET updates` → `index` `admin.updates.index`; `POST updates/check` → `check` `admin.updates.check`, `throttle:10,1,updates.check|`; in the group every admin can reach (club admins and super admins): `GET updates/status`
+  → `status` `admin.updates.status`, which shapes its answer by role), the club admin dashboard view rendered by
+  `Admin\DashboardController@index` (note container; builder checks whether it is Blade or Inertia), `resources/views/home.blade.php` (include the banner only for `super_admin`), the super admin menu partial (link "Updates")
 - Test: `tests/Feature/Admin/UpdatesPageTest.php`
 
 **Interfaces:**
 - Consumes: `UpdateCheck::status()`, `PreChecks::run($m, false)`.
-- Produces: `status` JSON `{installed, available, latest: {version, security, summary, released_at}|null, error}`; never 500 (catch-all → `available:false`).
+- Produces: `status` JSON for a super admin `{installed, available, latest: {version, security, summary, released_at}|null, error}`;
+  for a club admin only `{security_waiting: bool, super_admins: [names]}` (J2; no versions, notes or host details);
+  never 500 (catch-all → `available:false` / `security_waiting:false`).
+- The Updates page follows the J1 sketch: version and release date, "You're on vX", **What's new** (`whatsNew`
+  bullets), "Updating takes about 2 minutes. During that time members see a 'back in a few minutes' page. Pick a quiet
+  time, such as late evening.", one summary line for the checks ("Your site is ready to update" or the J3 block with
+  **Copy message for my host**) with the individual rows under **Show checks**, the security line from J2 when
+  `security`, and `notes_markdown` under a **Technical details** link (escaped text). A `dev` install shows the git
+  line and no button.
+- Banner (J1/J2): blue "**Club Portal vX is available.** You're on vY. [See what's new]"; red "**Important security
+  fix: Club Portal vX.** Please update today. It takes about 2 minutes. [Update now]".
+- Club admin note (J2): on the club admin dashboard, filled from the status endpoint after load, only when
+  `security_waiting`: "A security update for <portal name> is waiting. Your super admin (<names>) can install it." No
+  link, no button.
 
-- [ ] **Step 1: Failing tests** — club admin and member get 403 on all three routes; super admin sees installed and latest versions, notes rendered as escaped text (a `<script>` in `notes_markdown` appears escaped), pre-check rows, and the **Update to v2.2.1** button only when all blocking checks pass; `status` JSON shape; banner markup present on `/home` for super admin only and absent for club admin; `check` bypasses the cache (`Http::assertSentCount(2)`).
+- [ ] **Step 1: Failing tests** — member gets 403 on all three routes; club admin gets 403 on `index` and `check`
+  and the limited JSON on `status` (`security_waiting` true only for a newer security release; no `installed` or
+  `latest` keys); the club admin dashboard has the note container and no banner; super admin sees installed and latest versions, notes rendered as escaped text (a `<script>` in `notes_markdown` appears escaped), pre-check rows, and the **Update to v2.2.1** button only when all blocking checks pass; `status` JSON shape; banner markup present on `/home` for super admin only; the page shows the `whatsNew` bullets, "about 2 minutes" and
+  the members line; a failing host check shows the summary line and the copyable host message, rows only under
+  **Show checks**; the rendered page contains none of the jargon words from Global Constraints outside the
+  Technical details block; `check` bypasses the cache (`Http::assertSentCount(2)`).
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (banner: a `<div hidden>` filled by a small inline script that `fetch`es `admin.updates.status` after load; red + "security fix" when `security`). **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `Updates: page, status endpoint and dashboard banner`.
 

@@ -31,7 +31,7 @@ safely, without a terminal.
   room for a signature so signing can be added later (see Security).
 - **No automatic database rollback.** See Rollback.
 - **No downgrades**, and no skipping the manual path for sites older than v2.2.0 (they upgrade to v2.2.0 by hand once).
-- Not for club admins or members: only the super admin sees any of it.
+- Not for members. Only the super admin can update; club admins see only a quiet note for a security release (J2).
 
 ## Anti-goals (would make this a failure even if it "works")
 
@@ -190,8 +190,16 @@ Club Portal v2.2.2.** Please update today. It takes about 2 minutes. [Update now
 on top of the notes: "This update fixes a security problem. Updating soon keeps your members' details safe." No CVE
 numbers on the page (they are in the release notes on GitHub, linked as "Technical details").
 
-Aminah only signs in twice a month, so a red strip only she can see may wait two weeks. Ravi signs in weekly. **Open
-question for the owner (see end of this section).**
+Aminah only signs in twice a month, so a red strip only she can see may wait two weeks. Ravi, a club admin, signs in
+weekly, so **club admins see a quiet note for security releases only** (owner's decision, 28 November 2026), on their
+dashboard, with no button and no link to the Updates page:
+
+```
+A security update for <portal name> is waiting.
+Your super admin (Aminah, Mei Ling) can install it.
+```
+
+It names the portal's super admins so Ravi knows whom to tell. Ordinary releases never show club admins anything.
 
 ### J3. "Your host doesn't allow this"
 
@@ -274,14 +282,16 @@ Kembali dalam beberapa minit. Halaman ini akan dimuat semula sendiri.
 
 Jika anda baru membuat bayaran, bayaran anda selamat.
 Resit akan dipaparkan sebaik sahaja portal dibuka semula.
+
+Jika anda sedang menghantar borang atau slip pindahan,
+sila hantar semula apabila kami kembali.
 ```
 
 (English: "<Portal name> is being updated. Back in a few minutes; this page reloads by itself. If you've just paid, your
-payment is safe. Your receipt will show as soon as the portal is open again." Malay wording to be approved by the
-owner.) The page is static, has a 503 status with `Retry-After: 120`, and reloads itself every 30 seconds by going to the
+payment is safe. Your receipt will show as soon as the portal is open again. If you were sending a form or a transfer
+slip, please send it again when we're back." The Malay wording was approved by the owner on 28 November 2026.) The page is static, has a 503 status with `Retry-After: 120`, and reloads itself every 30 seconds by going to the
 portal's home page (never by re-sending a form). A member in the middle of a form, or a slip upload, when the pause
-starts gets this page instead of a result: the page adds "If you were sending a form or a transfer slip, please send it
-again when we're back." Inside the member app (Inertia), a 503 during a page visit shows this page full-screen, not an
+starts gets this page instead of a result (hence its last line). Inside the member app (Inertia), a 503 during a page visit shows this page full-screen, not an
 error box.
 
 Behind the scenes his payment must not be lost: the gateway's confirmation (`/webhook/toyyibpay`, `/webhook/billplz`)
@@ -294,7 +304,7 @@ The pre-check that no bill was opened in the last 2 minutes stays.
 ### J7. Finding out the next morning
 
 Aminah closed her laptop mid-update and went to bed. At 7 am Ravi signs in to verify slips: the portal works (it was
-put back at 9:42 pm). Ravi sees nothing about it (club admins never see updater messages). Aminah has an email from
+put back at 9:42 pm). Ravi sees nothing about it (club admins see only the J2 security note). Aminah has an email from
 last night if mail is set up, and her dashboard (and Mei Ling's) says, until each of them dismisses it or an
 update succeeds: "Last night's update to v2.2.1 didn't finish and was
 undone at 9:42 pm. Your portal has been working normally since. [Try again] [Dismiss]".
@@ -311,14 +321,10 @@ Aminah sees the strip at lunch at the office and doesn't want to pause the porta
 nothing: the strip stays, and nothing happens until she presses the button. (No "remind me later" in this version;
 the strip itself is the reminder.)
 
-### Open questions for the owner
+### Decisions from the owner (28 November 2026)
 
-1. **A security fix that waits for a rare sign-in (J2).** Options, none needs cron:
-   - (a) **Club admins see a quiet note** on their dashboard for security releases only: "A security update for Club
-     Portal is waiting. Your super admin (Aminah) can install it." Uses the same cached check when a club admin loads
-     their dashboard. *Recommended:* it reaches the people who sign in weekly, at no extra cost.
-   - (b) Leave it to the super admin's own sign-ins.
-2. **The Malay maintenance text in J6** needs the owner's approval (Malaysian Malay rule).
+1. A security fix that waits for a rare sign-in (J2): club admins see the quiet note (option a).
+2. The Malay pause-page text in J6: approved as written.
 
 ### Why these journeys (research, 28 November 2026)
 
@@ -389,8 +395,10 @@ the strip itself is the reminder.)
   GitHub outage is not retried on every load).
 - **Dashboard banner:** the super admin's landing page renders normally; the page then requests
   `GET /admin/updates/status` (JSON). If a newer version exists, a banner shows "Club Portal v2.2.1 is available" (red
-  and "security fix" when `security`), linking to the Updates page. Errors show nothing. Member and club-admin pages
-  never check.
+  and "security fix" when `security`), linking to the Updates page. Errors show nothing. Member pages never check. A club admin's
+  dashboard requests the same endpoint (same cached result) and shows only the J2 note, and only when the latest
+  release is a security release newer than the installed one. For a club admin the endpoint returns only `{security_waiting: bool,
+  super_admins: [names]}` (no versions, notes or host details).
 - **Updates page** (`/admin/updates`, super admin only, in the admin menu): installed version (and commit), latest
   version, release date, release notes, and a **Check now** button that bypasses the cache. Then the **pre-checks**
   (below) and, when they pass, **Update to v2.2.1**.
