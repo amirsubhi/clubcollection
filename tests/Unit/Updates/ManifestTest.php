@@ -86,6 +86,25 @@ class ManifestTest extends TestCase
         yield 'http url' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'http://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/x.zip']])];
         yield 'short sha' => [fn ($d) => array_replace_recursive($d, ['zip' => ['sha256' => 'abc123']])];
         yield 'non-hex sha' => [fn ($d) => array_replace_recursive($d, ['zip' => ['sha256' => str_repeat('zz', 32)]])];
+        yield 'dot-dot traversal' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/../../../../evil/repo/releases/download/v1/x.zip', 'name' => 'x.zip']])];
+        yield 'encoded dots' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/%2e%2e/%2e%2e/evil/x.zip', 'name' => 'x.zip']])];
+        yield 'encoded slash' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3%2fx.zip', 'name' => 'x.zip']])];
+        yield 'backslash' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3\x.zip', 'name' => 'x.zip']])];
+        yield 'query' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/x.zip?x', 'name' => 'x.zip']])];
+        yield 'fragment' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/x.zip#x', 'name' => 'x.zip']])];
+        yield 'at sign' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/x@evil.zip', 'name' => 'x.zip']])];
+        yield 'ends in slash dot-dot' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/..', 'name' => 'x.zip']])];
+        yield 'single dot segment' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/./x.zip', 'name' => 'x.zip']])];
+        yield 'too many segments' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => 'https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/a/x.zip', 'name' => 'x.zip']])];
+        yield 'del char' => [fn ($d) => array_replace_recursive($d, ['zip' => ['url' => "https://github.com/amirsubhi/clubcollection/releases/download/v2.2.3/x\x7f.zip", 'name' => 'x.zip']])];
+        yield 'notes other host' => [fn ($d) => ['notes_url' => 'https://example.com/amirsubhi/clubcollection/releases/tag/v2.2.3'] + $d];
+        yield 'notes javascript' => [fn ($d) => ['notes_url' => 'javascript:alert(1)'] + $d];
+        yield 'notes traversal' => [fn ($d) => ['notes_url' => 'https://github.com/amirsubhi/clubcollection/../evil/repo'] + $d];
+        yield 'notes query' => [fn ($d) => ['notes_url' => 'https://github.com/amirsubhi/clubcollection/releases/tag/v2.2.3?x'] + $d];
+        yield 'notes lookalike repo' => [fn ($d) => ['notes_url' => 'https://github.com/amirsubhi/clubcollection-evil/releases'] + $d];
+        yield 'zip name traversal' => [fn ($d) => array_replace_recursive($d, ['zip' => ['name' => '..']])];
+        yield 'zip name differs from url' => [fn ($d) => array_replace_recursive($d, ['zip' => ['name' => 'other.zip']])];
+        yield 'security as string' => [fn ($d) => ['security' => 'true'] + $d];
         yield 'missing version' => [function ($d) {
             unset($d['version']);
 

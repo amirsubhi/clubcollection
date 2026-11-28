@@ -13,6 +13,8 @@ final class Manifest
 
     public const ZIP_URL_PREFIX = 'https://github.com/amirsubhi/clubcollection/releases/download/';
 
+    public const NOTES_URL_PREFIX = 'https://github.com/amirsubhi/clubcollection/';
+
     /** @param  list<string>  $whatsNew */
     private function __construct(
         public readonly string $version,
@@ -62,8 +64,20 @@ final class Manifest
             throw new InvalidManifest('The manifest has no zip entry.');
         }
         $zipUrl = self::string($zip, 'url', 'zip.url');
-        if (! str_starts_with($zipUrl, self::ZIP_URL_PREFIX) || preg_match('/[\s\x00-\x1f]/', $zipUrl) === 1) {
+        if (! self::isReleaseUrl($zipUrl, self::ZIP_URL_PREFIX, 2)) {
             throw new InvalidManifest('The download address is not a Club Portal release.');
+        }
+        $zipName = self::string($zip, 'name', 'zip.name');
+        if (preg_match('/\A[A-Za-z0-9._-]+\z/', $zipName) !== 1 || $zipName === '.' || $zipName === '..'
+            || $zipName !== basename($zipUrl)) {
+            throw new InvalidManifest('The download file name does not match its address.');
+        }
+        $notesUrl = self::string($d, 'notes_url', 'notes_url');
+        if (! self::isReleaseUrl($notesUrl, self::NOTES_URL_PREFIX, null)) {
+            throw new InvalidManifest('The release notes address is not a Club Portal page.');
+        }
+        if (array_key_exists('security', $d) && ! is_bool($d['security'])) {
+            throw new InvalidManifest('The manifest field security must be true or false.');
         }
         $sha = self::string($zip, 'sha256', 'zip.sha256');
         if (preg_match('/\A[0-9a-f]{64}\z/i', $sha) !== 1) {
@@ -90,7 +104,7 @@ final class Manifest
             version: self::string($d, 'version', 'version'),
             tag: self::string($d, 'tag', 'tag'),
             releasedAt: self::string($d, 'released_at', 'released_at'),
-            zipName: self::string($zip, 'name', 'zip.name'),
+            zipName: $zipName,
             zipUrl: $zipUrl,
             zipSize: $size,
             zipSha256: strtolower($sha),
@@ -101,7 +115,7 @@ final class Manifest
             summary: $summary === '' ? null : $summary,
             manualAction: self::optionalString($d, 'manual_action'),
             notesMarkdown: self::string($d, 'notes_markdown', 'notes_markdown'),
-            notesUrl: self::string($d, 'notes_url', 'notes_url'),
+            notesUrl: $notesUrl,
             whatsNew: $whatsNew,
         );
     }
@@ -139,6 +153,28 @@ final class Manifest
             'notes_url' => $this->notesUrl,
             'signature' => null,
         ];
+    }
+
+    /**
+     * The URL starts with $prefix and the rest is plain path segments (letters, digits, dot, dash, underscore),
+     * none of them `.` or `..`: no encoding, query, fragment, backslash or userinfo that could leave the repository.
+     * $segments is the exact number of segments required, or null for one or more.
+     */
+    private static function isReleaseUrl(string $url, string $prefix, ?int $segments): bool
+    {
+        if (! str_starts_with($url, $prefix)) {
+            return false;
+        }
+        $rest = substr($url, strlen($prefix));
+        if (preg_match('/\A[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\z/', $rest) !== 1) {
+            return false;
+        }
+        $parts = explode('/', $rest);
+        if ($segments !== null && count($parts) !== $segments) {
+            return false;
+        }
+
+        return ! array_intersect($parts, ['.', '..']);
     }
 
     /** @param array<string, mixed> $a */
