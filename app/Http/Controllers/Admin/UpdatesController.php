@@ -13,7 +13,6 @@ use App\Support\Updates\PreChecks;
 use App\Support\Updates\UpdateCheck;
 use App\Support\Updates\UpdateJob;
 use App\Support\Updates\UpdaterFiles;
-use App\Support\Updates\UpdaterHost;
 use App\Support\Updates\UpdateStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -77,9 +76,6 @@ class UpdatesController extends Controller
             RateLimiter::clear($lockKey);
         }
 
-        if (UpdateJob::isRunning()) {
-            return $this->refuse($request, 'An update is already running. Wait for it to finish.');
-        }
         if (is_file(UpdaterFiles::blockedPath())) {
             return $this->refuse($request, 'The update button is switched off until a failed update has been looked at.');
         }
@@ -104,10 +100,29 @@ class UpdatesController extends Controller
                 : 'Tick the box for each thing that has to be done first, once it has been done.');
         }
 
+        // The one update lock (also taken by every later step): checking and writing the job happen under it.
+        $dir = UpdaterFiles::dir();
+        if (! is_dir($dir) && ! @mkdir($dir, 0775, true) && ! is_dir($dir)) {
+            return $this->refuse($request, "The update could not be started: the portal's update folder cannot be written to.");
+        }
+        $lock = @fopen(UpdaterFiles::lockPath(), 'c');
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            if ($lock !== false) {
+                fclose($lock);
+            }
+
+            return $this->refuse($request, 'An update is already starting or running.');
+        }
         try {
+            if (UpdateJob::isRunning()) {
+                return $this->refuse($request, 'An update is already running. Wait for it to finish.');
+            }
             $token = UpdateJob::create($m, $user, $dbTicked, $manualTicked);
         } catch (Throwable) {
             return $this->refuse($request, "The update could not be started: the portal's update folder cannot be written to.");
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
         }
         AuditService::log('portal.update_started', "Update to v{$m->version} started.", null, null, [],
             ['from' => $s->installed, 'to' => $m->version]);
@@ -170,7 +185,7 @@ class UpdatesController extends Controller
     {
         $latest = $s->latest;
         $job = UpdateJob::current();
-        $running = $job !== null && ! in_array($job['status'] ?? null, UpdaterHost::TERMINAL_JOB_STATUSES, true);
+        $running = UpdateJob::isRunning();
         $blockedByFailure = is_file(UpdaterFiles::blockedPath());
         $checks = ! $running && $s->available && $latest !== null ? PreChecks::run($latest, false) : [];
         $blockers = array_values(array_filter($checks, fn ($c) => ! $c->ok && $c->blocking));

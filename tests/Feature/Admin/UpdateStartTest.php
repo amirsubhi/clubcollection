@@ -275,6 +275,43 @@ class UpdateStartTest extends TestCase
         }
     }
 
+    public function test_an_expired_ready_job_no_longer_blocks(): void
+    {
+        $this->actingAsSuperAdmin();
+        $this->writeJob(['status' => 'ready', 'expires_at' => time() - 5, 'user_name' => 'Aminah', 'to_version' => '2.2.3']);
+
+        $this->get(route('admin.updates.index'))->assertOk()->assertSee('Update to v2.2.3')->assertDontSeeText('Aminah is updating');
+        $this->post(route('admin.updates.start'), ['password' => 'password'])->assertRedirect('/update/');
+        $this->assertGreaterThan(time(), UpdateJob::current()['expires_at']);
+    }
+
+    public function test_an_unexpired_ready_job_still_refuses(): void
+    {
+        $this->actingAsSuperAdmin();
+        $this->writeJob(['status' => 'ready', 'expires_at' => time() + 600, 'user_name' => 'Aminah']);
+
+        $this->post(route('admin.updates.start'), ['password' => 'password'])->assertSessionHasErrors('update');
+        $this->assertSame('Aminah', UpdateJob::current()['user_name']);
+    }
+
+    public function test_a_held_update_lock_refuses_without_writing_a_job(): void
+    {
+        $this->actingAsSuperAdmin();
+        File::ensureDirectoryExists(UpdaterFiles::dir());
+        $lock = fopen(UpdaterFiles::lockPath(), 'c');
+        $this->assertTrue(flock($lock, LOCK_EX | LOCK_NB));
+
+        try {
+            $this->post(route('admin.updates.start'), ['password' => 'password'])
+                ->assertSessionHasErrors(['update' => 'An update is already starting or running.']);
+            $this->assertNoJob();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+        $this->post(route('admin.updates.start'), ['password' => 'password'])->assertRedirect('/update/');
+    }
+
     public function test_a_blocked_flag_refuses(): void
     {
         $this->actingAsSuperAdmin();

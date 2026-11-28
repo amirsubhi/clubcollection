@@ -67,10 +67,21 @@ final class UpdateJob
         return is_array($job) ? $job : ['status' => 'running', 'unreadable' => true];
     }
 
+    /** A running job, or a ready one that has not expired. A ready job nobody opened in 30 minutes is dead. */
     public static function isRunning(): bool
     {
         $job = self::current();
+        if ($job === null) {
+            return false;
+        }
+        $status = $job['status'] ?? null;
+        if (in_array($status, UpdaterHost::TERMINAL_JOB_STATUSES, true)) {
+            return false;
+        }
+        if ($status === 'ready' && is_int($job['expires_at'] ?? null) && $job['expires_at'] < time()) {
+            return false;
+        }
 
-        return $job !== null && ! in_array($job['status'] ?? null, UpdaterHost::TERMINAL_JOB_STATUSES, true);
+        return true;
     }
 }
