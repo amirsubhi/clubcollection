@@ -95,7 +95,7 @@ final class UpdateCheck
     private function fetch(): array
     {
         $now = CarbonImmutable::now()->toIso8601String();
-        $deadline = microtime(true) + (int) config('updates.timeout');
+        $deadline = hrtime(true) / 1e9 + (int) config('updates.timeout');
         $stream = null;
         try {
             $response = Http::timeout((int) config('updates.timeout'))
@@ -131,7 +131,7 @@ final class UpdateCheck
 
     /**
      * Reads at most MAX_BYTES + 1 bytes (the extra byte makes an oversized body fail validation), and gives up
-     * with null on a stalled or trickling server: an empty read (a read timeout) or passing the deadline.
+     * with null on a stalled or trickling server: an empty read before the end (a read timeout) or passing the deadline (seconds on the hrtime clock).
      *
      * @internal public for tests
      */
@@ -140,7 +140,11 @@ final class UpdateCheck
         $body = '';
         while (! $stream->eof() && strlen($body) <= Manifest::MAX_BYTES) {
             $chunk = $stream->read(Manifest::MAX_BYTES + 1 - strlen($body));
-            if ($chunk === '' || microtime(true) > $deadline) {
+            if ($chunk === '') {
+                // The last bytes can arrive before eof() turns true; an empty read at the end is fine, a stall is not.
+                return $stream->eof() ? $body : null;
+            }
+            if (hrtime(true) / 1e9 > $deadline) {
                 return null;
             }
             $body .= $chunk;

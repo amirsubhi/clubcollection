@@ -4,6 +4,7 @@ namespace Tests\Feature\Updates;
 
 use App\Support\Updates\Manifest;
 use App\Support\Updates\UpdateCheck;
+use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
@@ -271,12 +272,31 @@ class UpdateCheckTest extends TestCase
             }
         };
 
-        $this->assertNull(app(UpdateCheck::class)->readBounded($stalled, microtime(true) + 5));
+        $this->assertNull(app(UpdateCheck::class)->readBounded($stalled, hrtime(true) / 1e9 + 5));
         $this->assertSame(1, $stalled->reads);
 
-        $this->assertNull(app(UpdateCheck::class)->readBounded(Utils::streamFor('abc'), microtime(true) - 1));
-        $this->assertSame('abc', app(UpdateCheck::class)->readBounded(Utils::streamFor('abc'), microtime(true) + 5));
-        $this->assertSame(Manifest::MAX_BYTES + 1, strlen(app(UpdateCheck::class)->readBounded(Utils::streamFor(str_repeat('x', Manifest::MAX_BYTES * 2)), microtime(true) + 5)));
+        $this->assertNull(app(UpdateCheck::class)->readBounded(Utils::streamFor('abc'), hrtime(true) / 1e9 - 1));
+
+        // Data first, then an empty read once eof() has turned true: the body is returned, not a failure.
+        $trailing = new class(Utils::streamFor('')) implements StreamInterface
+        {
+            use StreamDecoratorTrait;
+
+            private int $calls = 0;
+
+            public function eof(): bool
+            {
+                return $this->calls > 1;
+            }
+
+            public function read(int $length): string
+            {
+                return ++$this->calls === 1 ? '{"a":1}' : '';
+            }
+        };
+        $this->assertSame('{"a":1}', app(UpdateCheck::class)->readBounded($trailing, hrtime(true) / 1e9 + 5));
+        $this->assertSame('abc', app(UpdateCheck::class)->readBounded(Utils::streamFor('abc'), hrtime(true) / 1e9 + 5));
+        $this->assertSame(Manifest::MAX_BYTES + 1, strlen(app(UpdateCheck::class)->readBounded(Utils::streamFor(str_repeat('x', Manifest::MAX_BYTES * 2)), hrtime(true) / 1e9 + 5)));
     }
 
     public function test_requests_are_https_only_with_bounded_redirects_and_identity_encoding(): void
