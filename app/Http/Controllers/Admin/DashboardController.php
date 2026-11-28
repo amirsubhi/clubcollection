@@ -108,6 +108,8 @@ class DashboardController extends Controller
                 'auditLog' => route('admin.clubs.audit-logs', $club),
                 'billing' => route('admin.clubs.billing.edit', $club),
                 'verifications' => route('admin.clubs.verifications.index', $club),
+                // Filled after load by the security-update note (spec J2); shows nothing unless one is waiting.
+                'updateStatus' => route('admin.updates.status'),
             ],
         ]);
     }

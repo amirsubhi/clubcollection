@@ -1,5 +1,5 @@
 import type { FundCategory } from "@/types/member";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@inertiajs/react";
 import { ArrowRight, Ban, CheckCircle2, Clock, CreditCard, FilePlus2, HandHeart, Hourglass, Landmark, ReceiptText, TrendingDown, Wallet } from "lucide-react";
 import { AdminLayout } from "@/components/app/AdminLayout";
@@ -65,7 +65,7 @@ interface Props {
     items: { id: number; member: { name: string }; periodStart: string; periodEnd: string; amount: number; feeCount: number; transferDate: string | null; submittedAt: string | null }[];
   };
   activity: Activity[];
-  urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string; billing: string; verifications: string };
+  urls: { fundUsage: string; awaitingMine: string; createExpense: string; classic: string; ledger: string; auditLog: string; billing: string; verifications: string; updateStatus: string };
 }
 
 const activityIcon: Record<Activity["kind"], { Icon: typeof Wallet; tone: Tone }> = {
@@ -146,6 +146,31 @@ function BalanceHint({ ledger }: { ledger: string }) {
   );
 }
 
+/** A quiet note for club admins when a security update is waiting (J2): no link, no button. Shows nothing otherwise. */
+function UpdateNote({ url, portalName }: { url: string; portalName: string }) {
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch(url, { headers: { Accept: "application/json" }, credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: { security_waiting?: boolean; super_admins?: string[] } | null) => {
+        if (!live || !s?.security_waiting) return;
+        const names = (s.super_admins ?? []).join(", ");
+        setNote(`A security update for ${portalName} is waiting.${names ? ` Your super admin (${names}) can install it.` : ""}`);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [url, portalName]);
+  if (note === null) return null;
+  return (
+    <p id="update-note" role="status" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+      {note}
+    </p>
+  );
+}
+
 export default function AdminDashboard({ nav, greetingName, year, yearLabel, kpis, monthly, monthlyWindow, categories, queue, slips, activity, urls }: Props) {
   const slices = toSlices(categories);
   const spentTotal = categories.reduce((s, c) => s + c.amount, 0);
@@ -172,6 +197,8 @@ export default function AdminDashboard({ nav, greetingName, year, yearLabel, kpi
           </>
         }
       />
+
+      <UpdateNote url={urls.updateStatus} portalName={nav.brandName ?? "the portal"} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile label="Fund balance" window={`As of ${fmtDate(kpis.balanceAsOf)}`} value={rm(kpis.balance)} hint={<BalanceHint ledger={urls.ledger} />} Icon={Landmark} />

@@ -174,6 +174,9 @@ Route::middleware('check_installed')->group(function () {
             Route::get('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'edit'])->name('privacy-notice.edit');
             Route::put('portal-settings/privacy', [\App\Http\Controllers\Admin\PrivacyNoticeController::class, 'update'])->middleware('throttle:20,1,privacy-notice.update|')->name('privacy-notice.update');
             Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
+            // In-app updater, stage 1: the Updates page and "Check now". The status endpoint is below, in the club admin group.
+            Route::get('updates', [\App\Http\Controllers\Admin\UpdatesController::class, 'index'])->name('updates.index');
+            Route::post('updates/check', [\App\Http\Controllers\Admin\UpdatesController::class, 'check'])->middleware('throttle:10,1,updates.check|')->name('updates.check');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
             // Portal name and logo (App\Support\Portal\PortalSettings).
             Route::get('portal-settings', [PortalSettingsController::class, 'edit'])->name('portal-settings.edit');
@@ -182,6 +185,8 @@ Route::middleware('check_installed')->group(function () {
 
         // ── Club Admin + Super Admin ─────────────────────────────────
         Route::middleware(['club_admin'])->prefix('admin')->name('admin.')->group(function () {
+            // Dashboard banner (super admin) and security note (club admin); the answer is shaped by role.
+            Route::get('updates/status', [\App\Http\Controllers\Admin\UpdatesController::class, 'status'])->middleware('throttle:60,1,updates.status|')->name('updates.status');
             // Member import routes must come before the resource to avoid {member} wildcard collision
             Route::get('clubs/{club}/members/import', [MemberController::class, 'import'])->name('members.import');
             Route::post('clubs/{club}/members/import', [MemberController::class, 'importProcess'])->middleware('throttle:5,1,members.import.process|')->name('members.import.process');

@@ -6,8 +6,10 @@
 # The zip is built from a clean `git archive` export of <git-ref> in a temporary folder, never from
 # this working tree, so a local .env, the demo SQLite database, storage/ contents or node_modules can't
 # end up in it. Inside the export it runs `composer install --no-dev -o`, `npm ci && npm run build` and
-# the licence generator, removes dev-only files, writes release.json and zips one top-level folder
+# the licence generator, removes dev-only files, writes release.json and release-files.json, zips one top-level folder
 # `clubportal-<version>/`. The host then needs no Composer, Node or git (docs/RELEASE.md).
+#
+# Also writes dist/clubportal-manifest.json (the in-app updater's manifest; scripts/release-manifest.php).
 #
 # Needs: git, PHP 8.4 + Composer, Node 22 + npm, zip, sha256sum.
 # Env:   COMPOSER_FLAGS  extra composer flags (e.g. --ignore-platform-req=php on an older local PHP;
@@ -52,6 +54,7 @@ REMOVE_PATHS=(
   node_modules tests mockup scripts .github
   phpunit.xml .phpunit.result.cache CLAUDE.MD
   public/hot public/storage
+  docs/superpowers
 )
 
 COMMIT="$(git -C "$REPO" rev-parse --verify "$REF^{commit}")"
@@ -83,6 +86,9 @@ if ! cmp -s docs/THIRD-PARTY-LICENSES.md "$WORK/licenses.md.committed" || ! cmp 
   echo "         run 'npm run licenses' and commit docs/THIRD-PARTY-LICENSES.md and public/licenses.txt." >&2
 fi
 
+# The manifest and file-list code lives in scripts/, which the next step removes: keep a copy.
+cp -R scripts "$WORK/release-scripts"
+
 echo "==> Removing dev-only files"
 rm -rf "${REMOVE_PATHS[@]}"
 # Local secrets and databases (none should be in git, but never ship them): every .env* except the example.
@@ -105,6 +111,11 @@ cat > release.json <<JSON
     "php_requirement": "$PHP_REQ"
 }
 JSON
+
+# Every shipped file with its SHA-256 (the updater verifies an extract with it and finds files a release removed).
+# It fails the build on a symbolic link: the zip would store it as a link and the updater refuses those.
+php -r 'require $argv[1]; file_put_contents("release-files.json", json_encode(release_files($argv[2], "."), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");' \
+  "$WORK/release-scripts/lib/release_manifest.php" "$VERSION"
 
 echo "==> Checking the tree"
 for required in vendor/autoload.php public/build/manifest.json bootstrap/requirements.php bootstrap/preflight.php artisan .env.example storage/app/private/.gitignore storage/framework/views/.gitignore bootstrap/cache/.gitignore; do
@@ -139,6 +150,23 @@ if [[ -n "$BAD" ]]; then
   exit 1
 fi
 
+# The zip's files must be exactly the ones release-files.json lists, plus release-files.json itself.
+EXPECTED="$(php -r 'foreach (array_keys(json_decode(file_get_contents("release-files.json"), true)["files"]) as $f) echo $argv[1], "/", $f, "\n"; echo $argv[1], "/release-files.json\n";' "$NAME" | LC_ALL=C sort)"
+ACTUAL="$(unzip -Z1 "$ZIP" | grep -v '/$' | LC_ALL=C sort)"
+if [[ "$EXPECTED" != "$ACTUAL" ]]; then
+  echo "Refusing the zip: its files differ from release-files.json (< expected, > in the zip):" >&2
+  diff <(echo "$EXPECTED") <(echo "$ACTUAL") >&2 || true
+  rm -f "$ZIP"
+  exit 1
+fi
+
+# The manifest the in-app updater reads (fixed name, so releases/latest/download/ always points at the newest).
+# It fails the build when the CHANGELOG has no section or no "What's new" bullets for this version.
+rm -f "$OUT_DIR/clubportal-manifest.json"
+php "$WORK/release-scripts/release-manifest.php" "$VERSION" "$ZIP" "$OUT_DIR/clubportal-manifest.json" "$APP" \
+  || { rm -f "$ZIP"; exit 1; }
+
 (cd "$OUT_DIR" && sha256sum "$NAME.zip" > "$NAME.zip.sha256")
 echo "==> Built $ZIP ($(du -h "$ZIP" | cut -f1))"
 cat "$ZIP.sha256"
+echo "==> Manifest $OUT_DIR/clubportal-manifest.json"
