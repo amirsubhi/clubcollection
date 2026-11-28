@@ -38,6 +38,45 @@ final class Unpack
         );
     }
 
+    /**
+     * The file in a staging or old folder next to the app that names the app it belongs to. Those folders carry only a
+     * version in their name, and two portals can share a parent folder (cPanel addon domains), so a sweep removes only
+     * folders whose marker names its own app.
+     */
+    public const OWNER = '.clubportal-owner';
+
+    /** Marks a parent-level folder (`.clubportal-update-*`, `.clubportal-old-*`) as this app's. Others are left alone. */
+    public static function markOwner(string $dir, string $app): void
+    {
+        $name = basename($dir);
+        if (! str_starts_with($name, '.clubportal-update-') && ! str_starts_with($name, '.clubportal-old-')) {
+            return;
+        }
+        $marker = rtrim($dir, '/\\').'/'.self::OWNER;
+        $owner = self::ownerId($app);
+        if (is_file($marker) && @file_get_contents($marker) === $owner) {
+            return;
+        }
+        if (@file_put_contents($marker, $owner) !== strlen($owner)) {
+            throw new UpdaterError('A folder for the update cannot be written to (disk full?).');
+        }
+    }
+
+    /** True when the folder's marker names this app. A folder without a marker (or another app's) is not ours. */
+    public static function isOwnedBy(string $dir, string $app): bool
+    {
+        $marker = rtrim($dir, '/\\').'/'.self::OWNER;
+
+        return is_file($marker) && ! is_link($marker) && @file_get_contents($marker) === self::ownerId($app);
+    }
+
+    private static function ownerId(string $app): string
+    {
+        $real = realpath($app);
+
+        return ($real === false ? rtrim($app, '/\\') : $real)."\n";
+    }
+
     /** Removes empty .update-probe-* folders the pre-check's rename test left behind. Returns how many. */
     public static function sweepProbes(string $app): int
     {
@@ -55,13 +94,14 @@ final class Unpack
     }
 
     /**
-     * Extracts entries $from .. $from+$count-1 into $staging (the zip's top folder is dropped).
+     * Extracts entries $from .. $from+$count-1 into $staging (the zip's top folder is dropped). With $owner (the app
+     * folder) a staging folder next to the app gets the owner marker.
      *
      * @return int the next index to pass, or -1 when the last entry is done
      *
      * @throws UpdaterError on a refused zip or a failed write; the staging folder is removed first
      */
-    public static function slice(string $zip, string $staging, int $from, int $count): int
+    public static function slice(string $zip, string $staging, int $from, int $count, ?string $owner = null): int
     {
         $z = new \ZipArchive;
         try {
@@ -76,6 +116,9 @@ final class Unpack
                 self::removeTree($staging);
             }
             self::makeDir($staging);
+            if ($owner !== null) {
+                self::markOwner($staging, $owner);
+            }
 
             $end = min($from + max(1, $count), $z->numFiles);
             for ($i = $from; $i < $end; $i++) {

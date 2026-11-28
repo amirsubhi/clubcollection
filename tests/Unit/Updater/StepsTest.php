@@ -52,6 +52,8 @@ class StepsTest extends TestCase
         $this->assertSame(['Receipts now show the club\'s logo'], $outcome['whats_new']);
         $this->assertCount(1, glob($this->dir.'/history/*.json'));
         $this->assertSame('done', $this->journal()->steps()['finish']['state']);
+        $this->assertFileDoesNotExist($this->site.'/'.Unpack::OWNER, 'the owner marker never reaches the app');
+        $this->assertTrue(Unpack::isOwnedBy($old, $this->site), 'the old folder is marked as this portal\'s');
 
         $this->assertStringContainsString('sedang dikemas kini', (string) file_get_contents($this->dir.'/pause.html'));
         $this->assertContains('backup:run --database-only', $this->laravel->calls);
@@ -269,7 +271,7 @@ class StepsTest extends TestCase
         $j->set('swap', ['state' => 'rolled_back', 'moves' => []]);
         $j->markRecovering();
         $parent = dirname($this->site);
-        foreach (['.clubportal-old-2.1.0', '.clubportal-update-2.2.1', '.update-probe-abc'] as $name) {
+        foreach (['.clubportal-old-2.1.0', '.clubportal-update-2.2.1', '.update-probe-abc', '.clubportal-old-3.0.0', '.clubportal-old-1.9.0'] as $name) {
             mkdir($parent.'/'.$name.'/x', 0755, true);
             if ($name !== '.update-probe-abc') {
                 file_put_contents($parent.'/'.$name.'/x/file', 'left');
@@ -277,6 +279,11 @@ class StepsTest extends TestCase
                 rmdir($parent.'/'.$name.'/x');
             }
         }
+        Unpack::markOwner($parent.'/.clubportal-old-2.1.0', $this->site);
+        Unpack::markOwner($parent.'/.clubportal-update-2.2.1', $this->site);
+        mkdir($parent.'/other-site');
+        Unpack::markOwner($parent.'/.clubportal-old-3.0.0', $parent.'/other-site'); // a second portal in the same folder
+        // .clubportal-old-1.9.0 has no marker at all
         mkdir($this->dir.'/staging-2.2.0', 0755, true);
         file_put_contents($this->dir.'/clubportal-2.2.0.zip', 'old zip');
         mkdir($this->dir.'/webhooks', 0755, true);
@@ -288,6 +295,8 @@ class StepsTest extends TestCase
         foreach (['.clubportal-old-2.1.0', '.clubportal-update-2.2.1', '.update-probe-abc'] as $name) {
             $this->assertDirectoryDoesNotExist($parent.'/'.$name);
         }
+        $this->assertFileExists($parent.'/.clubportal-old-3.0.0/x/file', "another portal's old files are never deleted");
+        $this->assertFileExists($parent.'/.clubportal-old-1.9.0/x/file', 'an unmarked folder is left alone');
         $this->assertDirectoryDoesNotExist($this->dir.'/staging-2.2.0');
         $this->assertFileDoesNotExist($this->dir.'/clubportal-2.2.0.zip');
         $this->assertFileExists($this->dir.'/webhooks/1-a.json', 'saved payment callbacks are never touched');
@@ -367,6 +376,24 @@ class StepsTest extends TestCase
         $this->assertSame('finished', $this->job()['status']);
         $this->assertDirectoryDoesNotExist(Unpack::stagingDir($this->site, '2.2.1'));
         $this->assertFalse(Steps::completeFinishing($this->context()), 'nothing left to do');
+    }
+
+    public function test_a_failed_finish_once_completed_is_not_completed_again(): void
+    {
+        $c = $this->context();
+        $this->runSteps($c, 'finish');
+        $j = Journal::open($this->dir);
+        $j->begin('finish');
+        $j->fail('finish', 'The new public/update folder cannot be put in place.');
+        Maintenance::off($this->site);
+
+        $this->assertTrue(Steps::completeFinishing($this->context()));
+        $this->assertSame('done', $this->journal()->steps()['finish']['state']);
+        // The owner later pauses the site with `php artisan down`: a visit to /update/ must not lift it.
+        file_put_contents($this->site.'/storage/framework/down', '{"secret":null}');
+
+        $this->assertFalse(Steps::completeFinishing($this->context()));
+        $this->assertFileExists($this->site.'/storage/framework/down');
     }
 
     public function test_finish_lifts_the_pause_before_replacing_the_updater(): void

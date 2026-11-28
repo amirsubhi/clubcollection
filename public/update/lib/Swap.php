@@ -141,6 +141,7 @@ final class Swap
         }
 
         self::mkdirp($oldDir);
+        Unpack::markOwner($oldDir, (string) $swap['app']);
         foreach ($swap['moves'] as $i => $m) {
             if ($m['state'] === 'done') {
                 continue;
@@ -250,7 +251,7 @@ final class Swap
     /** @return array<string, mixed> */
     private static function record(Journal $j, array $plan, string $oldDir): array
     {
-        if (is_dir($oldDir) && (@scandir($oldDir) ?: []) !== ['.', '..']) {
+        if (is_dir($oldDir) && array_values(array_diff(@scandir($oldDir) ?: [], [Unpack::OWNER])) !== ['.', '..']) {
             throw new UpdaterError('The folder for the old version already exists and is not empty: '.basename($oldDir));
         }
         $moves = [];
@@ -388,7 +389,16 @@ final class Swap
                 @unlink($backup);
             }
         }
-        self::pruneEmpty((string) $swap['old_dir']);
+        // The owner marker alone does not keep the folder; if anything else is left, the folder stays marked.
+        $oldDir = (string) $swap['old_dir'];
+        $marker = $oldDir.'/'.Unpack::OWNER;
+        if (is_file($marker) && ! is_link($marker)) {
+            @unlink($marker);
+        }
+        self::pruneEmpty($oldDir);
+        if (is_dir($oldDir)) {
+            Unpack::markOwner($oldDir, (string) $swap['app']);
+        }
     }
 
     private static function pruneEmpty(string $dir): void
@@ -415,7 +425,7 @@ final class Swap
 
     private static function isExcludedTop(string $top): bool
     {
-        return in_array($top, self::NOT_UNITS, true) || str_starts_with($top, '.env');
+        return in_array($top, self::NOT_UNITS, true) || str_starts_with($top, '.env') || $top === Unpack::OWNER;
     }
 
     private static function isPublicKept(string $rel): bool

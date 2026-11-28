@@ -366,7 +366,7 @@ final class Page
             .'<p>Members see a page saying the portal is being updated and will be back in a few minutes. They cannot use the portal until this is fixed.</p>'
             .'<p>Your club\'s records and uploaded files are still on your site. The earlier version\'s program files are kept in a folder named <code>'.self::e($where).'</code> '.$place.'.</p>'
             .'<p><strong>What to do:</strong> send the report to whoever installed the portal, or to your host\'s support. Someone with access to the site\'s files needs to do this by hand:</p>'
-            .'<ol><li>Open the folder <code>'.self::e($where).'</code> ('.$place.'). Move everything in it back into the portal\'s folder, to the same place, replacing what is there (what is in its <code>public</code> folder goes into the portal\'s <code>public</code> folder).</li>'
+            .'<ol><li>Open the folder <code>'.self::e($where).'</code> ('.$place.'). Move everything in it except the file <code>'.self::e(Unpack::OWNER).'</code> back into the portal\'s folder, to the same place, replacing what is there (what is in its <code>public</code> folder goes into the portal\'s <code>public</code> folder).</li>'
             .'<li>In the portal\'s <code>storage/framework</code> folder, delete the files <code>updating</code>, <code>down</code> and <code>maintenance.php</code>.</li>'
             .'<li>Open the portal\'s home page and check that it works.</li></ol>'
             .'<p class="actions"><button type="button" class="button" id="copy-report">Copy report</button> '

@@ -386,7 +386,7 @@ final class Steps
         $next = (int) $j->get('unpack_next', 0);
         $deadline = microtime(true) + $c->sliceSeconds;
         do {
-            $next = Unpack::slice($zip, $staging, $next, $c->unpackBatch);
+            $next = Unpack::slice($zip, $staging, $next, $c->unpackBatch, $c->app);
             $j->set('unpack_next', $next);
         } while ($next !== -1 && microtime(true) < $deadline);
         if ($next !== -1) {
@@ -581,7 +581,12 @@ final class Steps
         self::installUpdater($c->app, $staging, $oldDir);
         Unpack::removeTree($staging);
         @unlink(self::zipPath($c));
-        if (($j->steps()['finish']['state'] ?? null) === 'running') {
+        $state = $j->steps()['finish']['state'] ?? null;
+        if ($state === 'failed') {
+            $j->begin('finish'); // a failed finish that is now complete must not be completed again on every visit
+            $state = 'running';
+        }
+        if ($state === 'running') {
             $j->finish('finish');
         } else {
             $j->touch();
@@ -851,8 +856,19 @@ final class Steps
         Unpack::sweepProbes($c->app);
         $parent = dirname($c->app);
         foreach (@scandir($parent) ?: [] as $name) {
-            if (str_starts_with($name, '.clubportal-update-') || str_starts_with($name, '.clubportal-old-')) {
-                self::removeDir($parent.'/'.$name);
+            if (! str_starts_with($name, '.clubportal-update-') && ! str_starts_with($name, '.clubportal-old-')) {
+                continue;
+            }
+            $path = $parent.'/'.$name;
+            if (! is_dir($path) || is_link($path)) {
+                continue;
+            }
+            if (Unpack::isOwnedBy($path, $c->app)) {
+                self::removeDir($path);
+            } else {
+                // Another portal in the same parent folder (or one from before the marker): its files may be the only
+                // way back for that site, so they are never deleted here.
+                @error_log('Club Portal updater: left '.$name.' alone (not marked as this portal\'s).');
             }
         }
         foreach (@scandir($c->files->dir) ?: [] as $name) {
