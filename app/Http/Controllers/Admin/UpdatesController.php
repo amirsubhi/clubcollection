@@ -86,10 +86,11 @@ class UpdatesController extends Controller
     {
         $latest = $s->latest;
         $checks = $s->available && $latest !== null ? PreChecks::run($latest, false) : [];
-        $ready = $checks !== [] && PreChecks::canStart($checks, false, false);
-
-        $failing = array_values(array_filter($checks, fn ($c) => ! $c->ok));
-        $hostMessage = implode("\n\n", array_values(array_filter(array_map(fn ($c) => $c->hostMessage, $failing))));
+        // Stage 1 has no ticks: the two "someone must act" rows (not blocking) are advice to read before the manual steps.
+        $blockers = array_values(array_filter($checks, fn ($c) => ! $c->ok && $c->blocking));
+        $before = array_values(array_filter($checks, fn ($c) => ! $c->ok && ! $c->blocking));
+        $ready = $checks !== [] && $blockers === [];
+        $hostMessage = implode("\n\n", array_values(array_filter(array_map(fn ($c) => $c->hostMessage, $blockers))));
 
         return view('admin.updates.index', [
             'status' => $s,
@@ -97,7 +98,8 @@ class UpdatesController extends Controller
             'security' => $latest !== null && $latest->isSecurityFor($s->installed),
             'checks' => $checks,
             'ready' => $ready,
-            'failing' => $failing,
+            'blockers' => $blockers,
+            'before' => $before,
             'hostMessage' => $hostMessage,
             'releasedOn' => $latest === null ? null : $this->date($latest->releasedAt),
             'checkedAt' => $s->checkedAt,

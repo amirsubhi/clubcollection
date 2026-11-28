@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Club;
 use App\Models\User;
+use App\Support\Updates\Manifest;
 use App\Support\Updates\PreChecks;
 use App\Support\Updates\UpdaterHost;
 use Illuminate\Http\Client\Factory;
@@ -15,6 +16,10 @@ use Tests\TestCase;
 class UpdatesPageHost extends UpdaterHost
 {
     public bool $zip = true;
+
+    public bool $paying = false;
+
+    public bool $needsTick = false;
 
     public function phpVersion(): string
     {
@@ -63,7 +68,7 @@ class UpdatesPageHost extends UpdaterHost
 
     public function paymentInProgress(): bool
     {
-        return false;
+        return $this->paying;
     }
 
     public function updateRunning(): bool
@@ -78,7 +83,7 @@ class UpdatesPageHost extends UpdaterHost
 
     public function databaseBackupNeedsTick(): bool
     {
-        return false;
+        return $this->needsTick;
     }
 }
 
@@ -400,5 +405,63 @@ class UpdatesPageTest extends TestCase
         $this->actingAsSuperAdmin();
 
         $this->get(route('home'))->assertSee(route('admin.updates.index'), false)->assertSeeText('Updates');
+    }
+
+    public function test_a_non_host_failure_gets_a_neutral_headline_and_its_fix_outside_the_details(): void
+    {
+        $this->release();
+        $this->host->paying = true;
+        $this->actingAsSuperAdmin();
+
+        $html = $this->get(route('admin.updates.index'))->assertOk()
+            ->assertSeeText("Your site isn't ready to update right now.")
+            ->assertDontSeeText('on this host')
+            ->assertDontSeeText('Copy message for my host')
+            ->getContent();
+
+        $outside = preg_replace('#<details.*?</details>#s', '', $html);
+        $check = collect(PreChecks::run(Manifest::fromJson(json_encode($this->manifest())), false))
+            ->first(fn ($c) => $c->key === 'no_payment');
+        $this->assertNotNull($check->fix);
+        $this->assertStringContainsString(e($check->message), $outside);
+        $this->assertStringContainsString(e($check->fix), $outside);
+    }
+
+    public function test_the_backup_row_is_advice_before_updating_not_a_blocker_in_stage_one(): void
+    {
+        $this->release();
+        $this->host->needsTick = true;
+        $this->actingAsSuperAdmin();
+
+        $html = $this->get(route('admin.updates.index'))->assertOk()
+            ->assertSeeText('To update, follow the upgrade steps')
+            ->assertSeeText('Before you update')
+            ->assertSeeText("This host can't copy your club's data by itself")
+            ->assertSeeText('Ask them to take a copy of the database before updating.')
+            ->assertDontSeeText("Your site isn't ready to update right now.")
+            ->assertDontSeeText("can't update itself on this host")
+            ->getContent();
+        $this->assertLessThan(strpos($html, 'To update, follow'), strpos($html, 'Before you update'));
+    }
+
+    public function test_a_club_admin_of_another_club_and_an_admin_without_clubs_get_the_limited_status(): void
+    {
+        $this->release(['security' => true, 'last_security_version' => '2.2.3']);
+        $this->club();
+        $this->actingAsClubAdmin($this->club());
+        $this->getJson(route('admin.updates.status'))->assertOk()->assertJsonStructure(['security_waiting', 'super_admins'])->assertJsonMissingPath('latest');
+
+        auth()->logout();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->getJson(route('admin.updates.status'))->assertOk()->assertJsonStructure(['security_waiting', 'super_admins'])->assertJsonMissingPath('installed');
+    }
+
+    public function test_a_dev_install_says_dev_without_a_v(): void
+    {
+        unlink($this->releaseFile);
+        Http::fake();
+        $this->actingAsSuperAdmin();
+
+        $this->get(route('admin.updates.index'))->assertSeeText("You're on dev")->assertDontSeeText("You're on vdev");
     }
 }

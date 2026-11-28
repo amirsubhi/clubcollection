@@ -124,7 +124,7 @@ final class AdminNav
             $portal[] = $blade('statistics', 'Statistics', route('admin.statistics'), 'statistics');
             $portal[] = $blade('audit-all', 'Audit Log (all clubs)', route('admin.audit-logs.index'), 'audit');
             $portal[] = $blade('portal-settings', 'Portal settings', route('admin.portal-settings.edit'), 'settings');
-            $portal[] = $blade('updates', 'Updates', route('admin.updates.index'), 'settings');
+            $portal[] = $blade('updates', 'Updates', route('admin.updates.index'), 'refresh');
             $portal[] = $blade('privacy-notice', 'Privacy notice', route('admin.privacy-notice.edit'), 'audit');
         }
         $portal[] = $blade('security', 'Security & 2FA', route('profile.security'), 'security');

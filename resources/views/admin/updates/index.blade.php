@@ -6,7 +6,7 @@
 @if ($latest === null || ! $status->available)
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <p class="h5 mb-1">You're on v{{ $status->installed }}</p>
+            <p class="h5 mb-1">You're on {{ \App\Support\Updates\Version::isRelease($status->installed) ? 'v' : '' }}{{ $status->installed }}</p>
             @if ($status->error)
                 <p class="mb-0">{{ $status->error }}</p>
             @else
@@ -40,17 +40,37 @@
                 <p class="fw-semibold text-success mb-2"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>Your site is ready to update</p>
             @else
                 <div class="border border-danger rounded p-3 mb-3" data-testid="cannot-update">
-                    <p class="fw-semibold text-danger mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>Your site can't update itself on this host yet.</p>
-                    @foreach ($failing as $c)
-                        <p class="mb-1">{{ $c->message }}</p>
+                    @if ($hostMessage !== '')
+                        <p class="fw-semibold text-danger mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>Your site can't update itself on this host yet.</p>
+                    @else
+                        <p class="fw-semibold text-danger mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>Your site isn't ready to update right now.</p>
+                    @endif
+                    @foreach ($blockers as $c)
+                        <p class="mb-2">{{ $c->message }}@if ($c->fix)<br><span class="text-muted">{{ $c->fix }}</span>@endif</p>
                     @endforeach
                     @if ($hostMessage !== '')
                         <p class="mt-3 mb-1"><strong>What to do:</strong> send this message to your hosting company's support.</p>
                         <textarea id="host-message" class="form-control mb-2" rows="5" readonly aria-label="Message for my host">{{ $hostMessage }}</textarea>
-                        <button type="button" id="copy-host-message" class="btn btn-outline-primary btn-sm" hidden>Copy message for my host</button>
-                        <span id="copy-host-done" class="small text-success ms-2" hidden>Copied</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-copy-from="host-message" hidden>Copy message for my host</button>
+                        <span class="small text-success ms-2" data-copy-done hidden>Copied</span>
                     @endif
                     <p class="mt-3 mb-0">Or ask whoever installed the portal to update it by hand (<a href="{{ $manualStepsUrl }}" target="_blank" rel="noopener noreferrer">instructions</a>).</p>
+                </div>
+            @endif
+
+            @if ($before !== [])
+                <div class="border rounded p-3 mb-3" data-testid="before-you-update">
+                    <h3 class="h6">Before you update</h3>
+                    @foreach ($before as $c)
+                        <div class="mb-2">
+                            <p class="mb-1">{{ $c->message }}@if ($c->fix)<br><span class="text-muted">{{ $c->fix }}</span>@endif</p>
+                            @if ($c->hostMessage)
+                                <textarea id="before-{{ $c->key }}" class="form-control mb-2" rows="4" readonly aria-label="Message to send">{{ $c->hostMessage }}</textarea>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-copy-from="before-{{ $c->key }}" hidden>Copy message</button>
+                                <span class="small text-success ms-2" data-copy-done hidden>Copied</span>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
             @endif
 
@@ -92,18 +112,18 @@
     <span class="text-muted small">Last checked {{ $checkedAt->diffForHumans() }}</span>
 </form>
 
-@if (($hostMessage ?? '') !== '' && ! $ready)
 <script nonce="{{ $cspNonce }}">
 (function () {
-    var btn = document.getElementById('copy-host-message');
-    var box = document.getElementById('host-message');
-    var done = document.getElementById('copy-host-done');
-    if (!btn || !box || !navigator.clipboard) { return; }
-    btn.hidden = false;
-    btn.addEventListener('click', function () {
-        navigator.clipboard.writeText(box.value).then(function () { done.hidden = false; }, function () { box.select(); });
+    if (!navigator.clipboard) { return; }
+    document.querySelectorAll('[data-copy-from]').forEach(function (btn) {
+        var box = document.getElementById(btn.dataset.copyFrom);
+        var done = btn.parentNode.querySelector('[data-copy-done]');
+        if (!box) { return; }
+        btn.hidden = false;
+        btn.addEventListener('click', function () {
+            navigator.clipboard.writeText(box.value).then(function () { if (done) { done.hidden = false; } }, function () { box.select(); });
+        });
     });
 })();
 </script>
-@endif
 @endsection
