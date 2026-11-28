@@ -10,6 +10,7 @@ use ClubPortalUpdater\Context;
 use ClubPortalUpdater\Lock;
 use ClubPortalUpdater\Swap;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 use Tests\Unit\Updater\UpdateRunFixture;
@@ -20,7 +21,7 @@ class AppUpdateCommandTest extends TestCase
 {
     use UpdateRunFixture;
 
-    private const MANUAL_LINE = 'Run: php artisan migrate --force && php artisan optimize && php artisan up';
+    private const MANUAL_LINE = 'Run: php artisan migrate --force && php artisan optimize && php artisan app:update --finish';
 
     private string $originalBase;
 
@@ -33,6 +34,7 @@ class AppUpdateCommandTest extends TestCase
         $this->originalBase = $this->app->basePath();
         $this->makeSite();
         $this->app->setBasePath($this->site);
+        $this->app->useDatabasePath($this->originalBase.'/database');
         config(['updates.release_file' => $this->site.'/release-files.json']);
         Cache::flush();
         $this->childCalls = [];
@@ -218,6 +220,7 @@ class AppUpdateCommandTest extends TestCase
             ->expectsOutputToContain('Switching to the new version')
             ->expectsOutputToContain('first super admin')
             ->expectsOutputToContain(self::MANUAL_LINE)
+            ->expectsOutputToContain('The update is not finished until you run these commands. Members see the pause page until then.')
             ->expectsOutputToContain("website's PHP cache is not cleared from the command line")
             ->assertExitCode(0);
 
@@ -233,6 +236,50 @@ class AppUpdateCommandTest extends TestCase
         $this->assertContains('backup:run --database-only', $this->laravel->calls);
         $this->assertNotContains('migrate --force', $this->laravel->calls, 'migrate is not run in this process');
         $this->assertSame('<?php // old updater', $this->read('public/update/index.php'), 'the new updater moves in at the finish');
+
+        // The operator runs the printed commands (the migrations are already run here), then --finish.
+        $this->artisan('app:update', ['--finish' => true])
+            ->expectsOutputToContain('Opening the portal again')
+            ->assertExitCode(0);
+
+        $this->assertNotPaused();
+        $this->assertSame('finished', $this->job()['status']);
+        $this->assertSame('finished', $this->outcome()['outcome']);
+        $this->assertSame(['Receipts now show the club\'s logo'], $this->outcome()['whats_new']);
+        $this->assertSame('<?php // new guard', $this->read('public/update-guard.php'));
+        $this->assertSame('<?php // new updater', $this->read('public/update/index.php'));
+        $this->assertSame('done', $this->journal()->steps()['finish']['state']);
+        $this->assertSame('finished from the command line', $this->journal()->steps()['migrate']['detail']);
+    }
+
+    public function test_finish_refuses_before_the_switch(): void
+    {
+        $this->fakeGithub();
+
+        $this->artisan('app:update', ['--finish' => true])
+            ->expectsOutputToContain('There is no update waiting to be finished')
+            ->assertExitCode(1);
+
+        $this->assertSame('ready', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+    }
+
+    public function test_finish_refuses_while_migrations_are_pending(): void
+    {
+        BackupRun::$processAvailable = static fn (): bool => false;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+        $this->artisan('app:update', ['--yes' => true])->assertExitCode(0);
+        DB::table('migrations')->orderByDesc('id')->limit(1)->delete();
+
+        $this->artisan('app:update', ['--finish' => true])
+            ->expectsOutputToContain('php artisan migrate --force')
+            ->assertExitCode(1);
+
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileExists($this->site.'/storage/framework/down');
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
     }
 
     public function test_the_job_belongs_to_the_first_super_admin_and_is_audited(): void

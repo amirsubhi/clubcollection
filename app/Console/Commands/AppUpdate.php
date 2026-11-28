@@ -33,7 +33,7 @@ use Throwable;
  * `optimize` therefore run in a child `php artisan` (only when PHP may start programs), and the website's PHP cache
  * cannot be reset from the command line (the CLI and the web pool have separate caches).
  */
-#[Signature('app:update {--check : Only show the installed and the latest version} {--yes : Do not ask before updating}')]
+#[Signature('app:update {--check : Only show the installed and the latest version} {--yes : Do not ask before updating} {--finish : Finish an update that stopped after the switch, once the manual commands have been run}')]
 #[Description('Update Club Portal to the latest release (the same steps as the Updates page)')]
 class AppUpdate extends Command
 {
@@ -48,12 +48,16 @@ class AppUpdate extends Command
 
     private const BUSY = 'An update is already running (in a browser or another terminal). Try again later.';
 
-    private const MANUAL = 'Run: php artisan migrate --force && php artisan optimize && php artisan up';
+    private const MANUAL = 'Run: php artisan migrate --force && php artisan optimize && php artisan app:update --finish';
 
     public function handle(): int
     {
         $this->loadUpdater();
         $status = app(UpdateCheck::class)->status(true);
+
+        if ($this->option('finish')) {
+            return $this->finishManually();
+        }
 
         if ($this->option('check')) {
             $this->line('Installed: '.$status->installed);
@@ -224,12 +228,20 @@ class AppUpdate extends Command
         if (! $canStartProcesses) {
             $this->line('This server does not let PHP start programs, so the update stops here. The new files are in place and the portal is still paused for members.');
             $this->line(self::MANUAL);
+            $this->line('The update is not finished until you run these commands. Members see the pause page until then.');
             $this->cacheLine();
 
             return self::SUCCESS;
         }
 
         $failure = $this->migrateInChild($c);
+        if ($failure === self::BUSY) {
+            // Someone else holds the lock: nothing is put back from here, and the old files are already switched out.
+            $this->line('The new files are in place and the portal is paused for members, but this command could not take the update lock to carry on.');
+            $this->line('Open the Updates page as a super admin, or wait 10 minutes and the old version is put back automatically.');
+
+            return self::FAILURE;
+        }
         if ($failure !== null) {
             // Putting the old files back needs the guard again, like any other switch of files.
             Files::writeAtomic($c->files->guardPath, time()."\n");
@@ -353,6 +365,91 @@ class AppUpdate extends Command
         $this->line($checks
             ? "The website's PHP cache is not cleared from the command line; it refreshes within a few seconds."
             : "The website's PHP cache is not cleared from the command line, and this server does not look for changed files: restart PHP (or use the Updates page) so the website runs the new version.");
+    }
+
+    /**
+     * `--finish`: after the manual commands (migrate, optimize) the operator ran, completes what the page's last steps
+     * would have: the remaining steps are recorded as done, then Steps::completeFinishing writes the outcome, ends the
+     * job, lifts the pause and moves the new update-guard.php and public/update/ in.
+     */
+    private function finishManually(): int
+    {
+        $c = new Context(base_path());
+        if (self::$tune !== null) {
+            (self::$tune)($c);
+        }
+        $lock = Lock::acquire($c->files->dir);
+        if ($lock === null) {
+            $this->line(self::BUSY);
+
+            return self::FAILURE;
+        }
+        try {
+            $c->load();
+            $j = $c->journal();
+            $steps = $j->steps();
+            if (! in_array($c->job['status'] ?? null, ['running'], true) || ! Steps::isThisAttempt($j, $c->job)
+                || ($steps['swap']['state'] ?? null) !== 'done' || ($steps['finish']['state'] ?? null) === 'done') {
+                $this->line('There is no update waiting to be finished: it has not reached the point of switching versions, or it is already done.');
+
+                return self::FAILURE;
+            }
+            if ($j->isRecovering() || is_file($c->files->guardPath)) {
+                $this->line('The update is still switching versions or is being undone. Try again in a few minutes.');
+
+                return self::FAILURE;
+            }
+            $pending = $this->pendingMigrations();
+            if ($pending !== []) {
+                $this->line(count($pending).' update(s) to your club\'s records have not been run yet. Run: php artisan migrate --force');
+
+                return self::FAILURE;
+            }
+            $note = 'finished from the command line';
+            foreach (['opcache', 'migrate', 'health'] as $step) {
+                $state = $steps[$step]['state'] ?? null;
+                if ($state === 'done') {
+                    continue;
+                }
+                if ($state !== 'running') {
+                    $j->begin($step);
+                }
+                $j->log($step, ucfirst($note).'.');
+                $j->finish($step, $note);
+            }
+            if (! isset($j->steps()['finish'])) {
+                $j->begin('finish');
+            }
+        } catch (Throwable $e) {
+            $this->line('The update could not be finished: '.$e->getMessage());
+
+            return self::FAILURE;
+        } finally {
+            $lock->release();
+        }
+        if (! Steps::completeFinishing($c)) {
+            $this->line('The portal could not be opened again from here. Open the Updates page as a super admin.');
+
+            return self::FAILURE;
+        }
+        $this->line('✓ '.Steps::screenName('finish', $c->to()));
+        $this->line('Club Portal is now v'.ltrim($c->to(), 'vV').'.');
+        $this->cacheLine();
+
+        return self::SUCCESS;
+    }
+
+    /** @return list<string> migration names that have not run, from the same files `migrate` reads */
+    private function pendingMigrations(): array
+    {
+        $migrator = app('migrator');
+        $repository = $migrator->getRepository();
+        if (! $repository->repositoryExists()) {
+            return ['all'];
+        }
+        $files = $migrator->getMigrationFiles(array_merge($migrator->paths(), [database_path('migrations')]));
+
+        return array_values(array_diff(array_keys($files), $repository->getRan()));
     }
 
     /** The updater library is plain PHP outside Composer's autoloader. */
