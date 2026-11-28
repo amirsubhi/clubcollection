@@ -11,3 +11,5 @@ require_once __DIR__.'/Download.php';
 require_once __DIR__.'/ZipSafety.php';
 require_once __DIR__.'/Unpack.php';
 require_once __DIR__.'/Report.php';
+require_once __DIR__.'/Htaccess.php';
+require_once __DIR__.'/Swap.php';
