@@ -20,7 +20,8 @@ class UpdaterHost
 {
     /** PHP functions the updater calls (opcache_reset is optional and not listed). Later tasks extend this list. */
     public const NEEDED_FUNCTIONS = ['rename', 'copy', 'unlink', 'mkdir', 'rmdir', 'file_put_contents', 'fopen', 'fwrite',
-        'flock', 'hash_file', 'scandir', 'curl_init', 'curl_setopt', 'curl_exec'];
+        'flock', 'hash_file', 'scandir', 'curl_init', 'curl_setopt', 'curl_exec', 'curl_errno', 'curl_error', 'curl_getinfo',
+        'fread', 'fclose', 'filesize', 'file_get_contents', 'clearstatcache', 'stat', 'random_bytes'];
 
     /** A job in one of these states is over and no longer blocks a new update. */
     public const TERMINAL_JOB_STATUSES = ['finished', 'undone', 'failed', 'rolled_back'];
