@@ -62,6 +62,7 @@ class AppUpdateCommandTest extends TestCase
         AppUpdate::$tune = null;
         AppUpdate::$child = null;
         AppUpdate::$opcacheTimestamps = null;
+        AppUpdate::$lockAfterSwitch = null;
         BackupRun::$processAvailable = null;
         $this->app->setBasePath($this->originalBase);
         $this->cleanTempDirs();
@@ -250,6 +251,8 @@ class AppUpdateCommandTest extends TestCase
         $this->assertSame('<?php // new updater', $this->read('public/update/index.php'));
         $this->assertSame('done', $this->journal()->steps()['finish']['state']);
         $this->assertSame('finished from the command line', $this->journal()->steps()['migrate']['detail']);
+        $this->assertStringContainsString('checked from the command line', $this->journal()->steps()['health']['detail']);
+        $this->assertContains('health 2.2.1', $this->laravel->calls);
     }
 
     public function test_finish_refuses_before_the_switch(): void
@@ -280,6 +283,44 @@ class AppUpdateCommandTest extends TestCase
         $this->assertSame('running', $this->job()['status']);
         $this->assertFileExists($this->site.'/storage/framework/down');
         $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+    }
+
+    public function test_finish_stops_on_a_health_problem_and_changes_nothing(): void
+    {
+        BackupRun::$processAvailable = static fn (): bool => false;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+        $this->artisan('app:update', ['--yes' => true])->assertExitCode(0);
+        $this->laravel->healthProblem = 'The new version cannot reach the database: nope';
+
+        $this->artisan('app:update', ['--finish' => true])
+            ->expectsOutputToContain('nope')
+            ->assertExitCode(1);
+
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileExists($this->site.'/storage/framework/down');
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+        $this->assertSame('<?php // new A', $this->read('app/A.php'));
+        $this->assertArrayNotHasKey('health', $this->journal()->steps());
+        $this->assertSame('<?php // old updater', $this->read('public/update/index.php'));
+    }
+
+    public function test_a_lock_lost_after_the_switch_points_to_the_finish_command(): void
+    {
+        AppUpdate::$lockAfterSwitch = static fn (string $dir) => null;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain('Once the other update has finished')
+            ->expectsOutputToContain(self::MANUAL_LINE)
+            ->assertExitCode(1);
+
+        $this->assertSame([], $this->childCalls);
+        $this->assertSame('<?php // new A', $this->read('app/A.php'), 'nothing is put back from here');
+        $this->assertSame('running', $this->job()['status']);
     }
 
     public function test_the_job_belongs_to_the_first_super_admin_and_is_audited(): void

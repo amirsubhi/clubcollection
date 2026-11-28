@@ -46,6 +46,9 @@ class AppUpdate extends Command
     /** Test seam: whether the web server's PHP checks files for changes (null: read opcache.validate_timestamps). */
     public static ?\Closure $opcacheTimestamps = null;
 
+    /** Test seam: takes the update lock after the switch, fn(string $dir): ?Lock. */
+    public static ?\Closure $lockAfterSwitch = null;
+
     private const BUSY = 'An update is already running (in a browser or another terminal). Try again later.';
 
     private const MANUAL = 'Run: php artisan migrate --force && php artisan optimize && php artisan app:update --finish';
@@ -238,7 +241,8 @@ class AppUpdate extends Command
         if ($failure === self::BUSY) {
             // Someone else holds the lock: nothing is put back from here, and the old files are already switched out.
             $this->line('The new files are in place and the portal is paused for members, but this command could not take the update lock to carry on.');
-            $this->line('Open the Updates page as a super admin, or wait 10 minutes and the old version is put back automatically.');
+            $this->line('Once the other update has finished, run this to complete it:');
+            $this->line(self::MANUAL);
 
             return self::FAILURE;
         }
@@ -270,7 +274,7 @@ class AppUpdate extends Command
      */
     private function migrateInChild(Context $c): ?string
     {
-        $lock = Lock::acquire($c->files->dir);
+        $lock = self::$lockAfterSwitch !== null ? (self::$lockAfterSwitch)($c->files->dir) : Lock::acquire($c->files->dir);
         if ($lock === null) {
             return self::BUSY;
         }
@@ -375,6 +379,8 @@ class AppUpdate extends Command
     private function finishManually(): int
     {
         $c = new Context(base_path());
+        $laravel = LaravelApp::forKernel(app(Kernel::class)); // this process runs the new code
+        $c->boot = static fn (string $app): BootedApp => $laravel;
         if (self::$tune !== null) {
             (self::$tune)($c);
         }
@@ -405,8 +411,15 @@ class AppUpdate extends Command
 
                 return self::FAILURE;
             }
-            $note = 'finished from the command line';
+            $problem = ($c->boot)($c->app)->health($c->to());
+            if ($problem !== null) {
+                $this->line('The new version is not working yet, so the update was not finished: '.$problem);
+                $this->line('The new files are in place and members see the pause page. Fix that, then run: php artisan app:update --finish');
+
+                return self::FAILURE;
+            }
             foreach (['opcache', 'migrate', 'health'] as $step) {
+                $note = $step === 'health' ? 'checked from the command line: the new version is running and reaches the database' : 'finished from the command line';
                 $state = $steps[$step]['state'] ?? null;
                 if ($state === 'done') {
                     continue;
