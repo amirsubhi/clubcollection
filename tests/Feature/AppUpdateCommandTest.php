@@ -69,6 +69,7 @@ class AppUpdateCommandTest extends TestCase
         AppUpdate::$opcacheTimestamps = null;
         AppUpdate::$lockAfterSwitch = null;
         AppUpdate::$needsDatabaseTick = null;
+        AppUpdate::$finishLockWait = 15.0;
         BackupRun::$processAvailable = null;
         $this->app->setBasePath($this->originalBase);
         $this->cleanTempDirs();
@@ -512,6 +513,87 @@ class AppUpdateCommandTest extends TestCase
         // The operator runs the printed command.
         $this->artisan('app:update', ['--finish' => true])->assertExitCode(0);
         $this->assertSame('finished', $this->job()['status']);
+        $this->assertNotPaused();
+    }
+
+    public function test_a_lock_held_during_the_finish_child_puts_nothing_back(): void
+    {
+        AppUpdate::$finishLockWait = 0.3;
+        $codes = [];
+        AppUpdate::$child = function (array $argv, string $cwd, array $env = []) use (&$codes): array {
+            $this->childCalls[] = [$argv, $cwd];
+            $this->assertChildPass($env);
+            if ($argv[2] !== 'app:update') {
+                return ['code' => 0, 'output' => ''];
+            }
+            $held = Lock::acquire($this->dir); // a cookie-less visit to /update/ in between
+            $this->assertNotNull($held);
+            try {
+                $r = $this->runFinishChild($env);
+            } finally {
+                $held->release();
+            }
+            $codes[] = $r['code'];
+
+            return $r;
+        };
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain(self::MANUAL_LINE)
+            ->assertExitCode(1);
+
+        $this->assertSame([AppUpdate::FINISH_BUSY], $codes);
+        $this->assertSame('<?php // new A', $this->read('app/A.php'), 'nothing is put back');
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+        $this->assertFileExists($this->site.'/storage/framework/down', 'members still see the pause page');
+        $this->assertFileDoesNotExist($this->dir.'/cli-pass');
+
+        $this->artisan('app:update', ['--finish' => true])->assertExitCode(0);
+        $this->assertSame('finished', $this->job()['status']);
+    }
+
+    public function test_the_guard_stopping_the_finish_child_puts_nothing_back(): void
+    {
+        AppUpdate::$child = function (array $argv, string $cwd, array $env = []): array {
+            $this->childCalls[] = [$argv, $cwd];
+
+            return $argv[2] === 'app:update'
+                ? ['code' => 0, 'output' => "Club Portal is being updated; try again in a few minutes.\n"]
+                : ['code' => 0, 'output' => ''];
+        };
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+
+        $this->artisan('app:update', ['--yes' => true])
+            ->expectsOutputToContain(self::MANUAL_LINE)
+            ->assertExitCode(1);
+
+        $this->assertSame('<?php // new A', $this->read('app/A.php'));
+        $this->assertSame('running', $this->job()['status']);
+        $this->assertFileDoesNotExist($this->dir.'/outcome.json');
+    }
+
+    public function test_finish_completes_after_a_bare_artisan_up(): void
+    {
+        BackupRun::$processAvailable = static fn (): bool => false;
+        $this->fakeGithub();
+        $this->superAdmin();
+        $this->noJob();
+        $this->artisan('app:update', ['--yes' => true])->assertExitCode(0);
+        unlink($this->site.'/storage/framework/down'); // `php artisan up` instead of the printed line
+        @unlink($this->site.'/storage/framework/maintenance.php');
+
+        $this->artisan('app:update', ['--finish' => true])
+            ->expectsOutputToContain('Opening the portal again')
+            ->assertExitCode(0);
+
+        $this->assertSame('finished', $this->job()['status']);
+        $this->assertSame('<?php // new updater', $this->read('public/update/index.php'));
         $this->assertNotPaused();
     }
 

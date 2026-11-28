@@ -50,6 +50,17 @@ class AppUpdate extends Command
     /** Test seam: takes the update lock after the switch, fn(string $dir): ?Lock. */
     public static ?\Closure $lockAfterSwitch = null;
 
+    /** Seconds app:update's own `--finish` child waits for the update lock (tests shorten it). */
+    public static float $finishLockWait = 15.0;
+
+    /** Exit codes of app:update's own `--finish` child that mean "nothing was tried": never a reason to put files back. */
+    public const FINISH_BUSY = 3;
+
+    public const FINISH_REFUSED = 4;
+
+    /** The one line public/update-guard.php prints when it stops an artisan command. */
+    private const GUARD_LINE = 'Club Portal is being updated; try again in a few minutes.';
+
     /** Test seam: whether a person must confirm a database backup (null: ask PreChecks). */
     public static ?\Closure $needsDatabaseTick = null;
 
@@ -297,6 +308,16 @@ class AppUpdate extends Command
             return self::SUCCESS;
         }
         clearstatcache();
+        if (in_array($finish['code'], [self::FINISH_BUSY, self::FINISH_REFUSED], true) || in_array(self::GUARD_LINE, $lines, true)) {
+            // The finish was never tried (the lock was busy, it was refused, or the guard stopped it): put nothing back,
+            // and leave it for the operator, as when this command cannot take the lock.
+            Maintenance::liftGuard($c->app);
+            $this->line('The new files are in place and the portal is paused for members, but the last step could not run from here.');
+            $this->line('Once any other update has finished, run this to complete it:');
+            $this->line(self::MANUAL);
+
+            return self::FAILURE;
+        }
         if (is_file($c->files->guardPath)) {
             // The new version failed its check (or the finish command could not run): put the old files back, as the
             // page does when `health` fails.
@@ -437,11 +458,20 @@ class AppUpdate extends Command
         if (self::$tune !== null) {
             (self::$tune)($c);
         }
+        // app:update's own child (holding the one-time pass). Its parent has just released the lock, and a web request
+        // may hold it for a moment, so the child waits a little; its exit codes tell "busy" and "refused" apart from a
+        // real failure, so the parent never puts the old files back for those.
+        $child = $this->hasPass($c);
         $lock = Lock::acquire($c->files->dir);
+        $deadline = microtime(true) + self::$finishLockWait;
+        while ($lock === null && $child && microtime(true) < $deadline) {
+            usleep(200000);
+            $lock = Lock::acquire($c->files->dir);
+        }
         if ($lock === null) {
             $this->line(self::BUSY);
 
-            return self::FAILURE;
+            return $child ? self::FINISH_BUSY : self::FAILURE;
         }
         try {
             $c->load();
@@ -451,14 +481,13 @@ class AppUpdate extends Command
                 || ($steps['swap']['state'] ?? null) !== 'done' || ($steps['finish']['state'] ?? null) === 'done') {
                 $this->line('There is no update waiting to be finished: it has not reached the point of switching versions, or it is already done.');
 
-                return self::FAILURE;
+                return $child ? self::FINISH_REFUSED : self::FAILURE;
             }
-            // With the guard up only app:update's own child (holding the one-time pass) may finish; it lifts the guard.
-            $child = $this->hasPass($c);
+            // With the guard up only app:update's own child may finish; it lifts the guard.
             if ($j->isRecovering() || (is_file($c->files->guardPath) && ! $child)) {
                 $this->line('The update is still switching versions or is being undone. Try again in a few minutes.');
 
-                return self::FAILURE;
+                return $child ? self::FINISH_REFUSED : self::FAILURE;
             }
             $pending = $this->pendingMigrations();
             if ($pending !== []) {
