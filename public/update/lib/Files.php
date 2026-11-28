@@ -44,6 +44,16 @@ final class Files
         );
     }
 
+    /** Writes a whole file through a temp file in the same folder and a rename: a reader sees the old or the new one. */
+    public static function writeAtomic(string $path, string $content): void
+    {
+        $tmp = $path.'.'.bin2hex(random_bytes(4)).'.tmp';
+        if (@file_put_contents($tmp, $content) !== strlen($content) || ! @rename($tmp, $path)) {
+            @unlink($tmp);
+            throw new UpdaterError('Cannot write '.basename($path).' (disk full or folder not writable).');
+        }
+    }
+
     /** The app this updater is installed in: public/update/lib -> three levels up. */
     public static function here(): self
     {

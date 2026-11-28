@@ -13,3 +13,6 @@ require_once __DIR__.'/Unpack.php';
 require_once __DIR__.'/Report.php';
 require_once __DIR__.'/Htaccess.php';
 require_once __DIR__.'/Swap.php';
+require_once __DIR__.'/Maintenance.php';
+require_once __DIR__.'/Outcome.php';
+require_once __DIR__.'/Recovery.php';

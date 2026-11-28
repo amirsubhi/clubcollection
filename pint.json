@@ -2,6 +2,7 @@
     "preset": "laravel",
     "notPath": [
         "bootstrap/preflight.php",
-        "bootstrap/requirements.php"
+        "bootstrap/requirements.php",
+        "public/update-guard.php"
     ]
 }

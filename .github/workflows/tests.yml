@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   old-php-parse:
-    # The guard at the top of public/index.php must run on the old PHP it refuses (bootstrap/preflight.php).
+    # The guards at the top of public/index.php and artisan must run on the old PHP they refuse (bootstrap/preflight.php,
+    # public/update-guard.php).
     name: Guard parses on PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -36,7 +37,7 @@ jobs:
           php-version: ${{ matrix.php }}
           coverage: none
       - name: php -l
-        run: for f in bootstrap/preflight.php bootstrap/requirements.php public/index.php; do php -l "$f"; done
+        run: for f in bootstrap/preflight.php bootstrap/requirements.php public/index.php public/update-guard.php artisan; do php -l "$f"; done
 
   test:
     name: PHPUnit (${{ matrix.db }})
