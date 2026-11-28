@@ -187,16 +187,10 @@ class UpdaterHost
             ->exists();
     }
 
-    /** storage/app/updater/job.json exists and its status is not a terminal one (finished, undone, failed, rolled_back). */
+    /** The job file exists and its status is not a terminal one; an unreadable file counts as running. */
     public function updateRunning(): bool
     {
-        $file = storage_path('app/updater/job.json');
-        if (! is_file($file)) {
-            return false;
-        }
-        $job = json_decode((string) @file_get_contents($file), true);
-
-        return ! (is_array($job) && in_array($job['status'] ?? null, self::TERMINAL_JOB_STATUSES, true));
+        return UpdateJob::isRunning();
     }
 
     public function databaseDriver(): string

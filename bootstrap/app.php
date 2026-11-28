@@ -34,7 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustHosts();
 
         // cp_lang only holds a language code ("bm", "en", ...) and is written by the member app's JavaScript too.
-        $middleware->encryptCookies(except: [\App\Http\Middleware\AuthPageLocale::COOKIE]);
+        // cp_update is the updater's token: the standalone updater page reads it without Laravel, so it must stay plain.
+        $middleware->encryptCookies(except: [\App\Http\Middleware\AuthPageLocale::COOKIE, 'cp_update']);
 
         $middleware->alias([
             'auth_locale'           => \App\Http\Middleware\AuthPageLocale::class,

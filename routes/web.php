@@ -177,6 +177,7 @@ Route::middleware('check_installed')->group(function () {
             // In-app updater, stage 1: the Updates page and "Check now". The status endpoint is below, in the club admin group.
             Route::get('updates', [\App\Http\Controllers\Admin\UpdatesController::class, 'index'])->name('updates.index');
             Route::post('updates/check', [\App\Http\Controllers\Admin\UpdatesController::class, 'check'])->middleware('throttle:10,1,updates.check|')->name('updates.check');
+            Route::post('updates/start', [\App\Http\Controllers\Admin\UpdatesController::class, 'start'])->middleware('throttle:5,1,updates.start|')->name('updates.start');
             Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
             // Portal name and logo (App\Support\Portal\PortalSettings).
             Route::get('portal-settings', [PortalSettingsController::class, 'edit'])->name('portal-settings.edit');

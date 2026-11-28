@@ -20,4 +20,10 @@ final class PreCheck
         public readonly ?string $hostMessage,
         public readonly bool $blocking,
     ) {}
+
+    /** A row that is advice rather than a failure: someone must do something first, cleared by a tick. */
+    public function isAdvice(): bool
+    {
+        return ! $this->ok && ! $this->blocking;
+    }
 }

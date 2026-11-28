@@ -265,17 +265,17 @@ class UpdatesPageTest extends TestCase
             ->assertSeeText('There is enough free space');
     }
 
-    public function test_stage_one_has_no_button_and_links_the_manual_steps(): void
+    public function test_the_button_replaces_the_manual_link_and_the_manual_steps_stay_as_the_by_hand_alternative(): void
     {
         $this->release();
         $this->actingAsSuperAdmin();
 
         $this->get(route('admin.updates.index'))
             ->assertOk()
-            ->assertSeeText('To update, follow the upgrade steps')
-            ->assertSee('href="https://github.com/amirsubhi/clubcollection/blob/master/docs/RELEASE.md#2-upgrade-a-site-with-the-zip"', false)
-            ->assertDontSee('Update to v2.2.3')
-            ->assertDontSee('Update now');
+            ->assertSee('Update to v2.2.3')
+            ->assertDontSeeText('To update, follow the upgrade steps')
+            ->assertSeeText('Or ask whoever installed the portal to update it by hand')
+            ->assertSee('href="https://github.com/amirsubhi/clubcollection/blob/master/docs/RELEASE.md#2-upgrade-a-site-with-the-zip"', false);
     }
 
     public function test_a_failing_host_check_shows_the_summary_the_host_message_and_rows_under_show_checks(): void
@@ -290,7 +290,7 @@ class UpdatesPageTest extends TestCase
             ->assertSeeText('Copy message for my host')
             ->assertSeeText('PHP zip')
             ->assertDontSeeText('Your site is ready to update')
-            ->assertDontSeeText('To update, follow the upgrade steps')
+            ->assertDontSee('Update to v2.2.3')
             ->getContent();
 
         // The individual rows live inside the "Show checks" block, after the summary.
@@ -465,21 +465,21 @@ class UpdatesPageTest extends TestCase
         $this->assertStringContainsString(e($check->fix), $outside);
     }
 
-    public function test_the_backup_row_is_advice_before_updating_not_a_blocker_in_stage_one(): void
+    public function test_the_backup_row_is_advice_before_updating_not_a_blocker(): void
     {
         $this->release();
         $this->host->needsTick = true;
         $this->actingAsSuperAdmin();
 
         $html = $this->get(route('admin.updates.index'))->assertOk()
-            ->assertSeeText('To update, follow the upgrade steps')
+            ->assertSee('Update to v2.2.3')
             ->assertSeeText('Before you update')
             ->assertSeeText("This host can't copy your club's data by itself")
             ->assertSeeText('Ask them to take a copy of the database before updating.')
             ->assertDontSeeText("Your site isn't ready to update right now.")
             ->assertDontSeeText("can't update itself on this host")
             ->getContent();
-        $this->assertLessThan(strpos($html, 'To update, follow'), strpos($html, 'Before you update'));
+        $this->assertLessThan(strpos($html, 'Update to v2.2.3'), strpos($html, 'Before you update'));
     }
 
     public function test_a_club_admin_of_another_club_and_an_admin_without_clubs_get_the_limited_status(): void

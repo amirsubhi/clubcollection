@@ -108,6 +108,41 @@ class BackupRunTest extends TestCase
         $this->assertSame(['.htaccess', $names[0]], array_values(array_diff(scandir("{$this->root}/storage/app/backups"), ['.', '..'])));
     }
 
+    public function test_database_only_zips_the_database_and_no_uploaded_files(): void
+    {
+        $this->artisan('backup:run', ['--database-only' => true])->expectsOutputToContain('Backup written')->assertSuccessful();
+
+        $names = $this->backups();
+        $this->assertCount(1, $names);
+        $this->assertMatchesRegularExpression('/^club-portal-\d{8}-\d{6}\.zip$/', $names[0]);
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open("{$this->root}/storage/app/backups/{$names[0]}"));
+        $entries = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entries[] = $zip->getNameIndex($i);
+        }
+        sort($entries);
+        $this->assertSame(['README.txt', 'database/database.sqlite'], $entries);
+        $this->assertStringContainsString('database only', $zip->getFromName('README.txt'));
+        $this->assertStringNotContainsString('storage/app/private: uploaded', $zip->getFromName('README.txt'));
+        $zip->close();
+
+        $audit = AuditLog::where('action', 'system.backup')->sole();
+        $this->assertTrue($audit->new_values['database']);
+        $this->assertSame(0, $audit->new_values['files']);
+    }
+
+    public function test_database_only_prunes_by_the_same_keep_rule(): void
+    {
+        for ($i = 1; $i <= 3; $i++) {
+            $this->travel($i)->minutes();
+            $this->artisan('backup:run', ['--database-only' => true, '--keep' => 2])->assertSuccessful();
+        }
+
+        $this->assertCount(2, $this->backups());
+    }
+
     public function test_keeps_only_the_newest_backups(): void
     {
         $dir = "{$this->root}/storage/app/backups";
