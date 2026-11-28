@@ -484,11 +484,29 @@ the same list as on that screen:
    **except the file `.clubportal-owner`** (leave that behind) back into the portal's folder, to the same place,
    replacing what is there. What is in its `public` folder goes into the portal's `public` folder.
 2. In the portal's `storage/framework` folder, delete the files `updating`, `down` and `maintenance.php`.
-3. Open the portal's home page and check that it works.
+3. In the portal's `storage/app/updater` folder, delete the file `job.json`.
+4. Open the portal's home page and check that it works.
 
-Do not delete the old-version folder until the portal works. Send the report on that screen (**Copy report**) to
-whoever supports the portal if something is unclear. If a database change had started, restore the database copy
-the update saved (`storage/app/backups`, see [section 6](#6-backups)) before step 3.
+Do not delete the old-version folder until the portal works. Send the report on that screen (**Copy report**, shown
+in the browser that ran the update) to whoever supports the portal if something is unclear. If a database change had
+started, restore the database copy the update saved (`storage/app/backups`, see [section 6](#6-backups)) before
+step 4. If `job.json` is left behind, the next visit to `/update/` after 10 minutes ends that update for you.
+
+### An update from the command line that stopped after the switch
+
+`php artisan app:update` runs its last commands (`migrate`, `optimize`, then `app:update --finish`) itself. If the
+server does not let PHP start programs, or the command is stopped after the files were switched (the connection
+dropped, the Terminal was closed), the new files are in place and members see the "back in a few minutes" page until
+the update is finished; `/update/` then says it is waiting to be finished from the command line. Run, in the portal's
+folder:
+
+```
+php artisan migrate --force && php artisan optimize && php artisan app:update --finish
+```
+
+`--finish` checks that the new version works before it opens the portal again. If the command died while the swap
+guard was still up (`storage/framework/updating` exists, and `artisan` only prints "Club Portal is being updated"), wait
+10 minutes and open the portal's home page: it puts the old version back by itself.
 
 ---
 

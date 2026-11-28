@@ -99,7 +99,12 @@ about 2 minutes while the portal shows members a "back in a few minutes" page. T
 until it says Done. If it goes wrong it puts the old version back by itself. The same steps run from the terminal with
 `php artisan app:update` (`--check` only compares versions; `--yes` skips the question but never assumes a database backup: add `--database-backed-up` when the page would ask for one, and `--manual-action-done` when a release asks for something to be done first). If the server does not let PHP
 start programs the command stops after switching the files and prints the line to finish by hand:
-`php artisan migrate --force && php artisan optimize && php artisan app:update --finish`.
+`php artisan migrate --force && php artisan optimize && php artisan app:update --finish`. Otherwise it runs those
+commands itself as child commands (`--finish` last: it checks the new version and opens the portal), while members
+keep the pause page. If the command dies after the switch: when `artisan` still answers only "Club Portal is being
+updated" (the guard file is up), the first visit to the site 10 minutes later puts the old version back by itself;
+when `/update/` says the update is waiting to be finished from the command line, run that same line. Details in
+[INSTALL.md](INSTALL.md#an-update-from-the-command-line-that-stopped-after-the-switch).
 
 What the host must allow (zip and curl extensions, a writable app folder, free space, an nginx location for `/update/`)
 is in [INSTALL.md](INSTALL.md#what-the-in-app-updater-needs). If an update stops in the middle and cannot be undone by

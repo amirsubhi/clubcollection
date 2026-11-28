@@ -82,10 +82,17 @@ admin's password again (and the 2FA code when 2FA is on) and is audited, as are 
 **Pages that need no sign-in** (they have to work while the portal's own code is being switched):
 
 - `/update/` (the standalone updater). Its steps run only with the update's secret token cookie (`cp_update`, stored
-  hashed, valid for the job's start up to 30 minutes after its last step). A visitor with no cookie can do two things:
-  trigger the **undo of an update that has been idle for 10 minutes** (it only ever puts the installed release back, and
-  never installs anything) and read the **result screens** (what happened, with the report: versions, steps and error
-  text, never `.env` values, tokens, cookies or database passwords; the app path is shown as `<app>`). It never serves a file.
+  hashed, valid for the job's start up to 30 minutes after its last step; each step answer renews the cookie for that
+  long). A visitor with no cookie can only trigger what the update had already started or a person already did: the
+  **undo of an update that has been idle for 10 minutes** (it only ever puts the installed release back, and never
+  installs anything), the **completion of an interrupted last step**, and **ending an update that was undone by hand**
+  (no pause files left, 10 minutes idle: it only records the job as ended). The visitor also reads the screens in plain
+  words: the result (what happened and what to do), "waiting to be finished from the command line" with the line to
+  run, and "could not be undone by itself" with what members see and the steps to do by hand. **Only the browser
+  holding the update's cookie** sees the report (versions, steps and error text, never `.env` values, tokens, cookies or
+  database passwords; the app folder is shown as `<app>` and the folder that holds it as `<app-parent>`), the failing
+  checks, the list of the site's own files that were kept, and the reason a blocked update gives (it names the backup
+  file). It never serves a file.
 - **The swap guard** (`public/update-guard.php`, run first by `public/index.php` and `artisan`). While an update is
   switching files it answers every visitor with the pause page (503). It also saves a POST to `/webhook/toyyibpay` or
   `/webhook/billplz` to `storage/app/updater/webhooks/` so a payment confirmation isn't lost: **at most 200 callbacks,

@@ -304,6 +304,11 @@ Spec `docs/superpowers/specs/2026-11-27-in-app-updater-design.md`; user/host doc
 - **The installed release's updater runs every update**, never the new one: a bug fix to the engine reaches a site one
   release later, and the engine must keep working with the next release's zip layout. `public/update/` and
   `public/update-guard.php` are moved in by the last step (`finish`), not by the swap.
+- **Two seams cross versions, so keep their APIs stable for at least one release:** `app:update --finish` runs the NEW
+  release's command against the installed release's `public/update/lib` (Context, Lock, Journal,
+  `Steps::isThisAttempt`/`completeFinishing`, `Maintenance::liftGuard`, `LaravelApp::forKernel`); and the old lib's
+  `LaravelApp::health` and `migrate` call the new app's `UpdaterHost` and migrations. app:update's child commands get
+  past the guard with a one-time pass (`storage/app/updater/cli-pass` + env `CLUBPORTAL_UPDATER_PASS`).
 - **The guard** (`public/update-guard.php`, first lines of `public/index.php` and `artisan`) must **parse and run on PHP
   5.6**: no short arrays, type declarations, `??`, arrow functions, `match`, named arguments. CI job `old-php-parse`
   (`.github/workflows/tests.yml`) runs `php -l` on it under 5.6 and 7.4; add any new file that runs before PHP 8.4 is
