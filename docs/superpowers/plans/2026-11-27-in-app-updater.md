@@ -41,6 +41,9 @@
 - **Stage 2 = Tasks 6–13.** They are to be revised against the spec's §12 and the journeys before stage 2 starts.
   Stage 1 agents implement Tasks 1–5 only and must not build anything from Tasks 6–13.
 - **Carried into stage 2 from the stage-1 reviews (28 November 2026):**
+  - **No release ships stage 1 on its own** until the wording matches the manual path: the red banner says "It
+    takes about 2 minutes. Update now" and the page says "Updating takes about 2 minutes", but in stage 1 the only path
+    is the manual upgrade steps. Either reword for the manual path or ship with stage 2.
   - Button gate is `PreChecks::canStart($checks, $dbTicked, $manualTicked)` only; `allPass()` never enables it. Show
     checks still marks the two advice rows as "Failed", and the tight-disk warning's fix/host message is never shown:
     fix both when Task 6 adds the ticks.
